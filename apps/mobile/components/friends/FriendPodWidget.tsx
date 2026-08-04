@@ -1,0 +1,97 @@
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// The Friend Pod entry on Friends: "Your friends' week" play card, plus
+// "Add your recap" and "Submit a question". Play opens a stub for now — the
+// full weekly podcast player ships with RECAP-PODCAST.md.
+// ============================================
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { ChevronRightIcon, MicIcon, PlayIcon, PlusIcon } from 'lucide-react-native';
+import { Avatar, ORGANIC, cn, useThemeColors } from '@bridger/ui';
+import { useFriendPod } from '../../hooks/useFriendPod';
+
+export function FriendPodWidget({
+  size = 'full',
+  onPlay,
+  onRecord,
+  onSubmitQuestion
+}: {
+  size?: 'full' | 'half';
+  onPlay?: () => void;
+  onRecord?: () => void;
+  onSubmitQuestion?: () => void;
+}) {
+  const c = useThemeColors();
+  const { recap } = useFriendPod();
+  const voices = recap?.voices ?? [];
+  const minutes = recap?.minutes ?? 0;
+  const questionCount = recap?.questionCount ?? 5;
+
+  return (
+    <View className="gap-2.5">
+      <Pressable
+        onPress={onPlay}
+        accessibilityRole="button"
+        accessibilityLabel={`Play your friends' week. ${voices.length} recaps, ${minutes} minutes`}
+        style={ORGANIC.soft}
+        className="w-full flex-row items-center gap-4 bg-ink px-5 py-5 active:opacity-95"
+      >
+        {/* true white play disc on the dark ink panel — do not use bg-surface here */}
+        <View
+          className="h-12 w-12 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: '#FFFFFF' }}
+        >
+          <PlayIcon size={24} color="#1C1B16" strokeWidth={2.4} style={{ marginLeft: 2 }} />
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text numberOfLines={1} className="font-pixel text-[17px] leading-[21px] text-white">
+            Your friends' week
+          </Text>
+          <Text numberOfLines={1} className="font-sans-sb text-[12px] text-white/70">
+            {voices.length} recaps · {minutes} min
+          </Text>
+        </View>
+        <View className="shrink-0 flex-row items-center">
+          {voices.slice(0, 3).map((p, i) => (
+            <View
+              key={p.id}
+              className={cn('rounded-full border-2 border-ink', i > 0 && '-ml-2')}
+            >
+              <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+            </View>
+          ))}
+        </View>
+      </Pressable>
+
+      {size === 'full' ? (
+        <>
+          <Pressable
+            onPress={onRecord}
+            accessibilityRole="button"
+            accessibilityLabel="Add your recap"
+            className="w-full min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3.5 active:bg-[#F1ECFF]"
+          >
+            <MicIcon size={20} color="#6B2FEA" strokeWidth={2.4} />
+            <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-b text-[14px] text-ink">
+              Add your recap
+            </Text>
+            <Text className="shrink-0 font-sans-sb text-[12px] text-ink-mute">
+              {questionCount} questions · 45s
+            </Text>
+            <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.6} />
+          </Pressable>
+
+          <Pressable
+            onPress={onSubmitQuestion}
+            accessibilityRole="button"
+            accessibilityLabel="Submit a question"
+            className="w-full min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3 active:bg-[#F1ECFF]"
+          >
+            <PlusIcon size={16} color="#6B2FEA" strokeWidth={3} />
+            <Text className="font-sans-b text-[13px] text-ink">Submit a question</Text>
+          </Pressable>
+        </>
+      ) : null}
+    </View>
+  );
+}

@@ -6,9 +6,19 @@
 // gets its own module and gets added to this list.
 // ============================================
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { HealthModule } from './health/health.module';
+import { SupabaseModule } from './supabase/supabase.module';
+import { MeModule } from './me/me.module';
 
 @Module({
-  imports: [HealthModule]
+  imports: [
+    // Loads apps/api/.env and makes settings available everywhere (isGlobal).
+    ConfigModule.forRoot({ isGlobal: true }),
+    // The server's admin connection to Supabase (global).
+    SupabaseModule,
+    HealthModule,
+    MeModule
+  ]
 })
 export class AppModule {}

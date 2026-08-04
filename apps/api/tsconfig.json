@@ -13,11 +13,7 @@
     "declarationMap": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "isolatedModules": false,
-    "paths": {
-      "@bridger/shared": ["../../packages/shared/src/index.ts"],
-      "@bridger/permissions": ["../../packages/permissions/src/index.ts"]
-    }
+    "isolatedModules": false
   },
   "include": ["src/**/*.ts"]
 }

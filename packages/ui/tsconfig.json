@@ -8,5 +8,5 @@
       "@bridger/shared": ["../shared/src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "nativewind-env.d.ts"]
 }

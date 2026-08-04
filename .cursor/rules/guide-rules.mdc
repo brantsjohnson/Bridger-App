@@ -36,6 +36,8 @@ Sign in with Apple must be offered since we offer Google sign-in.
 Payments: co-op membership sold in-app must use the platform's IAP where required; external chip-in handles (Venmo/Cash App) are peer-to-peer text links we never process — keep that distinction clean.
 No tracking without consent (we don't track — keep it that way; no third-party ad/analytics SDKs without approval).
 Content safety: report + block exist (FRIENDS.md) — keep them wired; stores require a moderation path for user-generated content.
+Make sure to build the accessibility elements in there as you build out the features so that it can be accessed by Android or IOS's accessibility rules. We want to make sure the software is accessible to everyone if they have those options turned on. 
+
 4 · Every section of code gets a plain-language comment.
 
 The founder is non-technical and will read the code. Every file starts with a header comment, and every meaningful section gets a one-liner, in plain English — what it is, not how clever it is.

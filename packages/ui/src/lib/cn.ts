@@ -1,9 +1,13 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// A tiny helper that joins Tailwind class names together and quietly drops any
-// that are empty or turned off. Lets components write conditional styles
-// cleanly, e.g. cn('p-4', isActive && 'bg-purple').
+// A tiny helper that joins Tailwind class names together, drops any that are
+// empty or turned off, and — importantly — lets a later class OVERRIDE an
+// earlier conflicting one (via tailwind-merge). That override behavior is what
+// makes our components accept a `className` prop that can safely change a
+// built-in style, e.g. <Card className="bg-purple"> replaces the default white.
 // ============================================
+import { twMerge } from 'tailwind-merge';
+
 export function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(' ');
+  return twMerge(classes.filter(Boolean).join(' '));
 }

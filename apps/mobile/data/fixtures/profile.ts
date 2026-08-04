@@ -1,0 +1,159 @@
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// Fake data for your own Profile tab in demo mode: the card fields (about me,
+// hobbies, favs, places, this-or-that), Currently, the bucket list, and the
+// story calendar. Screens never import this — they go through data/profile.ts.
+// ============================================
+import type { Accent, BucketItem, Tier } from '@bridger/shared';
+
+/** Header extras that are not on the Person shape. */
+export const ME_PROFILE = {
+  city: 'Portland, OR',
+  bio: 'Making zines nobody asked for. Always down for a walk.',
+  song: { title: 'Archie, Marry Me', artist: 'Alvvays' }
+};
+
+/** The weekly check-in card: one song, one book. */
+export const PROFILE_CURRENTLY = {
+  listening: { title: 'Blue Rev', artist: 'Alvvays', emoji: '💿' },
+  reading: { title: 'Piranesi', author: 'Susanna Clarke', emoji: '📖' }
+};
+
+export type AboutField = {
+  id: string;
+  key: string;
+  value: string;
+  /** PRIVACY: who is allowed to see this field */
+  tier: Tier;
+};
+
+export const ABOUT_ME_FIELDS: AboutField[] = [
+  { id: 'ab1', key: 'Hometown', value: 'Missoula, MT', tier: 'acquaintance' },
+  { id: 'ab2', key: 'Lives in', value: 'Portland, OR', tier: 'acquaintance' },
+  { id: 'ab3', key: 'Work', value: 'Studio potter', tier: 'friend' },
+  { id: 'ab4', key: 'Birthday', value: 'March 4', tier: 'friend' },
+  { id: 'ab5', key: 'Allergies', value: 'Peanuts', tier: 'close' },
+  { id: 'ab6', key: 'Love language', value: 'Acts of service', tier: 'close' }
+];
+
+export type Interest = {
+  id: string;
+  label: string;
+  emoji: string;
+  accent: Accent;
+  shape?: number;
+};
+
+export const INTERESTS: Interest[] = [
+  { id: 'galleries', label: 'Galleries', emoji: '🖼️', accent: 'purple', shape: 0 },
+  { id: 'hot-food', label: 'Spicy food', emoji: '🌶️', accent: 'coral', shape: 1 },
+  { id: 'jazz', label: 'Jazz', emoji: '🎷', accent: 'amber', shape: 2 },
+  { id: 'hikes', label: 'Hikes', emoji: '🌄', accent: 'teal', shape: 3 },
+  { id: 'open-mic', label: 'Open mic', emoji: '🎤', accent: 'pink', shape: 4 },
+  { id: 'film', label: 'Film photos', emoji: '📷', accent: 'blue', shape: 5 },
+  { id: 'animals', label: 'Animals', emoji: '🐻', accent: 'green', shape: 1 },
+  { id: 'drives', label: 'Long drives', emoji: '🚗', accent: 'purple', shape: 0 },
+  { id: 'plants', label: 'Plants', emoji: '🪴', accent: 'teal', shape: 2 },
+  { id: 'markets', label: 'Flea markets', emoji: '🛍️', accent: 'coral', shape: 3 }
+];
+
+/**
+ * Every hobby carries a follow-up question and answer — what turns a matched
+ * label into something to actually talk about.
+ */
+export const HOBBY_FOLLOW_UPS: Record<string, { question: string; answer: string }> = {
+  galleries: { question: 'Last show you loved?', answer: 'Ruth Asawa retrospective' },
+  'hot-food': { question: 'How hot is too hot?', answer: 'Nothing is too hot' },
+  jazz: { question: 'Who got you into it?', answer: 'My dad, endless Coltrane' },
+  hikes: { question: 'Where do you go?', answer: 'Trail half in the fall' },
+  'open-mic': { question: 'Perform or watch?', answer: 'Watch, one day perform' },
+  film: { question: 'What do you shoot?', answer: 'Black and white, mostly portraits' },
+  animals: { question: 'Which one is yours?', answer: 'Miso, a very loud cat' },
+  drives: { question: 'Best road so far?', answer: 'Highway 1 at sunset' },
+  plants: { question: 'How many, honestly?', answer: 'Thirty one. I counted' },
+  markets: { question: 'Best find?', answer: 'A working 1970s radio' }
+};
+
+export type FavGroup = {
+  group: string;
+  emoji: string;
+  items: string[];
+  total: number;
+};
+
+export const FAVS: FavGroup[] = [
+  {
+    group: 'Food',
+    emoji: '🍜',
+    items: ['Tonkotsu ramen', 'Sour cherries', 'Burnt cheesecake', 'Green curry'],
+    total: 22
+  },
+  {
+    group: 'Entertainment',
+    emoji: '🎬',
+    items: ['Paddington 2', 'Fleabag', 'Columbo', 'Perfect Days'],
+    total: 30
+  },
+  { group: 'Everyday', emoji: '🧺', items: ['Sunday laundry', 'Long walks', 'Library holds'], total: 12 },
+  { group: 'Sports', emoji: '🚲', items: ['Track cycling', 'Bouldering'], total: 6 }
+];
+
+export type ThisOrThatRow = {
+  id: string;
+  a: string;
+  b: string;
+  pick: 'a' | 'b' | 'both';
+  emoji: string;
+};
+
+/** "Both" is a first-class answer. Plenty of people genuinely are. */
+export const THIS_OR_THAT: ThisOrThatRow[] = [
+  { id: 't1', a: 'Coffee', b: 'Tea', pick: 'a', emoji: '☕' },
+  { id: 't2', a: 'Beach', b: 'Mountain', pick: 'b', emoji: '⛰' },
+  { id: 't3', a: 'Early', b: 'Late', pick: 'both', emoji: '🌙' },
+  { id: 't4', a: 'Call', b: 'Text', pick: 'b', emoji: '💬' },
+  { id: 't5', a: 'Sweet', b: 'Salty', pick: 'both', emoji: '🍬' },
+  { id: 't6', a: 'Plan', b: 'Wing it', pick: 'a', emoji: '🗓' }
+];
+
+export type TravelPlace = {
+  id: string;
+  label: string;
+  note: string;
+  /** rough map position as percentages of the panel */
+  x: number;
+  y: number;
+  emoji: string;
+  year?: string;
+};
+
+export const TRAVEL_PLACES: TravelPlace[] = [
+  { id: 'pl1', label: 'Lisbon', note: 'Ate custard tarts daily', x: 22, y: 48, emoji: '🥮', year: '2023' },
+  { id: 'pl2', label: 'Oaxaca', note: 'Mezcal + markets', x: 38, y: 66, emoji: '🌶', year: '2022' },
+  { id: 'pl3', label: 'Reykjavík', note: 'Saw the lights', x: 46, y: 22, emoji: '🌌', year: '2024' },
+  { id: 'pl4', label: 'Kyoto', note: 'Temple mornings', x: 78, y: 44, emoji: '⛩', year: '2019' },
+  { id: 'pl5', label: 'Banff', note: 'Cold lake swim', x: 18, y: 30, emoji: '🏔', year: '2021' }
+];
+
+/** Profile-only module. Solo wants and things to do with specific people. */
+export const BUCKET_LIST: BucketItem[] = [
+  { id: 'b1', text: 'Learn to surf', withIds: [], done: false, isPrivate: false },
+  { id: 'b2', text: 'Hike the Inca Trail', withIds: ['maya', 'devon'], done: false, isPrivate: false },
+  { id: 'b3', text: 'See the northern lights', withIds: ['kit'], done: false, isPrivate: true },
+  { id: 'b4', text: 'Swim in the Adriatic', withIds: [], done: true, isPrivate: false }
+];
+
+/** Which days this month had a story, and what it looked like. */
+export const STORY_CALENDAR: Record<number, string> = {
+  3: '🌇',
+  4: '🏺',
+  8: '🍜',
+  12: '🌤',
+  13: '🎸',
+  19: '📷',
+  22: '🚲',
+  26: '🌻'
+};
+
+/** Ids of people you've blocked (demo default matches Magic Patterns). */
+export const BLOCKED_IDS = ['theo'];

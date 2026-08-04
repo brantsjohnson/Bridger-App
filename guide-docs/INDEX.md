@@ -11,6 +11,10 @@
 5. `DESIGN.md` + `MAGIC-PATTERNS.md` — visual language + component library
 6. Then feature docs as you build each surface.
 
+## Progress archive
+
+`complete/` holds feature docs whose **tab UI has already been ported** (production-shaped screens, demo-backed data layer). Cross-references elsewhere may still say `HOME.md` etc.; those files live under `complete/` once archived.
+
 ## The docs
 
 | Doc | What it owns |
@@ -23,15 +27,15 @@
 | `DESIGN.md` | Retro-modern flat UI: eggshell/black, pixel headers, metallic bevels, floating nav, Discover grid, motion rules |
 | `MAGIC-PATTERNS.md` | Component inventory + screen→doc map (the UI library contract) |
 | `ONBOARDING.md` | Welcome video → 9-step Typeform onboarding (privacy first, 10 basics, meet, visibility review, co-op) + module flow + AI freshness nudge |
-| `HOME.md` | Announcements carousel, stories + "what people said," touch grass, ask-the-group (co-op), this-week, inside-jokes strip, cold start |
+| `complete/HOME.md` | Announcements carousel, stories + "what people said," touch grass, ask-the-group (co-op), this-week, inside-jokes strip, cold start |
 | `STORIES.md` | Updates framing, capture rules, viewer + reaction rail, the Catch-Up (compact top → week hero → answered), pre-generated word-only AI summaries |
 | `PROFILE.md` | Shared card (one card, two views), tabs incl. Bucket List, hobbies 2-view widget, this-or-that columns, places 2-view, Inside Jokes wall, stories calendar, notes & reminders, settings |
 | `PROFILE-QUESTIONS.md` | The full question bank: basics, ~95 hobby follow-ups, favs, places, this-or-that, bucket list, deeper questions |
 | `PROFILE-CUSTOMIZATION.md` | Co-op personalization: fixed core-widget skeleton + insert slots + always-available "View original" |
-| `FRIENDS.md` | Tiered roster, circle caps (free 10/25/∞ · co-op unlimited+groups), birthdays, how-you-met, remove/block ("hole in your graph"), add sheet |
-| `DISCOVER.md` | Overlap-first suggestion cards (Bridger's picks, "you both know X"), Discover Me questionnaire, friend maps, block exclusion, friends-of-friends today / nearby later |
+| `complete/FRIENDS.md` | Tiered roster, circle caps (free 10/25/∞ · co-op unlimited+groups), birthdays, how-you-met, remove/block ("hole in your graph"), add sheet |
+| `complete/DISCOVER.md` | Overlap-first suggestion cards (Bridger's picks, "you both know X"), Discover Me questionnaire, friend maps, block exclusion, friends-of-friends today / nearby later |
 | `REVEAL.md` | Connection reveal: Screen 0 how-you-met (+ record-where default-on) → Venn → also-got → "You two should click." |
-| `EVENTS.md` | Rich detail (cover, address, share sheet), tappable counts, editable host view (co-host, chip-in amount+method), allergies, touch grass on Events, 35/100 caps |
+| `complete/EVENTS.md` | Rich detail (cover, address, share sheet), tappable counts, editable host view (co-host, chip-in amount+method), allergies, touch grass on Events, 35/100 caps |
 | `MESSAGES.md` | 5-per-person/day chat, contact card, maxed-out notice, share-contact/make-a-plan uncounted |
 | `RECAP-PODCAST.md` | Weekly 5-question voice recap stitched into one podcast with speaker pop-ups |
 | `TOUCHGRASS-AND-QUIZ.md` | Touch Grass mechanics (Home + Events, featured+list, why) + quiz share / who-got-who dashboard |

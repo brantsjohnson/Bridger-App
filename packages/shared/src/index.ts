@@ -1,3 +1,7 @@
+// The generated database shape (tables, columns, enums) straight from Supabase.
+// Import { Database, Tables } from '@bridger/shared' to type Supabase queries.
+export * from './database.types';
+
 export * from './model/profile-attribute';
 export * from './model/tier';
 export * from './model/person';

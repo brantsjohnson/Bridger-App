@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "social.bridger.app"
+      "bundleIdentifier": "social.bridger.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "social.bridger.app",
@@ -23,11 +24,12 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {

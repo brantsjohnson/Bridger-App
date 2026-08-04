@@ -35,11 +35,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build first so shared packages emit their compiled types/JS that the API
+      # depends on. Turbo builds them in the right order (shared before api).
+      - name: Build all packages
+        run: pnpm build
+
       - name: Typecheck all packages
-        run: pnpm -r --if-present typecheck
+        run: pnpm typecheck
 
       - name: Run tests
-        run: pnpm -r --if-present test
-
-      - name: Build the API
-        run: pnpm --filter @bridger/api build
+        run: pnpm test

@@ -1,8 +1,104 @@
 /* ============================================
    WHAT THIS FILE DOES (plain English):
-   Loads Tailwind's styles. NativeWind turns these into React Native styles at
-   build time. This file must be imported once, at the app root (_layout.tsx).
+   Loads Tailwind's styles (NativeWind turns these into React Native styles at
+   build time) and defines the app's THEME COLORS as variables.
+
+   The variables under :root are the light theme (eggshell canvas). The block
+   inside "prefers-color-scheme: dark" re-defines the same variables for dark
+   mode, so every "themed" color (canvas, surface, ink, metal) flips
+   automatically with the device setting. Accent colors are NOT here — they stay
+   vivid in both modes and live in tailwind.config.js.
+
+   Dark remaps below catch hardcoded whites and pale fills that would otherwise
+   keep a light background while text-ink flips light (invisible type).
+
+   This file must be imported once, at the app root (_layout.tsx).
    ============================================ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  /* --- LIGHT THEME (default): warm eggshell canvas, white containers --- */
+  :root {
+    --canvas: 250 248 242;
+    --surface: 255 255 255;
+    --ink: 28 27 22;
+    --ink-soft: 74 72 63;
+    --ink-mute: 138 135 123;
+    --ink-line: 228 226 218;
+    --metal-face: 222 220 210;
+    --metal-hi: 255 255 255;
+    --metal-lo: 167 164 152;
+    --carbon: 21 21 21;
+  }
+
+  /* --- DARK THEME: intentional near-black, raised containers, inverted ink --- */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas: 14 14 14;
+      --surface: 26 26 27;
+      /* near-white body text */
+      --ink: 242 240 234;
+      /* secondary labels — bright enough to read on near-black */
+      --ink-soft: 198 196 188;
+      /* muted captions — bumped so light-gray-on-dark stays WCAG-ish */
+      --ink-mute: 168 166 158;
+      --ink-line: 55 55 56;
+      --metal-face: 58 58 56;
+      --metal-hi: 100 100 96;
+      --metal-lo: 24 24 22;
+      --carbon: 8 8 8;
+    }
+
+    /*
+      Do NOT remap plain bg-white here — story rings, QR codes, and toggle
+      knobs need a true white. Cards/containers already use bg-surface.
+      Only remap pale accent fills + the purple press wash below.
+    */
+
+    /* pale accent fills — stay mid-pastel so text-onaccent still contrasts */
+    .bg-\[\#F1ECFF\],
+    .bg-\[\#EDE6FF\],
+    .bg-\[\#EFE9FF\],
+    .bg-\[\#EFE7FF\],
+    .active\:bg-\[\#F1ECFF\]:active {
+      background-color: #2a1e4a;
+    }
+    .bg-\[\#D5C2FF\] {
+      background-color: #c4b0f5;
+    }
+    .bg-\[\#DFF3E4\],
+    .bg-\[\#EEF8E3\] {
+      background-color: #1e3d2a;
+    }
+    .bg-\[\#9FE7CE\] {
+      background-color: #7bc4ac;
+    }
+    .bg-\[\#CDECB6\] {
+      background-color: #a8d090;
+    }
+    .bg-\[\#FFE1D2\] {
+      background-color: #4a2a1e;
+    }
+    .bg-\[\#FFC7AC\] {
+      background-color: #e8a888;
+    }
+    .bg-\[\#FDEFD3\],
+    .bg-\[\#FFF1D6\] {
+      background-color: #4a3a12;
+    }
+    .bg-\[\#FFDE99\] {
+      background-color: #e8c56a;
+    }
+    .bg-\[\#FFE4EE\] {
+      background-color: #4d1e33;
+    }
+    .bg-\[\#FFC0D7\] {
+      background-color: #e89ab8;
+    }
+    .bg-\[\#BBD6FB\] {
+      background-color: #8eb4e8;
+    }
+  }
+}

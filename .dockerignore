@@ -1,0 +1,19 @@
+# ============================================
+# WHAT THIS FILE DOES (plain English):
+# Keeps the container build fast and small by NOT copying junk into it. We skip
+# installed packages, build outputs, the mobile app's native folders, the design
+# reference, and infra output. The Dockerfile re-installs exactly what it needs.
+# ============================================
+**/node_modules
+**/dist
+**/.turbo
+**/.expo
+apps/mobile/ios
+apps/mobile/android
+design
+infra/aws/cdk.out
+.git
+.github
+.cursor
+**/*.log
+.DS_Store

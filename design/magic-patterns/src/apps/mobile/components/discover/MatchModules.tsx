@@ -4,9 +4,9 @@ import { ACCENTS, ModuleFlow, PixelHeading, cn } from '../../../../packages/ui';
 import { MATCH_MODULES, MatchModule } from '../../state/match-modules';
 
 /**
- * What you want to be matched on. Sits at the TOP of Discover so it reads as
- * the thing to get out of the way, not an optional extra buried below the
- * results — the matches only get good once a few of these are done.
+ * "Know me better" — short private modules at the TOP of Discover so they read
+ * as the thing to get out of the way, not an optional extra buried below the
+ * results. Intros only get good once a few of these are done.
  *
  * Nobody has to take them all. Every one opens on the same promise: these
  * answers are never shared, they only find you more relevant friends.
@@ -26,7 +26,7 @@ export function MatchModules({ compact = false }: {compact?: boolean;}) {
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <PixelHeading size="md">Match me on</PixelHeading>
+        <PixelHeading size="md">Know me better</PixelHeading>
         <span className="text-[12px] font-bold text-ink-mute">
           {done}/{all} done
         </span>

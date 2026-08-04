@@ -1,70 +1,52 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// Sets up the 5 main tabs of the app — Home, Friends, Events, Discover, Profile
+// — and swaps the default bottom bar for Bridger's floating pill nav from the
+// design system. Each tab is its own file in this folder; this file just lists
+// them in order and tells Expo Router to draw our custom nav instead of the
+// standard one.
+// ============================================
+import { Tabs } from 'expo-router';
+import { FloatingTabBar, type TabKey } from '@bridger/ui';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+// Keep the app on Home when it first opens.
+export const unstable_settings = {
+  initialRouteName: 'home'
+};
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+export default function TabsLayout() {
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-        }}
-      />
+      screenOptions={{ headerShown: false }}
+      // --- THE NAV: translate Expo Router's tab state into our FloatingTabBar,
+      //     and turn a tap on a pill back into a real navigation. ---
+      tabBar={({ state, navigation }) => {
+        const current = state.routes[state.index]?.name as TabKey;
+        return (
+          <FloatingTabBar
+            value={current}
+            badges={{ discover: true }}
+            onChange={(key) => {
+              const route = state.routes.find((r) => r.name === key);
+              if (!route) return;
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true
+              });
+              if (!event.defaultPrevented) {
+                navigation.navigate(route.name as never);
+              }
+            }}
+          />
+        );
+      }}
+    >
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="friends" />
+      <Tabs.Screen name="events" />
+      <Tabs.Screen name="discover" />
+      <Tabs.Screen name="profile" />
     </Tabs>
   );
 }
