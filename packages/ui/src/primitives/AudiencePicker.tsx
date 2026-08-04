@@ -1,0 +1,196 @@
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// "Who sees this" — the concentric audience picker used when you post an
+// Update, contribute to an activity, or share anything. Picking a wider circle
+// lights the tighter ones too (Close ⊂ Friends ⊂ Everyone). Optional named
+// groups sit underneath. Tone "dark" is for the capture composer.
+// ============================================
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { CheckIcon } from 'lucide-react-native';
+import { cn } from '../lib/cn';
+import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
+import { useThemeColors } from '../tokens';
+
+export type AudienceLevel = 'close' | 'friend' | 'everyone';
+
+const LEVELS: Array<{ id: AudienceLevel; label: string; sub: string }> = [
+  { id: 'close', label: 'Close', sub: '10 people' },
+  { id: 'friend', label: 'Friends', sub: '25 people' },
+  { id: 'everyone', label: 'Everyone', sub: 'All your people' }
+];
+
+/** Concentric: picking a wider circle lights the tighter ones too. */
+export function reachOf(level: AudienceLevel): AudienceLevel[] {
+  if (level === 'close') return ['close'];
+  if (level === 'friend') return ['close', 'friend'];
+  return ['close', 'friend', 'everyone'];
+}
+
+type Props = {
+  value: AudienceLevel;
+  onChange: (v: AudienceLevel) => void;
+  /** on a dark capture sheet, or on a normal surface */
+  tone?: 'light' | 'dark';
+  /** co-op custom groups, shown alongside the three tiers */
+  groups?: string[];
+  /** the selected custom group, which replaces the tier choice */
+  group?: string | null;
+  onGroupChange?: (g: string | null) => void;
+  className?: string;
+  /** Optional per-level analytics ids (close / friends / everyone) */
+  levelAnalyticsIds?: Partial<Record<AudienceLevel, string>>;
+} & AnalyticsProps;
+
+/**
+ * One sharing control for everything you post: stories, polls, activity
+ * contributions. Tiers are concentric and shown as multi-select so the reach
+ * is always visible.
+ */
+export function AudiencePicker({
+  value,
+  onChange,
+  tone = 'light',
+  groups = [],
+  group = null,
+  onGroupChange,
+  className,
+  levelAnalyticsIds
+}: Props) {
+  const c = useThemeColors();
+  const lit = group ? [] : reachOf(value);
+  const dark = tone === 'dark';
+
+  return (
+    <View className={className}>
+      <Text
+        className={cn(
+          'mb-2 font-sans-b text-[11px] uppercase tracking-wide',
+          dark ? 'text-white/60' : 'text-ink-mute'
+        )}
+      >
+        Who sees this
+      </Text>
+
+      <View className="flex-row gap-2">
+        {LEVELS.map((l) => {
+          const on = lit.includes(l.id);
+          const selected = !group && value === l.id;
+          return (
+            <Pressable
+              key={l.id}
+              onPress={withAnalyticsPress(levelAnalyticsIds?.[l.id], () => {
+                onGroupChange?.(null);
+                onChange(l.id);
+              })}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${l.label}. ${l.sub}`}
+              className={cn(
+                'min-h-[44px] flex-1 rounded-2xl border px-2 py-2.5',
+                dark
+                  ? on
+                    ? 'border-white bg-white/15'
+                    : 'border-white/25'
+                  : on
+                    ? 'border-ink bg-green'
+                    : 'border-ink-line bg-surface'
+              )}
+            >
+              <View className="flex-row items-center gap-1.5">
+                <View
+                  className={cn(
+                    'h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+                    on
+                      ? dark
+                        ? 'border-white bg-white'
+                        : 'border-ink bg-ink'
+                      : dark
+                        ? 'border-white/40'
+                        : 'border-ink-line'
+                  )}
+                >
+                  {on ? (
+                    <CheckIcon
+                      size={10}
+                      color={dark ? c.ink : '#FFFFFF'}
+                      strokeWidth={4}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  numberOfLines={1}
+                  className={cn(
+                    'font-sans-b text-[12px]',
+                    dark ? (on ? 'text-white' : 'text-white/60') : on ? 'text-ink' : 'text-ink-mute'
+                  )}
+                >
+                  {l.label}
+                </Text>
+              </View>
+              <Text
+                numberOfLines={1}
+                className={cn(
+                  'mt-0.5 font-sans-sb text-[10px] opacity-70',
+                  dark ? 'text-white' : 'text-ink'
+                )}
+              >
+                {l.sub}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {groups.length > 0 ? (
+        <View>
+          <Text
+            className={cn(
+              'mb-1.5 mt-3 font-sans-b text-[11px] uppercase tracking-wide',
+              dark ? 'text-white/50' : 'text-ink-mute'
+            )}
+          >
+            Or a group
+          </Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {groups.map((g) => {
+              const on = group === g;
+              return (
+                <Pressable
+                  key={g}
+                  onPress={() => onGroupChange?.(on ? null : g)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={`Group ${g}`}
+                  className={cn(
+                    'min-h-[36px] rounded-full border px-3 py-1.5',
+                    on
+                      ? dark
+                        ? 'border-white bg-white'
+                        : 'border-ink bg-green'
+                      : dark
+                        ? 'border-white/30'
+                        : 'border-ink-line bg-surface'
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      'font-sans-b text-[12px]',
+                      on
+                        ? 'text-ink'
+                        : dark
+                          ? 'text-white/75'
+                          : 'text-ink-soft'
+                    )}
+                  >
+                    {g}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}

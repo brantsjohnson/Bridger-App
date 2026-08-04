@@ -3,12 +3,12 @@ import {
   CalendarIcon,
   CompassIcon,
   HouseIcon,
-  UserIcon,
+  MessageSquareIcon,
   UsersIcon } from
 'lucide-react';
 import { cn } from '../tokens';
 
-export type TabKey = 'home' | 'friends' | 'events' | 'discover' | 'profile';
+export type TabKey = 'home' | 'friends' | 'messages' | 'events' | 'discover';
 
 const TABS: Array<{
   key: TabKey;
@@ -17,19 +17,19 @@ const TABS: Array<{
 }> = [
 { key: 'home', label: 'Home', Icon: HouseIcon },
 { key: 'friends', label: 'Friends', Icon: UsersIcon },
+{ key: 'messages', label: 'Messages', Icon: MessageSquareIcon },
 { key: 'events', label: 'Events', Icon: CalendarIcon },
-{ key: 'discover', label: 'Discover', Icon: CompassIcon },
-{ key: 'profile', label: 'Profile', Icon: UserIcon }];
+{ key: 'discover', label: 'Discover', Icon: CompassIcon }];
 
 
 type FloatingTabBarProps = {
-  value: TabKey;
+  value: TabKey | string;
   onChange: (key: TabKey) => void;
   badges?: Partial<Record<TabKey, boolean>>;
   tucked?: boolean;
 };
 
-/** Detached rounded pill, inset from the edge. Active tab is orange. */
+/** Detached rounded pill, inset from the edge. Active tab is orange. Profile is the header avatar, not a tab. */
 export function FloatingTabBar({
   value,
   onChange,

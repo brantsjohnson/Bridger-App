@@ -4,10 +4,13 @@
 // "underline" (thin bar under the active tab — used on the Profile screen).
 // Scrolls sideways when there are more tabs than fit. Design comes from the
 // Magic Patterns SegmentedTabs primitive.
+// Pass analyticsIdForTab so each tab maps to a taxonomy id
+// (e.g. profile.tabs.profile).
 // ============================================
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { cn } from '../lib/cn';
+import { withAnalyticsPress } from '../lib/analytics';
 
 type SegmentedTabsProps = {
   tabs: string[];
@@ -15,6 +18,8 @@ type SegmentedTabsProps = {
   onChange: (tab: string) => void;
   variant?: 'pill' | 'underline';
   className?: string;
+  /** Map a visible tab label → taxonomy analyticsId. */
+  analyticsIdForTab?: (tab: string) => string | undefined;
 };
 
 export function SegmentedTabs({
@@ -22,7 +27,8 @@ export function SegmentedTabs({
   value,
   onChange,
   variant = 'pill',
-  className
+  className,
+  analyticsIdForTab
 }: SegmentedTabsProps) {
   if (variant === 'underline') {
     return (
@@ -37,7 +43,7 @@ export function SegmentedTabs({
             return (
               <Pressable
                 key={tab}
-                onPress={() => onChange(tab)}
+                onPress={withAnalyticsPress(analyticsIdForTab?.(tab), () => onChange(tab))}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={tab}
@@ -79,7 +85,7 @@ export function SegmentedTabs({
         return (
           <Pressable
             key={tab}
-            onPress={() => onChange(tab)}
+            onPress={withAnalyticsPress(analyticsIdForTab?.(tab), () => onChange(tab))}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={tab}

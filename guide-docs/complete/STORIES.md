@@ -33,6 +33,8 @@ Modeled on a music player's now-playing screen (Bridger-original, not a copy):
 - **The post** — photo / in-the-moment video, filling the background.
 - **Caption block** — the post's context line.
 - **Reaction rail (right side, vertical).** Marco-Polo style: small stacked buttons — **Record** (largest, circle-video), **Sticker/emoji**, **Comment**. This is the quick-react rail.
+  - **Record** opens the **circle recorder**: a round camera view with a ring that drains over **10 seconds**, then stops itself. Watch it back, retake, or send. Camera + mic are asked for at the moment you tap record, never at launch.
+  - **Sticker** unrolls the **sticker tray** sideways from the button: a scrollable strip of emoji, with a **"+"** to make your own sticker out of a photo you take. Your own stickers sit at the front of the strip afterwards.
 - **Live replies preview.** Where the controls used to sit (lower area), a preview **rotates through recent replies every ~2s** — you see that people you know are commenting (a text reply, a video-reply chip, a sticker). The **video does not auto-play**; it's a signal of activity. Tapping it opens the full comment section.
 - **Peek card = the Catch-Up.** A colored card at the bottom edge showing a peek of the Catch-Up's top item, inviting a swipe up.
 
@@ -91,7 +93,7 @@ Tier-filtered: a viewer only sees the days/updates shared with their tier. If a 
 ## Reactions & replies — two entry points
 
 You can react from **two places**, by design:
-1. **The right rail** on the story — quick **Record** (circle video, min length, ≤20s), **Sticker/emoji**, or **Comment**.
+1. **The right rail** on the story — quick **Record** (circle video, **≤10s**, hard-stopped), **Sticker/emoji** (tray + your own stickers), or **Comment**.
 2. **The comment section** — opened by tapping the live replies preview (or the rail's Comment). There you see the full thread — text replies, **replies-to-replies** (nested), circle-video replies, and stickers — and can reply the same three ways.
 
 A video reaction left on someone else's page is visible to mutual friends there too.
@@ -156,9 +158,11 @@ interface Reaction {
   postId: string;
   authorId: string;
   kind: 'circleVideo' | 'text' | 'sticker';
-  videoUrl?: string;           // min length enforced; ≤20s
+  videoUri?: string;           // the round reply; ≤10s, hard cap at capture
+  videoSeconds?: number;       // how long it actually ran
   text?: string;
-  stickerId?: string;          // sticker / flash-emoji
+  stickerId?: string;          // an emoji from the built-in strip
+  stickerUri?: string;         // a sticker they made themselves (capture only)
   parentReactionId?: string;   // threading (replies-to-replies)
 }
 
@@ -201,5 +205,9 @@ interface ThemedPrompt { slug: string; label: string; icon: string; }  // admin-
 - [ ] The **week is the hero**: each day is a bold day title + a big ~square photo + a caption underneath, stacked down within the sheet.
 - [ ] Once the viewer answers a poll/question, it sinks to the **very bottom** and its **results are not shown** (just "You answered '{poll}'").
 - [ ] When nothing is actionable, the top/peek reads "{Name} · What you missed" and the week hero is the first thing.
-- [ ] Reactions support circle video (min length), text (nested replies), and stickers/emoji.
+- [ ] Reactions support circle video (**≤10s, stops itself**, watch-back + retake before sending), text (nested replies), and stickers/emoji.
+- [ ] The sticker button unrolls a **side tray** of scrollable emoji plus a **"+" to make your own sticker**; your stickers appear first in the strip and can be sent like any emoji.
+- [ ] Sticker photos and video replies are **capture only** — there is no library picker anywhere in this flow (the profile photo stays the app's one upload exception).
+- [ ] Camera and mic permissions are requested **in context** (on tapping record / the shutter) with a plain purpose string; declining leaves comments and emoji still usable.
+- [ ] The caption and each floating reply sit in **their own solid bubble** so they stay readable over any photo.
 - [ ] Responses to your posts, and replies to comments/videos you left elsewhere, notify you in the Home notifications preview (→ Notifications page).

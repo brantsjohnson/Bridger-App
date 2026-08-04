@@ -3,6 +3,20 @@ import { Cover } from './cover';
 
 export type EventRole = 'host' | 'going' | 'invited';
 
+/**
+ * One "who's bringing what" line on an event. The host adds the label (e.g.
+ * "chips"); a guest can claim it (`assigneeId`) or, instead of bringing it,
+ * chip in money via a plain handle. PAYMENT: `chipInHandle` is never processed
+ * by us — it is a copy-paste Venmo / Cash App handle only.
+ */
+export interface EventAssignment {
+  id: string;
+  label: string;
+  /** person who claimed this item; unset = still open */
+  assigneeId?: string;
+  chipInHandle?: string;
+}
+
 export interface EventItem {
   id: string;
   title: string;
@@ -37,6 +51,8 @@ export interface EventItem {
   allowFriendsToInvite?: boolean;
   /** default 35; beyond this is a paid expansion */
   cap?: number;
+  /** "who's bringing what" sign-up list (optional) */
+  assignments?: EventAssignment[];
 }
 
 export interface MeetSuggestion {

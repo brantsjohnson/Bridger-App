@@ -3,9 +3,12 @@
 // Sheet to write a new Inside Joke: the quote, who was in it, and where it
 // happened. Tagging people lands the note on their walls too. Posts through
 // the insideJokes data layer.
+// Analytics: on post, emit inside_joke_posted with tagged counts only
+// (never the joke text or people's names).
 // ============================================
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
   Avatar,
@@ -51,6 +54,11 @@ export function AddInsideJokeSheet({
       taggedIds: tagged,
       eventName: eventName ?? undefined
     });
+    // Outcome only: counts and bools, never the joke text or names.
+    trackProduct('inside_joke_posted', {
+      tagged_people: tagged.length,
+      tagged_event: !!eventName
+    });
     close();
   };
 
@@ -95,7 +103,7 @@ export function AddInsideJokeSheet({
                     on ? 'border-purple bg-purple' : 'border-ink-line bg-surface active:bg-[#F1ECFF]'
                   )}
                 >
-                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
                   <Text className={cn('font-sans-b text-[12px]', on ? 'text-white' : 'text-ink')}>
                     {p.name.split(' ')[0]}
                   </Text>

@@ -164,8 +164,8 @@ Because Profile is "practically your settings page," Settings (the gear icon) ho
 The bucket list is a **dedicated tab** on the profile (own and friend), not a card in the Profile scroll. Things the person wants to do.
 
 - Each item is **written solo** ("Learn to surf") or **tags friends** ("Hike the Inca Trail · with Sam & Priya"), and each is **public or private** (private = just them; public = friends per tier — a friend's tab shows only public items).
-- Items can be **checked off** when done.
-- **Add inline** — a "+" and a friendly null-state container ("Add to your bucket list"); filled via the same baseline module flow.
+- Items can be **checked off** when done. A just-checked item stays in place (strikethrough) until you leave the tab and come back — then it lives under a **Completed** section at the bottom.
+- **Add** — a circular "+" next to the "Bucket List" title at the top of the tab (not a dashed row at the bottom); empty lists still invite you to add via that same control.
 - Tagging a friend puts it on the radar as something to do *together* (and can surface in In-common when you share a want).
 
 ---
@@ -273,7 +273,7 @@ interface FriendNote {                 // private, author-only
 - [ ] A subtle storage bar sits at the bottom of the calendar; the join-the-co-op prompt appears only once the free month is 100% used (no standalone storage SKU — see `COOP.md`).
 - [ ] Story media older than 30 days is deleted (rolling); quiz results, events, about-fields, and inside jokes persist.
 - [ ] The Inside Jokes wall uses a single filter (All / About you / By you), not two tabs; each sticky note shows the quoted person's profile photo and, on tap, who posted it + event/place + date. Adding is a "+" tile among the notes, with an "Add an Inside Joke" container as the null state; tagging shares to tagged people + event attendees and cross-posts.
-- [ ] Bucket list is its own profile tab: items written solo or friend-tagged, each public/private, checkable, added inline with a null-state container.
+- [ ] Bucket list is its own profile tab: title + circular "+" to add, items written solo or friend-tagged, each public/private, checkable; completed items move to a Completed section only after you leave and return.
 - [ ] New inside jokes also surface on Home (a few recent; fall back to older "moments" when none are new).
 - [ ] A private, author-only entry (text note or date) can be added on any friend's profile; a date reminds you on Home 1 week before and on the day.
 - [ ] A friend's shared birthday drives the "Coming up" card in Home's announcements carousel and the festive Friends row automatically (not added as a private note).

@@ -5,11 +5,13 @@
 // Log out. Rows that lead to surfaces we haven't built yet show a small note
 // instead of going nowhere silently. Log out is always reachable here, which
 // the app stores require.
+// Analytics: each row uses PROFILE.settings.* so taps land in PostHog by name.
 // ============================================
 import React, { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Person } from '@bridger/shared';
+import { PROFILE } from '@bridger/shared';
 import { ButtonSecondary, Card, ListRow, Toggle } from '@bridger/ui';
 import { useColorScheme } from '../useColorScheme';
 import type { StorageState } from '../../data/profile';
@@ -45,13 +47,16 @@ export function ProfileSettings({
         sublabel={`${scheme === 'dark' ? 'Dark' : 'Light'} · follows your device`}
         onPress={notYet('Appearance')}
         trailing="chevron"
+        analyticsId={PROFILE.settings.appearance}
       />
       <ListRow
         label="Who sees what"
         sublabel="Close · Friends · Everyone"
         trailing="chevron"
         onPress={notYet('Who sees what')}
+        analyticsId={PROFILE.settings.who_sees_what}
       />
+      {/* No dedicated taxonomy id for Storage yet — leave uninstrumented (gap). */}
       <ListRow
         label="Storage & plan"
         sublabel={`Free month · ${storage.usedPct}% used`}
@@ -63,12 +68,14 @@ export function ProfileSettings({
         sublabel="Discoverable · match sources"
         trailing="chevron"
         onPress={() => router.push('/discover')}
+        analyticsId={PROFILE.settings.discover_toggle}
       />
       <ListRow
         label="Customize your page"
         sublabel="Members only · make it yours"
         trailing="chevron"
         onPress={notYet('Customize your page')}
+        analyticsId={PROFILE.settings.customize_profile}
       />
       <ListRow
         label="Always show plain pages"
@@ -86,10 +93,18 @@ export function ProfileSettings({
         sublabel="Membership · what you get"
         trailing="chevron"
         onPress={notYet('Co-op')}
+        analyticsId={PROFILE.settings.coop}
       />
       <ListRow
         label="Notifications"
-        action={<Toggle checked={notifications} onChange={setNotifications} label="Notifications" />}
+        action={
+          <Toggle
+            checked={notifications}
+            onChange={setNotifications}
+            label="Notifications"
+            analyticsId={PROFILE.settings.notifications}
+          />
+        }
       />
       <ListRow
         label="Blocked people"
@@ -98,12 +113,23 @@ export function ProfileSettings({
         }
         trailing="chevron"
         onPress={() => setBlockedOpen(true)}
+        analyticsId={PROFILE.settings.blocked_people}
       />
       {/* Account leads to in-app account deletion when it ships — an app-store requirement */}
-      <ListRow label="Account" trailing="chevron" onPress={notYet('Account')} />
+      <ListRow
+        label="Account"
+        trailing="chevron"
+        onPress={notYet('Account')}
+        analyticsId={PROFILE.settings.account}
+      />
 
       <Card>
-        <ButtonSecondary full tone="ghost" onPress={onSignOut}>
+        <ButtonSecondary
+          full
+          tone="ghost"
+          onPress={onSignOut}
+          analyticsId={PROFILE.settings.log_out}
+        >
           Log out
         </ButtonSecondary>
       </Card>

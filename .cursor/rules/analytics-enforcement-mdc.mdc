@@ -1,0 +1,47 @@
+---
+description: 
+alwaysApply: true
+---
+
+---
+description: Analytics conformance gate — before ANY UI/interaction/outcome code is done, it must conform to naming-rules.mdc + ANALYTICS-TAXONOMY.md and emit PostHog-ready events. Read and apply on every code change.
+alwaysApply: true
+---
+
+# Analytics Conformance Gate (run this every time you write code)
+
+Bridger's analytics only works if **every** screen, component, interaction, and outcome is named and emitted consistently (I will try to describe all the analytics you need for each section and what is the best to have but if I add something that is not on here you need to make sure that still has analytics and fills in the gaps and you can see what is needed by what is being asked currently, there should be no analytics gaps even if I do not specifically say it in here) — that's what lets PostHog slice the data afterward. So this is not optional cleanup at the end: **any code that renders UI, handles an interaction, or changes user data is not "done" until it passes the checklist below.**
+
+If you can't satisfy an item (e.g. a needed element name isn't in the taxonomy, or a component lacks an `analyticsId`), **stop and flag it** — don't ship un-instrumented or ad-hoc-named code.
+
+## The authority
+- **`naming-rules.mdc`** — how every element/sheet/flow/gesture is named and measured.
+- **`ANALYTICS-TAXONOMY.md`** — the canonical registry of IDs, surfaces, flows, and **product events (§3b)**. This is the source of truth; update it in the same PR.
+- **`analytics-rules.mdc`** — the privacy + auto-instrumentation standard (first-party, consented, de-identified, deletable).
+
+## Before you finish, verify ALL of these
+1. **Every interactive element has a unique `screen.section.element` `analyticsId`**, reused across screens (never screen-prefixed), and it exists in `ANALYTICS-TAXONOMY.md`. If it's new, you added the row.
+2. **Non-interactive regions are tagged** `interactive:false` (headers, titles, sticky-note bodies, About-Me/This-or-That blocks, card bodies, empty states) so taps log `dead_click`.
+3. **Sheets/overlays are their own `surface`** with `parent_screen` + open/dismiss + `dwell_ms` — not folded into the screen behind them.
+4. **Multi-step flows** emit `flow_started` / `flow_step` / `flow_completed`|`flow_abandoned` with `time_to_complete_ms`.
+5. **Outcomes emit a named product event** (§3b) — `quiz_completed`, `module_completed`, `friend_retiered`, `story_posted`, `rsvp_going`, etc. — with the changed state, **in addition to** the UI click. A click alone is never enough for a real action.
+6. **Order/gesture/method** recorded where relevant: `interaction_index`/`first_interaction`, `method: swipe|dropdown` + `page_index`/`carousel_depth`, and choice `method` (qr/link/scan, photo/video/text/voice, video/comment/sticker/reaction).
+7. **Privacy holds**: no PII, no content (message/caption/quiz-explanation text) in any event; opaque `user_ref` only if consented; deletable.
+8. **Auto-instrumentation, not hand-rolled**: standard events come from the shared `packages/ui` primitives, not per-screen tracking calls. If you're writing a manual `capture()` for a normal tap, fix the component instead.
+
+## PostHog binding (how events must be shaped)
+
+Events go to **PostHog** (self-hosted, or Cloud under a data-processing agreement — it's our product analytics, not an ad SDK). Emit through **one shared analytics module in `packages/shared`** that wraps the PostHog web + React Native SDKs, so web/iOS/Android behave identically.
+
+- **UI events:** the PostHog event **name = the `action`** (`click`, `dead_click`, `rage_click`, `swipe`, `scroll_h`, `view`…); everything else is **properties**: `id`, `screen`, `section`, `element`, `surface`, `parent_screen`, `interaction_index`, `method`, `page_index`, `dwell_ms`, `duration_since_screen_load`, `platform`, `app_version`. → keeps the PostHog event list small; you filter/break-down by `id`/`screen` in Insights.
+- **Product events:** the PostHog event **name = the product event** itself (`quiz_completed`, `friend_retiered`, `module_completed`…) with its state properties. → these are your funnels and retention drivers.
+- **Property naming:** lowercase `snake_case`, identical to the taxonomy, so PostHog funnels/breakdowns group cleanly. Never invent a property name that isn't in the taxonomy.
+- **Identity:** `distinct_id` = the opaque `user_ref` **only after consent**; otherwise anonymous. Never pass name/email/phone to `identify()` or as a property.
+- **Consent:** default to `opt_out_capturing()`; call `opt_in_capturing()` only when the user accepts (Settings toggle + ATT). Wire the deletion path so a deleted account's PostHog person is purged too.
+- **Autocapture:** prefer our **explicit, structured events** (they carry semantic `screen.section.element` ids) as canonical. PostHog DOM autocapture may run as a web-only backstop but is not the source of truth — it can't see our ids or the native platforms.
+- **Keep code and taxonomy in lockstep:** IDs and event names live in a shared constants module generated from / mirrored to `ANALYTICS-TAXONOMY.md`, so a typo can't silently create a new event.
+
+## Definition of done (this gate)
+- [ ] Passed items 1–8 above.
+- [ ] New IDs / surfaces / flows / product events registered in `ANALYTICS-TAXONOMY.md` in this PR.
+- [ ] Events emit through the shared PostHog module, named per the binding, snake_case properties, consent-gated, no PII/content.

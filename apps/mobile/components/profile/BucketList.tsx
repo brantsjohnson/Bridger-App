@@ -2,34 +2,43 @@
 // WHAT THIS FILE DOES (plain English):
 // The Bucket List tab — a profile-only module. Each line is either a solo
 // want or something to do with specific friends, is public or private, and
-// can be checked off. New items are added inline with a small "+", never
-// from a central menu. Viewers never see the private lines.
+// can be checked off. The circular "+" lives next to the title at the top.
+// Checking something off keeps it in place until you leave and come back;
+// then it sits under Completed at the bottom. Viewers never see private lines.
+// Analytics: add / item / check_off use PROFILE.bucket_list.*; checking off
+// also emits the bucket_item_checked product event (no item text in properties).
 // ============================================
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { CheckIcon, LockIcon } from 'lucide-react-native';
+import { CheckIcon, LockIcon, PlusIcon } from 'lucide-react-native';
 import type { BucketItem } from '@bridger/shared';
+import { PROFILE, trackProduct } from '@bridger/shared';
 import {
   Avatar,
   ButtonPrimary,
   ButtonSecondary,
+  PixelHeading,
   Sheet,
   TextField,
   Toggle,
   cn,
-  useThemeColors
+  useThemeColors,
+  withAnalyticsPress
 } from '@bridger/ui';
 import type { AddBucketInput } from '../../data/profile';
 import { listPeople, personById } from '../../data/people';
 
 export function BucketList({
   items,
+  loading = false,
   editable = false,
   empty = false,
   onAdd,
   onToggle
 }: {
   items: BucketItem[];
+  /** true while the first load is in flight — used so Completed seeds after data arrives */
+  loading?: boolean;
   editable?: boolean;
   empty?: boolean;
   onAdd: (input: AddBucketInput) => void | Promise<void>;
@@ -41,31 +50,86 @@ export function BucketList({
   // PRIVACY: a viewer never sees the private lines
   const shown = editable ? list : list.filter((i) => !i.isPrivate);
 
+  // IDs that were already done when this visit started — those belong in Completed.
+  // Just-checked items stay in the open list until you leave and come back.
+  const seeded = useRef(false);
+  const [baselineDoneIds, setBaselineDoneIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (loading || seeded.current) return;
+    // Snapshot what's already done for this visit; fresh checks stay put until remount
+    const visible = empty ? [] : editable ? items : items.filter((i) => !i.isPrivate);
+    setBaselineDoneIds(new Set(visible.filter((i) => i.done).map((i) => i.id)));
+    seeded.current = true;
+  }, [loading, empty, editable, items]);
+
+  const open = shown.filter((i) => !i.done || !baselineDoneIds.has(i.id));
+  const completed = shown.filter((i) => i.done && baselineDoneIds.has(i.id));
+
   if (shown.length === 0 && !editable) {
     return <Text className="font-sans-sb text-[13px] text-ink-mute">Nothing on the list yet.</Text>;
   }
 
+  function handleToggle(id: string) {
+    const item = shown.find((i) => i.id === id);
+    // If they uncheck something that was in Completed, drop it from the baseline
+    // so checking it again keeps it in place until the next visit.
+    if (item?.done) {
+      setBaselineDoneIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    } else {
+      // Product outcome: they checked something off (no item text — PRIVACY).
+      trackProduct('bucket_item_checked');
+    }
+    void onToggle(id);
+  }
+
   return (
     <View className="gap-2.5">
-      {shown.map((item) => (
-        <Row key={item.id} item={item} editable={editable} onToggle={() => void onToggle(item.id)} />
+      {/* Title + circular add — add lives up here, not as a dashed row at the bottom */}
+      <View className="mb-1 flex-row items-center justify-between gap-3">
+        <PixelHeading size="md" className="min-w-0 flex-1">
+          Bucket List
+        </PixelHeading>
+        {editable ? (
+          <Pressable
+            onPress={withAnalyticsPress(PROFILE.bucket_list.add, () => setAdding(true))}
+            accessibilityRole="button"
+            accessibilityLabel="Add to your bucket list"
+            className="h-11 w-11 items-center justify-center rounded-full bg-purple active:opacity-90"
+          >
+            <PlusIcon size={20} color="#1C1B16" strokeWidth={2.8} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {open.length === 0 && completed.length === 0 && editable ? (
+        <Text className="font-sans-sb text-[13px] text-ink-mute">
+          Nothing yet. Tap + to add something you want to do.
+        </Text>
+      ) : null}
+
+      {open.map((item) => (
+        <Row key={item.id} item={item} editable={editable} onToggle={() => handleToggle(item.id)} />
       ))}
 
-      {editable ? (
-        <Pressable
-          onPress={() => setAdding(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Add to your bucket list"
-          className="min-h-[44px] w-full flex-row items-center gap-3 rounded-card border-2 border-dashed border-ink-line bg-surface/60 px-3.5 py-3 active:border-purple/50 active:bg-[#F1ECFF]"
-        >
-          <View
-            accessible={false}
-            className="h-7 w-7 shrink-0 items-center justify-center rounded-full bg-purple"
-          >
-            <Text className="font-sans-b text-[16px] leading-none text-onaccent">+</Text>
-          </View>
-          <Text className="font-sans-b text-[13px] text-ink-soft">Add to your bucket list</Text>
-        </Pressable>
+      {completed.length > 0 ? (
+        <View className="mt-4 gap-2.5">
+          <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
+            Completed
+          </Text>
+          {completed.map((item) => (
+            <Row
+              key={item.id}
+              item={item}
+              editable={editable}
+              onToggle={() => handleToggle(item.id)}
+            />
+          ))}
+        </View>
       ) : null}
 
       <AddBucketItemSheet
@@ -98,11 +162,25 @@ function Row({
       )}
     >
       <Pressable
-        onPress={editable ? onToggle : undefined}
+        onPress={
+          editable
+            ? withAnalyticsPress(PROFILE.bucket_list.check_off, onToggle)
+            : withAnalyticsPress(PROFILE.bucket_list.item, undefined, { interactive: false })
+        }
         disabled={!editable}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: item.done }}
-        accessibilityLabel={item.done ? `Undo ${item.text}` : `Mark ${item.text} done`}
+        // ACCESSIBILITY: only YOUR list is a checkbox. On someone else's profile
+        // the circle is just a status dot, so it must not announce as tickable.
+        accessibilityRole={editable ? 'checkbox' : 'image'}
+        accessibilityState={editable ? { checked: item.done } : undefined}
+        accessibilityLabel={
+          editable
+            ? item.done
+              ? `Undo ${item.text}`
+              : `Mark ${item.text} done`
+            : item.done
+              ? `Done: ${item.text}`
+              : `Not done yet: ${item.text}`
+        }
         hitSlop={8}
         className={cn(
           'h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
@@ -130,7 +208,7 @@ function Row({
         <View accessible={false} className="flex-row">
           {withPeople.slice(0, 3).map((p, i) => (
             <View key={p.id} style={{ marginLeft: i > 0 ? -8 : 0 }}>
-              <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+              <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
             </View>
           ))}
         </View>
@@ -202,7 +280,7 @@ function AddBucketItemSheet({
                     on ? 'border-purple bg-purple' : 'border-ink-line bg-surface'
                   )}
                 >
-                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
                   <Text className={cn('font-sans-b text-[12px]', on ? 'text-onaccent' : 'text-ink')}>
                     {p.name.split(' ')[0]}
                   </Text>

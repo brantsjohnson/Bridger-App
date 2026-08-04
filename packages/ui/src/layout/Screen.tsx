@@ -2,23 +2,58 @@
 // WHAT THIS FILE DOES (plain English):
 // The scaffold every screen is built from, so all screens share the same shape:
 //  - Screen: fills the display and paints the background (eggshell canvas by
-//    default; onboarding/fill flows may go full color).
-//  - ScreenHeader: the top row — a pixel screen title on the left, an optional
-//    back button, and the reserved top-right Messages (chat) button per
-//    MAGIC-PATTERNS.md. No notification bell.
-//  - ScreenBody: the scrolling content area, padded, with room at the bottom so
-//    the floating tab bar never covers the last item.
+//    default; onboarding/fill flows may go full color). Shares a tiny
+//    "has the user scrolled?" memory with its header and body.
+//  - ScreenHeader: floats over the top as one full-width row — pixel title on
+//    the left, Edit (or other trailing) + profile photo on the right. Tucks
+//    away when you scroll down, slides back when you scroll up (same idea as
+//    Magic Patterns). Respects Reduce Motion.
+//  - ScreenBody: the scrolling content area; reports scroll so the header
+//    can hide/show, padded so the floating tab bar never covers the last item.
 // ============================================
-import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Animated,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  Text,
+  View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeftIcon, MessageSquareIcon } from 'lucide-react-native';
+import { ChevronLeftIcon } from 'lucide-react-native';
+import type { Accent } from '@bridger/shared';
 import { useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
+import { Avatar } from '../primitives/Avatar';
 import { PixelHeading } from '../primitives/PixelHeading';
+import { AnalyticsRegion, withAnalyticsPress } from '../lib/analytics';
+import { useProfileLink } from './ProfileLink';
 import { SynthGrid } from './SynthGrid';
 
 type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain';
+
+type ScreenContextValue = {
+  /** true = header is tucked off the top */
+  headerHidden: boolean;
+  setHeaderHidden: (hidden: boolean) => void;
+  hasHeader: boolean;
+  registerHeader: () => void;
+  /** body calls this on every scroll so the header can react */
+  onBodyScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  headerPad: number;
+};
+
+const ScreenContext = React.createContext<ScreenContextValue>({
+  headerHidden: false,
+  setHeaderHidden: () => undefined,
+  hasHeader: false,
+  registerHeader: () => undefined,
+  onBodyScroll: () => undefined,
+  headerPad: 0
+});
 
 export function Screen({
   children,
@@ -33,6 +68,63 @@ export function Screen({
   accent?: string;
   className?: string;
 }) {
+  const insets = useSafeAreaInsets();
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const [hasHeader, setHasHeader] = useState(false);
+  const lastY = useRef(0);
+  // How far we've scrolled in the CURRENT direction since the last flip. We
+  // build this up across events so slow scrolling still tucks the header.
+  const accum = useRef(0);
+  const registerHeader = useCallback(() => setHasHeader(true), []);
+
+  // Title row (~44) + padding under it + safe-area top.
+  const headerPad = insets.top + 56;
+
+  // Direction-aware: scroll down → hide, scroll up (or near top) → show.
+  // We measure TOTAL travel in one direction, not the jump between two frames,
+  // so a slow drag adds up and crosses the threshold the same as a fast flick.
+  const onBodyScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const dy = y - lastY.current;
+    lastY.current = y;
+
+    // Near the very top: always show the header and forget any built-up travel.
+    if (y <= 12) {
+      accum.current = 0;
+      setHeaderHidden(false);
+      return;
+    }
+
+    // Ignore sub-pixel noise, but reset the tally whenever direction flips so
+    // we don't carry old downward travel into a new upward drag.
+    if (dy > 0.5) {
+      if (accum.current < 0) accum.current = 0;
+      accum.current += dy;
+    } else if (dy < -0.5) {
+      if (accum.current > 0) accum.current = 0;
+      accum.current += dy;
+    }
+
+    // Once total travel passes ~10px in a direction, tuck or reveal the header.
+    if (accum.current > 10) {
+      setHeaderHidden(true);
+    } else if (accum.current < -10) {
+      setHeaderHidden(false);
+    }
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      headerHidden,
+      setHeaderHidden,
+      hasHeader,
+      registerHeader,
+      onBodyScroll,
+      headerPad
+    }),
+    [headerHidden, hasHeader, registerHeader, onBodyScroll, headerPad]
+  );
+
   const bg =
     tone === 'color'
       ? accent ?? 'bg-purple/20'
@@ -41,80 +133,185 @@ export function Screen({
         : 'bg-canvas';
 
   return (
-    <View className={cn('flex-1', bg, className)}>
-      {/* Discover alone gets the drifting synth grid behind content */}
-      {tone === 'synth' ? <SynthGrid /> : null}
-      <View className="relative z-10 flex-1">{children}</View>
-    </View>
+    <ScreenContext.Provider value={value}>
+      <View className={cn('flex-1', bg, className)}>
+        {/*
+          The drifting grid is Bridger's background everywhere now, not just
+          Discover — Discover simply gets the boldest version of it. Only
+          'plain' screens (things drawn edge to edge, like the story player)
+          skip it, because a grid behind a photo just makes it look dirty.
+        */}
+        {tone === 'plain' ? null : <SynthGrid strength={tone === 'synth' ? 'bold' : 'normal'} />}
+        <View className="relative z-10 flex-1">{children}</View>
+      </View>
+    </ScreenContext.Provider>
   );
 }
 
 type ScreenHeaderProps = {
   title: string;
   onBack?: () => void;
-  /** top-right slot is reserved for Messages (chat) */
-  onMessages?: () => void;
-  /** true = chat not shipped yet, show the icon dimmed and disabled */
-  messagesDormant?: boolean;
-  unreadMessages?: boolean;
-  hideMessages?: boolean;
+  /** top-right profile photo — falls back to ProfileLink context when omitted */
+  onProfile?: () => void;
+  profile?: { name: string; emoji?: string; accent?: Accent; photo?: import('react-native').ImageSourcePropType };
+  /** hide the profile circle (e.g. already on Profile, or a detail sheet) */
+  hideProfile?: boolean;
   trailing?: React.ReactNode;
+  /**
+   * Analytics surface for this screen (e.g. "home"). When set, the title logs
+   * dead_click as `{surface}.top_nav.page_title` and the profile avatar as
+   * `{surface}.top_nav.profile_icon`.
+   */
+  analyticsSurface?: string;
+  /** Override the dead-click id on the title (defaults from analyticsSurface). */
+  titleAnalyticsId?: string;
+  /** Override the profile icon analytics id. */
+  profileAnalyticsId?: string;
+  /** Override the back button analytics id. */
+  backAnalyticsId?: string;
 };
 
 export function ScreenHeader({
   title,
   onBack,
-  onMessages,
-  messagesDormant = false,
-  unreadMessages = false,
-  hideMessages = false,
-  trailing
+  onProfile,
+  profile,
+  hideProfile = false,
+  trailing,
+  analyticsSurface,
+  titleAnalyticsId,
+  profileAnalyticsId,
+  backAnalyticsId
 }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
+  const link = useProfileLink();
+  const { headerHidden, registerHeader, headerPad } = React.useContext(ScreenContext);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const slide = useRef(new Animated.Value(0)).current;
+
+  useLayoutEffect(() => {
+    registerHeader();
+  }, [registerHeader]);
+
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', setReduceMotion);
+    return () => sub?.remove?.();
+  }, []);
+
+  // ACCESSIBILITY: Reduce Motion → snap; otherwise ease the tuck.
+  useEffect(() => {
+    Animated.timing(slide, {
+      toValue: headerHidden ? 1 : 0,
+      duration: reduceMotion ? 0 : 280,
+      useNativeDriver: true
+    }).start();
+  }, [headerHidden, reduceMotion, slide]);
+
+  const openProfile = onProfile ?? link.open;
+  const face = profile ?? link.profile;
+  const showProfile = !hideProfile && !!openProfile && !!face;
+
+  // Analytics IDs — reuse element names; surface tells us which screen.
+  const resolvedTitleId =
+    titleAnalyticsId ??
+    (analyticsSurface ? `${analyticsSurface}.top_nav.page_title` : undefined);
+  const resolvedProfileId =
+    profileAnalyticsId ??
+    (analyticsSurface ? `${analyticsSurface}.top_nav.profile_icon` : undefined);
+  const resolvedBackId =
+    backAnalyticsId ??
+    (analyticsSurface ? `${analyticsSurface}.top_nav.back` : undefined);
+
+  const translateY = slide.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -(headerPad + 8)]
+  });
+  const opacity = slide.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0]
+  });
 
   return (
-    <View style={{ paddingTop: insets.top + 8 }} className="flex-row items-center gap-3 px-5 pb-3">
-      {onBack ? (
-        <Pressable
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          className="h-9 w-9 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-80"
-        >
-          <ChevronLeftIcon size={20} color={c.ink} strokeWidth={2.5} />
-        </Pressable>
-      ) : null}
+    <Animated.View
+      pointerEvents={headerHidden ? 'none' : 'box-none'}
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        zIndex: 20,
+        paddingTop: insets.top + 8,
+        transform: [{ translateY }],
+        opacity
+      }}
+    >
+      {/*
+        Layout lives on a plain View — Animated.View on web often ignores
+        flexDirection, which stacked Edit + profile under the title.
+      */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingHorizontal: 20,
+          paddingBottom: 12
+        }}
+      >
+        {onBack ? (
+          <Pressable
+            onPress={withAnalyticsPress(resolvedBackId, onBack)}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            className="h-9 w-9 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-80"
+          >
+            <ChevronLeftIcon size={20} color={c.ink} strokeWidth={2.5} />
+          </Pressable>
+        ) : null}
 
-      <PixelHeading size="lg" className="flex-1" numberOfLines={1}>
-        {title}
-      </PixelHeading>
+        {/*
+          Title takes all the free space so trailing + profile sit on the far
+          right. The flex wrapper is a plain View so it works even when there's
+          no analytics id (AnalyticsRegion drops its wrapper without one).
+        */}
+        <View style={{ flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center' }}>
+          <AnalyticsRegion
+            analyticsId={resolvedTitleId}
+            interactive={false}
+            accessibilityLabel={title}
+          >
+            <PixelHeading size="lg" numberOfLines={1}>
+              {title}
+            </PixelHeading>
+          </AnalyticsRegion>
+        </View>
 
-      {trailing}
-
-      {!hideMessages ? (
-        <Pressable
-          onPress={onMessages}
-          disabled={messagesDormant}
-          accessibilityRole="button"
-          accessibilityLabel="Messages"
-          className={cn(
-            'relative h-10 w-10 items-center justify-center rounded-full active:opacity-80',
-            // solid near-black so it stays visible on the eggshell canvas
-            messagesDormant ? 'border border-ink-line bg-canvas-raised' : 'bg-carbon'
-          )}
-        >
-          <MessageSquareIcon
-            size={18}
-            color={messagesDormant ? c.inkMute : '#FFFFFF'}
-            strokeWidth={2.4}
-          />
-          {unreadMessages ? (
-            <View className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-canvas bg-coral" />
-          ) : null}
-        </Pressable>
-      ) : null}
-    </View>
+        {/* Edit (and any other trailing) + profile stay on the right, one row */}
+        {trailing || showProfile ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {trailing}
+            {showProfile ? (
+              <Pressable
+                onPress={withAnalyticsPress(resolvedProfileId, openProfile)}
+                accessibilityRole="button"
+                accessibilityLabel="Your profile"
+                className="shrink-0 active:opacity-80"
+              >
+                <Avatar
+                  name={face.name}
+                  emoji={face.emoji}
+                  accent={face.accent}
+                  photo={face.photo}
+                  size="header"
+                />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    </Animated.View>
   );
 }
 
@@ -130,13 +327,18 @@ export function ScreenBody({
   tabBarInset?: boolean;
   className?: string;
 }) {
+  const { onBodyScroll, hasHeader, headerPad } = React.useContext(ScreenContext);
+
   return (
     <ScrollView
       className={cn('flex-1', className)}
       showsVerticalScrollIndicator={false}
+      scrollEventThrottle={16}
+      onScroll={onBodyScroll}
       contentContainerStyle={{
         paddingHorizontal: padded ? 20 : 0,
-        paddingTop: 8,
+        // leave room under the floating header so the first line isn't covered
+        paddingTop: hasHeader ? headerPad : 8,
         // leave room so the floating tab bar never hides the last item
         paddingBottom: tabBarInset ? 140 : 32
       }}

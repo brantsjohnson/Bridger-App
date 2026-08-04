@@ -7,8 +7,10 @@
 // ============================================
 import React from 'react';
 import { Text, TextInput, View } from 'react-native';
+import { trackUi } from '@bridger/shared';
 import { useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
+import type { AnalyticsProps } from '../lib/analytics';
 
 type TextFieldProps = {
   label: string;
@@ -21,7 +23,7 @@ type TextFieldProps = {
   multiline?: boolean;
   autoComplete?: 'email' | 'password' | 'new-password' | 'off';
   accessibilityLabel?: string;
-};
+} & Pick<AnalyticsProps, 'analyticsId'>;
 
 export function TextField({
   label,
@@ -32,7 +34,8 @@ export function TextField({
   type = 'text',
   multiline = false,
   autoComplete,
-  accessibilityLabel
+  accessibilityLabel,
+  analyticsId
 }: TextFieldProps) {
   const c = useThemeColors();
 
@@ -60,6 +63,10 @@ export function TextField({
           accessibilityLabel={accessibilityLabel ?? label}
           className="font-sans-sb text-[14px] text-ink"
           style={{ padding: 0 }}
+          onFocus={() => {
+            // Focus only — never log the typed value (PRIVACY: no content/PII).
+            if (analyticsId) trackUi('focus', analyticsId);
+          }}
         />
       </View>
       {error ? <Text className="mt-1.5 font-sans-sb text-[12px] text-coral">{error}</Text> : null}

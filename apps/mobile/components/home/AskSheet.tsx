@@ -2,10 +2,13 @@
 // WHAT THIS FILE DOES (plain English):
 // Bottom sheet to create a poll (with options) or ask an open question.
 // Visuals match Magic Patterns AskSheet; posting is stubbed until polls API.
+// Analytics: own surface (ask_sheet) so open/dismiss dwell is separate from Home.
+// PRIVACY: never log the prompt or option text in analytics.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { PlusIcon, XIcon } from 'lucide-react-native';
+import { trackProduct } from '@bridger/shared';
 import { ButtonPrimary, ButtonSecondary, Sheet, TextField, useThemeColors } from '@bridger/ui';
 
 export function AskSheet({
@@ -32,13 +35,22 @@ export function AskSheet({
     prompt.trim().length > 0 &&
     (kind === 'question' || options.filter((o) => o.trim()).length >= 2);
 
+  function onPost() {
+    // Product outcome when a poll posts (stub until API). No prompt text logged.
+    if (kind === 'poll') trackProduct('poll_created');
+    onClose();
+  }
+
   return (
     <Sheet
       open={open}
       onClose={onClose}
       title={kind === 'poll' ? 'Create a poll' : 'Ask a question'}
+      // Analytics: sheet is its own surface; parent is Home.
+      surface="ask_sheet"
+      parentScreen="home"
       footer={
-        <ButtonPrimary full size="md" disabled={!ready} onPress={onClose}>
+        <ButtonPrimary full size="md" disabled={!ready} onPress={onPost}>
           Post
         </ButtonPrimary>
       }

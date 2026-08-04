@@ -110,6 +110,13 @@ In the admin console (`ADMIN.md`), creating a quiz = define goal + dimensions + 
 
 ---
 
+## 6b. Analytics (required)
+
+Every quiz emits **product events** (see `ANALYTICS-TAXONOMY.md` §3b), not just UI clicks — this is how we learn which quizzes work and which confuse:
+- `quiz_started`, `quiz_question_answered` (with `option_count`, `explained`, `dwell_ms`), `quiz_question_skipped`, `quiz_adapted` (with `reason`), `quiz_abandoned` (with `percent_complete`), `quiz_completed` (with `time_to_complete_ms`).
+- These let us answer: which quizzes get started but never finished, where people drop, whether questions need frequent adapting (a sign they're unclear), and how long a quiz takes.
+- Same first-party / consented / de-identified / deletable rules as all analytics (`analytics-rules.mdc`) — de-identified opaque IDs, never the explanation *text* in analytics.
+
 ## 7. Acceptance criteria
 
 - [ ] Quizzes support multiple-choice, **multi-select**, and an optional free-text explanation per question.
@@ -120,3 +127,4 @@ In the admin console (`ADMIN.md`), creating a quiz = define goal + dimensions + 
 - [ ] Results store deterministic dimension scores + confidence; low-confidence dimensions are down-weighted in matching.
 - [ ] Scores/embeddings are de-identified (Zone B/C); explanations are author-owned, private by default, deletable, never trained on; all AI runs server-side.
 - [ ] Quizzes are versioned; inserted/reworded questions are logged.
+- [ ] Quiz product events (started / question_answered / adapted / abandoned / completed) fire per `ANALYTICS-TAXONOMY.md` §3b — completion is tracked as an outcome, not just a tap.

@@ -3,9 +3,18 @@
 // The create-event form sheet: title, when, where, optional bring / chip-in
 // handle, invite a few friends. Saves through createEvent() so demo and live
 // use the same door. Chip-in is a text handle only — we never process money.
+// Analytics: flow create_event; publish emits event_created (has_chip_in only —
+// never title/bio/address text).
 // ============================================
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  trackFlowAbandoned,
+  trackFlowCompleted,
+  trackFlowStarted,
+  trackFlowStep,
+  trackProduct
+} from '@bridger/shared';
 import {
   Avatar,
   ButtonPrimary,
@@ -42,9 +51,23 @@ export function CreateEventSheet({
   const [friendsInvite, setFriendsInvite] = useState(true);
   const [invited, setInvited] = useState<string[]>(['maya', 'devon']);
   const [saving, setSaving] = useState(false);
+  const startedAt = useRef<number | null>(null);
+  const lastStep = useRef('start');
+  const completed = useRef(false);
+
+  // Start the timed create_event flow when the sheet opens.
+  useEffect(() => {
+    if (!open) return;
+    startedAt.current = Date.now();
+    lastStep.current = 'start';
+    completed.current = false;
+    trackFlowStarted('create_event');
+  }, [open]);
 
   function toggle(id: string) {
     setInvited((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+    lastStep.current = 'invite';
+    trackFlowStep('create_event', 'invite');
   }
 
   const overCap = invited.length > CAP;
@@ -67,6 +90,14 @@ export function CreateEventSheet({
         chipInMethod: (chipInMethod as CreateEventInput['chipInMethod']) || undefined,
         chipInHandle: chipInHandle || undefined
       });
+      completed.current = true;
+      const elapsed = startedAt.current != null ? Date.now() - startedAt.current : 0;
+      trackFlowCompleted('create_event', elapsed, { flow_step: 'publish' });
+      // Product outcome — booleans only, never title/bio/address content.
+      trackProduct('event_created', {
+        has_cohost: false,
+        has_chip_in: Boolean(chipInAmount || chipInMethod)
+      });
       onClose();
       setTitle('');
       setBio('');
@@ -79,17 +110,42 @@ export function CreateEventSheet({
   return (
     <Sheet
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        if (!completed.current && startedAt.current != null) {
+          trackFlowAbandoned(
+            'create_event',
+            Date.now() - startedAt.current,
+            lastStep.current
+          );
+        }
+        onClose();
+      }}
       title="Create event"
       footer={
-        <ButtonPrimary full size="md" onPress={submit} disabled={!title.trim() || saving}>
+        <ButtonPrimary
+          full
+          size="md"
+          disabled={!title.trim() || saving}
+          onPress={() => void submit()}
+        >
           {overCap ? 'Guest list over 35 — co-op for up to 100' : 'Create'}
         </ButtonPrimary>
       }
     >
       <ScrollView className="max-h-[420px]" showsVerticalScrollIndicator={false}>
         <View className="gap-3 pb-2">
-          <TextField label="Title" value={title} onChange={setTitle} placeholder="Sketch night" />
+          <TextField
+            label="Title"
+            value={title}
+            onChange={(v) => {
+              setTitle(v);
+              if (lastStep.current === 'start') {
+                lastStep.current = 'fields';
+                trackFlowStep('create_event', 'fields');
+              }
+            }}
+            placeholder="Sketch night"
+          />
           <TextField
             label="Bio"
             value={bio}
@@ -203,7 +259,7 @@ export function CreateEventSheet({
                       on ? 'border-purple/40 bg-[#F1ECFF]' : 'border-ink-line bg-surface'
                     )}
                   >
-                    <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="sm" />
+                    <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="sm" />
                     <Text className="flex-1 font-sans-b text-[14px] text-ink">{p.name}</Text>
                     <ButtonSecondary size="sm" tone={on ? 'solid' : 'outline'}>
                       {on ? 'Invited' : 'Invite'}

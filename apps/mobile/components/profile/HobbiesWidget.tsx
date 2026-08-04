@@ -4,25 +4,47 @@
 // page 1 is colorful blob-shaped chips (tap one to peek at its follow-up
 // answer), page 2 is every hobby with its full answer, scrolling inside the
 // widget so the profile never balloons. Swipe or tap the dots to switch.
+// Analytics: page changes record method swipe|dropdown + page_index on the
+// hobbies_widget id (own card or friend about_them, passed in).
 // ============================================
 import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronDownIcon } from 'lucide-react-native';
-import { ACCENTS, BLOB_SHAPES, cn } from '@bridger/ui';
+import { trackUi } from '@bridger/shared';
+import { ACCENTS, BLOB_SHAPES, cn, withAnalyticsPress } from '@bridger/ui';
 import type { Interest } from '../../data/profile';
 import { HOBBY_FOLLOW_UPS } from '../../data/profile';
 
 const PAGES = ['Hobbies', 'Answers'];
 
-export function HobbiesWidget({ hobbies }: { hobbies: Interest[] }) {
+export function HobbiesWidget({
+  hobbies,
+  analyticsId,
+  followUps
+}: {
+  hobbies: Interest[];
+  /** PROFILE.card.hobbies_widget or PROFILE.about_them.hobbies_widget */
+  analyticsId?: string;
+  /** Optional override (friend profiles); falls back to own saved follow-ups. */
+  followUps?: Record<string, { question: string; answer: string }>;
+}) {
+  const lookup = followUps ?? HOBBY_FOLLOW_UPS;
   const [page, setPage] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
   const [width, setWidth] = useState(0);
   const scroller = useRef<ScrollView>(null);
 
+  /** Record a page change — dots = dropdown, swipe = swipe. */
+  const recordPage = (i: number, method: 'swipe' | 'dropdown') => {
+    if (analyticsId) {
+      trackUi('page_viewed', analyticsId, { method, page_index: i });
+    }
+  };
+
   const goTo = (i: number) => {
     setPage(i);
     scroller.current?.scrollTo({ x: i * width, animated: true });
+    recordPage(i, 'dropdown');
   };
 
   return (
@@ -34,7 +56,11 @@ export function HobbiesWidget({ hobbies }: { hobbies: Interest[] }) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
-          if (width > 0) setPage(Math.round(e.nativeEvent.contentOffset.x / width));
+          if (width > 0) {
+            const next = Math.round(e.nativeEvent.contentOffset.x / width);
+            setPage(next);
+            recordPage(next, 'swipe');
+          }
         }}
       >
         {/* Page 1: the chip wall */}
@@ -44,11 +70,13 @@ export function HobbiesWidget({ hobbies }: { hobbies: Interest[] }) {
               const token = ACCENTS[h.accent];
               const shape = BLOB_SHAPES[(h.shape ?? i) % BLOB_SHAPES.length];
               const showing = open === h.id;
-              const follow = HOBBY_FOLLOW_UPS[h.id];
+              const follow = lookup[h.id];
               return (
                 <View key={h.id} className={cn('mb-2.5', showing ? 'w-full' : 'w-[48.5%]')}>
                   <Pressable
-                    onPress={() => setOpen(showing ? null : h.id)}
+                    onPress={withAnalyticsPress(analyticsId, () =>
+                      setOpen(showing ? null : h.id)
+                    )}
                     accessibilityRole="button"
                     accessibilityState={{ expanded: showing }}
                     accessibilityLabel={h.label}
@@ -98,7 +126,7 @@ export function HobbiesWidget({ hobbies }: { hobbies: Interest[] }) {
           <ScrollView style={{ maxHeight: 280 }} nestedScrollEnabled>
             <View className="gap-2">
               {hobbies.map((h) => {
-                const follow = HOBBY_FOLLOW_UPS[h.id];
+                const follow = lookup[h.id];
                 if (!follow) return null;
                 return (
                   <View

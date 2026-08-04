@@ -3,12 +3,15 @@
 // One person on the Friends roster: avatar, name, mutuals (or "Birthday today"),
 // and a chevron. On their birthday the row goes pink with a cake + sparkle.
 // In Edit mode the chevron becomes a move handle and the tap opens TierPicker.
+// Analytics: normal tap = roster.row, birthday = birthday_row, edit = drag_handle.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Pressable, Text, View } from 'react-native';
 import { CakeIcon, ChevronRightIcon, SparklesIcon } from 'lucide-react-native';
 import type { Person } from '@bridger/shared';
-import { Avatar, cn, useThemeColors } from '@bridger/ui';
+import { FRIENDS } from '@bridger/shared';
+import { Avatar, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { getProfilePhoto } from '../../data/fixtures/demo-media';
 
 /** Soft pastel washes on press — never a transparent grey (Magic Patterns). */
 const ROW_WASH = [
@@ -39,9 +42,16 @@ export function FriendRow({
   const birthday = !!person.birthdayToday;
   const [pressed, setPressed] = useState(false);
 
+  // Birthday rows, edit-mode handles, and normal rows each have their own id.
+  const rowId = editing
+    ? FRIENDS.roster.drag_handle
+    : birthday
+      ? FRIENDS.roster.birthday_row
+      : FRIENDS.roster.row;
+
   return (
     <Pressable
-      onPress={onPress}
+      onPress={withAnalyticsPress(rowId, onPress)}
       onLongPress={onLongPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
@@ -63,6 +73,7 @@ export function FriendRow({
         name={person.name}
         emoji={person.emoji}
         accent={person.accent}
+        photo={getProfilePhoto(person.id)}
         story={person.story}
         onStory={!editing && person.story ? onStory : undefined}
       />

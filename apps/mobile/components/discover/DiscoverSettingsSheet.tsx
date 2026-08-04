@@ -3,11 +3,13 @@
 // Discover settings: master Discoverable switch, what you're matched on
 // (about-me categories + quiz toggles), and a locked note that personality
 // signals never appear on your profile. "Turn matching off" returns to the gate.
+// Analytics: own surface discover_settings_sheet; toggles use DISCOVER.settings_sheet.*.
 // ============================================
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { CheckIcon, LockIcon } from 'lucide-react-native';
 import type { DiscoverSettings } from '@bridger/shared';
+import { DISCOVER } from '@bridger/shared';
 import {
   ButtonSecondary,
   Card,
@@ -36,7 +38,14 @@ export function DiscoverSettingsSheet({
   const c = useThemeColors();
 
   return (
-    <Sheet open={open} onClose={onClose} title="Discover settings">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Discover settings"
+      surface="discover_settings_sheet"
+      parentScreen="discover"
+      dismissAnalyticsId={DISCOVER.settings_sheet.dismiss}
+    >
       <ScrollView className="max-h-[440px]" showsVerticalScrollIndicator={false}>
         <View className="gap-2.5">
           <ListRow
@@ -47,6 +56,7 @@ export function DiscoverSettingsSheet({
                 checked={settings.discoverable}
                 onChange={onSetDiscoverable}
                 label="Discoverable"
+                analyticsId={DISCOVER.settings_sheet.discoverable_toggle}
               />
             }
           />
@@ -73,6 +83,7 @@ export function DiscoverSettingsSheet({
                 checked={settings.sources.onboardingQuiz}
                 onChange={(v) => onSetSources({ onboardingQuiz: v })}
                 label="Onboarding quiz"
+                analyticsId={DISCOVER.settings_sheet.source_toggle}
               />
             }
           />
@@ -85,6 +96,7 @@ export function DiscoverSettingsSheet({
                 checked={settings.sources.discoverMe}
                 onChange={(v) => onSetSources({ discoverMe: v })}
                 label="Discover Me questionnaire"
+                analyticsId={DISCOVER.settings_sheet.source_toggle}
               />
             }
           />
@@ -98,6 +110,7 @@ export function DiscoverSettingsSheet({
 
           <ButtonSecondary
             full
+            analyticsId={DISCOVER.settings_sheet.discoverable_toggle}
             onPress={() => {
               onClose();
               onTurnOff();

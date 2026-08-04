@@ -1,25 +1,28 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Friends tab — your confirmed circle, grouped by Close / Friends /
+// The Friends tab: your confirmed circle, grouped by Close / Friends /
 // Acquaintances. Edit moves people between circles (TierPicker replaces web
 // drag-and-drop). The + opens Add friend (QR + link + scan). Friend Pod and
 // Inside Jokes sit above the roster. Data comes from hooks so demo fixtures
 // and the live API use the same screen.
+// Analytics: opens the friends surface on mount; every control uses FRIENDS.*
+// ids from the shared taxonomy (no invented names).
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { PlusIcon } from 'lucide-react-native';
 import type { Tier } from '@bridger/shared';
-import { TIER_LABEL } from '@bridger/shared';
+import { FRIENDS, TIER_LABEL, openSurface } from '@bridger/shared';
 import {
   ButtonSecondary,
-  PixelHeading,
   Screen,
   ScreenBody,
   ScreenHeader,
   SearchField,
-  SectionCount,
-  cn
+  SectionTitle,
+  cn,
+  withAnalyticsPress
 } from '@bridger/ui';
 import { ColdStart } from '../../components/ColdStart';
 import { AddFriendSheet } from '../../components/friends/AddFriendSheet';
@@ -32,13 +35,22 @@ import { TierPicker } from '../../components/friends/TierPicker';
 import { useFriends } from '../../hooks/useFriends';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 
+// Short "what this circle means" copy for each Friends tier title.
+const TIER_DESCRIPTIONS: Record<Tier, string> = {
+  close: 'Your innermost circle. They see the most of your profile and updates.',
+  friend: 'Your main circle. They see most of what you share.',
+  acquaintance: 'People you know a little. They see the least of your profile.',
+  none: 'Private, visible only to you.'
+};
+
 /**
- * Feature flag — when false the search bar is not rendered at all.
+ * Feature flag: when false the search bar is not rendered at all.
  * Flip to true once live people search is ready (searchFriends is already stubbed).
  */
 const searchEnabled = false;
 
 export default function FriendsScreen() {
+  const router = useRouter();
   const { sections, total, refresh, onMoveTier } = useFriends();
   const { jokes, onAdd: onAddJoke } = useInsideJokes('all');
 
@@ -48,6 +60,11 @@ export default function FriendsScreen() {
   const [questionOpen, setQuestionOpen] = useState(false);
   const [jokeOpen, setJokeOpen] = useState(false);
   const [moving, setMoving] = useState<FriendRowPerson | null>(null);
+
+  // Mark Friends as the active analytics surface when this tab mounts.
+  useEffect(() => {
+    openSurface('friends');
+  }, []);
 
   // Edit mode shows empty tier drop zones so you can move the last person out.
   useEffect(() => {
@@ -70,8 +87,8 @@ export default function FriendsScreen() {
       openMove(person);
       return;
     }
-    // Profile route ships with the Profile tab; stub for now.
-    Alert.alert(person.name, 'Their profile opens here next.');
+    // Open that friend's profile (same destination as Coming up).
+    router.push({ pathname: '/person/[id]', params: { id: person.id } });
   };
 
   const handleMove = async (tier: Tier) => {
@@ -90,19 +107,23 @@ export default function FriendsScreen() {
     <Screen tone="canvas">
       <ScreenHeader
         title="Friends"
-        messagesDormant
+        analyticsSurface="friends"
         trailing={
           <View className="flex-row items-center gap-2">
+            {/* Edit toggles move-between-circles mode */}
             <ButtonSecondary
               size="sm"
+              className="h-10"
               tone={editing ? 'solid' : 'outline'}
               onPress={() => setEditing((v) => !v)}
               accessibilityLabel={editing ? 'Done editing friends' : 'Edit friends'}
+              analyticsId={FRIENDS.top_nav.edit}
             >
               {editing ? 'Done' : 'Edit'}
             </ButtonSecondary>
+            {/* + opens the Add-friend sheet (QR / link / scan) */}
             <Pressable
-              onPress={() => setAddOpen(true)}
+              onPress={withAnalyticsPress(FRIENDS.top_nav.add, () => setAddOpen(true))}
               accessibilityRole="button"
               accessibilityLabel="Add friend"
               className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
@@ -120,6 +141,7 @@ export default function FriendsScreen() {
               value={query}
               onChange={setQuery}
               placeholder="Search friends"
+              analyticsId={FRIENDS.top_nav.search}
             />
           </View>
         ) : null}
@@ -128,9 +150,14 @@ export default function FriendsScreen() {
         {!empty ? (
           <>
             <View>
-              <PixelHeading size="md" className="mb-2">
-                Friend Pod
-              </PixelHeading>
+              <SectionTitle
+                title="Friend Pod"
+                description="A short recap of your friends' week, bundled so you can catch up fast."
+                infoAnalyticsId={FRIENDS.pod.info}
+                parentScreen="friends"
+                section="pod"
+                className="mb-2"
+              />
               <FriendPodWidget
                 size="full"
                 onPlay={() =>
@@ -147,18 +174,34 @@ export default function FriendsScreen() {
             </View>
 
             <View className="mt-7">
-              <View className="mb-2 flex-row items-center justify-between gap-3">
-                <PixelHeading size="md">Inside jokes</PixelHeading>
-                <Pressable
-                  onPress={() => setJokeOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add an Inside Joke"
-                  className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
-                >
-                  <Text className="font-sans-b text-[18px] leading-none text-white">+</Text>
-                </Pressable>
-              </View>
-              <InsideJokesWidget size="full" jokes={jokes} />
+              <SectionTitle
+                title="Inside jokes"
+                description="Little notes and quotes you save with friends so the good moments stick around."
+                infoAnalyticsId={FRIENDS.inside_jokes.info}
+                parentScreen="friends"
+                section="inside_jokes"
+                className="mb-2"
+                action={
+                  // + opens the sheet to post a new sticky note
+                  <Pressable
+                    onPress={withAnalyticsPress(FRIENDS.inside_jokes.add, () => setJokeOpen(true))}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add an Inside Joke"
+                    className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
+                  >
+                    <Text className="font-sans-b text-[18px] leading-none text-white">+</Text>
+                  </Pressable>
+                }
+              />
+              <InsideJokesWidget
+                size="full"
+                jokes={jokes}
+                analyticsIds={{
+                  note: FRIENDS.inside_jokes.note,
+                  add: FRIENDS.inside_jokes.add,
+                  noteBody: FRIENDS.inside_jokes.note_body
+                }}
+              />
             </View>
           </>
         ) : null}
@@ -184,12 +227,17 @@ export default function FriendsScreen() {
                   editing && 'border border-dashed border-ink/20 p-3'
                 )}
               >
-                <View className="mb-2">
-                  <SectionCount
-                    label={TIER_LABEL[section.tier]}
-                    count={section.people.length}
-                  />
-                </View>
+                {/* Tier title: dashed underline + short "what this circle means" bubble */}
+                <SectionTitle
+                  title={TIER_LABEL[section.tier]}
+                  description={TIER_DESCRIPTIONS[section.tier]}
+                  infoAnalyticsId={FRIENDS.roster.info}
+                  parentScreen="friends"
+                  section="roster"
+                  analyticsProps={{ tier: section.tier }}
+                  count={section.people.length}
+                  className="mb-2"
+                />
 
                 <View className="gap-2.5">
                   {section.people.length === 0 && editing ? (
@@ -206,9 +254,7 @@ export default function FriendsScreen() {
                       editing={editing}
                       onPress={() => handleRowPress(p)}
                       onLongPress={() => openMove(p)}
-                      onStory={() =>
-                        Alert.alert(`${p.name}'s update`, 'Story viewer opens here next.')
-                      }
+                      onStory={() => router.push(`/story/${p.id}`)}
                     />
                   ))}
                 </View>

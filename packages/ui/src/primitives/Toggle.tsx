@@ -2,23 +2,30 @@
 // WHAT THIS FILE DOES (plain English):
 // An on/off switch used in Discover settings (Discoverable, quiz sources).
 // Teal when on, quiet grey when off. Speaks its label to VoiceOver / TalkBack.
+// Pass analyticsId so each flip is named in analytics.
 // ============================================
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { cn } from '../lib/cn';
+import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 
 export function Toggle({
   checked,
   onChange,
-  label
+  label,
+  analyticsId,
+  analyticsProps
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
-}) {
+} & AnalyticsProps) {
   return (
     <Pressable
-      onPress={() => onChange(!checked)}
+      onPress={withAnalyticsPress(analyticsId, () => onChange(!checked), {
+        interactive: true,
+        analyticsProps: { ...analyticsProps, method: checked ? 'off' : 'on' }
+      })}
       accessibilityRole="switch"
       accessibilityState={{ checked }}
       accessibilityLabel={label}

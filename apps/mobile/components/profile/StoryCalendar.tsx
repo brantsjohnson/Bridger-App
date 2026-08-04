@@ -4,16 +4,20 @@
 // A month calendar where each day you posted shows that story's emoji; tap a
 // posted day to watch it again. Under it, the storage card: how full your
 // free month is, with the co-op prompt only when it's actually full.
+// Analytics: day / month_nav / storage_bar use PROFILE.stories_calendar.*.
 // ============================================
 import React, { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react-native';
+import { PROFILE } from '@bridger/shared';
 import {
+  AnalyticsRegion,
   ButtonSecondary,
   EmptyState,
   StorageBar,
   cn,
-  useThemeColors
+  useThemeColors,
+  withAnalyticsPress
 } from '@bridger/ui';
 import type { StorageState } from '../../data/profile';
 
@@ -64,7 +68,9 @@ export function StoryCalendar({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Previous month"
-            onPress={() => setMonth('June 2026')}
+            onPress={withAnalyticsPress(PROFILE.stories_calendar.month_nav, () =>
+              setMonth('June 2026')
+            )}
             className="h-8 w-8 items-center justify-center rounded-full active:bg-[#F1ECFF]"
           >
             <ChevronLeftIcon size={16} color={c.ink} strokeWidth={2.6} />
@@ -73,7 +79,9 @@ export function StoryCalendar({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Next month"
-            onPress={() => setMonth('July 2026')}
+            onPress={withAnalyticsPress(PROFILE.stories_calendar.month_nav, () =>
+              setMonth('July 2026')
+            )}
             className="h-8 w-8 items-center justify-center rounded-full active:bg-[#F1ECFF]"
           >
             <ChevronRightIcon size={16} color={c.ink} strokeWidth={2.6} />
@@ -98,10 +106,16 @@ export function StoryCalendar({
               <View key={day} style={{ width: `${100 / 7}%` }} className="p-[3px]">
                 <Pressable
                   disabled={!thumb}
-                  onPress={thumb ? () => openStory(day) : undefined}
+                  onPress={
+                    thumb
+                      ? withAnalyticsPress(PROFILE.stories_calendar.day, () => openStory(day))
+                      : undefined
+                  }
                   accessibilityRole={thumb ? 'button' : 'text'}
                   accessibilityLabel={
-                    thumb ? `Open story from ${month.split(' ')[0]} ${day}` : `${month.split(' ')[0]} ${day}, no story`
+                    thumb
+                      ? `Open story from ${month.split(' ')[0]} ${day}`
+                      : `${month.split(' ')[0]} ${day}, no story`
                   }
                   className={cn(
                     'aspect-square items-center justify-center rounded-md',
@@ -123,7 +137,11 @@ export function StoryCalendar({
       </View>
 
       {/* the storage card — honest about the free month rolling off */}
-      <View className="rounded-card border border-ink-line bg-surface p-4">
+      <AnalyticsRegion
+        analyticsId={PROFILE.stories_calendar.storage_bar}
+        interactive={false}
+        className="rounded-card border border-ink-line bg-surface p-4"
+      >
         <View className="flex-row items-center justify-between">
           <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
             Storage
@@ -152,7 +170,7 @@ export function StoryCalendar({
             Story media older than 30 days rolls off.
           </Text>
         )}
-      </View>
+      </AnalyticsRegion>
     </View>
   );
 }

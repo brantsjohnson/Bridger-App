@@ -2,12 +2,14 @@
 // WHAT THIS FILE DOES (plain English):
 // "What people said" under the stories tray — horizontal chips for text and
 // video replies to your update. Tap opens the thread. Hidden when empty.
+// Analytics: header is dead-click; each chip is a response tap.
+// PRIVACY: never log reply text or names in analytics.
 // ============================================
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRightIcon, PlayIcon } from 'lucide-react-native';
-import { Avatar, cn, useThemeColors } from '@bridger/ui';
-import type { Reaction } from '@bridger/shared';
+import { HOME, type Reaction } from '@bridger/shared';
+import { AnalyticsRegion, Avatar, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { personById } from '../../data/people';
 
 export function StoryRepliesRow({
@@ -25,7 +27,13 @@ export function StoryRepliesRow({
 
   return (
     <View className="mt-4">
-      <Pressable onPress={onOpen} accessibilityRole="button" className="mb-2 flex-row items-center gap-2">
+      {/* Analytics: section label is not a button; taps log dead_click. */}
+      <AnalyticsRegion
+        analyticsId={HOME.responses.responses_header}
+        interactive={false}
+        accessibilityLabel={`${replies.length} replies to your story`}
+        className="mb-2 flex-row items-center gap-2"
+      >
         <Text className="font-sans-b text-[13px] text-ink">{replies.length} replies to your story</Text>
         {videos.length > 0 ? (
           <View className="rounded-full bg-[#F1ECFF] px-2 py-0.5">
@@ -33,20 +41,19 @@ export function StoryRepliesRow({
           </View>
         ) : null}
         <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.6} />
-      </Pressable>
+      </AnalyticsRegion>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="-mx-5"
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+        contentContainerStyle={{ gap: 10 }}
       >
         {replies.map((r) => {
           const p = personById(r.authorId);
           return (
             <Pressable
               key={r.id}
-              onPress={onOpen}
+              onPress={withAnalyticsPress(HOME.responses.response, onOpen)}
               accessibilityRole="button"
               accessibilityLabel={`Reply from ${p.name}`}
               className={cn(
@@ -55,7 +62,7 @@ export function StoryRepliesRow({
               )}
             >
               <View className="relative shrink-0">
-                <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="sm" />
+                <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="sm" />
                 {r.kind === 'circleVideo' ? (
                   <View className="absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-purple">
                     <PlayIcon size={8} color="#FFFFFF" fill="#FFFFFF" strokeWidth={3} />

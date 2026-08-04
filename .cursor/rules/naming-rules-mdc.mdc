@@ -1,0 +1,63 @@
+---
+alwaysApply: true
+---
+
+---
+description: Bridger naming & measurement standard — every element, sheet, flow, and gesture is uniquely named and measured, registered in ANALYTICS-TAXONOMY.md. Read before building or editing any UI.
+alwaysApply: true
+---
+
+# Element Naming & Measurement Standard
+
+Bridger is built from scratch, so **everything is named and measured from day one** — including things that aren't clickable. This lets us see not just what people do, but what they *expected* to be able to do.
+
+## 1 · Every element has an ID
+
+Interactive elements **and** semantic non-interactive regions (headers, titles, card bodies, sticky notes, About-Me blocks, placeholders, empty-state graphics) carry: screen.section.element (+ action + properties at event time)
+
+- **Reuse element names across screens** (`settings_icon`, `profile_icon`, `back`). Never screen-prefix (`home_settings_icon` is WRONG — the `screen`/`surface` field carries that).
+- lowercase `snake_case`, dot-joined, semantic (`save_button`, never `blue_button_2`).
+- Passed via the required **`analyticsId`** prop; components auto-emit (see `analytics-rules.mdc`).
+
+## 2 · Non-interactive elements MUST be tagged too
+
+Anything a user might reasonably tap that does nothing by design — **every header and section title, sticky-note bodies, About-Me and This-or-That blocks, card bodies, backgrounds, empty states** — is tagged `interactive:false` so a tap logs a **`dead_click`**. This is a first-class requirement, not optional: dead-clicks are how we learn what people expect to be tappable. Keep it to semantic regions, not every pixel.
+
+## 3 · Sheets & overlays are their own `surface`
+
+A bottom-sheet, modal, or overlay (the touch-grass sheet, post composer, add-friend sheet, customize screen, catch-up, share sheet) is recorded with **its own `surface` value**, plus **`parent_screen`** (where it launched). Opening emits `surface_opened`; dismissing without acting emits `surface_dismissed` with `dwell_ms`. Never fold a sheet's events into the screen behind it — we must be able to tell "opened the sheet and gave up" from "never opened it."
+
+## 4 · Named flows are timed
+
+Multi-step tasks (onboarding, post_story, add_friend, customize_profile, touch_grass_send, discover_me, reveal, create_event, take_quiz) emit `flow_started`, `flow_step`, and `flow_completed`/`flow_abandoned` with `time_to_complete_ms` and the last step reached. This is how we see how long a flow took and where people quit.
+
+## 5 · Order, gestures, and method
+
+- **Order:** stamp every interaction with `interaction_index` and flag `first_interaction` — so we can ask "what do they tap first here?"
+- **Swipe vs. tap:** when there are two ways to navigate (dropdown *and* swipe), record `method: swipe | dropdown`, plus `page_viewed`/`page_index` and `carousel_depth`. Applies to the hobbies/interests widget, places map, announcements carousel, this-or-that, stories row.
+- **Choice method:** record `method` for how a thing was done — `qr`/`link`/`scan` (add friend), `photo`/`video`/`text`/`voice` (posting), `video`/`comment`/`sticker`/`reaction` (responding).
+- **Timestamps everywhere:** `timestamp`, `duration_since_screen_load` (hesitation), and `dwell_ms` on components/sheets.
+
+## 5b · Product events ≠ UI clicks
+
+Recording a **tap** is not recording an **outcome.** Whenever a click changes data or advances the user toward a real goal, emit a **named product event** (§3b of `ANALYTICS-TAXONOMY.md`) *in addition to* the UI event — with the state that changed:
+- Completing a quiz → `quiz_completed` (not just a tap on the result). Track `quiz_started`, per-question `quiz_question_answered`, `quiz_abandoned`.
+- Completing / starting a profile **module** → `module_started` / `module_completed` (a module opened but never finished is a friction flag).
+- **Re-tiering a friend** (Acquaintance → Close) → `friend_retiered` with `from_tier`/`to_tier` — a *different* event from clicking the friend row.
+- Posting a story, sending touch grass, RSVPing, creating a poll, customizing a profile → their named product events.
+
+If a developer only wired the click and not the outcome, the instrumentation is incomplete. The click answers "is this confusing?"; the product event answers "did it work?"
+
+## 6 · The source of truth
+
+**`ANALYTICS-TAXONOMY.md` is the canonical registry.** Before naming anything, check it and **reuse** existing names (no `open` vs `expand` vs `toggle` synonyms). **When you add UI, add its rows — including dead-click targets, any new sheet/surface, and flow steps — in the same PR.** Never rename a shipped ID casually; if you must, log it in the taxonomy's Renames section.
+
+## Definition of done (naming & measurement)
+
+- [ ] Every interactive element has a unique `screen.section.element` ID; names reused across screens, never screen-prefixed.
+- [ ] Every header, title, sticky note, About-Me/This-or-That block, card body, and empty state is tagged `interactive:false` for dead-click capture.
+- [ ] Every sheet/overlay is its own `surface` with `parent_screen` + open/dismiss + `dwell_ms`.
+- [ ] Every multi-step flow emits start/step/complete-or-abandon with `time_to_complete_ms`.
+- [ ] Every meaningful outcome (quiz/module completed, friend re-tiered, story posted, RSVP, etc.) emits a named **product event** (§3b) with the changed state — not just the UI click.
+- [ ] Order (`interaction_index`, `first_interaction`), gesture (`method: swipe|dropdown`, `page_index`, `carousel_depth`), and choice `method` are recorded where relevant.
+- [ ] All new IDs, surfaces, and flows are registered in `ANALYTICS-TAXONOMY.md` in the same PR.

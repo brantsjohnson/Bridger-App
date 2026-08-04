@@ -1,3 +1,4 @@
+import type { ImageSourcePropType } from 'react-native';
 import { Accent } from './person';
 import { Cover } from './cover';
 
@@ -26,6 +27,12 @@ export interface StoryPost {
   /** set when posted through a themed prompt */
   themeSlug?: string;
   createdAt: string;
+  /**
+   * Local media (a dropped-in photo or video) as a require()'d asset. When set,
+   * the player shows this instead of the emoji placeholder. We keep the asset
+   * itself (not a URI string) so it works on web and native alike.
+   */
+  media?: ImageSourcePropType;
 }
 
 export type ReactionKind = 'circleVideo' | 'text' | 'sticker';
@@ -36,7 +43,14 @@ export interface Reaction {
   authorId: string;
   kind: ReactionKind;
   text?: string;
+  /** an emoji from the standard strip, e.g. "🔥" */
   stickerId?: string;
+  /** a sticker they made themselves — where the image lives */
+  stickerUri?: string;
+  /** the 10-second round video reply — where the clip lives */
+  videoUri?: string;
+  /** how long that clip runs, capped at 10 */
+  videoSeconds?: number;
   parentReactionId?: string;
   at: string;
 }

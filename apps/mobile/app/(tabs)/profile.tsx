@@ -3,16 +3,18 @@
 // The Profile tab — your own page. Five content tabs across the top:
 // Profile (the shared card friends see), Stories (the monthly calendar
 // archive), Inside jokes (the sticky-note wall), Bucket list, and Settings.
-// The Edit button in the header (Profile tab only) turns on in-place editing
-// plus a "View as" row so you can check exactly what each circle sees.
+// A small Edit / Done next to your name (Profile tab only) turns on in-place
+// editing plus a "View as" row so you can check exactly what each circle sees.
 // Data flows through the useProfile / useBucketList / useStoryArchive hooks,
 // which serve demo fixtures today and the live API later.
+// Analytics: surface=profile; every tab and settings row uses PROFILE.* IDs.
 // ============================================
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import type { Tier } from '@bridger/shared';
+import { openSurface, PROFILE } from '@bridger/shared';
 import {
-  ButtonSecondary,
   Screen,
   ScreenBody,
   ScreenHeader,
@@ -31,6 +33,24 @@ import { InsideJokesWall } from '../../components/friends/InsideJokesWall';
 
 const TABS = ['Profile', 'Stories', 'Inside jokes', 'Bucket list', 'Settings'];
 
+/** Map each visible tab label to its taxonomy analytics id. */
+function profileTabAnalyticsId(tab: string): string | undefined {
+  switch (tab) {
+    case 'Profile':
+      return PROFILE.tabs.profile;
+    case 'Stories':
+      return PROFILE.tabs.stories;
+    case 'Inside jokes':
+      return PROFILE.tabs.inside_jokes;
+    case 'Bucket list':
+      return PROFILE.tabs.bucket_list;
+    case 'Settings':
+      return PROFILE.tabs.settings_gear;
+    default:
+      return undefined;
+  }
+}
+
 /** The circles you can preview your card as while editing. */
 const VIEW_AS: Array<{ label: string; tier: Tier }> = [
   { label: 'Close', tier: 'close' },
@@ -39,6 +59,7 @@ const VIEW_AS: Array<{ label: string; tier: Tier }> = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { signOut } = useAuth();
   const profile = useProfile();
   const bucket = useBucketList();
@@ -49,27 +70,32 @@ export default function ProfileScreen() {
   /** which circle you're previewing the card as (edit mode only) */
   const [asTier, setAsTier] = useState<Tier>('close');
 
+  // Mark Profile as the active analytics surface when this tab is shown.
+  useEffect(() => {
+    openSurface('profile');
+  }, []);
+
   return (
     <Screen tone="canvas">
       <ScreenHeader
         title="Profile"
-        trailing={
-          tab === 'Profile' ? (
-            <ButtonSecondary
-              size="sm"
-              tone={editing ? 'solid' : 'outline'}
-              onPress={() => {
-                setEditing((v) => !v);
-                setAsTier('close');
-              }}
-            >
-              {editing ? 'Done' : 'Edit'}
-            </ButtonSecondary>
-          ) : undefined
-        }
+        hideProfile
+        analyticsSurface="profile"
+        // Profile is opened by tapping the header avatar (a push), so give it a
+        // way back. Fall back to Home if there's nowhere to go back to.
+        onBack={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/home');
+        }}
       />
       <ScreenBody>
-        <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} variant="underline" />
+        <SegmentedTabs
+          tabs={TABS}
+          value={tab}
+          onChange={setTab}
+          variant="underline"
+          analyticsIdForTab={profileTabAnalyticsId}
+        />
 
         {tab === 'Profile' ? (
           <>
@@ -118,8 +144,13 @@ export default function ProfileScreen() {
                 editable={editing}
                 own
                 asTier={asTier}
+                onToggleEdit={() => {
+                  setEditing((v) => !v);
+                  setAsTier('close');
+                }}
                 onCheckIn={(on) => void profile.onCheckIn(on)}
                 onEditHeader={(patch) => void profile.onEditHeader(patch)}
+                onAnswered={() => void profile.refresh()}
               />
             </View>
           </>
@@ -127,13 +158,24 @@ export default function ProfileScreen() {
 
         {tab === 'Stories' ? (
           <View className="mt-5">
-            <StoryCalendar days={archive.days} storage={archive.storage} />
+            <StoryCalendar
+              days={archive.days}
+              storage={archive.storage}
+              onOpenStory={() => router.push('/story/me?catchup=1')}
+            />
           </View>
         ) : null}
 
         {tab === 'Inside jokes' ? (
           <View className="mt-5">
-            <InsideJokesWall />
+            <InsideJokesWall
+              analyticsIds={{
+                note: PROFILE.inside_jokes.note,
+                add: PROFILE.inside_jokes.add,
+                filter: PROFILE.inside_jokes.filter,
+                noteBody: PROFILE.inside_jokes.note_body
+              }}
+            />
           </View>
         ) : null}
 
@@ -141,6 +183,7 @@ export default function ProfileScreen() {
           <View className="mt-5">
             <BucketList
               items={bucket.items}
+              loading={bucket.loading}
               editable
               onAdd={bucket.onAdd}
               onToggle={bucket.onToggle}

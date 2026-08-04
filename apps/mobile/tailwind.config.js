@@ -19,8 +19,10 @@
 // ============================================
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  // Flip dark: variants with the OS setting (same as CSS variables in global.css).
-  darkMode: 'media',
+  // Web needs 'class' — NativeWind's media mode throws on Expo web when the
+  // runtime tries to sync the document color scheme. Theme colors still flip
+  // via prefers-color-scheme CSS variables in global.css.
+  darkMode: 'class',
   content: [
     './app/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',

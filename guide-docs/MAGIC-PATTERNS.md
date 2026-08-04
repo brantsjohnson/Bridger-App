@@ -30,8 +30,8 @@ When in doubt: fewer words.
 
 ## Navigation
 
-- **Floating tab bar** — a **detached, rounded pill** (inset from the bottom edge with margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Events · Discover · Friends · Profile. Active = filled circle; inactive = muted icon. Not a full-width bottom bar flush to the edge.
-- **Header:** pixel screen title on the left. **Top-right slot is reserved for Messages (chat)** — a chat icon (dormant until chat ships). **No notification bell** — notifications live in the feed + a dedicated page (below).
+- **Floating tab bar** — a **detached, rounded pill** (inset from the bottom edge with margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Messages · Events · Discover. Active = filled circle; inactive = muted icon. Not a full-width bottom bar flush to the edge.
+- **Header:** pixel screen title on the left. **Top-right slot is your profile photo circle** — tap opens Profile (Profile is not in the floating pill). **No notification bell** — notifications live in the feed + a dedicated page (below).
 
 ---
 
@@ -98,7 +98,7 @@ One line each; keep them dumb and reusable.
 | `TravelMap` | places-traveled two-view: map with pins + swipe to scrollable list; co-op photos per place (see `PROFILE.md`) |
 | `SharedPlacePhotos` | in-common: a shared place with both people's photos side by side (co-op) |
 | `ThisOrThatColumns` | two columns in rows; chosen side highlighted, other dimmed; tappable; A/B/**both** |
-| `VennDiagram` | two overlapping circles (you + them); reveal screen 1 (see `REVEAL.md`) |
+| `VennDiagram` | two overlapping circles (you + them); reveal screen 1 (see `complete/REVEAL.md`) |
 | `HowYouMetStep` | reveal screen 0: just-met/already-know + "record where you met" (default on) |
 | `SuggestionCard` | leads with shared thread (headline) + name (subtitle) + mutual as connection ("you both know {friend}") + shared chips + interest color; marked as Bridger's pick; spotlight variant for top match (see `DISCOVER.md`) |
 | `RevealProgressBars` | 3 story-style segments for the connection reveal |
@@ -120,7 +120,7 @@ One line each; keep them dumb and reusable.
 | Events: list / detail / host | `EVENTS.md` |
 | Discover: gate / main / settings | `DISCOVER.md` |
 | Profile: Profile / Stories(calendar) / Inside Jokes / Bucket List | `PROFILE.md` |
-| Connection reveal (3 screens) | `REVEAL.md` |
+| Connection reveal (3 screens) | `complete/REVEAL.md` |
 | Weekly activity collage | `HOME.md` / `ADMIN.md` |
 | Weekly recap: record + player | `RECAP-PODCAST.md` |
 | Messages: list + conversation | `MESSAGES.md` |

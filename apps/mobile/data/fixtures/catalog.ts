@@ -17,8 +17,8 @@ import type {
 
 export const ME: Person = {
   id: 'me',
-  name: 'Sandra Kim',
-  handle: '@sandra',
+  name: 'Brant Johnson',
+  handle: '@brant',
   emoji: '🌸',
   accent: 'pink',
   tier: 'close',
@@ -29,8 +29,8 @@ export const ME: Person = {
 export const PEOPLE: Person[] = [
   {
     id: 'maya',
-    name: 'Maya Ortiz',
-    handle: '@maya',
+    name: 'Jade Watkins',
+    handle: '@jade',
     emoji: '🌻',
     accent: 'amber',
     tier: 'close',
@@ -40,8 +40,8 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'devon',
-    name: 'Devon Park',
-    handle: '@devon',
+    name: 'Kelton Burns',
+    handle: '@kelton',
     emoji: '🎧',
     accent: 'blue',
     tier: 'friend',
@@ -51,8 +51,8 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'ines',
-    name: 'Inès Aubert',
-    handle: '@ines',
+    name: 'Janna Allred',
+    handle: '@janna',
     emoji: '🌿',
     accent: 'teal',
     tier: 'friend',
@@ -62,8 +62,8 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'theo',
-    name: 'Theo Blake',
-    handle: '@theo',
+    name: 'Ben Chamberlin',
+    handle: '@ben',
     emoji: '🌮',
     accent: 'coral',
     tier: 'acquaintance',
@@ -72,8 +72,8 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'nour',
-    name: 'Nour Haddad',
-    handle: '@nour',
+    name: 'Ceci Sumsion',
+    handle: '@ceci',
     emoji: '📷',
     accent: 'purple',
     tier: 'acquaintance',
@@ -82,14 +82,25 @@ export const PEOPLE: Person[] = [
   },
   {
     id: 'kit',
-    name: 'Kit Alvarez',
-    handle: '@kit',
+    name: 'Levi Williams',
+    handle: '@levi',
     emoji: '🚲',
     accent: 'green',
     tier: 'friend',
     label: 'Rides at 6',
     mutuals: 9,
     story: 'seen'
+  },
+  {
+    id: 'jordyn',
+    name: 'Jordyn Bristol',
+    handle: '@jordyn',
+    emoji: '✨',
+    accent: 'pink',
+    tier: 'friend',
+    label: 'Weekend plans',
+    mutuals: 4,
+    story: 'unseen'
   }
 ];
 
@@ -97,7 +108,7 @@ export const STORIES: Story[] = [
   {
     id: 's1',
     authorId: 'maya',
-    authorName: 'Maya',
+    authorName: 'Jade',
     emoji: '🌻',
     accent: 'amber',
     prompt: 'Golden hour',
@@ -108,7 +119,7 @@ export const STORIES: Story[] = [
   {
     id: 's2',
     authorId: 'devon',
-    authorName: 'Devon',
+    authorName: 'Kelton',
     emoji: '🎧',
     accent: 'blue',
     prompt: 'Crate dig',
@@ -119,7 +130,7 @@ export const STORIES: Story[] = [
   {
     id: 's3',
     authorId: 'kit',
-    authorName: 'Kit',
+    authorName: 'Levi',
     emoji: '🚲',
     accent: 'green',
     prompt: 'Morning loop',
@@ -130,7 +141,7 @@ export const STORIES: Story[] = [
   {
     id: 's4',
     authorId: 'ines',
-    authorName: 'Inès',
+    authorName: 'Janna',
     emoji: '🌿',
     accent: 'teal',
     prompt: 'Ridge line',
@@ -195,7 +206,7 @@ export const EVENTS: EventItem[] = [
     accent: 'blue',
     day: 'Sun 2 Aug',
     time: '15:00',
-    place: 'Devons place',
+    place: "Kelton's place",
     goingIds: ['devon', 'nour'],
     invitedIds: ['me', 'maya', 'theo'],
     hostId: 'devon',
@@ -210,7 +221,7 @@ export const FREE_SIGNALS: GrassSignal[] = [
     id: 'fs1',
     personId: 'kit',
     when: 'Tonight',
-    note: 'anything outside',
+    note: 'walk the loop, then tacos',
     what: 'Walking the loop at Rowan Park, then maybe tacos. No plan beyond that.',
     where: 'Rowan Park',
     inIds: ['maya'],
@@ -221,7 +232,7 @@ export const FREE_SIGNALS: GrassSignal[] = [
     id: 'fs2',
     personId: 'devon',
     when: 'Now',
-    note: 'coffee, one hour',
+    note: 'coffee at Loop Café',
     what: 'Sitting at Loop Café until about 4. Come sit, bring nothing.',
     where: 'Loop Café',
     inIds: [],
@@ -230,11 +241,12 @@ export const FREE_SIGNALS: GrassSignal[] = [
   }
 ];
 
+/** Replies to *your* update (Home "What people said"). postId matches STORY_POSTS for me. */
 export const STORY_REPLIES: Reaction[] = [
-  { id: 'x1', postId: 'sp1', authorId: 'devon', kind: 'text', text: 'that sky is unreal', at: '1h' },
-  { id: 'x2', postId: 'sp1', authorId: 'kit', kind: 'circleVideo', at: '58m' },
-  { id: 'x3', postId: 'sp1', authorId: 'ines', kind: 'sticker', stickerId: '🔥', at: '40m' },
-  { id: 'x5', postId: 'sp1', authorId: 'nour', kind: 'text', text: 'the mug is coming along', at: '12m' }
+  { id: 'x1', postId: 'sp-me-1', authorId: 'devon', kind: 'text', text: 'that sky is unreal', at: '1h' },
+  { id: 'x2', postId: 'sp-me-1', authorId: 'kit', kind: 'circleVideo', at: '58m' },
+  { id: 'x3', postId: 'sp-me-1', authorId: 'ines', kind: 'sticker', stickerId: '🔥', at: '40m' },
+  { id: 'x5', postId: 'sp-me-1', authorId: 'nour', kind: 'text', text: 'the mug is coming along', at: '12m' }
 ];
 
 export const NOTIFICATIONS: Array<{ id: string; personId: string; text: string; time: string }> = [
@@ -244,9 +256,9 @@ export const NOTIFICATIONS: Array<{ id: string; personId: string; text: string; 
 ];
 
 export const COMING_UP: UpcomingItem[] = [
-  { id: 'u1', kind: 'birthday', label: "Devon's birthday", when: 'Today', personId: 'devon' },
-  { id: 'u2', kind: 'birthday', label: "Maya's birthday", when: 'Friday', personId: 'maya' },
-  { id: 'u3', kind: 'note', label: "Maya's graduation", when: 'in 1 week', personId: 'maya' }
+  { id: 'u1', kind: 'birthday', label: "Kelton's birthday", when: 'Today', personId: 'devon' },
+  { id: 'u2', kind: 'birthday', label: "Jade's birthday", when: 'Friday', personId: 'maya' },
+  { id: 'u3', kind: 'note', label: "Jade's graduation", when: 'in 1 week', personId: 'maya' }
 ];
 
 export const COOP_ANNOUNCEMENTS = [
@@ -348,7 +360,7 @@ export const INSIDE_JOKES: InsideJoke[] = [
     id: 'q1',
     text: 'She brought a thermos to a rave.',
     quotedId: 'devon',
-    fromName: 'Devon',
+    fromName: 'Kelton',
     postedById: 'maya',
     postedAt: '2 days ago',
     accent: 'amber',
@@ -359,7 +371,7 @@ export const INSIDE_JOKES: InsideJoke[] = [
     id: 'q2',
     text: 'Named her sourdough starter Bruce.',
     quotedId: 'maya',
-    fromName: 'Maya',
+    fromName: 'Jade',
     postedById: 'kit',
     postedAt: 'last week',
     accent: 'pink'
@@ -368,7 +380,7 @@ export const INSIDE_JOKES: InsideJoke[] = [
     id: 'q3',
     text: 'Can parallel park on the first try.',
     quotedId: 'kit',
-    fromName: 'Kit',
+    fromName: 'Levi',
     postedById: 'devon',
     postedAt: '3 weeks ago',
     accent: 'teal',

@@ -1,23 +1,51 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Detail sheet when you tap a friend's touch-grass card — what, when, roughly
-// where, who's already in — then I'm in. Enough to decide without messaging.
+// where, who's already in — then "I'm in" or "Quietly decline" (declining
+// tells nobody; it just clears the card for you). Enough to decide without
+// messaging.
+// PRIVACY: we only ever surface Close / Friends as the circle it went to. We
+// never reveal "Everyone", so a broadcast never feels less personal than a
+// close-circle invite.
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { ClockIcon, MapPinIcon, UsersIcon } from 'lucide-react-native';
-import type { GrassSignal } from '@bridger/shared';
-import { Avatar, ButtonSecondary, Sheet, useThemeColors } from '@bridger/ui';
+import { GRASS_SIGNAL_SHEET, trackProduct, type GrassSignal } from '@bridger/shared';
+import {
+  Avatar,
+  ButtonSecondary,
+  Sheet,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
 import { personById } from '../data/people';
+
+/**
+ * Which circle to show. Only Close or Friends are ever named — "Everyone" (and
+ * anything unknown) returns null so it's hidden entirely.
+ */
+function circleLabel(audience?: string): string | null {
+  const a = (audience ?? '').toLowerCase();
+  if (a === 'close') return 'close';
+  if (a === 'friends') return 'friends';
+  return null;
+}
 
 export function GrassSignalSheet({
   signal,
   onClose,
-  onJoin
+  onJoin,
+  onDecline,
+  parentScreen = 'events'
 }: {
   signal: GrassSignal | null;
   onClose: () => void;
   onJoin?: (id: string) => void;
+  /** Quietly clear this signal for me — the poster is never notified. */
+  onDecline?: (id: string) => void;
+  /** Screen that opened this sheet (events or home) for surface analytics. */
+  parentScreen?: string;
 }) {
   const c = useThemeColors();
   const [joined, setJoined] = useState(false);
@@ -31,6 +59,7 @@ export function GrassSignalSheet({
   const person = personById(signal.personId);
   const first = person.name.split(' ')[0];
   const inPeople = (signal.inIds ?? []).map(personById);
+  const circle = circleLabel(signal.audience);
 
   function join() {
     if (joined || !signal) return;
@@ -39,25 +68,56 @@ export function GrassSignalSheet({
     setTimeout(() => onJoin?.(id), 400);
   }
 
+  // Quietly decline: no message, no notification — just remove the card for me.
+  function decline() {
+    if (!signal) return;
+    const id = signal.id;
+    trackProduct('touch_grass_declined', { parent_screen: parentScreen });
+    onDecline?.(id);
+    onClose();
+  }
+
   return (
     <Sheet
       open
       onClose={onClose}
       title={`${first} touched grass`}
+      surface="grass_signal_sheet"
+      parentScreen={parentScreen}
+      dismissAnalyticsId={GRASS_SIGNAL_SHEET.actions.dismiss}
       footer={
-        <ButtonSecondary full size="lg" tone="positive" disabled={joined} onPress={join}>
-          {joined ? "You're in ✓" : "I'm in"}
-        </ButtonSecondary>
+        <View className="gap-2.5">
+          <ButtonSecondary
+            full
+            size="lg"
+            tone="positive"
+            disabled={joined}
+            onPress={join}
+            analyticsId={GRASS_SIGNAL_SHEET.actions.im_in}
+          >
+            {joined ? "You're in ✓" : "I'm in"}
+          </ButtonSecondary>
+          {/* Quietly decline — subtle on purpose; declining is never announced. */}
+          <Pressable
+            onPress={withAnalyticsPress(GRASS_SIGNAL_SHEET.actions.quietly_decline, decline)}
+            accessibilityRole="button"
+            accessibilityLabel="Quietly decline"
+            className="min-h-[44px] items-center justify-center rounded-full py-2 active:opacity-70"
+          >
+            <Text className="font-sans-b text-[14px] text-ink-mute">Quietly decline</Text>
+          </Pressable>
+        </View>
       }
     >
       <View className="gap-4">
         <View className="flex-row items-center gap-3">
-          <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="lg" />
+          <Avatar name={person.name} emoji={person.emoji} accent={person.accent} personId={person.id} size="lg" />
           <View className="min-w-0 flex-1">
             <Text className="font-sans-b text-[16px] tracking-tight text-ink">{person.name}</Text>
             <Text className="font-sans-sb text-[12px] text-ink-mute">
-              {signal.postedAt ? `${signal.postedAt} · ` : ''}told{' '}
-              {signal.audience?.toLowerCase() ?? 'friends'}
+              {[signal.postedAt, circle ? `told ${circle}` : null]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           </View>
         </View>
@@ -92,7 +152,7 @@ export function GrassSignalSheet({
               ) : (
                 <View className="mt-1 flex-row items-center gap-2">
                   {inPeople.map((p) => (
-                    <Avatar key={p.id} name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                    <Avatar key={p.id} name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
                   ))}
                   <Text className="font-sans-sb text-[14px] text-ink">
                     {inPeople.map((p) => p.name.split(' ')[0]).join(', ')}

@@ -3,11 +3,12 @@
 // The bodies of each Home widget — next event, notifications, weekly activity,
 // quiz, co-op. Half-width and full-width layouts match Magic Patterns widgets.tsx.
 // PRIVACY: event cards never show invited totals (vanity metric rule).
+// Analytics: HOME.this_week.* and HOME.notifications_preview.* only — no PII.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowUpRightIcon, ChevronRightIcon, Share2Icon } from 'lucide-react-native';
-import type { EventItem } from '@bridger/shared';
+import { HOME, type EventItem } from '@bridger/shared';
 import {
   ACCENTS,
   Avatar,
@@ -18,7 +19,8 @@ import {
   CountdownChip,
   ORGANIC,
   cn,
-  useThemeColors
+  useThemeColors,
+  withAnalyticsPress
 } from '@bridger/ui';
 import { personById } from '../../data/people';
 import type { WidgetSize } from './HomeWidget';
@@ -62,7 +64,12 @@ export function NextEventWidget({
     return (
       <View className="gap-2">
         <Card className="overflow-hidden p-0">
-          <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={event.title}>
+          {/* Analytics: open the next-event card. */}
+          <Pressable
+            onPress={withAnalyticsPress(HOME.this_week.next_event, onOpen)}
+            accessibilityRole="button"
+            accessibilityLabel={event.title}
+          >
             <View className="h-24">
               <CoverArt cover={event.cover ?? { kind: 'emoji', value: event.emoji }} accent={event.accent} />
             </View>
@@ -85,7 +92,8 @@ export function NextEventWidget({
                     people={going.slice(0, 3).map((p) => ({
                       name: p.name,
                       emoji: p.emoji,
-                      accent: p.accent
+                      accent: p.accent,
+                      personId: p.id
                     }))}
                   />
                   {/* PRIVACY: host headcount vs cap is allowed; no invited totals */}
@@ -107,15 +115,25 @@ export function NextEventWidget({
   }
 
   return (
-    <View className={cn('min-h-[140px] overflow-hidden rounded-card', ACCENTS[event.accent].tintSolid)}>
+    <View
+      className={cn(
+        // fill the HomeWidget shell so half-width pairs match height
+        'min-h-[140px] flex-1 overflow-hidden rounded-card',
+        ACCENTS[event.accent].tintSolid
+      )}
+    >
       <View className="h-14 shrink-0">
         <CoverArt cover={event.cover ?? { kind: 'emoji', value: event.emoji }} accent={event.accent} />
       </View>
-      <Pressable onPress={onOpen} className="flex-1 px-4 pt-3 active:opacity-90">
-        <Text className="font-sans-b text-[15px] tracking-tight text-ink" numberOfLines={1}>
+      <Pressable
+        onPress={withAnalyticsPress(HOME.this_week.next_event, onOpen)}
+        className="flex-1 px-4 pt-3 active:opacity-90"
+      >
+        {/* onaccent = always-dark type, readable on the pale tint in light and dark */}
+        <Text className="font-sans-b text-[15px] tracking-tight text-onaccent" numberOfLines={1}>
           {event.title}
         </Text>
-        <Text className="font-sans-sb text-[12px] text-ink-soft" numberOfLines={1}>
+        <Text className="font-sans-sb text-[12px] text-onaccent/75" numberOfLines={1}>
           {event.day} · {event.time}
         </Text>
         {event.countdown ? (
@@ -125,7 +143,7 @@ export function NextEventWidget({
         ) : null}
       </Pressable>
       <Pressable onPress={onSeeAll} className="mb-3 ml-4 mt-2">
-        <Text className="font-sans-b text-[11px] text-ink-soft underline">See all</Text>
+        <Text className="font-sans-b text-[11px] text-onaccent/75 underline">See all</Text>
       </Pressable>
     </View>
   );
@@ -144,41 +162,57 @@ export function AlertsWidget({
   const unread = preview.length;
 
   return (
-    <Pressable
-      onPress={onOpen}
-      accessibilityRole="button"
+    <View
       accessibilityLabel="Notifications"
       className={cn(
-        'w-full rounded-card border border-ink-line bg-surface p-4 active:opacity-90',
-        size === 'half' && 'min-h-[140px]'
+        'w-full justify-between rounded-card border border-ink-line bg-surface p-4',
+        // half: grow with the sibling "This week" card; full: natural height
+        size === 'half' ? 'min-h-[140px] flex-1' : ''
       )}
     >
-      {unread > 0 ? (
-        <View className="mb-2 h-5 self-start items-center justify-center rounded-full bg-coral px-2">
-          <Text className="font-sans-b text-[11px] text-white">{unread} new</Text>
-        </View>
-      ) : null}
+      <View>
+        {unread > 0 ? (
+          <View className="mb-2 h-5 self-start items-center justify-center rounded-full bg-coral px-2">
+            <Text className="font-sans-b text-[11px] text-white">{unread} new</Text>
+          </View>
+        ) : null}
 
-      <View className="gap-2.5">
-        {preview.map((n) => {
-          const person = personById(n.personId);
-          return (
-            <View key={n.id} className="flex-row items-center gap-2">
-              <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="xs" />
-              <Text className="min-w-0 flex-1 text-[12px] leading-snug" numberOfLines={1}>
-                <Text className="font-sans-b text-ink">{person.name.split(' ')[0]} </Text>
-                <Text className="font-sans-md text-ink-soft">{n.text}</Text>
-              </Text>
-              {size === 'full' ? (
-                <Text className="shrink-0 font-sans-sb text-[11px] text-ink-mute">{n.time}</Text>
-              ) : null}
-            </View>
-          );
-        })}
+        <View className="gap-2.5">
+          {preview.map((n) => {
+            const person = personById(n.personId);
+            return (
+              // Analytics: each preview row (no notification text in the event).
+              <Pressable
+                key={n.id}
+                onPress={withAnalyticsPress(HOME.notifications_preview.row, onOpen)}
+                accessibilityRole="button"
+                accessibilityLabel="Notification"
+                className="flex-row items-center gap-2 active:opacity-90"
+              >
+                <Avatar name={person.name} emoji={person.emoji} accent={person.accent} personId={person.id} size="xs" />
+                <Text className="min-w-0 flex-1 text-[12px] leading-snug" numberOfLines={1}>
+                  <Text className="font-sans-b text-ink">{person.name.split(' ')[0]} </Text>
+                  <Text className="font-sans-md text-ink-soft">{n.text}</Text>
+                </Text>
+                {size === 'full' ? (
+                  <Text className="shrink-0 font-sans-sb text-[11px] text-ink-mute">{n.time}</Text>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      <Text className="mt-3 font-sans-b text-[11px] text-purple">See all</Text>
-    </Pressable>
+      {/* Analytics: open the full notifications list. */}
+      <Pressable
+        onPress={withAnalyticsPress(HOME.notifications_preview.see_all, onOpen)}
+        accessibilityRole="button"
+        accessibilityLabel="See all notifications"
+        className="mt-3 active:opacity-90"
+      >
+        <Text className="font-sans-b text-[11px] text-purple">See all</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -197,8 +231,9 @@ export function ActivityWidget({
 
   if (size === 'full') {
     return (
+      // Analytics: open / play the weekly recap collage.
       <Pressable
-        onPress={onOpen}
+        onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
         accessibilityRole="button"
         accessibilityLabel={activity.title}
         style={ORGANIC.banner}
@@ -221,7 +256,7 @@ export function ActivityWidget({
             {activity.prompt}
           </Text>
           <View className="mt-3 flex-row items-center gap-2">
-            <AvatarStack people={faces.map((p) => ({ name: p.name, emoji: p.emoji, accent: p.accent }))} />
+            <AvatarStack people={faces.map((p) => ({ name: p.name, emoji: p.emoji, accent: p.accent, personId: p.id }))} />
             <Text className="font-sans-b text-[12px] text-ink-soft">{activity.posts.length} posted</Text>
           </View>
         </View>
@@ -232,7 +267,7 @@ export function ActivityWidget({
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
       accessibilityRole="button"
       accessibilityLabel={activity.title}
       style={ORGANIC.bold}
@@ -274,7 +309,14 @@ export function QuizWidget({
           <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">This week</Text>
           <Text className="mt-1 font-pixel text-[19px] leading-tight text-ink">{quiz.title}</Text>
           <View className="mt-4">
-            <ButtonSecondary full size="md" tone="solid" onPress={onTake}>
+            {/* Analytics: start this week's quiz. */}
+            <ButtonSecondary
+              full
+              size="md"
+              tone="solid"
+              onPress={onTake}
+              analyticsId={HOME.this_week.take_quiz}
+            >
               Take the quiz
             </ButtonSecondary>
           </View>
@@ -335,7 +377,10 @@ export function QuizWidget({
 
   return (
     <Pressable
-      onPress={resultId ? () => onOpenResult(resultId) : onTake}
+      onPress={withAnalyticsPress(
+        HOME.this_week.take_quiz,
+        resultId ? () => onOpenResult(resultId) : onTake
+      )}
       accessibilityRole="button"
       style={ORGANIC.flip}
       className="min-h-[140px] w-full justify-between bg-[#D5C2FF] p-4 active:opacity-90"

@@ -2,11 +2,13 @@
 // WHAT THIS FILE DOES (plain English):
 // The big green "TOUCH GRASS" button on Events. One tap opens the sheet where
 // you pick who to tell and when. Matches Magic Patterns (organic banner shape).
+// Analytics: EVENTS.touch_grass.send — the tap that opens the sheet.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SproutIcon } from 'lucide-react-native';
-import { Avatar, ORGANIC, cn } from '@bridger/ui';
+import { EVENTS } from '@bridger/shared';
+import { Avatar, ORGANIC, cn, withAnalyticsPress } from '@bridger/ui';
 import { personById } from '../data/people';
 import { GrassBurst } from './GrassBurst';
 
@@ -23,7 +25,7 @@ export function TouchGrassButton({
     <View className="relative">
       <GrassBurst play={live} />
       <Pressable
-        onPress={onOpen}
+        onPress={withAnalyticsPress(EVENTS.touch_grass.send, onOpen)}
         accessibilityRole="button"
         accessibilityLabel={live ? "You're free. Open Touch Grass" : "Tell friends you're free"}
         style={ORGANIC.banner}
@@ -48,7 +50,7 @@ export function TouchGrassButton({
                   const p = personById(id);
                   return (
                     <View key={id} className={cn('rounded-full', i > 0 && '-ml-1')}>
-                      <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                      <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
                     </View>
                   );
                 })}

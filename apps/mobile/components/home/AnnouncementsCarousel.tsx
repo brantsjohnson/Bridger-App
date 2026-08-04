@@ -3,6 +3,9 @@
 // The swipeable strip at the top of Home for anything that wants attention
 // today (touched grass, quick check, co-op note). Page dots follow the swipe.
 // When the list is empty, this whole section disappears — heading and all.
+// Cards stay inside the same page padding as Stories and the widgets below
+// (no full-bleed negative margin that drifts out of line on web).
+// Analytics: title opens section_info_tooltip; swipes report carousel depth.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -11,11 +14,17 @@ import {
   Pressable,
   ScrollView,
   Text,
-  useWindowDimensions,
   View
 } from 'react-native';
 import { ChevronRightIcon, MegaphoneIcon, XIcon } from 'lucide-react-native';
-import { ButtonSecondary, ORGANIC, PixelHeading, cn, useThemeColors } from '@bridger/ui';
+import { HOME, trackUi } from '@bridger/shared';
+import {
+  ButtonSecondary,
+  ORGANIC,
+  SectionTitle,
+  cn,
+  useThemeColors
+} from '@bridger/ui';
 import type { CoopAnnouncement } from '../../data/feed';
 
 export type Announcement = {
@@ -25,9 +34,11 @@ export type Announcement = {
 };
 
 export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
-  const { width } = useWindowDimensions();
-  const pageWidth = width - 40; // ScreenBody horizontal padding (20 each side)
+  // Measure the real content width so pages match ScreenBody, not the window.
+  const [pageWidth, setPageWidth] = useState(0);
   const [index, setIndex] = useState(0);
+  /** Deepest page index the user has reached by swipe (for carousel_depth). */
+  const maxDepth = useRef(0);
   const trackRef = useRef<ScrollView>(null);
   const c = useThemeColors();
 
@@ -38,6 +49,7 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
   if (items.length === 0) return null;
 
   function goTo(i: number) {
+    if (pageWidth <= 0) return;
     setIndex(i);
     trackRef.current?.scrollTo({ x: i * pageWidth, animated: true });
   }
@@ -45,16 +57,38 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     if (pageWidth === 0) return;
     const next = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-    if (next !== index) setIndex(next);
+    if (next !== index) {
+      setIndex(next);
+      // Analytics: swipe between announcement cards (no content logged).
+      if (next > maxDepth.current) maxDepth.current = next;
+      trackUi('swipe', HOME.announcements.carousel, {
+        method: 'swipe',
+        page_index: next,
+        carousel_depth: maxDepth.current
+      });
+    }
   }
 
   return (
-    <View accessibilityLabel="Announcements" className="mb-5">
+    <View
+      accessibilityLabel="Announcements"
+      className="mb-5"
+      onLayout={(e) => {
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (w > 0 && w !== pageWidth) setPageWidth(w);
+      }}
+    >
       <View className="mb-2 flex-row items-center justify-between gap-3">
-        <View className="flex-row items-center gap-2">
-          <MegaphoneIcon size={16} color={c.inkMute} strokeWidth={2.5} />
-          <PixelHeading size="md">Announcements</PixelHeading>
-        </View>
+        {/* Announcements title: dashed underline + short "what is this?" bubble */}
+        <SectionTitle
+          title="Announcements"
+          description="Important notes and heads-ups for your group. Swipe through to catch anything you missed."
+          infoAnalyticsId={HOME.announcements.info}
+          parentScreen="home"
+          section="announcements"
+          leading={<MegaphoneIcon size={16} color={c.inkMute} strokeWidth={2.5} />}
+          className="min-w-0 flex-1"
+        />
 
         {items.length > 1 ? (
           <View className="flex-row items-center gap-1.5">
@@ -72,6 +106,7 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
         ) : null}
       </View>
 
+      {/* Same left edge as the heading / Stories — no bleed margin */}
       <ScrollView
         ref={trackRef}
         horizontal
@@ -80,11 +115,17 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
         onScroll={onScroll}
         scrollEventThrottle={16}
         decelerationRate="fast"
-        className="-mx-5"
-        contentContainerStyle={{ paddingHorizontal: 20 }}
       >
-        {items.map((item) => (
-          <View key={item.id} style={{ width: pageWidth, paddingRight: 12 }} className="min-h-[124px]">
+        {items.map((item, i) => (
+          <View
+            key={item.id}
+            style={{
+              width: pageWidth || undefined,
+              // peek gap between pages; last page stays flush with the right edge
+              paddingRight: pageWidth && i < items.length - 1 ? 12 : 0
+            }}
+            className="min-h-[124px]"
+          >
             {item.content}
           </View>
         ))}
@@ -126,9 +167,11 @@ export function CoopAnnouncementCard({
       </Text>
 
       <View className="mt-3">
+        {/* Analytics: co-op announcement CTA. */}
         <ButtonSecondary
           size="sm"
           onPress={onOpen}
+          analyticsId={HOME.announcements.coop_card}
           icon={<ChevronRightIcon size={16} color={c.ink} strokeWidth={2.5} />}
         >
           {announcement.action}

@@ -61,7 +61,7 @@ export function EventsScreen({
         } />
       
       <ScreenBody>
-        {/* wanting to do something is the fastest thing on this page */}
+        {/* Touch Grass, then friends' signals tucked right under it — no "Who's free" title */}
         <Breathe>
           <section className="!mt-0">
             {live ?
@@ -69,18 +69,10 @@ export function EventsScreen({
 
             <TouchGrassButton live={false} inIds={[]} onOpen={() => setGrassOpen(true)} />
             }
-          </section>
-        </Breathe>
 
-        {/* everyone who's free lives here — Home only ever shows the newest one */}
-        {signals.length > 0 &&
-        <Breathe>
-            <section className="mt-5">
-              <PixelHeading size="md" className="mb-2">
-                Who's free
-              </PixelHeading>
-              <div className="space-y-2.5">
-                {signals.map((s) =>
+            {signals.length > 0 ?
+            <div className="mt-3 space-y-2.5">
+              {signals.map((s) =>
               <FreeSignalCard
                 key={s.id}
                 signal={s}
@@ -90,10 +82,10 @@ export function EventsScreen({
                 onDismiss={() => setSignals((p) => p.filter((x) => x.id !== s.id))} />
 
               )}
-              </div>
-            </section>
-          </Breathe>
-        }
+            </div> :
+            null}
+          </section>
+        </Breathe>
 
         {empty &&
         <Breathe>

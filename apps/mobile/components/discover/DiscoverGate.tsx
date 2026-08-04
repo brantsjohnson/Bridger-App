@@ -3,11 +3,13 @@
 // The Discover intro gate — black-and-white wireframe globe on a quiet canvas.
 // "Get started" turns matching on. Shown once to opt in, and again if you turn
 // matching off in settings.
+// Analytics: body is a dead-click region; Get started uses DISCOVER.gate.get_started.
 // ============================================
 import React from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Ellipse } from 'react-native-svg';
-import { ButtonPrimary, PixelHeading, useThemeColors } from '@bridger/ui';
+import { DISCOVER } from '@bridger/shared';
+import { AnalyticsRegion, ButtonPrimary, PixelHeading, useThemeColors } from '@bridger/ui';
 
 export function DiscoverGate({ onStart }: { onStart: () => void }) {
   return (
@@ -32,7 +34,11 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
         ))}
       </View>
 
-      <View className="relative flex-1 items-center justify-center px-7">
+      <AnalyticsRegion
+        analyticsId={DISCOVER.gate.body}
+        interactive={false}
+        className="relative flex-1 items-center justify-center px-7"
+      >
         <Globe />
         <PixelHeading size="lg" className="mt-8 text-center">
           Making friends as an adult is hard.
@@ -40,10 +46,15 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
         <Text className="mt-4 max-w-[280px] text-center font-sans-sb text-[15px] leading-snug text-ink-soft">
           Bridger introduces you to the friends of friends worth knowing.
         </Text>
-      </View>
+      </AnalyticsRegion>
 
       <View className="relative px-6 pb-10">
-        <ButtonPrimary full onPress={onStart} accessibilityLabel="Get started with Discover">
+        <ButtonPrimary
+          full
+          onPress={onStart}
+          analyticsId={DISCOVER.gate.get_started}
+          accessibilityLabel="Get started with Discover"
+        >
           Get started
         </ButtonPrimary>
         <Text className="mt-3 text-center font-sans-sb text-[12px] text-ink-mute">

@@ -3,6 +3,7 @@
 // Ask the group — Create a poll | Ask a question (co-op only), your live poll
 // results underneath, and a link to previous polls. Non-members see nothing
 // here; the co-op card elsewhere sells itself.
+// Analytics: create_poll, ask_question, see_previous_polls from HOME.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -12,7 +13,8 @@ import {
   HistoryIcon,
   MessageSquareIcon
 } from 'lucide-react-native';
-import { Avatar, ORGANIC, cn, useThemeColors } from '@bridger/ui';
+import { HOME } from '@bridger/shared';
+import { Avatar, ORGANIC, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import type { HomePoll } from '../../data/feed';
 import { personById } from '../../data/people';
 import { PollResultsSheet } from './PollResultsSheet';
@@ -61,8 +63,9 @@ export function AskWidget({
   return (
     <View className="gap-3">
       <View className="flex-row gap-3">
+        {/* Analytics: open the create-poll sheet. */}
         <Pressable
-          onPress={() => onAsk('poll')}
+          onPress={withAnalyticsPress(HOME.ask_the_group.create_poll, () => onAsk('poll'))}
           accessibilityRole="button"
           accessibilityLabel="Create a poll"
           style={ORGANIC.bold}
@@ -72,8 +75,9 @@ export function AskWidget({
           {/* onaccent = always-dark type, safe on the pale purple fill in both themes */}
           <Text className="font-sans-b text-[14px] text-onaccent">Create a poll</Text>
         </Pressable>
+        {/* Analytics: open the ask-a-question sheet. */}
         <Pressable
-          onPress={() => onAsk('question')}
+          onPress={withAnalyticsPress(HOME.ask_the_group.ask_question, () => onAsk('question'))}
           accessibilityRole="button"
           accessibilityLabel="Ask a question"
           style={ORGANIC.flip}
@@ -93,8 +97,9 @@ export function AskWidget({
         />
       ))}
 
+      {/* Analytics: previous polls archive link. */}
       <Pressable
-        onPress={onSeePrevious}
+        onPress={withAnalyticsPress(HOME.ask_the_group.see_previous_polls, onSeePrevious)}
         accessibilityRole="button"
         accessibilityLabel="See previous polls"
         className="w-full flex-row items-center gap-2 rounded-card border border-ink-line bg-surface px-3.5 py-3 active:opacity-90"
@@ -169,7 +174,7 @@ function PollCard({
               const p = personById(id);
               return (
                 <View key={id} className={cn(i > 0 && '-ml-2')}>
-                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
                 </View>
               );
             })}

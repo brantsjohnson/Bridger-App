@@ -22,10 +22,22 @@ import 'react-native-reanimated';
 // --- STYLING: loads Tailwind/NativeWind styles for the whole app (must be here, once) ---
 import '../global.css';
 
+import { registerAvatarPhotoResolver } from '@bridger/ui';
+
 import { useColorScheme } from '@/components/useColorScheme';
 import { WELCOME_SEEN_KEY } from '../content/welcome';
+import { getProfilePhoto } from '../data/fixtures/demo-media';
+import { getOnboardingComplete, isOnboardingCompleteCached } from '../data/onboarding';
+import { bootstrapAnalytics } from '../lib/analytics-bootstrap';
 import { isDemoMode } from '../lib/demo';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
+
+// Analytics: wire context + (dev) sink once. Capture stays opted-out until Settings.
+bootstrapAnalytics();
+
+// Photos: let any <Avatar personId="..."> pull a person's dropped-in photo,
+// so real faces appear everywhere (Friend Pod, Inside Jokes, rows, etc.).
+registerAvatarPhotoResolver(getProfilePhoto);
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -84,21 +96,37 @@ function useProtectedRoute() {
   const router = useRouter();
   const [welcomeReady, setWelcomeReady] = useState(false);
   const [seenWelcome, setSeenWelcome] = useState(true);
+  // Onboarding gate: has this account finished the new-user run?
+  const [onbReady, setOnbReady] = useState(false);
+  const [onbComplete, setOnbComplete] = useState(true);
 
   useEffect(() => {
     AsyncStorage.getItem(WELCOME_SEEN_KEY).then((v) => {
       setSeenWelcome(v === '1');
       setWelcomeReady(true);
     });
+    getOnboardingComplete().then((done) => {
+      setOnbComplete(done);
+      setOnbReady(true);
+    });
   }, []);
 
   useEffect(() => {
-    if (loading || !welcomeReady) return;
+    if (loading || !welcomeReady || !onbReady) return;
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboarding = segments[0] === 'onboarding';
+    // Prefer the synchronous cache so the moment welcome-in sets the flag, the
+    // gate lets the person into the app instead of bouncing them back.
+    const done = isOnboardingCompleteCached() || onbComplete;
 
-    // Demo mode: jump straight into the app tabs (no real login).
+    // Demo mode: preview onboarding once (until the device flag is set), then
+    // jump straight into the app tabs (no real login).
     if (isDemoMode()) {
-      if (inAuthGroup) {
+      if (!done && !inOnboarding) {
+        router.replace('/onboarding');
+        return;
+      }
+      if (done && (inAuthGroup || inOnboarding)) {
         router.replace('/home');
       }
       return;
@@ -115,11 +143,19 @@ function useProtectedRoute() {
       if (seenWelcome && !inAuthGroup) {
         router.replace('/sign-in');
       }
-    } else if (session && inAuthGroup) {
-      // Logged in but sitting on an auth screen -> go to the app.
+      return;
+    }
+
+    // Signed in but hasn't finished onboarding -> send them through the front door.
+    if (!done && !inOnboarding) {
+      router.replace('/onboarding');
+      return;
+    }
+    // Signed in, onboarded, sitting on an auth/onboarding screen -> into the app.
+    if (done && (inAuthGroup || inOnboarding)) {
       router.replace('/home');
     }
-  }, [session, loading, segments, router, welcomeReady, seenWelcome]);
+  }, [session, loading, segments, router, welcomeReady, seenWelcome, onbReady, onbComplete]);
 }
 
 function RootLayoutNav() {
@@ -131,6 +167,28 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+        <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="discover/connect-over" options={{ headerShown: false }} />
+        <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="event/create"
+          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen name="messages/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="messages/contact-card" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="reveal/[id]"
+          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen
+          name="story/[id]"
+          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen
+          name="story/capture"
+          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

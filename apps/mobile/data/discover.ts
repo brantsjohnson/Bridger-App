@@ -151,7 +151,8 @@ export async function addSuggestion(suggestionId: string): Promise<void> {
 
 export async function getCommonalities(_personId?: string): Promise<Commonality[]> {
   if (isDemoMode()) {
-    return COMMONALITIES.slice(0, 3).map((c) => ({ ...c }));
+    // Full overlap for reveal + In common; ConnectionDetail can show a subset.
+    return COMMONALITIES.map((c) => ({ ...c }));
   }
   // TODO: GET /matching/commonalities/:personId
   return [];

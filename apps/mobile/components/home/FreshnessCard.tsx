@@ -2,10 +2,13 @@
 // WHAT THIS FILE DOES (plain English):
 // One quick re-check when a profile fact looks stale ("Still into beatboxing?").
 // Yes / Not anymore / dismiss — never a chore. Magic Patterns FreshnessCard.
+// Analytics: Yes = quick_check_yes; Not anymore = quick_check_edit.
+// PRIVACY: never log the question text in analytics.
 // ============================================
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { XIcon } from 'lucide-react-native';
+import { HOME } from '@bridger/shared';
 import { ButtonSecondary, ORGANIC, useThemeColors } from '@bridger/ui';
 
 export function FreshnessCard({ question = 'Still into beatboxing?' }: { question?: string }) {
@@ -40,12 +43,25 @@ export function FreshnessCard({ question = 'Still into beatboxing?' }: { questio
 
       <View className="mt-3 flex-row gap-2.5">
         <View className="flex-1">
-          <ButtonSecondary full size="sm" tone="positive" onPress={() => setState('kept')}>
+          {/* Analytics: kept the fact as-is. */}
+          <ButtonSecondary
+            full
+            size="sm"
+            tone="positive"
+            onPress={() => setState('kept')}
+            analyticsId={HOME.announcements.quick_check_yes}
+          >
             Yes
           </ButtonSecondary>
         </View>
         <View className="flex-1">
-          <ButtonSecondary full size="sm" onPress={() => setState('gone')}>
+          {/* Analytics: edited / removed the stale fact. */}
+          <ButtonSecondary
+            full
+            size="sm"
+            onPress={() => setState('gone')}
+            analyticsId={HOME.announcements.quick_check_edit}
+          >
             Not anymore
           </ButtonSecondary>
         </View>

@@ -1,13 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Friend Pod entry on Friends: "Your friends' week" play card, plus
-// "Add your recap" and "Submit a question". Play opens a stub for now — the
+// "Add your recap" and "Submit a question". Play opens a stub for now; the
 // full weekly podcast player ships with RECAP-PODCAST.md.
+// Analytics: play / record / submit_question use FRIENDS.pod.* ids.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRightIcon, MicIcon, PlayIcon, PlusIcon } from 'lucide-react-native';
-import { Avatar, ORGANIC, cn, useThemeColors } from '@bridger/ui';
+import { FRIENDS } from '@bridger/shared';
+import { Avatar, ORGANIC, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { useFriendPod } from '../../hooks/useFriendPod';
 
 export function FriendPodWidget({
@@ -30,7 +32,7 @@ export function FriendPodWidget({
   return (
     <View className="gap-2.5">
       <Pressable
-        onPress={onPlay}
+        onPress={withAnalyticsPress(FRIENDS.pod.play, onPlay)}
         accessibilityRole="button"
         accessibilityLabel={`Play your friends' week. ${voices.length} recaps, ${minutes} minutes`}
         style={ORGANIC.soft}
@@ -57,7 +59,7 @@ export function FriendPodWidget({
               key={p.id}
               className={cn('rounded-full border-2 border-ink', i > 0 && '-ml-2')}
             >
-              <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+              <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
             </View>
           ))}
         </View>
@@ -66,7 +68,7 @@ export function FriendPodWidget({
       {size === 'full' ? (
         <>
           <Pressable
-            onPress={onRecord}
+            onPress={withAnalyticsPress(FRIENDS.pod.record, onRecord)}
             accessibilityRole="button"
             accessibilityLabel="Add your recap"
             className="w-full min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3.5 active:bg-[#F1ECFF]"
@@ -82,7 +84,7 @@ export function FriendPodWidget({
           </Pressable>
 
           <Pressable
-            onPress={onSubmitQuestion}
+            onPress={withAnalyticsPress(FRIENDS.pod.submit_question, onSubmitQuestion)}
             accessibilityRole="button"
             accessibilityLabel="Submit a question"
             className="w-full min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3 active:bg-[#F1ECFF]"

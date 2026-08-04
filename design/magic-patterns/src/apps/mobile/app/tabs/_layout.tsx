@@ -146,9 +146,27 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
   const [route, setRoute] = React.useState<TabRoute>(initialTab);
   const [pageTheme, setPageTheme] = React.useState<ProfileTheme>(STARTING_THEME);
   const [pageWidgets, setPageWidgets] = React.useState<CustomWidget[]>(STARTING_WIDGETS);
+  /** which friend profile is open (Coming up / roster both set this) */
+  const [openPersonId, setOpenPersonId] = React.useState('maya');
   /** co-op membership decides where every co-op entry point lands */
   const [member, setMember] = React.useState(false);
   const openCoop = () => setRoute(member ? 'coop-portal' : 'coop');
+  const openPerson = (id: string) => {
+    setOpenPersonId(id);
+    setRoute('person');
+  };
+  /** Home may pass person:devon so Coming up opens that friend, not a generic page */
+  const handleOpenTab = (t: string) => {
+    if (t.startsWith('person:')) {
+      openPerson(t.slice('person:'.length));
+      return;
+    }
+    if (t === 'coop') {
+      openCoop();
+      return;
+    }
+    setRoute(t as TabRoute);
+  };
   const tab: TabKey = (PARENT[route] ?? route) as TabKey;
   const immersive = FULL_SCREEN.includes(route);
 
@@ -167,11 +185,11 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
           {route === 'home' &&
             <HomeScreen
               member={member}
-              onOpenTab={(t) => t === 'coop' ? openCoop() : setRoute(t as TabRoute)} />
+              onOpenTab={handleOpenTab} />
 
             }
           {route === 'home-empty' &&
-            <HomeScreen empty onOpenTab={(t) => setRoute(t as TabRoute)} />
+            <HomeScreen empty onOpenTab={handleOpenTab} />
             }
           {route === 'events' &&
             <EventsScreen
@@ -187,14 +205,14 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
           {route === 'discover-detail' && <DiscoverScreen initialView="detail" />}
           {route === 'friends' &&
             <FriendsScreen
-              onOpenPerson={() => setRoute('person')}
+              onOpenPerson={openPerson}
               onOpenStory={() => setRoute('story')}
               onOpenPod={() => setRoute('pod')}
               onOpenPodRecord={() => setRoute('pod-record')} />
 
             }
           {route === 'friends-empty' &&
-            <FriendsScreen empty onOpenPerson={() => setRoute('person')} />
+            <FriendsScreen empty onOpenPerson={openPerson} />
             }
           {route === 'profile' &&
             <ProfileScreen
@@ -299,7 +317,9 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
 
             }
           {route === 'event-host' && <EventHostScreen onBack={() => setRoute('events')} />}
-          {route === 'person' && <PersonScreen onBack={() => setRoute('friends')} />}
+          {route === 'person' && (
+            <PersonScreen personId={openPersonId} onBack={() => setRoute('friends')} />
+          )}
           {route === 'story' && <StoryViewer onClose={() => setRoute('home')} />}
           {route === 'story-catchup' &&
             <StoryViewer startCatchUpOpen onClose={() => setRoute('home')} />
@@ -311,7 +331,7 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
           {route === 'activity' && <ActivityScreen onBack={() => setRoute('home')} />}
           {route === 'activity-empty' && <ActivityScreen empty onBack={() => setRoute('home')} />}
           {route === 'home-quiz-taken' &&
-            <HomeScreen quizResultId="coastal" onOpenTab={(t) => setRoute(t as TabRoute)} />
+            <HomeScreen quizResultId="coastal" onOpenTab={handleOpenTab} />
             }
           {route === 'quiz' &&
             <QuizTakeScreen

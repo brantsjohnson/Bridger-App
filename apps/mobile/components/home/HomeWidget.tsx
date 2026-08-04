@@ -2,7 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // The shell every Home widget shares — pixel title on top, body below. In Edit
 // mode you can resize (half / full) and reorder with up/down (the Magic Patterns
-// drag-and-drop, adapted for phones).
+// drag-and-drop, adapted for phones). The title uses SectionTitle so a dashed
+// underline + short "what is this?" bubble is available on every widget.
 // ============================================
 import React from 'react';
 import { Pressable, View } from 'react-native';
@@ -13,12 +14,15 @@ import {
   Maximize2Icon,
   Minimize2Icon
 } from 'lucide-react-native';
-import { PixelHeading, cn, useThemeColors } from '@bridger/ui';
+import { PixelHeading, SectionTitle, cn, useThemeColors } from '@bridger/ui';
 
 export type WidgetSize = 'half' | 'full';
 
 export function HomeWidget({
   title,
+  description,
+  infoAnalyticsId,
+  section,
   action,
   size,
   editing,
@@ -30,6 +34,12 @@ export function HomeWidget({
   children
 }: {
   title: string;
+  /** Short explanation shown when the title is tapped / hovered. */
+  description?: string;
+  /** Taxonomy id for the info trigger. */
+  infoAnalyticsId?: string;
+  /** Section name stamped on analytics (this_week, quiz…). */
+  section?: string;
   action?: React.ReactNode;
   size: WidgetSize;
   editing: boolean;
@@ -41,21 +51,35 @@ export function HomeWidget({
   children: React.ReactNode;
 }) {
   const c = useThemeColors();
+  const hasInfo = Boolean(description && infoAnalyticsId);
 
   return (
     <View
       className={cn(
+        // half widgets stretch to the taller neighbor in the row
         'min-w-0 flex-col',
-        size === 'full' ? 'w-full' : 'w-[48%]',
+        size === 'full' ? 'w-full' : 'w-[48%] self-stretch',
         editing && 'rounded-card border border-dashed border-purple/40 bg-surface/60 p-2.5'
       )}
     >
       <View className="mb-2 flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
           {editing ? <GripVerticalIcon size={16} color={ACCENT_PURPLE} strokeWidth={2.6} /> : null}
-          <PixelHeading size="md" numberOfLines={1} className="flex-shrink">
-            {title}
-          </PixelHeading>
+          {hasInfo ? (
+            <SectionTitle
+              title={title}
+              description={description!}
+              infoAnalyticsId={infoAnalyticsId!}
+              parentScreen="home"
+              section={section}
+              numberOfLines={1}
+              className="min-w-0 flex-1"
+            />
+          ) : (
+            <PixelHeading size="md" numberOfLines={1} className="flex-shrink">
+              {title}
+            </PixelHeading>
+          )}
         </View>
 
         {editing ? (
@@ -102,6 +126,7 @@ export function HomeWidget({
         )}
       </View>
 
+      {/* flex-1 fills whatever height the row stretched this shell to */}
       <View className="min-h-0 flex-1">{children}</View>
     </View>
   );

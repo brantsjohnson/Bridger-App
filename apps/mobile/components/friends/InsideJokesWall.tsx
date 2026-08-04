@@ -1,29 +1,40 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Inside Jokes wall: sticky notes in a two-column grid with All / About /
-// By filters, plus a small "+" to add one. Used on Friends (compact) and will
-// also power Profile later. Data comes from useInsideJokes.
+// By filters, plus a small "+" to add one. Used on Friends (compact) and
+// Profile. Data comes from useInsideJokes.
+// Pass analyticsIds when the wall lives on Profile so taps use PROFILE.inside_jokes.*.
 // ============================================
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { FilterIcon } from 'lucide-react-native';
 import type { InsideJoke } from '@bridger/shared';
-import { cn, useThemeColors } from '@bridger/ui';
+import { cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import type { InsideJokeFilter } from '../../data/insideJokes';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 import { AddInsideJokeSheet } from './AddInsideJokeSheet';
 import { AddNoteTile, InsideJokeNote } from './InsideJokeNote';
 
+/** Optional taxonomy ids when this wall is on Profile (or Friends). */
+export type InsideJokesAnalyticsIds = {
+  note?: string;
+  add?: string;
+  filter?: string;
+  noteBody?: string;
+};
+
 /** Compact Friends-tab preview: two notes, no filter chips. */
 export function InsideJokesWidget({
   size = 'full',
   jokes,
-  onAdd
+  onAdd,
+  analyticsIds
 }: {
   size?: 'full' | 'half';
   /** From the screen's useInsideJokes so a new post refreshes the grid. */
   jokes: InsideJoke[];
   onAdd?: () => void;
+  analyticsIds?: InsideJokesAnalyticsIds;
 }) {
   const notes = jokes.slice(0, size === 'full' ? 2 : 1);
 
@@ -31,10 +42,17 @@ export function InsideJokesWidget({
     <View className="flex-row flex-wrap gap-3.5">
       {notes.map((j, i) => (
         <View key={j.id} className={size === 'full' ? 'w-[47%]' : 'w-full'}>
-          <InsideJokeNote joke={j} index={i} />
+          <InsideJokeNote
+            joke={j}
+            index={i}
+            analyticsId={analyticsIds?.note}
+            noteBodyAnalyticsId={analyticsIds?.noteBody}
+          />
         </View>
       ))}
-      {onAdd && notes.length === 0 ? <AddNoteTile tall onPress={onAdd} /> : null}
+      {onAdd && notes.length === 0 ? (
+        <AddNoteTile tall onPress={onAdd} analyticsId={analyticsIds?.add} />
+      ) : null}
     </View>
   );
 }
@@ -42,10 +60,12 @@ export function InsideJokesWidget({
 /** Full wall with filters (Profile + richer Friends uses). */
 export function InsideJokesWall({
   ownerFirstName,
-  empty = false
+  empty = false,
+  analyticsIds
 }: {
   ownerFirstName?: string;
   empty?: boolean;
+  analyticsIds?: InsideJokesAnalyticsIds;
 }) {
   const who = ownerFirstName ?? 'you';
   const { jokes, counts, filter, setFilter, onAdd } = useInsideJokes('all');
@@ -59,21 +79,27 @@ export function InsideJokesWall({
         onChange={setFilter}
         counts={counts}
         who={who}
+        filterAnalyticsId={analyticsIds?.filter}
       />
 
       {notes.length > 0 ? (
         <View className="flex-row flex-wrap gap-3.5">
           {notes.map((joke, i) => (
             <View key={joke.id} className="w-[47%]">
-              <InsideJokeNote joke={joke} index={i} />
+              <InsideJokeNote
+                joke={joke}
+                index={i}
+                analyticsId={analyticsIds?.note}
+                noteBodyAnalyticsId={analyticsIds?.noteBody}
+              />
             </View>
           ))}
           <View className="w-[47%]">
-            <AddNoteTile onPress={() => setAdding(true)} />
+            <AddNoteTile onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
           </View>
         </View>
       ) : (
-        <AddNoteTile tall onPress={() => setAdding(true)} />
+        <AddNoteTile tall onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
       )}
 
       <AddInsideJokeSheet
@@ -92,12 +118,14 @@ function FilterRow({
   value,
   onChange,
   counts,
-  who
+  who,
+  filterAnalyticsId
 }: {
   value: InsideJokeFilter;
   onChange: (f: InsideJokeFilter) => void;
   counts: Record<InsideJokeFilter, number>;
   who: string;
+  filterAnalyticsId?: string;
 }) {
   const c = useThemeColors();
   const options: Array<[InsideJokeFilter, string]> = [
@@ -118,7 +146,7 @@ function FilterRow({
         return (
           <Pressable
             key={key}
-            onPress={() => onChange(key)}
+            onPress={withAnalyticsPress(filterAnalyticsId, () => onChange(key))}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
             className={cn(

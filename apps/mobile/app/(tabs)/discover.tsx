@@ -4,10 +4,13 @@
 // then private match modules, "Wants to connect" approvals, and Bridger's
 // picks (overlap-first cards). Synth grid behind everything. Data comes from
 // useDiscover so demo fixtures and the live API use the same screen.
+// Analytics: surface=discover; cards and settings gear use DISCOVER.* IDs.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SettingsIcon } from 'lucide-react-native';
+import { DISCOVER, openSurface } from '@bridger/shared';
 import {
   Avatar,
   Badge,
@@ -17,7 +20,9 @@ import {
   Screen,
   ScreenBody,
   ScreenHeader,
-  useThemeColors
+  SectionTitle,
+  useThemeColors,
+  withAnalyticsPress
 } from '@bridger/ui';
 import { ConnectionDetail } from '../../components/discover/ConnectionDetail';
 import { DiscoverGate } from '../../components/discover/DiscoverGate';
@@ -39,6 +44,7 @@ type Selection = {
 };
 
 export default function DiscoverScreen() {
+  const router = useRouter();
   const c = useThemeColors();
   const {
     settings,
@@ -60,6 +66,11 @@ export default function DiscoverScreen() {
   const [selected, setSelected] = useState<Selection | null>(null);
   const [commonalities, setCommonalities] = useState<Commonality[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Mark Discover as the active analytics surface.
+  useEffect(() => {
+    openSurface('discover');
+  }, []);
 
   // Gate when matching is off; otherwise stay on main (or detail).
   useEffect(() => {
@@ -87,7 +98,7 @@ export default function DiscoverScreen() {
   if (!settings) {
     return (
       <Screen tone="synth">
-        <ScreenHeader title="Discover" messagesDormant />
+        <ScreenHeader title="Discover" analyticsSurface="discover" />
         <ScreenBody>
           <Text className="font-sans-sb text-[14px] text-ink-mute">Loading…</Text>
         </ScreenBody>
@@ -119,11 +130,25 @@ export default function DiscoverScreen() {
         }}
         onAccept={() => {
           if (selected.kind === 'request' && selected.requestId) {
+            // Both sides are connected — play the celebratory reveal.
             void onAcceptRequest(selected.requestId);
-            Alert.alert('Connected', 'The full connection reveal ships next.');
-          } else if (selected.suggestionId) {
+            const personId = selected.personId;
+            const via = selected.viaId;
+            setView('main');
+            setSelected(null);
+            router.push({
+              pathname: '/reveal/[id]',
+              params: { id: personId, via }
+            });
+            return;
+          }
+          if (selected.suggestionId) {
+            // Reveal only plays once both sides connect; for now confirm the ask.
             void onAddSuggestion(selected.suggestionId);
-            Alert.alert('Request sent', 'The full connection reveal ships next.');
+            Alert.alert(
+              'Request sent',
+              'When they accept, you both get the connection reveal.'
+            );
           }
           setView('main');
           setSelected(null);
@@ -145,10 +170,12 @@ export default function DiscoverScreen() {
     <Screen tone="synth">
       <ScreenHeader
         title="Discover"
-        messagesDormant
+        analyticsSurface="discover"
         trailing={
           <Pressable
-            onPress={() => setSettingsOpen(true)}
+            onPress={withAnalyticsPress(DISCOVER.top_nav.settings_icon, () =>
+              setSettingsOpen(true)
+            )}
             accessibilityRole="button"
             accessibilityLabel="Discover settings"
             className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:bg-[#F1ECFF]"
@@ -164,8 +191,9 @@ export default function DiscoverScreen() {
           <MatchModules
             modules={modules}
             completedIds={completedModuleIds}
-            compact={requests.length + suggestions.length > 0}
             onComplete={onCompleteModule}
+            previewLimit={2}
+            onSeeMore={() => router.push('/discover/connect-over')}
           />
         </View>
 
@@ -182,10 +210,11 @@ export default function DiscoverScreen() {
                 return (
                   <ListRow
                     key={r.id}
-                    leading={<Avatar name={p.name} emoji={p.emoji} accent={p.accent} />}
+                    leading={<Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} />}
                     label={p.name}
                     sublabel={`via ${via.name.split(' ')[0]}`}
                     trailing="chevron"
+                    analyticsId={DISCOVER.wants_to_connect.card}
                     onPress={() =>
                       void openDetail({
                         personId: p.id,
@@ -202,10 +231,15 @@ export default function DiscoverScreen() {
         ) : null}
 
         <View className="mt-7">
-          <PixelHeading size="md">People to meet</PixelHeading>
-          <Text className="mb-3 mt-0.5 font-sans-sb text-[13px] text-ink-mute">
-            Bridger's picks · friends of your friends
-          </Text>
+          {/* Subtitle moved into the info bubble so the title stays clean */}
+          <SectionTitle
+            title="People to meet"
+            description="Friends of your friends that Bridger thinks you'd click with. Suggestions only, never a public list."
+            infoAnalyticsId={DISCOVER.people_to_meet.info}
+            parentScreen="discover"
+            section="people_to_meet"
+            className="mb-3"
+          />
           <View className="gap-2.5">
             {suggestions.length === 0 ? (
               <EmptyState
@@ -227,8 +261,12 @@ export default function DiscoverScreen() {
                   })
                 }
                 onAdd={() => {
+                  // Reveal waits until they accept — just confirm the ask for now.
                   void onAddSuggestion(s.id);
-                  Alert.alert('Request sent', 'The full connection reveal ships next.');
+                  Alert.alert(
+                    'Request sent',
+                    'When they accept, you both get the connection reveal.'
+                  );
                 }}
               />
             ))}

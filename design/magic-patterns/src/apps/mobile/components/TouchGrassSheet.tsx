@@ -2,18 +2,18 @@ import React from 'react';
 import { ButtonSecondary, Sheet, TextField, cn } from '../../../packages/ui';
 
 const WHO = ['Close', 'Friends', 'Everyone'];
-const WHEN = ['Now', 'Tonight', 'Weekend'];
+const WHEN = ['Now', 'Tonight', 'This weekend'];
 
-/** Who to tell · when · send. Concentric groups, no view counts. */
+/** Who to tell · when · what to do · send. Concentric groups, no view counts. */
 export function TouchGrassSheet({
   open,
   onClose,
   onSend
-
-
-
-
-}: {open: boolean;onClose: () => void;onSend: () => void;}) {
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSend: () => void;
+}) {
   const [who, setWho] = React.useState('Friends');
   const [when, setWhen] = React.useState('Now');
   const [note, setNote] = React.useState('');
@@ -22,20 +22,25 @@ export function TouchGrassSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Who's free?"
+      title="Touch grass"
       footer={
-      <ButtonSecondary full size="lg" tone="positive" onClick={onSend}>
+        <ButtonSecondary full size="lg" tone="positive" onClick={onSend}>
           Send signal
         </ButtonSecondary>
-      }>
-      
+      }
+    >
       <div className="space-y-4">
         <Segment label="Who to tell" options={WHO} value={who} onChange={setWho} tone="ink" />
         <Segment label="When" options={WHEN} value={when} onChange={setWhen} tone="green" />
-        <TextField label="Note" value={note} onChange={setNote} placeholder="anything outside" />
+        <TextField
+          label="What do you want to do?"
+          value={note}
+          onChange={setNote}
+          placeholder="grab dinner, go on a walk…"
+        />
       </div>
-    </Sheet>);
-
+    </Sheet>
+  );
 }
 
 function Segment({

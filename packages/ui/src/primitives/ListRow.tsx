@@ -2,13 +2,15 @@
 // WHAT THIS FILE DOES (plain English):
 // A standard list row: optional leading (avatar/icon), bold label, quiet
 // sublabel, and either a chevron, custom action (toggle), or nothing.
-// Used on Discover for requests and settings rows.
+// Used on Discover for requests and settings rows. Pass analyticsId so each
+// row tap is named in analytics (e.g. friends.roster.row).
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRightIcon, GripVerticalIcon } from 'lucide-react-native';
 import { useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
+import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 
 type ListRowProps = {
   leading?: React.ReactNode;
@@ -19,7 +21,7 @@ type ListRowProps = {
   onPress?: () => void;
   className?: string;
   accessibilityLabel?: string;
-};
+} & AnalyticsProps;
 
 export function ListRow({
   leading,
@@ -29,7 +31,10 @@ export function ListRow({
   action,
   onPress,
   className,
-  accessibilityLabel
+  accessibilityLabel,
+  analyticsId,
+  interactive = true,
+  analyticsProps
 }: ListRowProps) {
   const c = useThemeColors();
 
@@ -63,10 +68,10 @@ export function ListRow({
     className
   );
 
-  if (onPress) {
+  if (onPress || analyticsId) {
     return (
       <Pressable
-        onPress={onPress}
+        onPress={withAnalyticsPress(analyticsId, onPress, { interactive, analyticsProps })}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? (sublabel ? `${label}, ${sublabel}` : label)}
         className={classes}

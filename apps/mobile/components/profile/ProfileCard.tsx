@@ -6,10 +6,13 @@
 // that, and (in edit mode) the "Add to your profile" module list that opens
 // the one-question-at-a-time flow. `asTier` filters exactly the way a friend
 // in that circle would see it.
+// Analytics: own card uses PROFILE.header.* / PROFILE.card.*; friend view uses
+// PROFILE.about_them.* for dead-clicks. Module open/done emit product events.
 // ============================================
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import {
+  BookOpenIcon,
   CameraIcon,
   EyeIcon,
   MusicIcon,
@@ -18,9 +21,10 @@ import {
   RefreshCwIcon
 } from 'lucide-react-native';
 import type { Person, Tier } from '@bridger/shared';
-import { TIER_LABEL } from '@bridger/shared';
+import { PROFILE, TIER_LABEL, trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
+  AnalyticsRegion,
   Avatar,
   ButtonSecondary,
   CollapsibleSection,
@@ -29,9 +33,13 @@ import {
   ShowAllList,
   cn,
   useThemeColors,
+  withAnalyticsPress,
   type Accent,
-  type ModuleQuestion
+  type ModuleAnswer,
+  type ModuleVisibility
 } from '@bridger/ui';
+import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { PROFILE_MODULES, type ProfileModuleId } from '../../data/profile-modules';
 import type {
   AboutField,
   Currently,
@@ -41,68 +49,19 @@ import type {
   ThisOrThatRow,
   TravelPlace
 } from '../../data/profile';
-import { TIER_RANK } from '../../data/profile';
+import {
+  saveAboutFields,
+  saveCustomNotes,
+  saveFavs,
+  saveHobbies,
+  savePlaces,
+  saveThisOrThat,
+  TIER_RANK
+} from '../../data/profile';
 import { HobbiesWidget } from './HobbiesWidget';
 import { TravelModule } from './TravelModule';
 
 const TOT_ACCENTS: Accent[] = ['purple', 'coral', 'teal', 'amber', 'pink', 'blue'];
-
-/**
- * Modules a person can add to their profile. Each one is optional, and every
- * one is answered through the same one-question-per-screen flow as onboarding.
- */
-const MODULES: Array<{
-  id: string;
-  label: string;
-  emoji: string;
-  line: string;
-  questions: ModuleQuestion[];
-}> = [
-  {
-    id: 'tot',
-    label: 'This or that',
-    emoji: '⚖️',
-    line: '12 quick picks',
-    questions: [
-      { id: 'tot1', ask: 'Coffee or tea?', type: 'thisOrThat', a: 'Coffee', b: 'Tea', emoji: '☕' },
-      { id: 'tot2', ask: 'Beach or mountain?', type: 'thisOrThat', a: 'Beach', b: 'Mountain', emoji: '⛰' },
-      { id: 'tot3', ask: 'Early bird or night owl?', type: 'thisOrThat', a: 'Early', b: 'Late', emoji: '🌙' },
-      { id: 'tot4', ask: 'Call or text?', type: 'thisOrThat', a: 'Call', b: 'Text', emoji: '💬' }
-    ]
-  },
-  {
-    id: 'places',
-    label: 'Places traveled',
-    emoji: '🗺',
-    line: 'Pin where you have been',
-    questions: [
-      { id: 'p1', ask: 'Where have you been lately?', type: 'text', placeholder: 'Lisbon', emoji: '✈️' },
-      { id: 'p2', ask: 'What do you remember most?', type: 'text', placeholder: 'Custard tarts, daily' },
-      { id: 'p3', ask: 'Where next?', type: 'text', placeholder: 'Anywhere with trains' }
-    ]
-  },
-  {
-    id: 'favs',
-    label: 'List of favs',
-    emoji: '⭐️',
-    line: 'Food, films, everyday',
-    questions: [
-      { id: 'f1', ask: 'Pick your food groups', type: 'multi', options: ['Ramen', 'Tacos', 'Curry', 'Pastry', 'Dumplings'], emoji: '🍜' },
-      { id: 'f2', ask: 'A film you rewatch?', type: 'text', placeholder: 'Paddington 2', emoji: '🎬' },
-      { id: 'f3', ask: 'Everyday favorite?', type: 'text', placeholder: 'The 7am walk' }
-    ]
-  },
-  {
-    id: 'deeper',
-    label: 'Discover Me',
-    emoji: '🔮',
-    line: 'Deeper questions',
-    questions: [
-      { id: 'd1', ask: 'How do you recharge?', type: 'single', options: ['Alone, quietly', 'With one person', 'In a crowd'], emoji: '🔋' },
-      { id: 'd2', ask: 'What makes a good friend?', type: 'text', placeholder: 'Shows up' }
-    ]
-  }
-];
 
 export function ProfileCard({
   person,
@@ -115,10 +74,14 @@ export function ProfileCard({
   places,
   editable = false,
   own = false,
+  showHeader = true,
   asTier = 'close',
   empty = false,
+  hobbyFollowUps,
+  onToggleEdit,
   onCheckIn,
-  onEditHeader
+  onEditHeader,
+  onAnswered
 }: {
   person: Person;
   header: MyProfileHeader | null;
@@ -131,10 +94,18 @@ export function ProfileCard({
   editable?: boolean;
   /** your own profile: Currently is always updatable, edit mode or not */
   own?: boolean;
+  /** set false when the screen already shows the identity block above the tabs */
+  showHeader?: boolean;
   asTier?: Tier;
   empty?: boolean;
+  /** friend profiles pass their own follow-ups so the widget can peek */
+  hobbyFollowUps?: Record<string, { question: string; answer: string }>;
+  /** own profile only — small Edit / Done beside the name */
+  onToggleEdit?: () => void;
   onCheckIn?: (on: boolean) => void;
   onEditHeader?: (patch: Partial<MyProfileHeader>) => void;
+  /** called after a module saves so the parent can refetch the card */
+  onAnswered?: () => void;
 }) {
   // PRIVACY: only fields shared at or below the viewing tier are shown
   const visible = empty ? [] : about.filter((f) => TIER_RANK[f.tier] <= TIER_RANK[asTier]);
@@ -143,62 +114,133 @@ export function ProfileCard({
   const favGroups = empty ? [] : favs;
 
   /** every module opens the same one-question-per-screen flow */
-  const [module, setModule] = useState<string | null>(null);
-  const activeModule = MODULES.find((m) => m.id === module);
+  const [module, setModule] = useState<ProfileModuleId | null>(null);
+  const activeModule = PROFILE_MODULES.find((m) => m.id === module);
+  /** when the current module was opened — for time_to_complete_ms */
+  const moduleStartedAt = useRef<number | null>(null);
+
+  // Own card vs friend view pick different dead-click / widget ids.
+  const aboutMeId = own ? PROFILE.card.about_me : PROFILE.about_them.about_me;
+  const hobbiesId = own ? PROFILE.card.hobbies_widget : PROFILE.about_them.hobbies_widget;
+  const totId = own ? PROFILE.card.this_or_that_row : PROFILE.about_them.this_or_that_row;
+
+  const openModule = (id: ProfileModuleId) => {
+    setModule(id);
+    moduleStartedAt.current = Date.now();
+    // Product event: they started a profile module (module id only, no answers).
+    trackProduct('module_started', { module: id });
+  };
+
+  /** Persist answers, fire analytics, then ask the parent to refresh the card. */
+  const finishModule = async (
+    answers: Record<string, ModuleAnswer>,
+    visibility?: ModuleVisibility
+  ) => {
+    const id = module;
+    const started = moduleStartedAt.current;
+    const vis = visibility ?? {};
+
+    if (id) {
+      switch (id) {
+        case 'hobbies':
+          await saveHobbies(answers, vis);
+          break;
+        case 'about':
+          await saveAboutFields(answers, vis);
+          break;
+        case 'favs':
+          await saveFavs(answers, vis);
+          break;
+        case 'places':
+          await savePlaces(answers, vis);
+          break;
+        case 'tot':
+          await saveThisOrThat(answers, vis);
+          break;
+        case 'notes':
+          await saveCustomNotes(answers, vis);
+          break;
+      }
+      if (started != null) {
+        trackProduct('module_completed', {
+          module: id,
+          items_added: Object.keys(answers).length,
+          time_to_complete_ms: Date.now() - started
+        });
+      }
+    }
+    moduleStartedAt.current = null;
+    setModule(null);
+    onAnswered?.();
+  };
 
   return (
     <View className="gap-4">
-      <ProfileHeader
-        person={person}
-        header={header}
-        own={own}
-        editing={editable}
-        empty={empty}
-        onEditHeader={onEditHeader}
-      />
+      {showHeader ? (
+        <ProfileHeader
+          person={person}
+          header={header}
+          own={own}
+          editing={editable}
+          empty={empty}
+          onToggleEdit={onToggleEdit}
+          onEditHeader={onEditHeader}
+        />
+      ) : null}
 
       <CurrentlyCard currently={currently} own={own} empty={empty} onCheckIn={onCheckIn} />
 
       <CollapsibleSection title="About me" count={visible.length}>
-        {visible.length > 0 ? (
-          <View>
-            {visible.map((f, i) => (
-              <View
-                key={f.id}
-                className={cn(
-                  'flex-row items-center gap-3 py-2.5',
-                  i > 0 && 'border-t border-ink-line'
-                )}
-              >
-                <Text className="w-[104px] shrink-0 font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
-                  {f.key}
-                </Text>
-                <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-sb text-[14px] text-ink">
-                  {f.value}
-                </Text>
-                {editable ? (
-                  <VisibilityPill tier={f.tier} />
-                ) : null}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <ModuleEmpty
-            emoji="🪪"
-            line={editable ? 'Add the basics. Hometown, work, birthday.' : 'Nothing shared at this level.'}
-            cta={editable ? 'Add details' : undefined}
-          />
-        )}
+        {/* Body only — title stays expandable; taps on rows log dead_click */}
+        <AnalyticsRegion analyticsId={aboutMeId} interactive={false}>
+          {visible.length > 0 ? (
+            <View>
+              {visible.map((f, i) => (
+                <View
+                  key={f.id}
+                  className={cn(
+                    'flex-row items-center gap-3 py-2.5',
+                    i > 0 && 'border-t border-ink-line'
+                  )}
+                >
+                  <Text className="w-[104px] shrink-0 font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
+                    {f.key}
+                  </Text>
+                  <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-sb text-[14px] text-ink">
+                    {f.value}
+                  </Text>
+                  {editable ? (
+                    <VisibilityPill tier={f.tier} />
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <ModuleEmpty
+              emoji="🪪"
+              line={editable ? 'Add the basics. Hometown, work, birthday.' : 'Nothing shared at this level.'}
+              cta={editable ? 'Add details' : undefined}
+              analyticsId={PROFILE.card.add_details}
+              onPress={editable ? () => openModule('about') : undefined}
+            />
+          )}
+        </AnalyticsRegion>
       </CollapsibleSection>
 
       <CollapsibleSection title="Hobbies" count={showHobbies.length}>
         {showHobbies.length > 0 ? (
-          <HobbiesWidget hobbies={showHobbies} />
+          <HobbiesWidget
+            hobbies={showHobbies}
+            analyticsId={hobbiesId}
+            followUps={hobbyFollowUps}
+          />
         ) : (
           <ModuleEmpty
             emoji="🎛"
             line={editable ? 'Pick a few things you like.' : 'No hobbies yet.'}
             cta={editable ? 'Add hobbies' : undefined}
+            analyticsId={PROFILE.card.add_hobbies}
+            onPress={editable ? () => openModule('hobbies') : undefined}
           />
         )}
       </CollapsibleSection>
@@ -208,44 +250,56 @@ export function ProfileCard({
         count={favGroups.reduce((n, f) => n + f.total, 0)}
         defaultOpen={empty}
       >
-        {favGroups.length > 0 ? (
-          <View className="gap-4">
-            {favGroups.map((group) => (
-              <View key={group.group}>
-                <Text className="mb-2 font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
-                  {group.emoji} {group.group} · {group.total}
-                </Text>
-                <ShowAllList items={group.items} total={group.total} />
-              </View>
-            ))}
-          </View>
-        ) : (
-          <ModuleEmpty
-            emoji="⭐️"
-            line={editable ? 'Start a list. Food, films, everyday.' : 'No favs yet.'}
-            cta={editable ? 'Add favs' : undefined}
-          />
-        )}
+        <AnalyticsRegion analyticsId={PROFILE.card.favs} interactive={false}>
+          {favGroups.length > 0 ? (
+            <View className="gap-4">
+              {favGroups.map((group) => (
+                <View key={group.group}>
+                  <Text className="mb-2 font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
+                    {group.emoji} {group.group} · {group.total}
+                  </Text>
+                  <ShowAllList items={group.items} total={group.total} />
+                </View>
+              ))}
+            </View>
+          ) : (
+            <ModuleEmpty
+              emoji="⭐️"
+              line={editable ? 'Start a list. Food, films, everyday.' : 'No favs yet.'}
+              cta={editable ? 'Add favs' : undefined}
+              analyticsId={PROFILE.card.add_favs}
+              onPress={editable ? () => openModule('favs') : undefined}
+            />
+          )}
+        </AnalyticsRegion>
       </CollapsibleSection>
 
       {/* polls live on Home now — one place to ask, one place to read results */}
 
       <CollapsibleSection title="Places traveled" count={empty ? 0 : places.length}>
-        {empty || places.length === 0 ? (
-          <ModuleEmpty
-            emoji="🗺"
-            line={editable ? 'Pin the places you have been.' : 'No places yet.'}
-            cta={editable ? 'Add places' : undefined}
-          />
-        ) : (
-          <TravelModule places={places} />
-        )}
+        <AnalyticsRegion analyticsId={PROFILE.card.places_map} interactive={false}>
+          {empty || places.length === 0 ? (
+            <ModuleEmpty
+              emoji="🗺"
+              line={editable ? 'Pin the places you have been.' : 'No places yet.'}
+              cta={editable ? 'Add places' : undefined}
+              analyticsId={PROFILE.card.add_places}
+              onPress={editable ? () => openModule('places') : undefined}
+            />
+          ) : (
+            <TravelModule places={places} />
+          )}
+        </AnalyticsRegion>
       </CollapsibleSection>
 
       <CollapsibleSection title="This or that" count={picks.length}>
         {picks.length > 0 ? (
-          /* one row per question, two columns — you read the choice, not a tile */
-          <View className="overflow-hidden rounded-card border border-ink-line bg-surface">
+          /* Friend view: dead_click on the row body. Own edit: taps open the module. */
+          <AnalyticsRegion
+            analyticsId={totId}
+            interactive={false}
+            className="overflow-hidden rounded-card border border-ink-line bg-surface"
+          >
             {picks.map((t, i) => {
               const token = ACCENTS[TOT_ACCENTS[i % TOT_ACCENTS.length]];
               const both = t.pick === 'both';
@@ -258,7 +312,11 @@ export function ProfileCard({
                       return (
                         <Pressable
                           key={side}
-                          onPress={editable ? () => setModule('tot') : undefined}
+                          onPress={
+                            editable
+                              ? withAnalyticsPress(totId, () => openModule('tot'))
+                              : undefined
+                          }
                           disabled={!editable}
                           accessibilityRole={editable ? 'button' : 'text'}
                           accessibilityState={{ selected: chosen }}
@@ -295,12 +353,14 @@ export function ProfileCard({
                 </View>
               );
             })}
-          </View>
+          </AnalyticsRegion>
         ) : (
           <ModuleEmpty
             emoji="⚖️"
-            line={editable ? '12 quick picks, one tap each.' : 'Not taken yet.'}
+            line={editable ? 'Quick picks, one tap each.' : 'Not taken yet.'}
             cta={editable ? 'Take it' : undefined}
+            analyticsId={PROFILE.card.take_this_or_that}
+            onPress={editable ? () => openModule('tot') : undefined}
           />
         )}
       </CollapsibleSection>
@@ -309,10 +369,10 @@ export function ProfileCard({
         <View className="rounded-card border border-ink-line bg-surface p-4">
           <Text className="font-pixel text-[15px] text-ink">Add to your profile</Text>
           <View className="mt-3 gap-2">
-            {MODULES.map((m) => (
+            {PROFILE_MODULES.map((m) => (
               <Pressable
                 key={m.id}
-                onPress={() => setModule(m.id)}
+                onPress={withAnalyticsPress(PROFILE.card.add_module, () => openModule(m.id))}
                 accessibilityRole="button"
                 accessibilityLabel={`${m.label}. ${m.line}`}
                 className="min-h-[44px] w-full flex-row items-center gap-3 rounded-card border border-ink-line bg-surface px-3.5 py-3 active:border-purple/40 active:bg-[#F1ECFF]"
@@ -339,8 +399,16 @@ export function ProfileCard({
         open={Boolean(activeModule)}
         title={activeModule?.label ?? ''}
         questions={activeModule?.questions ?? []}
-        onClose={() => setModule(null)}
-        onDone={() => setModule(null)}
+        mode="share"
+        audienceSetAllAnalyticsId={PROFILE.module.audience_set_all}
+        audienceRowAnalyticsId={PROFILE.module.audience_row}
+        onClose={() => {
+          moduleStartedAt.current = null;
+          setModule(null);
+        }}
+        onDone={(answers, visibility) => {
+          void finishModule(answers, visibility);
+        }}
       />
     </View>
   );
@@ -359,15 +427,16 @@ function VisibilityPill({ tier }: { tier: Tier }) {
 
 /**
  * Photo, name, city, bio and profile song. On your own profile these become
- * editable in place once you tap Edit in the header — otherwise you see your
- * profile exactly the way your friends do.
+ * editable in place once you tap the small Edit next to your name — otherwise
+ * you see your profile exactly the way your friends do.
  */
-function ProfileHeader({
+export function ProfileHeader({
   person,
   header,
   own,
   editing,
   empty,
+  onToggleEdit,
   onEditHeader
 }: {
   person: Person;
@@ -376,6 +445,7 @@ function ProfileHeader({
   /** Edit is on, so the photo, city, song and bio can be changed */
   editing: boolean;
   empty: boolean;
+  onToggleEdit?: () => void;
   onEditHeader?: (patch: Partial<MyProfileHeader>) => void;
 }) {
   const c = useThemeColors();
@@ -388,10 +458,25 @@ function ProfileHeader({
   const [bioDraft, setBioDraft] = useState(bio);
 
   return (
-    <View className="gap-3">
+    <AnalyticsRegion
+      analyticsId={PROFILE.header.header_bg}
+      interactive={false}
+      className="gap-3"
+    >
       <View className="flex-row items-center gap-4">
-        <View className="shrink-0">
-          <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="xl" />
+        <Pressable
+          onPress={withAnalyticsPress(PROFILE.header.avatar, undefined)}
+          accessibilityRole="image"
+          accessibilityLabel={`${person.name}'s photo`}
+          className="shrink-0"
+        >
+          <Avatar
+            name={person.name}
+            emoji={person.emoji}
+            accent={person.accent}
+            photo={getProfilePhoto(person.id)}
+            size="xl"
+          />
           {canEdit ? (
             <Pressable
               accessibilityRole="button"
@@ -401,12 +486,44 @@ function ProfileHeader({
               <CameraIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
             </Pressable>
           ) : null}
-        </View>
+        </Pressable>
 
         <View className="min-w-0 flex-1">
-          <Text numberOfLines={1} className="font-sans-b text-[20px] tracking-tight text-ink">
-            {person.name}
-          </Text>
+          {/* name on the left, quiet Edit / Done on the right */}
+          <View className="flex-row items-center gap-2">
+            <AnalyticsRegion
+              analyticsId={PROFILE.header.name}
+              interactive={false}
+              className="min-w-0 flex-1"
+            >
+              <Text
+                numberOfLines={1}
+                className="font-sans-b text-[20px] tracking-tight text-ink"
+              >
+                {person.name}
+              </Text>
+            </AnalyticsRegion>
+            {own && onToggleEdit ? (
+              <Pressable
+                onPress={withAnalyticsPress(PROFILE.top_nav.edit, onToggleEdit)}
+                accessibilityRole="button"
+                accessibilityLabel={editing ? 'Done editing profile' : 'Edit profile'}
+                className={cn(
+                  'h-8 shrink-0 items-center justify-center rounded-full px-3 active:opacity-80',
+                  editing ? 'bg-ink' : 'border border-ink-line bg-surface'
+                )}
+              >
+                <Text
+                  className={cn(
+                    'font-sans-b text-[12px]',
+                    editing ? 'text-white' : 'text-ink-soft'
+                  )}
+                >
+                  {editing ? 'Done' : 'Edit'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
 
           {editingCity ? (
             <TextInput
@@ -438,14 +555,37 @@ function ProfileHeader({
             </Pressable>
           )}
 
+          {/* Mutuals: only meaningful on someone else's profile. */}
+          {!own && person.mutuals > 0 ? (
+            <Text className="font-sans-sb text-[13px] text-ink-mute">
+              {person.mutuals} mutual{person.mutuals === 1 ? '' : 's'}
+            </Text>
+          ) : null}
+
+          {/* What they're into right now: one song, one book, same treatment. */}
           {!empty && header ? (
-            <View className="mt-1.5 flex-row items-center gap-1.5">
-              <MusicIcon size={14} color={c.inkMute} strokeWidth={2.6} />
-              <Text numberOfLines={1} className="shrink font-sans-sb text-[12px] text-ink-mute">
-                {header.song.title} · {header.song.artist}
-              </Text>
-              {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
-            </View>
+            <AnalyticsRegion
+              analyticsId={PROFILE.header.song}
+              interactive={canEdit}
+              className="mt-1.5 gap-1"
+            >
+              <View className="flex-row items-center gap-1.5">
+                <MusicIcon size={14} color={c.inkMute} strokeWidth={2.6} />
+                <Text numberOfLines={1} className="shrink font-sans-sb text-[12px] text-ink-mute">
+                  {header.song.title} · {header.song.artist}
+                </Text>
+                {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
+              </View>
+              {header.book ? (
+                <View className="flex-row items-center gap-1.5">
+                  <BookOpenIcon size={14} color={c.inkMute} strokeWidth={2.6} />
+                  <Text numberOfLines={1} className="shrink font-sans-sb text-[12px] text-ink-mute">
+                    {header.book.title} · {header.book.author}
+                  </Text>
+                  {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
+                </View>
+              ) : null}
+            </AnalyticsRegion>
           ) : null}
         </View>
       </View>
@@ -473,9 +613,11 @@ function ProfileHeader({
           }}
           accessibilityRole={canEdit ? 'button' : 'text'}
           accessibilityLabel={canEdit ? `Edit bio, ${bio}` : bio}
-          className="w-full rounded-card border border-ink-line bg-surface px-3.5 py-2.5"
+          // The bio reads as writing, not as another boxed-in widget, so it
+          // gets no container — just the words under their name.
+          className="w-full px-0.5"
         >
-          <Text className="font-sans-sb text-[14px] leading-snug text-ink">{bio}</Text>
+          <Text className="font-sans-sb text-[15px] leading-relaxed text-ink-soft">{bio}</Text>
         </Pressable>
       ) : canEdit ? (
         <Pressable
@@ -491,7 +633,7 @@ function ProfileHeader({
           <Text className="font-sans-sb text-[13px] text-ink-mute">Add a bio</Text>
         </Pressable>
       ) : null}
-    </View>
+    </AnalyticsRegion>
   );
 }
 
@@ -507,12 +649,21 @@ function CurrentlyCard({
   empty: boolean;
   onCheckIn?: (on: boolean) => void;
 }) {
+  // PRIVACY: the check-in nudge ("Time for your weekly check-in") is a prompt
+  // for YOU, not something a friend should see on your profile. So in a friend
+  // view we only ever show a Currently they actually filled in.
+  if (!own && !currently?.checkedIn) return null;
+
   const checkedIn = !empty && (currently?.checkedIn ?? false);
   const stale = !empty && !checkedIn;
 
   if (!checkedIn || !currently) {
     return (
-      <View className="items-center rounded-card bg-ink p-5">
+      <AnalyticsRegion
+        analyticsId={PROFILE.card.currently}
+        interactive={false}
+        className="items-center rounded-card bg-ink p-5"
+      >
         <Text className="font-sans-b text-[11px] uppercase tracking-wide text-white/60">
           Currently
         </Text>
@@ -525,7 +676,7 @@ function CurrentlyCard({
         {own ? (
           <>
             <Pressable
-              onPress={() => onCheckIn?.(true)}
+              onPress={withAnalyticsPress(PROFILE.card.currently, () => onCheckIn?.(true))}
               accessibilityRole="button"
               accessibilityLabel="Check in"
               className="mt-3 min-h-[36px] justify-center rounded-full bg-surface px-4 py-2"
@@ -535,19 +686,23 @@ function CurrentlyCard({
             <MusicConnect />
           </>
         ) : null}
-      </View>
+      </AnalyticsRegion>
     );
   }
 
   return (
-    <View className="rounded-card bg-ink p-4">
+    <AnalyticsRegion
+      analyticsId={PROFILE.card.currently}
+      interactive={false}
+      className="rounded-card bg-ink p-4"
+    >
       <View className="flex-row items-center justify-between gap-3">
         <Text className="font-sans-b text-[11px] uppercase tracking-wide text-white/60">
           Currently · this week
         </Text>
         {own ? (
           <Pressable
-            onPress={() => onCheckIn?.(false)}
+            onPress={withAnalyticsPress(PROFILE.card.currently, () => onCheckIn?.(false))}
             accessibilityRole="button"
             accessibilityLabel="Update your check-in"
             className="flex-row items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1"
@@ -586,7 +741,7 @@ function CurrentlyCard({
       </View>
 
       {own ? <MusicConnect /> : null}
-    </View>
+    </AnalyticsRegion>
   );
 }
 
@@ -628,15 +783,33 @@ function MusicConnect() {
   );
 }
 
-function ModuleEmpty({ emoji, line, cta }: { emoji: string; line: string; cta?: string }) {
+function ModuleEmpty({
+  emoji,
+  line,
+  cta,
+  onPress,
+  analyticsId
+}: {
+  emoji: string;
+  line: string;
+  cta?: string;
+  onPress?: () => void;
+  analyticsId?: string;
+}) {
   return (
     <EmptyState
       emoji={emoji}
       line={line}
       className="py-7"
       action={
-        cta ? (
-          <ButtonSecondary size="sm" tone="solid">
+        cta && onPress ? (
+          <ButtonSecondary
+            size="sm"
+            tone="solid"
+            analyticsId={analyticsId}
+            onPress={onPress}
+            accessibilityLabel={cta}
+          >
             {cta}
           </ButtonSecondary>
         ) : undefined

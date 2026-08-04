@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The faint drifting perspective grid behind Discover — the only place Bridger
-// goes full 80s synth. Soft and atmospheric so content stays readable.
+// The drifting perspective grid that sits behind the app — Bridger's 80s synth
+// backdrop. It runs on every screen; Discover gets the boldest version. Still
+// atmospheric enough that text on top of it stays easy to read.
 // ACCESSIBILITY: when Reduce Motion is on, the grid stays still.
 // ============================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -10,11 +11,21 @@ import { AccessibilityInfo, Animated, StyleSheet, View } from 'react-native';
 const ROWS = 14;
 const COLS = 16;
 
-// Soft purple lines (same idea as Magic Patterns). Fixed rgba so dark mode
+// Purple lines (same idea as Magic Patterns). Fixed rgba so dark mode
 // never turns the grid into a bright white stripe via themed `ink`.
-const LINE = 'rgba(127, 119, 221, 0.22)';
+const LINE = 'rgba(127, 119, 221, 0.5)';
 
-export function SynthGrid() {
+/**
+ * How loud the grid is. 'normal' is the everyday backdrop; 'bold' is Discover,
+ * where the grid is part of the point.
+ */
+const STRENGTH = {
+  normal: { opacity: 0.85 },
+  bold: { opacity: 1 }
+};
+
+export function SynthGrid({ strength = 'normal' }: { strength?: keyof typeof STRENGTH }) {
+  const level = STRENGTH[strength];
   const drift = useRef(new Animated.Value(0)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -49,14 +60,19 @@ export function SynthGrid() {
     () =>
       Array.from({ length: ROWS }, (_, i) => ({
         key: `r${i}`,
-        opacity: 0.12 + (i / ROWS) * 0.28
+        // fainter near the "horizon" at the top, solid down at the front
+        opacity: 0.3 + (i / ROWS) * 0.6
       })),
     []
   );
 
   return (
-    // Full-screen clip — taps pass through to the real Discover content.
-    <View pointerEvents="none" style={StyleSheet.absoluteFill} accessible={false}>
+    // Full-screen clip — taps pass straight through to the real content.
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, { opacity: level.opacity }]}
+      accessible={false}
+    >
       {/*
         Layout styles are INLINE on purpose. NativeWind classes on Animated.View
         were not applying height on web, so every line stacked into a white bar
@@ -67,8 +83,10 @@ export function SynthGrid() {
           position: 'absolute',
           left: '-20%',
           right: '-20%',
+          // Full-bleed: the grid is the page background, not just a floor
+          // strip along the bottom.
+          top: 0,
           bottom: -32,
-          height: '55%',
           transform: [{ translateY }]
         }}
       >
@@ -97,7 +115,7 @@ export function SynthGrid() {
             <View
               key={`c${i}`}
               style={{
-                opacity: 0.15 + (Math.abs(i - COLS / 2) / (COLS / 2)) * 0.12,
+                opacity: 0.35 + (Math.abs(i - COLS / 2) / (COLS / 2)) * 0.3,
                 height: '100%',
                 width: StyleSheet.hairlineWidth,
                 backgroundColor: LINE

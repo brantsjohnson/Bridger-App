@@ -2,7 +2,7 @@
 
 Self-contained. Bridger's messaging is **intentionally limited** — it exists to *start* a connection and then push it into real life, not to be another inbox. Keep UI copy minimal.
 
-Maps to the (now active) `messages` module + `app/messages/` route; entered from the **header messages icon** and from a **friend's profile**.
+Maps to the (now active) `messages` module + `app/(tabs)/messages` tab; entered from the **Messages tab in the floating nav** and from a **friend's profile**.
 
 ---
 
@@ -18,7 +18,7 @@ Everyone sets up a **contact card** once (below) so sharing it is one tap.
 
 ## Screens
 
-### Messages list (from the header icon)
+### Messages list (Messages tab)
 - Title + **Find a friend** (search your friends to start a conversation).
 - Conversation rows: avatar, name, last-message snippet, time, unread dot.
 - A small standing note: *"5 messages a day — Bridger isn't another inbox."*
@@ -51,6 +51,13 @@ Everyone sets up a **contact card** once (below) so sharing it is one tap.
 - **Share contact** and **Make a plan** are **not** counted against the 5/day cap — the app *wants* you to use them.
 - No read receipts, no typing indicators, no "online now," no message counts shown to others — nothing that manufactures inbox pressure.
 - The daily count **resets each day**.
+
+### SECURITY — end-to-end encryption (non-negotiable)
+
+- Message bodies are **end-to-end encrypted**. Encrypt on the sender's device before upload; decrypt only on the two participants' devices.
+- The server and database store **ciphertext only**. Bridger staff, admins, support tools, and logs must never be able to read plaintext message content or contact-card field values.
+- Analytics never includes message text, phone numbers, or contact-card values — only opaque outcomes (`message_sent`, `contact_shared`, `counts_against_cap`).
+- Demo mode may keep plaintext in memory for local UI preview. That pattern must never ship to production storage.
 
 ---
 
@@ -107,7 +114,7 @@ interface DailyCap {               // per sender → recipient, per day
 
 ## Acceptance criteria
 
-- [ ] Header messages icon opens the Messages list; a friend's profile has a Message button that opens the conversation.
+- [ ] Messages tab opens the Messages list; a friend's profile has a Message button that opens the conversation.
 - [ ] You can only message people you're connected with; Find-a-friend searches your roster.
 - [ ] You can send **5 messages to each person per day**; the composer shows a live "{n} left today" counter.
 - [ ] The cap is per recipient and per direction — being maxed toward someone does not stop them from messaging you.

@@ -11,3 +11,7 @@ export * from './model/connection';
 export * from './model/cover';
 export * from './model/coop';
 export * from './model/profile-theme';
+export * from './model/message';
+
+// Analytics: taxonomy IDs + consent-gated emit client (PostHog-ready).
+export * from './analytics';

@@ -3,16 +3,30 @@
 // One Inside Joke sticky note. Front shows the quote + whose words they are.
 // Tap flips to the credits (who posted it, where, when). The folded corner is
 // drawn with Views because React Native has no CSS sticky-note class.
+// Pass analyticsId so a flip is named; noteBodyAnalyticsId tags the quote for
+// dead_click when someone taps the text expecting more.
 // ============================================
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { InsideJoke } from '@bridger/shared';
-import { ACCENTS, Avatar, cn } from '@bridger/ui';
+import { ACCENTS, AnalyticsRegion, Avatar, cn, withAnalyticsPress } from '@bridger/ui';
 import { personById } from '../../data/people';
 
 const TILTS = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2'] as const;
 
-export function InsideJokeNote({ joke, index = 0 }: { joke: InsideJoke; index?: number }) {
+export function InsideJokeNote({
+  joke,
+  index = 0,
+  analyticsId,
+  noteBodyAnalyticsId
+}: {
+  joke: InsideJoke;
+  index?: number;
+  /** Interactive flip (tap → meta). */
+  analyticsId?: string;
+  /** Dead-click target on the quote body. */
+  noteBodyAnalyticsId?: string;
+}) {
   const token = ACCENTS[joke.accent];
   const [meta, setMeta] = useState(false);
   const quoted = joke.quotedId ? personById(joke.quotedId) : null;
@@ -29,7 +43,7 @@ export function InsideJokeNote({ joke, index = 0 }: { joke: InsideJoke; index?: 
       />
 
       <Pressable
-        onPress={() => setMeta((v) => !v)}
+        onPress={withAnalyticsPress(analyticsId, () => setMeta((v) => !v))}
         accessibilityRole="button"
         accessibilityState={{ expanded: meta }}
         accessibilityLabel={meta ? 'Hide details' : 'Who posted this'}
@@ -58,15 +72,19 @@ export function InsideJokeNote({ joke, index = 0 }: { joke: InsideJoke; index?: 
           </View>
         ) : (
           <>
-            <Text className={cn('font-sans-b text-[14px] leading-snug', token.text)}>
-              “{joke.text}”
-            </Text>
+            {/* Quote body — measured as dead_click when someone taps expecting more */}
+            <AnalyticsRegion analyticsId={noteBodyAnalyticsId} interactive={false}>
+              <Text className={cn('font-sans-b text-[14px] leading-snug', token.text)}>
+                “{joke.text}”
+              </Text>
+            </AnalyticsRegion>
             <View className="mt-2.5 flex-row items-center gap-2 pr-5">
               {quoted ? (
                 <Avatar
                   name={quoted.name}
                   emoji={quoted.emoji}
                   accent={quoted.accent}
+                  personId={quoted.id}
                   size="xs"
                 />
               ) : null}
@@ -106,15 +124,17 @@ function Credit({
 export function AddNoteTile({
   label = 'Add an Inside Joke',
   onPress,
-  tall = false
+  tall = false,
+  analyticsId
 }: {
   label?: string;
   onPress?: () => void;
   tall?: boolean;
+  analyticsId?: string;
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={withAnalyticsPress(analyticsId, onPress)}
       accessibilityRole="button"
       accessibilityLabel={label}
       className={cn(

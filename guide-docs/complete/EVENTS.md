@@ -27,19 +27,31 @@ Each card: a date chip, title, time + place, and a peek of **who you know going*
 
 ## 2 · Create an event
 
-A single form, top to bottom:
+Create is a **full-screen, four-step wizard** (its own analytics surface, `create_event`, launched from the Events `+`), not a popup. The `+` and the empty-state button both open it. It holds one draft in memory and walks the host through four steps, then lands on the new event's page to share.
+
+**Step 1 — Details.**
 
 | Field | Notes |
 |---|---|
 | Title | required |
 | Bio | short description |
-| Date / time | feeds calendar + reminders |
-| Place | address or spot |
+| Date / time | tap-to-pick (no keyboard) — feeds calendar + reminders |
+| Place | short spot name |
+| Address | **live address lookup** via OpenStreetMap Nominatim (free, no key); tap a match to fill address + place. PRIVACY: the typed text goes to OSM only to geocode the host's own venue, with no name/account attached; falls back to manual entry if offline. Address is visible only to people going or invited. |
+| Co-host | pick one friend — they can edit the event **and their acquaintances join the invite pool** on step 2 |
 | Bring | optional "bring a drink to share" |
 | Chip in | optional payment **handle** (Venmo / Cash App) — a stored link, we don't process it |
-| Invite | pick a **handful** of people or a whole **group/tier** |
 | Let friends invite friends | toggle — opens the guest list to second-degree invites |
-| Suggested invites | friends-of-friends who'd vibe (from `matching`) — invite people *and* connect your friends to each other |
+
+**Step 2 — Invite (de-identified).** Search a single merged pool of **your acquaintances plus your co-host's acquaintances**. PRIVACY: the list is de-identified and sorted A-Z by first name, so you can **never tell whose acquaintance someone is** — you just see people you could invite. Tap to add or remove; the 35-guest cap applies. (Live: the merge + de-identification happen server-side over the `matching` invite graph.)
+
+**Step 3 — Photo + sign-ups.**
+- **Cover photo.** Add a cover photo (recommended **1200 x 675, 16:9**, shown as helper text so hosts can design one) or pick an **emoji**. If skipped, a random emoji cover is chosen at create time so the event still has a face. **MEDIA EXCEPTION:** Bridger is capture-only everywhere except **two** spots — the profile photo and this **event cover** — which may be uploaded from the library. That is intentional.
+- **Who's bringing what.** A sign-up list modeled on the Bucket List: the host adds bring-items, and each row has a **name dropdown** (avatar + first name + last initial, e.g. "Maya O."). Claiming an item **crosses it off**; it can be re-opened or re-assigned from the same dropdown. Each item also has an optional **per-item chip-in handle** so a guest can send money instead of bringing the thing. Being assigned schedules a **1-day and 2-hour** "bring your thing" reminder (via `notifications`; stubbed in the front-end demo).
+
+**Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it, then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`) — never the title, bio, or address text — and route to the new event page.
+
+After creating, the host lands on the **event page** where they can **Share** (native share sheet) or **Copy link**.
 
 ### Guest cap (free vs co-op)
 
@@ -85,7 +97,9 @@ Because Events is where plans happen, the **Touch Grass button lives here too** 
 
 - **One featured** signal at a time (the freshest / most relevant), then **the rest listed below**.
 - **Each shows enough to know *why*** — the person, when (now / tonight / this weekend), and a short line ("anyone want to grab food + walk?").
-- **Tap any** to open the full signal and say **"I'm in"** (or ✕). Same touch-grass mechanics as `TOUCHGRASS-AND-QUIZ.md` — no counts, no "no," private who's-in.
+- **Each card has a split action row: "I'm in" and "Details."** "I'm in" says yes right there; "Details" (or tapping anywhere on the card) opens the full signal sheet. The old ✕ still quietly dismisses it from the list.
+- **The detail sheet offers "I'm in" and "Quietly decline."** Declining tells the poster nothing — it just clears the card for you. Same touch-grass mechanics as `TOUCHGRASS-AND-QUIZ.md` — no counts, no public "no," private who's-in.
+- **PRIVACY — the circle is never fully named.** A signal shows it went to **Close** or **Friends**, but an **Everyone** broadcast shows *no* circle label, so a wide send never looks less personal than a close-circle one.
 
 ---
 
@@ -165,6 +179,7 @@ interface RsvpInput {
 - [ ] The host can add a co-host who can also edit/manage.
 - [ ] The chip-in sits at the top and includes an amount and a method + handle (Venmo / Cash App / person); the app never processes it.
 - [ ] The Allergies "Only you can see this" note sits under the header, not inside the box.
-- [ ] The Events page shows the Touch Grass button with signals below it (one featured + a list), each with enough info to know why, tappable to open and say "I'm in."
+- [ ] The Events page shows the Touch Grass button with friend signals listed directly under it (no separate "Who's free" heading), each showing when + what they want to do, with a split "I'm in" / "Details" action row; tapping the card opens a detail sheet offering "I'm in" or "Quietly decline."
+- [ ] A signal only ever names the **Close** or **Friends** circle; an **Everyone** send shows no circle label at all.
 - [ ] Host view shows introductions (with the "why"), shared allergies (host-only), and reminder toggles.
 - [ ] Reminders auto-send 2 days and 2 hours before when enabled.

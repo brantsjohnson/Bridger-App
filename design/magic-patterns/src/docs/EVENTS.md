@@ -156,7 +156,7 @@ interface RsvpInput {
 ### Touch grass on Events
 
 - [ ] The touch grass button is the first thing on the Events page.
-- [ ] **Every** friend who has touched grass is listed directly beneath it under "Who's free"; **Home shows only the newest one**, with a link to the rest on Events.
+- [ ] **Every** friend who has touched grass is listed directly beneath the Touch Grass button (no "Who's free" heading), each showing when + what they want to do; **Home shows only the newest one**, with a link to the rest on Events.
 - [ ] A signal card carries enough to want in — what they're doing, roughly where, who's already in — and **opens** for the full detail (what, when, where, who's in, which circle they told) so nobody has to message and ask.
 - [ ] Saying "I'm in" tells only the person who posted it.
 - [ ] Host dashboard shows counts, attendees, introductions (with the "why"), shared allergies (host-only), the chip-in handle, and reminder toggles.

@@ -3,16 +3,19 @@
 // One event on the Events list (or a compact row). Cover, date chip, title,
 // time + place, who you know going, and Going / Can't on invites.
 // PRIVACY: shows friends going only — never invited totals (vanity metric).
+// Analytics: card open = EVENTS.list.event_card; RSVP buttons = detail.going/cant.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { EventItem } from '@bridger/shared';
+import { EVENTS } from '@bridger/shared';
 import {
   AvatarStack,
   ButtonSecondary,
   Card,
   CountdownChip,
-  CoverArt
+  CoverArt,
+  withAnalyticsPress
 } from '@bridger/ui';
 import { personById } from '../data/people';
 
@@ -32,11 +35,12 @@ export function EventCard({
   onOpen
 }: EventCardProps) {
   const going = event.goingIds.map(personById);
+  const open = withAnalyticsPress(EVENTS.list.event_card, () => onOpen?.(event.id));
 
   if (variant === 'row') {
     return (
       <Pressable
-        onPress={() => onOpen?.(event.id)}
+        onPress={open}
         accessibilityRole="button"
         accessibilityLabel={event.title}
         className="w-full flex-row items-center gap-3 rounded-card border border-ink-line bg-surface p-3 active:opacity-90"
@@ -54,7 +58,8 @@ export function EventCard({
           people={going.slice(0, 3).map((p) => ({
             name: p.name,
             emoji: p.emoji,
-            accent: p.accent
+            accent: p.accent,
+            personId: p.id
           }))}
         />
       </Pressable>
@@ -63,7 +68,8 @@ export function EventCard({
 
   return (
     <Card className="overflow-hidden p-0">
-      <Pressable onPress={() => onOpen?.(event.id)} accessibilityRole="button">
+      {/* Cover + title open the event; RSVP stays outside so it isn't swallowed */}
+      <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={event.title}>
         <View className="h-24">
           <CoverArt
             cover={event.cover ?? { kind: 'emoji', value: event.emoji }}
@@ -76,7 +82,7 @@ export function EventCard({
         <View className="flex-row items-start gap-3">
           <DateChip event={event} />
           <View className="min-w-0 flex-1">
-            <Pressable onPress={() => onOpen?.(event.id)} accessibilityRole="button">
+            <Pressable onPress={open} accessibilityRole="button">
               <Text className="font-sans-b text-[17px] leading-tight tracking-tight text-ink">
                 {event.title}
               </Text>
@@ -94,7 +100,8 @@ export function EventCard({
               people={going.slice(0, 3).map((p) => ({
                 name: p.name,
                 emoji: p.emoji,
-                accent: p.accent
+                accent: p.accent,
+                personId: p.id
               }))}
             />
             {/* PRIVACY: friends going only — no invited totals */}
@@ -108,6 +115,7 @@ export function EventCard({
               <ButtonSecondary
                 size="sm"
                 tone={rsvp === 'cant' ? 'solid' : 'outline'}
+                analyticsId={EVENTS.detail.cant}
                 onPress={() => onRsvp?.(event.id, 'cant')}
               >
                 Can't
@@ -115,6 +123,7 @@ export function EventCard({
               <ButtonSecondary
                 size="sm"
                 tone="positive"
+                analyticsId={EVENTS.detail.going}
                 onPress={() => onRsvp?.(event.id, 'going')}
               >
                 {rsvp === 'going' ? 'Going ✓' : 'Going'}

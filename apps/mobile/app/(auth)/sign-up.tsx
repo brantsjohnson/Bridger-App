@@ -4,13 +4,19 @@
 // Google and Apple first (the fast paths people expect), then an "or" divider,
 // then email + password. Matches ONBOARDING.md Phase 1 and the prototype at
 // design/magic-patterns/.../auth/sign-up.tsx — same layout, same labels, no
-// filler copy.
+// filler copy. Every control carries a taxonomy analyticsId.
 // ============================================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
+  AUTH,
+  openSurface,
+  trackProduct
+} from '@bridger/shared';
+import {
+  AnalyticsRegion,
   ButtonSecondary,
   PixelHeading,
   Screen,
@@ -29,6 +35,10 @@ export default function SignUpScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  useEffect(() => {
+    openSurface('auth');
+  }, []);
+
   async function onGoogle() {
     setBusy('google');
     setError(null);
@@ -36,6 +46,8 @@ export default function SignUpScreen() {
     const { error: err, cancelled } = await signInWithGoogle();
     setBusy(null);
     if (!cancelled && err) setError(err);
+    // OAuth on this screen is "create / continue" — treat success as sign-up.
+    if (!cancelled && !err) trackProduct('auth_signed_up', { method: 'google' });
   }
 
   async function onApple() {
@@ -45,6 +57,7 @@ export default function SignUpScreen() {
     const { error: err, cancelled } = await signInWithApple();
     setBusy(null);
     if (!cancelled && err) setError(err);
+    if (!cancelled && !err) trackProduct('auth_signed_up', { method: 'apple' });
   }
 
   async function onCreate() {
@@ -56,6 +69,7 @@ export default function SignUpScreen() {
     if (err) {
       setError(err);
     } else {
+      trackProduct('auth_signed_up', { method: 'email' });
       setInfo('Account created. If email confirmation is on, check your inbox, then sign in.');
     }
   }
@@ -68,7 +82,13 @@ export default function SignUpScreen() {
       >
         {/* --- Pixel title, matching Magic Patterns --- */}
         <View style={{ paddingTop: insets.top + 24 }} className="px-5 pb-2">
-          <PixelHeading size="lg">Create account</PixelHeading>
+          <AnalyticsRegion
+            analyticsId={AUTH.sign_up.page_title}
+            interactive={false}
+            accessibilityLabel="Create account"
+          >
+            <PixelHeading size="lg">Create account</PixelHeading>
+          </AnalyticsRegion>
         </View>
 
         <ScreenBody tabBarInset={false}>
@@ -81,6 +101,8 @@ export default function SignUpScreen() {
               disabled={busy !== null}
               loading={busy === 'google'}
               accessibilityLabel="Continue with Google"
+              analyticsId={AUTH.sign_up.google}
+              analyticsProps={{ method: 'google' }}
             >
               Continue with Google
             </ButtonSecondary>
@@ -91,6 +113,8 @@ export default function SignUpScreen() {
               disabled={busy !== null}
               loading={busy === 'apple'}
               accessibilityLabel="Continue with Apple"
+              analyticsId={AUTH.sign_up.apple}
+              analyticsProps={{ method: 'apple' }}
             >
               Continue with Apple
             </ButtonSecondary>
@@ -112,6 +136,7 @@ export default function SignUpScreen() {
               placeholder="you@email.com"
               type="email"
               autoComplete="email"
+              analyticsId={AUTH.sign_up.email}
             />
             <TextField
               label="Password"
@@ -120,6 +145,7 @@ export default function SignUpScreen() {
               type="password"
               placeholder="8+ characters"
               autoComplete="new-password"
+              analyticsId={AUTH.sign_up.password}
             />
           </View>
 
@@ -132,6 +158,8 @@ export default function SignUpScreen() {
               disabled={busy !== null || !email.trim() || password.length < 8}
               loading={busy === 'email'}
               accessibilityLabel="Create account"
+              analyticsId={AUTH.sign_up.submit}
+              analyticsProps={{ method: 'email' }}
             >
               Create account
             </ButtonSecondary>
@@ -141,6 +169,7 @@ export default function SignUpScreen() {
               onPress={() => router.replace('/(auth)/sign-in')}
               disabled={busy !== null}
               accessibilityLabel="Sign in"
+              analyticsId={AUTH.sign_up.switch_to_sign_in}
             >
               Sign in
             </ButtonSecondary>

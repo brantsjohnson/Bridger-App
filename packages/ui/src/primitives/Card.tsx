@@ -5,26 +5,43 @@
 //  - ColorCard: the same box but filled with one of the playful accent colors
 //    (or a pale "tint" version). This is how color enters the app — through
 //    cards and chips, never the whole background (DESIGN.md).
-// Pass onPress to make either one tappable.
+// Pass onPress to make either one tappable. Pass analyticsId so the tap is
+// measured (or interactive={false} for dead_click on non-action card bodies).
 // ============================================
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import type { Accent } from '@bridger/shared';
 import { ACCENTS } from '../tokens';
 import { cn } from '../lib/cn';
+import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 
 type BaseProps = {
   children: React.ReactNode;
   className?: string;
   onPress?: () => void;
-};
+} & AnalyticsProps;
 
 /** Flat rounded container: opaque surface on the calm canvas. Hairline, never a shadow. */
-export function Card({ children, className, onPress }: BaseProps) {
+export function Card({
+  children,
+  className,
+  onPress,
+  analyticsId,
+  interactive,
+  analyticsProps
+}: BaseProps) {
   const classes = cn('rounded-card border border-ink-line bg-surface p-5', className);
-  if (onPress) {
+  const isInteractive = interactive ?? Boolean(onPress);
+
+  if (onPress || analyticsId) {
     return (
-      <Pressable onPress={onPress} className={cn(classes, 'active:opacity-90')}>
+      <Pressable
+        onPress={withAnalyticsPress(analyticsId, onPress, {
+          interactive: isInteractive,
+          analyticsProps
+        })}
+        className={cn(classes, onPress && 'active:opacity-90')}
+      >
         {children}
       </Pressable>
     );
@@ -38,13 +55,24 @@ export function ColorCard({
   children,
   className,
   onPress,
-  tint = false
+  tint = false,
+  analyticsId,
+  interactive,
+  analyticsProps
 }: BaseProps & { accent: Accent; tint?: boolean }) {
   const token = ACCENTS[accent];
   const classes = cn('rounded-card p-5', tint ? token.tintSolid : token.bg, className);
-  if (onPress) {
+  const isInteractive = interactive ?? Boolean(onPress);
+
+  if (onPress || analyticsId) {
     return (
-      <Pressable onPress={onPress} className={cn(classes, 'active:opacity-90')}>
+      <Pressable
+        onPress={withAnalyticsPress(analyticsId, onPress, {
+          interactive: isInteractive,
+          analyticsProps
+        })}
+        className={cn(classes, onPress && 'active:opacity-90')}
+      >
         {children}
       </Pressable>
     );

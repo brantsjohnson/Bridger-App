@@ -204,12 +204,13 @@ apps/mobile/
 │   │   ├── coop.tsx            # 8 · join the co-op?
 │   │   └── welcome-in.tsx      # 9 · sets onboardingComplete → Home
 │   ├── (tabs)/                 # the main app shell + FLOATING pill tab bar (detached, dynamic — see DESIGN.md)
-│   │   ├── _layout.tsx         # defines the 5 tabs + floating nav
+│   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; Profile opened from header avatar
 │   │   ├── home.tsx            # hub: announcements carousel, stories+responses, touch grass, ask-the-group, this-week (see HOME.md)
+│   │   ├── friends.tsx         # contact list + drag-drop tiering
+│   │   ├── messages.tsx        # capped inbox (5/day); share contact + make a plan (see MESSAGES.md)
 │   │   ├── events.tsx          # create / friends' events / community (coming soon)
 │   │   ├── discover.tsx        # suggestions + connection-intent settings + network graph
-│   │   ├── friends.tsx         # contact list + drag-drop tiering
-│   │   └── profile.tsx         # own profile = shared card + "View as" preview; content tabs: Profile | Stories | Inside Jokes | Bucket List + Settings gear (see PROFILE.md)
+│   │   └── profile.tsx         # own profile (header avatar, not in the pill); shared card + Settings (see PROFILE.md)
 │   ├── (connect)/              # making a new connection
 │   │   ├── add.tsx             # search / generate invite link
 │   │   ├── qr.tsx              # show my QR + scan someone else's

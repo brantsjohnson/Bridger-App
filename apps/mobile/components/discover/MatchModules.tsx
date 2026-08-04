@@ -1,102 +1,126 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// "Know me better" at the top of Discover — short private modules that only
-// feed introductions. Shows TWO widget tiles at a time (unfinished first);
-// "See all" expands the rest. Opening one launches ModuleFlow in private mode.
-// Answers never appear on a profile. (Avoids "match" dating-app wording.)
+// "Connect Over" at the top of Discover — short private modules that only feed
+// introductions (answers never appear on a profile). Each module is a big,
+// colored, rectangular card: emoji next to the title, a one-line description,
+// and a little "To do" / "Done" tag. On Discover we show a couple of cards with
+// a "See more" link that opens the full Connect Over screen; that screen reuses
+// this same component to show every module.
+// Analytics: opening one emits module_started; finishing emits module_completed
+// (module id only — never answer text).
 // ============================================
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { ChevronRightIcon } from 'lucide-react-native';
+import { DISCOVER, trackProduct } from '@bridger/shared';
 import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  ChevronUpIcon,
-  LockIcon
-} from 'lucide-react-native';
-import { ACCENTS, ModuleFlow, PixelHeading, cn, useThemeColors } from '@bridger/ui';
+  ACCENTS,
+  ModuleFlow,
+  SectionTitle,
+  cn,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
 import type { MatchModule } from '../../data/discover';
-
-/** How many module widgets show before "See all". */
-const PREVIEW_COUNT = 2;
 
 export function MatchModules({
   modules,
   completedIds,
-  onComplete
+  onComplete,
+  showHeader = true,
+  previewLimit,
+  onSeeMore,
+  tileAnalyticsId,
+  seeMoreAnalyticsId
 }: {
   modules: MatchModule[];
   completedIds: string[];
-  compact?: boolean;
   onComplete: (moduleId: string) => void | Promise<void>;
+  /** show the "Connect Over" pixel heading (off when a screen already titles it) */
+  showHeader?: boolean;
+  /** when set with onSeeMore, only this many cards show before "See more" */
+  previewLimit?: number;
+  /** tapped "See more" — usually navigates to the full Connect Over screen */
+  onSeeMore?: () => void;
+  /** analytics id for a card tap (defaults to the Discover preview id) */
+  tileAnalyticsId?: string;
+  /** analytics id for the "See more" link */
+  seeMoreAnalyticsId?: string;
 }) {
   const c = useThemeColors();
   const [openId, setOpenId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
   const active = modules.find((m) => m.id === openId) ?? null;
-  const done = completedIds.length;
-  const all = modules.length;
-  const complete = all > 0 && done === all;
+  /** when the open module started — for time_to_complete_ms */
+  const startedAt = useRef<number | null>(null);
 
-  // Unfinished modules first, so the two visible tiles are always actionable.
+  // Unfinished modules first, so the top cards are always actionable.
   const ordered = [...modules].sort((a, b) => {
     const aDone = completedIds.includes(a.id) ? 1 : 0;
     const bDone = completedIds.includes(b.id) ? 1 : 0;
     return aDone - bDone;
   });
-  const visible = expanded ? ordered : ordered.slice(0, PREVIEW_COUNT);
-  const hasMore = ordered.length > PREVIEW_COUNT;
+
+  // Preview mode = a limit + a "See more" handler. Otherwise show everything.
+  const isPreview = previewLimit != null && !!onSeeMore;
+  const visible = isPreview ? ordered.slice(0, previewLimit) : ordered;
+  const hasMore = isPreview && ordered.length > (previewLimit ?? 0);
+  const tileId = tileAnalyticsId ?? DISCOVER.connect_over.module_tile;
+
+  const openModule = (id: string) => {
+    setOpenId(id);
+    startedAt.current = Date.now();
+    trackProduct('module_started', { module: id });
+  };
+
+  const finishModule = () => {
+    if (!active) return;
+    const started = startedAt.current;
+    trackProduct('module_completed', {
+      module: active.id,
+      time_to_complete_ms: started != null ? Date.now() - started : undefined
+    });
+    startedAt.current = null;
+    void onComplete(active.id);
+    setOpenId(null);
+  };
 
   return (
     <View>
-      <View className="mb-2 flex-row items-baseline justify-between gap-3">
-        <PixelHeading size="md">Know me better</PixelHeading>
-        <Text className="font-sans-b text-[12px] text-ink-mute">
-          {done}/{all} done
-        </Text>
-      </View>
-
-      <View className="mb-3 flex-row items-start gap-1.5">
-        <LockIcon size={14} color={c.inkMute} strokeWidth={2.6} style={{ marginTop: 2 }} />
-        <Text className="flex-1 font-sans-sb text-[13px] leading-snug text-ink-mute">
-          Answers are never shared. They only connect you to more relevant friends.
-        </Text>
-      </View>
-
-      <View className="mb-3 h-1.5 overflow-hidden rounded-full bg-ink/10">
-        <View
-          className={cn('h-full rounded-full', complete ? 'bg-success' : 'bg-ink')}
-          style={{ width: all ? `${(done / all) * 100}%` : '0%' }}
+      {showHeader ? (
+        <SectionTitle
+          title="Connect Over"
+          description="Answer a few private questions. They are never shared and only help connect you to more relevant friends."
+          infoAnalyticsId={DISCOVER.connect_over.info}
+          parentScreen="discover"
+          section="connect_over"
+          className="mb-3"
         />
-      </View>
+      ) : null}
 
-      <View className="gap-2.5">
+      <View className="gap-3">
         {visible.map((m) => (
-          <ModuleWidget
+          <ModuleCard
             key={m.id}
             module={m}
             done={completedIds.includes(m.id)}
-            onOpen={() => setOpenId(m.id)}
+            analyticsId={tileId}
+            onOpen={() => openModule(m.id)}
           />
         ))}
       </View>
 
       {hasMore ? (
         <Pressable
-          onPress={() => setExpanded((v) => !v)}
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          accessibilityLabel={expanded ? 'Show fewer modules' : `See all ${all} modules`}
-          className="mt-2.5 min-h-[44px] w-full flex-row items-center justify-center gap-1.5 rounded-2xl border border-dashed border-ink-line bg-surface/60 px-4 py-3 active:bg-[#F1ECFF]"
-        >
-          <Text className="font-sans-b text-[13px] text-ink-soft">
-            {expanded ? 'Show less' : `See all ${all}`}
-          </Text>
-          {expanded ? (
-            <ChevronUpIcon size={16} color={c.inkSoft} strokeWidth={2.6} />
-          ) : (
-            <ChevronDownIcon size={16} color={c.inkSoft} strokeWidth={2.6} />
+          onPress={withAnalyticsPress(
+            seeMoreAnalyticsId ?? DISCOVER.connect_over.see_more,
+            onSeeMore
           )}
+          accessibilityRole="button"
+          accessibilityLabel="See more Connect Over modules"
+          className="mt-3 min-h-[44px] w-full flex-row items-center justify-center gap-1 py-2 active:opacity-70"
+        >
+          <Text className="font-sans-b text-[13px] text-ink-soft">See more</Text>
+          <ChevronRightIcon size={15} color={c.inkSoft} strokeWidth={2.6} />
         </Pressable>
       ) : null}
 
@@ -107,73 +131,75 @@ export function MatchModules({
           title={active.kind === 'quiz' ? `${active.title} · quiz` : active.title}
           intro={active.blurb}
           questions={active.questions}
-          onClose={() => setOpenId(null)}
-          onDone={() => {
-            void onComplete(active.id);
+          onClose={() => {
+            startedAt.current = null;
             setOpenId(null);
           }}
+          onDone={finishModule}
         />
       ) : null}
     </View>
   );
 }
 
-/** One module as a rectangular widget tile: big emoji square, title, blurb. */
-function ModuleWidget({
+/**
+ * One module as a big, colored, rectangular card: the module's accent fills the
+ * background, the emoji sits inline with the title, a short description sits
+ * under it, and a small tag reads "To do" (or "Done" once finished).
+ */
+function ModuleCard({
   module: m,
   done,
-  onOpen
+  onOpen,
+  analyticsId
 }: {
   module: MatchModule;
   done: boolean;
   onOpen: () => void;
+  analyticsId: string;
 }) {
-  const c = useThemeColors();
   const token = ACCENTS[m.accent];
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={withAnalyticsPress(analyticsId, onOpen, { analyticsProps: { module: m.id } })}
       accessibilityRole="button"
-      accessibilityLabel={`${m.title}${done ? ', done' : ''}. ${m.blurb}`}
+      accessibilityLabel={`${m.title}, ${done ? 'done' : 'to do'}. ${m.blurb}`}
       className={cn(
-        // bg-surface (not bg-white) so dark mode gets a raised dark card —
-        // otherwise text-ink goes light on pure white and the titles vanish.
-        'w-full flex-row items-center gap-3.5 rounded-2xl border bg-surface p-4',
-        done ? 'border-ink-line opacity-70' : 'border-ink-line active:border-purple/40'
+        'w-full rounded-2xl border border-ink/10 px-4 py-4 active:opacity-90',
+        token.tintSolid,
+        done && 'opacity-75'
       )}
     >
-      <View
-        accessible={false}
-        className={cn(
-          'h-12 w-12 shrink-0 items-center justify-center rounded-xl',
-          token.tintSolid
-        )}
-      >
-        <Text className="text-[22px]">{m.emoji}</Text>
-      </View>
-
-      <View className="min-w-0 flex-1">
-        <View className="flex-row items-center gap-1.5">
-          <Text numberOfLines={1} className="font-sans-b text-[15px] tracking-tight text-ink">
+      {/* Top row: emoji + title on the left, the little status tag on the right */}
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="min-w-0 flex-1 flex-row items-center gap-2.5">
+          <Text accessible={false} className="text-[22px]">
+            {m.emoji}
+          </Text>
+          <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-ink">
             {m.title}
           </Text>
-          {m.kind === 'quiz' ? (
-            <Text className="shrink-0 rounded-full bg-ink/5 px-1.5 py-0.5 font-sans-b text-[9px] uppercase tracking-wide text-ink-mute">
-              quiz
-            </Text>
-          ) : null}
         </View>
-        <Text numberOfLines={2} className="mt-0.5 font-sans-sb text-[12px] leading-snug text-ink-mute">
-          {m.blurb}
-        </Text>
+
+        <View
+          className={cn(
+            'shrink-0 rounded-md border px-2 py-1',
+            done ? 'border-success bg-success/20' : 'border-ink/40'
+          )}
+        >
+          <Text
+            className={cn(
+              'font-sans-b text-[10px] uppercase tracking-wide',
+              done ? 'text-success' : 'text-ink/70'
+            )}
+          >
+            {done ? 'Done' : 'To do'}
+          </Text>
+        </View>
       </View>
 
-      {done ? (
-        <CheckIcon size={18} color="#2FA85B" strokeWidth={2.8} />
-      ) : (
-        <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.5} />
-      )}
+      <Text className="mt-2 font-sans-sb text-[13px] leading-snug text-ink/80">{m.blurb}</Text>
     </Pressable>
   );
 }

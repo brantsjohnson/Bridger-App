@@ -187,7 +187,11 @@ export function HomeScreen({
       case 'alerts':
         return <AlertsWidget size={widget.size} onOpen={() => onOpenTab?.('notifications')} />;
       case 'comingup':
-        return <ComingUpWidget onOpenPerson={() => onOpenTab?.('person')} />;
+        return (
+          <ComingUpWidget
+            onOpenPerson={(id) => onOpenTab?.(`person:${id}`)}
+          />
+        );
       case 'ask':
         return (
           <AskWidget

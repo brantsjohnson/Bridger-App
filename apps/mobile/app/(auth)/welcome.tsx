@@ -18,7 +18,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PixelHeading, Screen } from '@bridger/ui';
+import { AUTH, openSurface } from '@bridger/shared';
+import { AnalyticsRegion, PixelHeading, Screen } from '@bridger/ui';
 import { BEAT_MS, WELCOME_BEATS, WELCOME_SEEN_KEY } from '../../content/welcome';
 
 export default function WelcomeScreen() {
@@ -35,6 +36,11 @@ export default function WelcomeScreen() {
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+  }, []);
+
+  // Welcome is its own analytics surface (auto-play; still measure dead-clicks).
+  useEffect(() => {
+    openSurface('auth');
   }, []);
 
   // --- Animate the current beat in (or snap if Reduce Motion is on) ---
@@ -82,44 +88,62 @@ export default function WelcomeScreen() {
   return (
     <Screen tone="canvas">
       <View className="flex-1 justify-between px-7 pb-10 pt-16">
-        <PixelHeading size="sm" className="text-ink-mute">
-          Bridger
-        </PixelHeading>
+        <AnalyticsRegion
+          analyticsId={AUTH.welcome.brand}
+          interactive={false}
+          accessibilityLabel="Bridger"
+        >
+          <PixelHeading size="sm" className="text-ink-mute">
+            Bridger
+          </PixelHeading>
+        </AnalyticsRegion>
 
-        <Animated.View style={beatStyle} className="flex-1 pt-16">
-          {beat.kind === 'stat' ? (
-            <View>
-              {/* Square frame with a coral bar that fills from the bottom. */}
-              <View className="mb-5 h-40 w-full justify-end overflow-hidden border-2 border-ink">
-                <Animated.View style={barStyle} className="w-full bg-coral" />
+        <AnalyticsRegion
+          analyticsId={AUTH.welcome.beat_body}
+          interactive={false}
+          className="flex-1"
+        >
+          <Animated.View style={beatStyle} className="flex-1 pt-16">
+            {beat.kind === 'stat' ? (
+              <View>
+                {/* Square frame with a coral bar that fills from the bottom. */}
+                <View className="mb-5 h-40 w-full justify-end overflow-hidden border-2 border-ink">
+                  <Animated.View style={barStyle} className="w-full bg-coral" />
+                </View>
+                <Text className="font-sans-b text-[22px] leading-tight tracking-tight text-ink">
+                  {beat.text}
+                </Text>
               </View>
-              <Text className="font-sans-b text-[22px] leading-tight tracking-tight text-ink">
+            ) : (
+              <Text
+                className={
+                  last
+                    ? 'font-pixel text-[34px] leading-tight text-ink'
+                    : 'font-sans-b text-[26px] leading-tight tracking-tight text-ink'
+                }
+              >
                 {beat.text}
               </Text>
-            </View>
-          ) : (
-            <Text
-              className={
-                last
-                  ? 'font-pixel text-[34px] leading-tight text-ink'
-                  : 'font-sans-b text-[26px] leading-tight tracking-tight text-ink'
-              }
-            >
-              {beat.text}
-            </Text>
-          )}
-        </Animated.View>
+            )}
+          </Animated.View>
+        </AnalyticsRegion>
 
-        {/* Progress ticks — filled up to the current beat. */}
-        <View
-          className="flex-row gap-1.5"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
+        {/* Progress ticks — filled up to the current beat (dead-click target). */}
+        <AnalyticsRegion
+          analyticsId={AUTH.welcome.progress_bar}
+          interactive={false}
+          accessibilityLabel="Welcome progress"
         >
-          {WELCOME_BEATS.map((b, i) => (
-            <View key={b.id} className={`h-1 flex-1 ${i <= index ? 'bg-ink' : 'bg-ink/15'}`} />
-          ))}
-        </View>
+          <View
+            className="flex-row gap-1.5"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {WELCOME_BEATS.map((b, i) => (
+              <View key={b.id} className={`h-1 flex-1 ${i <= index ? 'bg-ink' : 'bg-ink/15'}`} />
+            ))}
+          </View>
+        </AnalyticsRegion>
       </View>
     </Screen>
   );

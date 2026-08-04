@@ -3,9 +3,11 @@
 // One request or suggestion opened full-screen: their face, Accept/Decline
 // (or Add / Not now), Map A of how you're linked, and what you have in common.
 // Full connection reveal ships later (REVEAL.md); this is the decision surface.
+// Analytics: approve/decline use DISCOVER.wants_to_connect.*; Add uses people_to_meet.add.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+import { DISCOVER } from '@bridger/shared';
 import {
   Avatar,
   ButtonSecondary,
@@ -44,12 +46,18 @@ export function ConnectionDetail({
     setDecision(null);
   }, [personId, kind]);
 
+  // Requests use approve/decline; suggestions reuse add / dismiss ids.
+  const acceptId =
+    kind === 'request' ? DISCOVER.wants_to_connect.approve : DISCOVER.people_to_meet.add;
+  const declineId =
+    kind === 'request' ? DISCOVER.wants_to_connect.decline : DISCOVER.people_to_meet.dismiss;
+
   return (
     <Screen tone="synth">
-      <ScreenHeader title="Connect" onBack={onBack} hideMessages />
+      <ScreenHeader title="Connect" onBack={onBack} hideProfile analyticsSurface="discover" />
       <ScreenBody>
         <View className="items-center">
-          <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="xl" />
+          <Avatar name={person.name} emoji={person.emoji} accent={person.accent} personId={person.id} size="xl" />
           <Text className="mt-3 font-sans-b text-[20px] tracking-tight text-ink">
             {person.name}
           </Text>
@@ -64,6 +72,7 @@ export function ConnectionDetail({
               full
               size="lg"
               tone={decision === 'declined' ? 'solid' : 'outline'}
+              analyticsId={declineId}
               onPress={() => {
                 setDecision('declined');
                 onDecline();
@@ -78,6 +87,7 @@ export function ConnectionDetail({
               full
               size="lg"
               tone="positive"
+              analyticsId={acceptId}
               onPress={() => {
                 setDecision('accepted');
                 onAccept();

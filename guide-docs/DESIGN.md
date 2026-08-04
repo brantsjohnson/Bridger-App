@@ -19,9 +19,9 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 | Context | Background |
 |---|---|
-| Main app (home, friends, events, profile, feed) | eggshell / black |
+| Main app (home, friends, events, profile, feed) | eggshell / black, with the drifting grid behind it |
 | Onboarding, profile fill modules, empty states | colorful |
-| Discover | synth (see below) |
+| Discover | the same grid, turned up (see below) |
 | Settings, forms, account | plainest — eggshell, minimal decoration |
 
 ---
@@ -48,6 +48,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 - Rounded rectangles, pill buttons, soft cards, clean modular blocks. Radius ~12–24px on cards, pill radius on chips/buttons.
 - **Floating nav bar.** The bottom navigation is a **detached, rounded pill** inset from the screen edge — Apple's newer dynamic/"liquid-glass" style: translucent where possible, subtly dynamic (may shrink or tuck away on scroll), active destination shown as a filled circle. Not a full-width bar flush to the bottom edge.
 - **Flat.** No heavy shadows, no fake depth, no busy textures. A faint hairline or a solid color fill separates surfaces — that's enough.
+- **Cards carry color, not white.** `surface` is a soft tint, not white, so a card reads as a colored block on the canvas. The **profile section widgets are the one exception** (`CollapsibleSection` asks for white directly) because they are long reading blocks and want the calmest possible background.
 - Generous whitespace; bold but never cluttered.
 
 ---
@@ -58,15 +59,25 @@ The hobby/interest pickers must **not** feel like a plain checklist or a dating 
 
 ---
 
-## Discover — the synth exception
+## The drifting grid — Bridger's backdrop
 
-Discover is the **one place that goes full 80s synth**, because exploration should feel like an adventure:
+The slowly-drifting perspective grid is **the app's background everywhere**, not a Discover-only trick. It is the one part of synth Bridger actually wants — not the neon, not the chrome.
 
-- **Subtle animated grid background** — a faint perspective grid that **slowly drifts so it feels alive**, kept **blurred and atmospheric** (low-contrast, soft) so it never competes with content. This moving grid is the *only* part of synth Bridger actually wants — not the neon, not the chrome.
-- **But the maps and graphs stay neoclassical.** The friend maps (Map A / Map B in `DISCOVER.md`) and any connection graphs render **clean and modern** — thin lines, tidy nodes, readable — on a crisp eggshell card floating over the grid. The synth is the *stage*; the map is the *content*, and content stays clean.
+- **Every screen gets it.** `Screen` renders `SynthGrid` behind the content. Only `tone="plain"` screens skip it (the story player and anything drawn edge to edge over a photo, where a grid just looks like dirt).
+- **Discover gets the boldest version** (`strength="bold"`); everywhere else is one step down. It still has to stay behind the content — text on top must read comfortably.
+- **The maps and graphs stay neoclassical.** The friend maps (Map A / Map B in `DISCOVER.md`) and any connection graphs render **clean and modern** — thin lines, tidy nodes, readable — on a crisp card floating over the grid. The grid is the *stage*; the map is the *content*, and content stays clean.
 - Pixel **Discover** header sits on the synth canvas.
 
-Everywhere else, the grid is either absent or barely-there — Discover owns the effect.
+## Gradients — allowed in exactly two places
+
+Bridger is otherwise flat, but color-coded relationships need a gradient to read as a ring:
+
+- **Tier rings** around story tiles (`GradientRing`) — yellow for you, green for a close friend, blue for a friend, orange for an acquaintance.
+- **Message cards**, using the same four colors, with the pale (`soft`) pair meaning "you already replied, waiting on them".
+
+Both come from `TIER_GRADIENT` in tokens. Do not hand-roll a gradient anywhere else, and never use one for depth or shine.
+
+**ACCESSIBILITY:** the ring color is never the only signal — the name, tier label, and card shape all say the same thing in words and form.
 
 ---
 
@@ -115,6 +126,8 @@ radius: cards 12–24px · chips/buttons = pill
 - [ ] Primary CTAs use the beveled retro-metallic style; other buttons stay flat. The treatment is reserved, not universal.
 - [ ] Surfaces are flat and rounded — no heavy shadows or textures.
 - [ ] Interest/hobby selectors are colorful illustrated blobs, not a plain checklist.
-- [ ] Discover shows a subtle, slowly-drifting, atmospheric grid; its maps/graphs render clean and neoclassical on top.
+- [ ] The slowly-drifting grid sits behind every screen (Discover boldest, `tone="plain"` screens excepted); maps/graphs render clean and neoclassical on top.
+- [ ] Cards are tinted, not white — except the profile section widgets.
+- [ ] Gradients appear only as tier rings and message cards, sourced from `TIER_GRADIENT`.
 - [ ] Transitions are smooth and content breathes in; all motion is transform/opacity only and respects `prefers-reduced-motion`.
 - [ ] Retro cues stay ~20% of the surface; functional screens remain plain.

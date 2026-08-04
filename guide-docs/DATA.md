@@ -95,6 +95,9 @@ connections      id · user_a⟶users · user_b⟶users · status(pending|accept
 blocks           blocker_id⟶users · blocked_id⟶users · created_at
                  [excludes both directions from suggestions + as mutual bridge for the blocker; hides/unreaches; other friendships untouched; unblockable]
 suggestion_skips blocker_id⟶users · skipped_id⟶users        ["don't suggest again" — soft, one-directional]
+analytics_events id · analytics_id · action · screen · section · element · platform · app_version
+                 · session_id · user_ref(opaque, consented) · props(jsonb) · created_at
+                 [first-party product analytics — NO PII, NO content; separate from matching; hard-deleted with the account; see analytics-rules.mdc]
 tiers            user_id⟶users · other_id⟶users · tier(close|friend|acquaintance)   [per-viewer]
 invite_links     token · owner_id⟶users · expires_at
 qr_tokens        token · owner_id⟶users · expires_at

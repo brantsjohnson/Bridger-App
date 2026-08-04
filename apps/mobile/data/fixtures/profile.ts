@@ -10,7 +10,8 @@ import type { Accent, BucketItem, Tier } from '@bridger/shared';
 export const ME_PROFILE = {
   city: 'Portland, OR',
   bio: 'Making zines nobody asked for. Always down for a walk.',
-  song: { title: 'Archie, Marry Me', artist: 'Alvvays' }
+  song: { title: 'Archie, Marry Me', artist: 'Alvvays' },
+  book: { title: 'Piranesi', author: 'Susanna Clarke' }
 };
 
 /** The weekly check-in card: one song, one book. */
@@ -42,6 +43,8 @@ export type Interest = {
   emoji: string;
   accent: Accent;
   shape?: number;
+  /** PRIVACY: who can see this hobby (defaults wider) */
+  tier?: Tier;
 };
 
 export const INTERESTS: Interest[] = [
@@ -104,6 +107,8 @@ export type ThisOrThatRow = {
   b: string;
   pick: 'a' | 'b' | 'both';
   emoji: string;
+  /** PRIVACY: who can see this pick */
+  tier?: Tier;
 };
 
 /** "Both" is a first-class answer. Plenty of people genuinely are. */
@@ -125,6 +130,8 @@ export type TravelPlace = {
   y: number;
   emoji: string;
   year?: string;
+  /** PRIVACY: who can see this place */
+  tier?: Tier;
 };
 
 export const TRAVEL_PLACES: TravelPlace[] = [

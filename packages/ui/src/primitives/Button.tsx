@@ -7,11 +7,13 @@
 //  - ButtonSecondary: everything else — a flat rounded pill, in a few tones
 //    (outline / solid / ghost / positive).
 // Both handle disabled + loading states and an optional leading icon.
+// Pass analyticsId so taps auto-emit through the shared analytics module.
 // ============================================
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { METAL_BEVEL, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
+import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 
 type ButtonProps = {
   children: React.ReactNode;
@@ -24,7 +26,7 @@ type ButtonProps = {
   className?: string;
   /** ACCESSIBILITY: spoken label for VoiceOver / TalkBack */
   accessibilityLabel?: string;
-};
+} & AnalyticsProps;
 
 const heights = {
   sm: 'h-9 px-4',
@@ -47,13 +49,16 @@ export function ButtonPrimary({
   size = 'lg',
   icon,
   className,
-  accessibilityLabel
+  accessibilityLabel,
+  analyticsId,
+  interactive = true,
+  analyticsProps
 }: ButtonProps) {
   const inert = disabled || loading;
   const c = useThemeColors();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={withAnalyticsPress(analyticsId, onPress, { interactive, analyticsProps })}
       disabled={inert}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -92,7 +97,10 @@ export function ButtonSecondary({
   icon,
   tone = 'outline',
   className,
-  accessibilityLabel
+  accessibilityLabel,
+  analyticsId,
+  interactive = true,
+  analyticsProps
 }: ButtonProps & { tone?: 'outline' | 'solid' | 'ghost' | 'positive' }) {
   const inert = disabled || loading;
   const c = useThemeColors();
@@ -111,7 +119,7 @@ export function ButtonSecondary({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={withAnalyticsPress(analyticsId, onPress, { interactive, analyticsProps })}
       disabled={inert}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

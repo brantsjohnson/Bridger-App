@@ -169,6 +169,55 @@ export const BLOB_SHAPES = [
   { borderTopLeftRadius: 56, borderTopRightRadius: 40, borderBottomRightRadius: 56, borderBottomLeftRadius: 40 }
 ] as const;
 
+/**
+ * Messages inbox card shapes — the OUTLINE of a conversation row tells you its
+ * status at a glance, so you can scan the inbox without reading:
+ *   • needsReply — they messaged last and the ball is in your court. Squared
+ *     top-left corner, rounded everywhere else (leans toward you).
+ *   • replied — you already answered; you're waiting on them. Squared
+ *     bottom-right corner, rounded everywhere else (leans away, the mirror).
+ *   • maxed — you've used all 5 messages for today with this friend. A fully
+ *     rounded pill on both sides, so a "done for today" thread looks closed.
+ */
+export const MESSAGE_SHAPES = {
+  needsReply: { borderTopLeftRadius: 44, borderTopRightRadius: 999, borderBottomRightRadius: 999, borderBottomLeftRadius: 999 },
+  replied: { borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomRightRadius: 44, borderBottomLeftRadius: 999 },
+  maxed: { borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomRightRadius: 999, borderBottomLeftRadius: 999 }
+} as const;
+
+export type MessageCardState = keyof typeof MESSAGE_SHAPES;
+
+/**
+ * TIER COLORS — how close someone is, shown as a color instead of a label.
+ * Used for the ring around a story tile and for message cards, so the same
+ * person reads the same color everywhere in the app:
+ *   me           yellow  (your own update)
+ *   close        green
+ *   friend       blue
+ *   acquaintance orange
+ *
+ * `strong` is the normal, vivid pair. `soft` is the same color lightened — it
+ * means "nothing needed from you right now" (in Messages: you already replied
+ * and are waiting on them).
+ */
+export type RingTone = 'me' | 'close' | 'friend' | 'acquaintance';
+
+/**
+ * Turn a friendship tier into a ring color. 'none' (someone you have not
+ * placed in a circle yet) gets the loosest color rather than no color at all,
+ * so a tile never renders ringless.
+ */
+export function ringToneForTier(tier: 'close' | 'friend' | 'acquaintance' | 'none'): RingTone {
+  return tier === 'none' ? 'acquaintance' : tier;
+}
+
+export const TIER_GRADIENT: Record<RingTone, { strong: [string, string]; soft: [string, string] }> = {
+  me: { strong: ['#FFD84A', '#FF9F1C'], soft: ['#FFEFB8', '#FFD98F'] },
+  close: { strong: ['#8FE05C', '#2FA85B'], soft: ['#DDF3C6', '#B2E0A0'] },
+  friend: { strong: ['#5AA0FF', '#1D6FE8'], soft: ['#CFE1FC', '#A6C4F2'] },
+  acquaintance: { strong: ['#FFB05B', '#FF5A1F'], soft: ['#FFDCC4', '#FFBE9B'] }
+};
+
 export const ORGANIC = {
   soft: {
     borderTopLeftRadius: 26,

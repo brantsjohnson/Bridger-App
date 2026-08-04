@@ -1,0 +1,319 @@
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// One conversation — capped at 5 messages a day each way. Bubbles, a live
+// "left today" chip, Share contact / Make a plan (never count against the
+// cap), and a composer that locks when you are out. If they burned their 5,
+// we show a clear notice and nudge you to share contact instead.
+// SECURITY: plaintext is only in memory after decrypt; never log bubble text.
+// ============================================
+import React, { useEffect, useState } from 'react';
+import {
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  ArrowUpIcon,
+  CalendarPlusIcon,
+  ChevronLeftIcon,
+  ClockIcon,
+  PhoneIcon,
+  UserRoundPlusIcon
+} from 'lucide-react-native';
+import { DAILY_CAP, MESSAGES } from '@bridger/shared';
+import {
+  ACCENTS,
+  AnalyticsRegion,
+  Avatar,
+  cn,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
+import { useThread } from '../../hooks/useThread';
+import { TouchGrassSheet } from '../TouchGrassSheet';
+import { useTouchGrass } from '../../hooks/useTouchGrass';
+
+type Props = {
+  threadId: string;
+  onBack?: () => void;
+  /** Optional pre-sent message (e.g. touch-grass "I'm in") */
+  seedMessage?: string;
+};
+
+export function ThreadScreen({
+  threadId,
+  onBack,
+  seedMessage
+}: Props) {
+  const insets = useSafeAreaInsets();
+  const c = useThemeColors();
+  const { thread, loading, onSend, onShareContact, onMakePlan, myLeft, theirLeft, atCap } =
+    useThread(threadId);
+  const touchGrass = useTouchGrass();
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [seeded, setSeeded] = useState(false);
+
+  // Seed once if we arrived from touch-grass "I'm in"
+  useEffect(() => {
+    if (!seedMessage || seeded || !thread || loading) return;
+    setSeeded(true);
+    void onSend(seedMessage);
+  }, [seedMessage, seeded, thread, loading, onSend]);
+
+  if (loading || !thread) {
+    return (
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <Text className="font-sans-sb text-[14px] text-ink-mute">
+          {loading ? 'Loading…' : 'Conversation not found'}
+        </Text>
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          className="mt-4 min-h-[44px] rounded-full border border-ink-line px-5 py-2"
+        >
+          <Text className="font-sans-b text-[14px] text-ink">Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Messages are all blue now (the inbox uses card SHAPE, not color, for
+  // status), so your sent bubbles stay a single, calm blue.
+  const token = ACCENTS.blue;
+  const first = thread.name.split(' ')[0] ?? thread.name;
+  const theyMaxed = theirLeft <= 0;
+  // Keep every message short — 150 characters, so this stays a nudge, not a
+  // place to write essays.
+  const MESSAGE_MAX = 150;
+
+  const send = async () => {
+    if (!draft.trim() || atCap || sending) return;
+    setSending(true);
+    try {
+      await onSend(draft);
+      setDraft('');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // Share contact posts the card into the thread (uncounted). Setup lives on
+  // the Messages list "Your contact card" row — don't yank them out mid-chat.
+  const share = async () => {
+    await onShareContact();
+  };
+
+  return (
+    <View className="flex-1 bg-canvas" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+      <View
+        style={{ paddingTop: Math.max(insets.top, 8) }}
+        className="flex-row items-center gap-3 border-b border-ink-line bg-white px-4 py-3"
+      >
+        <Pressable
+          onPress={withAnalyticsPress(MESSAGES.conversation.back, onBack)}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          className="h-9 w-9 items-center justify-center rounded-full active:bg-[#F1ECFF]"
+        >
+          <ChevronLeftIcon size={20} color={c.ink} strokeWidth={2.6} />
+        </Pressable>
+        <Avatar
+          name={thread.name}
+          emoji={thread.emoji}
+          accent={thread.accent}
+          personId={thread.personId}
+          size="sm"
+        />
+        <Text
+          numberOfLines={1}
+          className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-ink"
+        >
+          {thread.name}
+        </Text>
+        <View
+          className={cn(
+            'shrink-0 rounded-full px-2.5 py-1',
+            myLeft > 0 ? 'bg-[#DFF3E4]' : 'bg-[#FFE1D2]'
+          )}
+        >
+          <Text
+            className={cn(
+              'font-sans-b text-[11px]',
+              myLeft > 0 ? 'text-success' : 'text-coral'
+            )}
+          >
+            {myLeft} left today
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView
+        className="flex-1 px-4 py-4"
+        contentContainerStyle={{ gap: 10, paddingBottom: 12 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {thread.bubbles.map((b) => (
+          <View
+            key={b.id}
+            className={cn('flex-row', b.from === 'me' ? 'justify-end' : 'justify-start')}
+          >
+            <View
+              className={cn(
+                'max-w-[76%] px-4 py-2.5',
+                b.from === 'me'
+                  ? cn('rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[20px] rounded-br-[6px]', token.bg)
+                  : 'rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[6px] rounded-br-[20px] border border-ink-line bg-white'
+              )}
+            >
+              <Text
+                className={cn(
+                  'font-sans-sb text-[15px] leading-snug',
+                  b.from === 'me' ? token.text : 'text-ink'
+                )}
+              >
+                {b.text}
+              </Text>
+              {b.phone ? (
+                <Pressable
+                  onPress={() => void Linking.openURL(`tel:${b.phone}`)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Call ${b.phone}`}
+                  className="mt-1 flex-row items-center gap-1"
+                >
+                  <Text className="font-sans-b text-[14px] text-success underline">
+                    {b.phone}
+                  </Text>
+                  <PhoneIcon size={14} color="#2FA85B" strokeWidth={2.6} />
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ))}
+
+        {theyMaxed ? (
+          <AnalyticsRegion
+            analyticsId={MESSAGES.conversation.maxed_notice}
+            interactive={false}
+            className="rounded-2xl bg-[#FDEFD3] px-4 py-3.5"
+            accessibilityLabel={`${first} used their ${DAILY_CAP} for today. They cannot reply until tomorrow.`}
+          >
+            <ClockIcon size={16} color="#FFB515" strokeWidth={2.6} style={{ alignSelf: 'center' }} />
+            <Text className="mt-1.5 text-center font-sans-sb text-[13px] leading-snug text-ink-soft">
+              <Text className="font-sans-b text-ink">
+                {first}'s used their {DAILY_CAP} for today
+              </Text>{' '}
+              They can't reply until tomorrow.
+            </Text>
+          </AnalyticsRegion>
+        ) : null}
+      </ScrollView>
+
+      <View className="gap-2.5 px-4 pt-2">
+        {theyMaxed ? (
+          <>
+            <Pressable
+              onPress={withAnalyticsPress(MESSAGES.conversation.share_contact, () =>
+                void share()
+              )}
+              accessibilityRole="button"
+              accessibilityLabel="Share your contact instead"
+              className="min-h-[44px] w-full flex-row items-center justify-center gap-2 rounded-2xl bg-[#DFF3E4] px-4 py-4"
+            >
+              <UserRoundPlusIcon size={20} color="#2FA85B" strokeWidth={2.5} />
+              <Text className="font-sans-b text-[16px] text-success">
+                Share your contact instead
+              </Text>
+            </Pressable>
+            <Text className="text-center font-sans-sb text-[12px] text-ink-mute">
+              so you two can actually connect
+            </Text>
+          </>
+        ) : (
+          <>
+            <View className="flex-row gap-2.5">
+              <Pressable
+                onPress={withAnalyticsPress(MESSAGES.conversation.share_contact, () =>
+                  void share()
+                )}
+                accessibilityRole="button"
+                accessibilityLabel="Share my number"
+                className="min-h-[44px] flex-1 flex-row items-center justify-center gap-2 rounded-full bg-[#DFF3E4] px-3 py-2.5"
+              >
+                <PhoneIcon size={16} color="#2FA85B" strokeWidth={2.6} />
+                <Text className="font-sans-b text-[13px] text-success">Share my number</Text>
+              </Pressable>
+              <Pressable
+                onPress={withAnalyticsPress(MESSAGES.conversation.make_a_plan, () => {
+                  void onMakePlan();
+                  setPlanOpen(true);
+                })}
+                accessibilityRole="button"
+                accessibilityLabel="Make a plan"
+                className="min-h-[44px] flex-1 flex-row items-center justify-center gap-2 rounded-full bg-[#EDE6FF] px-3 py-2.5"
+              >
+                <CalendarPlusIcon size={16} color="#6B2FEA" strokeWidth={2.6} />
+                <Text className="font-sans-b text-[13px] text-purple">Make a plan</Text>
+              </Pressable>
+            </View>
+
+            {atCap ? (
+              <View className="rounded-2xl border border-coral/30 bg-[#FFE1D2] px-4 py-3">
+                <Text className="text-center font-sans-b text-[13px] text-coral">
+                  Out of messages today — share contact or make a plan
+                </Text>
+              </View>
+            ) : (
+              <View className="flex-row items-center gap-2 rounded-full border border-ink-line bg-white py-1.5 pl-4 pr-1.5">
+                <TextInput
+                  value={draft}
+                  onChangeText={(text) => setDraft(text.slice(0, MESSAGE_MAX))}
+                  onSubmitEditing={() => void send()}
+                  returnKeyType="send"
+                  maxLength={MESSAGE_MAX}
+                  placeholder="Message…"
+                  accessibilityLabel="Message"
+                  placeholderTextColor={c.inkMute}
+                  className="min-w-0 flex-1 font-sans-sb text-[15px] text-ink"
+                />
+                <Pressable
+                  onPress={withAnalyticsPress(MESSAGES.composer.send, () => void send())}
+                  disabled={sending || !draft.trim()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send"
+                  accessibilityState={{ disabled: sending || !draft.trim() }}
+                  className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success disabled:opacity-40"
+                >
+                  <ArrowUpIcon size={20} color="#FFFFFF" strokeWidth={2.8} />
+                </Pressable>
+              </View>
+            )}
+
+            <Text className="text-center font-sans-sb text-[12px] text-ink-mute">
+              {myLeft} of {DAILY_CAP} left today
+              {draft.length > 0
+                ? ` · ${draft.length}/${MESSAGE_MAX}`
+                : ' · swap numbers to keep going'}
+            </Text>
+          </>
+        )}
+      </View>
+
+      <TouchGrassSheet
+        open={planOpen}
+        onClose={() => setPlanOpen(false)}
+        parentScreen="messages"
+        onSend={(input) => {
+          void touchGrass.onSend(input);
+          setPlanOpen(false);
+        }}
+      />
+    </View>
+  );
+}

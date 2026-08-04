@@ -9,6 +9,7 @@
 // --- Tokens + helpers ---
 export * from './tokens';
 export * from './lib/cn';
+export * from './lib/analytics';
 
 // --- Primitives (the small reusable building blocks) ---
 export * from './primitives/PixelHeading';
@@ -22,6 +23,8 @@ export * from './primitives/Sheet';
 export * from './primitives/CountdownChip';
 export * from './primitives/EmptyState';
 export * from './primitives/SectionCount';
+export * from './primitives/SectionTitle';
+export * from './primitives/InfoPopover';
 export * from './primitives/SearchField';
 export * from './primitives/Toggle';
 export * from './primitives/Badge';
@@ -30,8 +33,13 @@ export * from './primitives/ModuleFlow';
 export * from './primitives/SegmentedTabs';
 export * from './primitives/CollapsibleSection';
 export * from './primitives/StorageBar';
+export * from './primitives/AudiencePicker';
+export * from './primitives/GradientRing';
+export * from './primitives/SegmentedProgress';
+export * from './primitives/StepProgress';
 
 // --- Layout (the screen scaffold + the floating navigation) ---
 export * from './layout/Screen';
 export * from './layout/SynthGrid';
 export * from './layout/FloatingTabBar';
+export * from './layout/ProfileLink';

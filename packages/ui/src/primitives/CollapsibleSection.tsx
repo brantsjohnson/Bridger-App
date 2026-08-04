@@ -29,7 +29,9 @@ export function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <View className="rounded-card border border-ink-line bg-surface">
+    // Profile sections stay plain white on purpose — they are long reading
+    // blocks, so they keep the calmest background in the app.
+    <View className="rounded-card border border-ink-line bg-white dark:bg-canvas-raised">
       <View className="flex-row items-center gap-2 px-4 py-3">
         <Pressable
           onPress={() => setOpen((v) => !v)}

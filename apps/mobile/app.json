@@ -37,6 +37,15 @@
           "resizeMode": "contain",
           "backgroundColor": "#F4F1E7"
         }
+      ],
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Bridger uses your camera so you can post an update and send a 10 second video reply to a friend.",
+          "microphonePermission": "Bridger uses your microphone so your video replies have sound.",
+          "recordAudioAndroid": true
+        }
       ]
     ],
     "experiments": {

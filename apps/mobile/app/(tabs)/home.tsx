@@ -3,12 +3,19 @@
 // The Home tab — ported from Magic Patterns. Announcements, stories, editable
 // widgets. Data comes from hooks (demo fixtures or live API) so this screen
 // is the real product either way. Touch Grass *send* lives on Events.
+// Analytics: opens the home surface; child components carry HOME.* ids.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ButtonSecondary, PixelHeading, Screen, ScreenBody, ScreenHeader } from '@bridger/ui';
-import type { GrassSignal } from '@bridger/shared';
+import {
+  ButtonSecondary,
+  Screen,
+  ScreenBody,
+  ScreenHeader,
+  SectionTitle
+} from '@bridger/ui';
+import { HOME, openSurface, trackProduct, type GrassSignal } from '@bridger/shared';
 import { AddStoryTile, StoryTile } from '../../components/StoryTile';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { ColdStart } from '../../components/ColdStart';
@@ -31,6 +38,7 @@ import { AskSheet } from '../../components/home/AskSheet';
 import { ComingUpWidget } from '../../components/home/ComingUpWidget';
 import { FreshnessCard } from '../../components/home/FreshnessCard';
 import { StoryRepliesRow } from '../../components/home/StoryRepliesRow';
+import { startThreadWith } from '../../data/messages';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
@@ -63,6 +71,29 @@ const TITLES: Record<WidgetKey, string> = {
   coop: 'Co-op'
 };
 
+// Short "what is this section?" copy for the info bubble on each widget title.
+const DESCRIPTIONS: Record<WidgetKey, string> = {
+  event: 'Everything happening in your group over the next few days, gathered in one spot.',
+  alerts:
+    'New activity meant for you, like replies, invites, and requests. Tap See all to view everything.',
+  comingup: 'A look ahead at events and plans on the horizon so nothing sneaks up on you.',
+  ask: 'Start a quick poll or question for your group and see what everyone thinks.',
+  activity: "This week's group prompt. Join in and see what everyone else posted.",
+  quiz: 'A short weekly quiz that helps your friends get to know you better.',
+  coop: 'The member side of Bridger. Vote, give feedback, and help shape what gets built.'
+};
+
+// Analytics section name + info trigger id for each Home widget.
+const INFO: Record<WidgetKey, { section: string; infoAnalyticsId: string }> = {
+  event: { section: 'this_week', infoAnalyticsId: HOME.this_week.info },
+  alerts: { section: 'notifications_preview', infoAnalyticsId: HOME.notifications_preview.info },
+  comingup: { section: 'coming_up', infoAnalyticsId: HOME.coming_up.info },
+  ask: { section: 'ask_the_group', infoAnalyticsId: HOME.ask_the_group.info },
+  activity: { section: 'activity', infoAnalyticsId: HOME.activity.info },
+  quiz: { section: 'quiz', infoAnalyticsId: HOME.quiz.info },
+  coop: { section: 'coop', infoAnalyticsId: HOME.coop.info }
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const feed = useHomeFeed();
@@ -82,6 +113,11 @@ export default function HomeScreen() {
   const nextEvent = events[0] ?? null;
   const [quizResultId] = useState<string | null>(null);
 
+  // Mark Home as the active analytics surface when this tab opens.
+  useEffect(() => {
+    openSurface('home');
+  }, []);
+
   useEffect(() => {
     setLayout(empty ? EMPTY_LAYOUT : DEFAULT_LAYOUT);
   }, [empty]);
@@ -97,10 +133,22 @@ export default function HomeScreen() {
         <View>
           <FreeSignalCard
             signal={signal}
+            analyticsIds={{
+              card: HOME.announcements.card,
+              imIn: HOME.announcements.touch_grass_im_in,
+              details: HOME.announcements.touch_grass_details,
+              dismiss: HOME.announcements.touch_grass_dismiss
+            }}
             onOpen={() => setOpenSignal(signal)}
             onJoined={() => {
               void onJoin(signal.id);
-              Alert.alert("You're in", 'Messages will open here when chat ships.');
+              void (async () => {
+                const id = await startThreadWith(signal.personId);
+                router.push({
+                  pathname: '/messages/[id]',
+                  params: { id, seed: "I'm in" }
+                });
+              })();
             }}
             onDismiss={() => {
               void onDismiss(signal.id);
@@ -189,7 +237,9 @@ export default function HomeScreen() {
         return (
           <ComingUpWidget
             items={feed.comingUp}
-            onOpenPerson={() => router.push('/(tabs)/friends')}
+            onOpenPerson={(personId) =>
+              router.push({ pathname: '/person/[id]', params: { id: personId } })
+            }
           />
         );
       case 'ask':
@@ -234,13 +284,18 @@ export default function HomeScreen() {
     <Screen tone="canvas">
       <ScreenHeader
         title="Home"
-        messagesDormant
+        analyticsSurface="home"
+        titleAnalyticsId={HOME.top_nav.page_title}
+        profileAnalyticsId={HOME.top_nav.profile_icon}
         trailing={
+          // Analytics: enter / leave Home layout edit mode.
           <ButtonSecondary
             size="sm"
+            className="h-10"
             tone={editing ? 'solid' : 'outline'}
             onPress={() => setEditing((v) => !v)}
             accessibilityLabel={editing ? 'Done editing Home' : 'Edit Home layout'}
+            analyticsId={HOME.top_nav.edit_layout}
           >
             {editing ? 'Done' : 'Edit'}
           </ButtonSecondary>
@@ -251,30 +306,36 @@ export default function HomeScreen() {
         {announcements.length > 0 ? <AnnouncementsCarousel items={announcements} /> : null}
 
         <View>
-          <PixelHeading size="md" className="mb-2">
-            Stories
-          </PixelHeading>
+          {/* Stories title: dashed underline + short "what is this?" bubble */}
+          <SectionTitle
+            title="Stories"
+            description="Quick updates your friends post about their week. Tap one to watch, or add your own."
+            infoAnalyticsId={HOME.stories_row.info}
+            parentScreen="home"
+            section="stories_row"
+            className="mb-2"
+          />
+          {/* Stay inside ScreenBody padding — same left edge as Announcements */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="-mx-5"
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 10 }}
+            contentContainerStyle={{ gap: 10, paddingBottom: 10 }}
           >
             {empty || !feed.myStory ? (
-              <AddStoryTile onPress={() => Alert.alert('Capture', 'Story camera ships next.')} />
+              <AddStoryTile onPress={() => router.push('/story/capture')} />
             ) : (
               <StoryTile
                 story={feed.myStory}
                 mine
-                onOpen={() => Alert.alert('Story', 'Story viewer ships next.')}
-                onAdd={() => Alert.alert('Capture', 'Story camera ships next.')}
+                onOpen={() => router.push('/story/me')}
+                onAdd={() => router.push('/story/capture')}
               />
             )}
             {(empty ? [] : feed.stories).map((s) => (
               <StoryTile
                 key={s.id}
                 story={s}
-                onOpen={() => Alert.alert('Story', 'Story viewer ships next.')}
+                onOpen={() => router.push(`/story/${s.authorId}`)}
               />
             ))}
           </ScrollView>
@@ -285,7 +346,7 @@ export default function HomeScreen() {
           ) : (
             <StoryRepliesRow
               replies={feed.replies}
-              onOpen={() => Alert.alert('Replies', 'Story replies thread ships next.')}
+              onOpen={() => router.push('/story/me?comments=1')}
             />
           )}
         </View>
@@ -302,11 +363,14 @@ export default function HomeScreen() {
           </Text>
         ) : null}
 
-        <View className="mt-7 flex-row flex-wrap justify-between gap-y-7">
+        <View className="mt-7 flex-row flex-wrap items-stretch justify-between gap-y-7">
           {visibleLayout.map((widget, i) => (
             <HomeWidget
               key={widget.key}
               title={TITLES[widget.key]}
+              description={DESCRIPTIONS[widget.key]}
+              infoAnalyticsId={INFO[widget.key].infoAnalyticsId}
+              section={INFO[widget.key].section}
               size={widget.size}
               editing={editing}
               canMoveUp={i > 0}
@@ -324,11 +388,29 @@ export default function HomeScreen() {
       <AskSheet open={ask !== null} kind={ask ?? 'poll'} onClose={() => setAsk(null)} />
       <GrassSignalSheet
         signal={openSignal}
+        parentScreen="home"
         onClose={() => setOpenSignal(null)}
+        onDecline={(id) => {
+          void onDismiss(id);
+          setDismissed((d) => [...d, id]);
+        }}
         onJoin={() => {
-          if (openSignal) void onJoin(openSignal.id);
+          if (openSignal) {
+            const personId = openSignal.personId;
+            void onJoin(openSignal.id);
+            // Product outcome from the detail sheet path (card path emits inside FreeSignalCard).
+            trackProduct('touch_grass_answered');
+            setOpenSignal(null);
+            void (async () => {
+              const id = await startThreadWith(personId);
+              router.push({
+                pathname: '/messages/[id]',
+                params: { id, seed: "I'm in" }
+              });
+            })();
+            return;
+          }
           setOpenSignal(null);
-          Alert.alert("You're in", 'Messages will open here when chat ships.');
         }}
       />
     </Screen>
