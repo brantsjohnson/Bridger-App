@@ -1,0 +1,243 @@
+/* @import url() FONT IMPORTS MUST ALWAYS BE AT THE VERY TOP OF THIS FILE, ABOVE THE TAILWIND IMPORTS — DO NOT DELETE THIS COMMENT */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* CRITICAL: THE FOLLOWING TAILWIND IMPORTS MUST NEVER BE DELETED OR REORDERED — DO NOT DELETE THIS COMMENT */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* END TAILWIND IMPORTS — ALL OTHER CSS MUST GO BELOW THIS LINE */
+
+@font-face {
+  font-family: 'Felonia Pixel';
+  src: url('https://cdn.magicpatterns.com/uploads/vNHGGwF2YjvYuFfnkVLHb7/FeloniapixelRegularDemo-V4jZy.otf')
+    format('opentype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+/* ---------------------------------------------------------------
+   THEME TOKENS — light by default, flipped wholesale under `.dark`.
+   Accents stay vivid in both modes; only surfaces and ink change.
+   --------------------------------------------------------------- */
+:root {
+  --canvas: 250 248 242; /* barely-cream grid canvas */
+  --surface: 255 255 255; /* containers sit white on top */
+  --ink: 28 27 22;
+  --ink-soft: 74 72 63;
+  --ink-mute: 138 135 123;
+  --ink-line: 228 226 218;
+  --metal-face: 222 220 210;
+  --metal-hi: 255 255 255;
+  --metal-lo: 167 164 152;
+  --carbon: 21 21 21;
+  --grid-line: rgba(28, 27, 22, 0.05);
+  --page: #eeeeec;
+}
+.dark {
+  --canvas: 14 14 14; /* near-black canvas */
+  --surface: 26 26 27; /* raised containers */
+  --ink: 242 240 234;
+  --ink-soft: 190 188 180;
+  --ink-mute: 138 136 128;
+  --ink-line: 55 55 56;
+  --metal-face: 58 58 56;
+  --metal-hi: 100 100 96;
+  --metal-lo: 24 24 22;
+  --carbon: 8 8 8;
+  --grid-line: rgba(242, 240, 234, 0.06);
+  --page: #0a0a0a;
+}
+/* ---------------------------------------------------------------
+   PROFILE SKINS — a co-op member's page look. `ProfileSkin` sets the
+   theme tokens inline; these rules cover the few places components
+   hardcode white or the default radius, so a skin re-themes everything.
+   Presentation only: never affects what a viewer is allowed to see.
+   --------------------------------------------------------------- */
+.profile-skin {
+  font-family: var(--profile-font, inherit);
+}
+.profile-skin .bg-white {
+  background-color: rgb(var(--surface));
+}
+.profile-skin .rounded-card {
+  border-radius: var(--profile-corners, 20px);
+}
+.profile-skin .font-pixel {
+  font-family: var(--profile-font, inherit);
+}
+/* Panels that ship as solid ink take the owner's highlight color instead, so
+   white text on them stays legible no matter how dark the skin's ink is. */
+.profile-skin .bg-ink {
+  background-color: rgb(var(--profile-accent));
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  background-color: var(--page);
+  color: rgb(var(--ink));
+  -webkit-font-smoothing: antialiased;
+}
+/* Global graph-paper grid on the themed canvas. */
+.bg-app-grid {
+  background-color: rgb(var(--canvas));
+  background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+/* Discover only: atmospheric drifting grid, blurred and low-contrast. */
+.synth-grid {
+  background-image: linear-gradient(to right, rgba(127, 119, 221, 0.28) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(127, 119, 221, 0.28) 1px, transparent 1px);
+  background-size: 40px 40px;
+  filter: blur(1.4px);
+  opacity: 0.45;
+}
+/* Square sticky note with a folded, lifted corner. Always opaque. */
+.sticky-note {
+  position: relative;
+  isolation: isolate;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
+}
+.sticky-note::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, rgba(28, 27, 22, 0.18) 0%, rgba(28, 27, 22, 0.06) 55%, transparent 56%);
+}
+.dark .sticky-note::after {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.34) 0%, rgba(0, 0, 0, 0.14) 55%, transparent 56%);
+}
+/* Global vertical rhythm — proximity rule:
+   a header belongs to the content BELOW it, so the gap above a section header
+   is large (it separates two groups) and the gap under it is small. */
+.screen-body section,
+.screen-body .section {
+  margin-top: 1.75rem;
+}
+/* only the very first group in a screen sits flush with the top */
+.screen-body > :first-child section,
+.screen-body > :first-child .section {
+  margin-top: 0;
+}
+.screen-body section > h2:first-child,
+.screen-body section > .section-title:first-child,
+.screen-body .section > h2:first-child,
+.screen-body .section > .section-title:first-child {
+  margin-bottom: 0.5rem;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+::selection {
+  background: #7f77dd;
+  color: #ffffff;
+}
+/* ---------------------------------------------------------------
+   DARK MODE REMAPS
+   Containers, always-dark panels, and the pale accent fills. Every
+   surface keeps its meaning; only its value changes.
+   --------------------------------------------------------------- */
+.dark .bg-white {
+  background-color: rgb(var(--surface));
+}
+.dark .ring-white {
+  --tw-ring-color: rgb(var(--surface));
+}
+.dark .border-white {
+  border-color: rgb(var(--surface));
+}
+/* solid ink panels invert into raised near-black, keeping white type legible */
+.dark .bg-ink {
+  background-color: rgb(var(--carbon));
+}
+.dark .border-ink {
+  border-color: #2a2a28;
+}
+/* pale purple family */
+.dark .bg-\[\#F1ECFF\],
+.dark .bg-\[\#EDE6FF\],
+.dark .bg-\[\#EFE9FF\],
+.dark .bg-\[\#EFE7FF\] {
+  background-color: #2a1e4a;
+}
+.dark .hover\:bg-\[\#F1ECFF\]:hover,
+.dark .hover\:bg-\[\#EFE7FF\]:hover,
+.dark .hover\:bg-\[\#E6DEFF\]:hover {
+  background-color: #33245a;
+}
+.dark .bg-\[\#D5C2FF\] {
+  background-color: #6544b8;
+}
+/* pale green / teal family */
+.dark .bg-\[\#DFF3E4\],
+.dark .bg-\[\#EEF8E3\] {
+  background-color: #143d26;
+}
+.dark .hover\:bg-\[\#DCF3EA\]:hover {
+  background-color: #14432f;
+}
+.dark .bg-\[\#9FE7CE\] {
+  background-color: #1c7d5e;
+}
+.dark .bg-\[\#CDECB6\] {
+  background-color: #35662a;
+}
+/* pale coral */
+.dark .bg-\[\#FFE1D2\] {
+  background-color: #46231a;
+}
+.dark .bg-\[\#FFC7AC\] {
+  background-color: #8c4526;
+}
+/* pale amber */
+.dark .bg-\[\#FDEFD3\] {
+  background-color: #402d0c;
+}
+.dark .hover\:bg-\[\#FFF1D6\]:hover {
+  background-color: #4a340e;
+}
+.dark .bg-\[\#FFDE99\] {
+  background-color: #8a6210;
+}
+/* pale pink */
+.dark .hover\:bg-\[\#FFE4EE\]:hover {
+  background-color: #4d1e33;
+}
+.dark .bg-\[\#FFC0D7\] {
+  background-color: #8e3660;
+}
+/* pale blue */
+.dark .bg-\[\#BBD6FB\] {
+  background-color: #2b539b;
+}
+/* neutral surfaces + metal chrome */
+.dark .bg-\[\#FBFAF6\] {
+  background-color: #141416;
+}
+.dark .hover\:bg-\[\#E6E4DA\]:hover {
+  background-color: #464643;
+}
+.dark .bg-\[\#D3D1C7\],
+.dark .active\:bg-\[\#D3D1C7\]:active {
+  background-color: #2e2e2c;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
