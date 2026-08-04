@@ -1,0 +1,130 @@
+# Bridger — Admin & Quiz Infrastructure
+
+The organizer-facing side of Bridger. Covers the admin console, the isolated quiz-plugin system, the home-widget model, co-op membership, and how past quizzes stay accessible. The admin console is a **separate repository** (see Repository topology); the rest maps to the `quizzes`, `coop`, and `feed` modules in `ARCHITECTURE.md`.
+
+---
+
+## 1 · Quiz plugins — every quiz is an island
+
+Quizzes vary wildly — different questions, layouts, answer flows, even visual style. So a quiz is **not** a row of config against a shared renderer; it's a **self-contained plugin in its own folder**. Building or restyling one must never touch another quiz or the app's global UI.
+
+```
+apps/mobile/quizzes/
+├── _host/                      # generic loader: reads the registry, mounts a quiz by slug
+├── registry.ts                 # list of quizzes + status (live | draft | archived)
+├── which-road-trip/
+│   ├── manifest.ts             # slug, title, status, schedule, result mapping
+│   ├── Quiz.tsx                # this quiz's own component + flow
+│   ├── questions.ts
+│   ├── result.ts               # scoring → result
+│   └── styles.module.css       # SCOPED — cannot leak out
+├── disney-princess/            # …entirely independent
+└── love-language/
+```
+
+Rules that make "ask AI to build a new quiz" safe:
+- **New quiz = new folder.** Nothing outside that folder changes.
+- **Scoped styles only** (CSS modules / scoped classes) so a quiz's custom look can't bleed into the app or other quizzes.
+- **A manifest per quiz** is the only thing the rest of the app reads — the host mounts whatever the folder exports. Custom internal layout/flow is invisible to the app.
+- **The registry** is the one shared file, and it only lists slugs + status. Adding a quiz appends one entry.
+
+Result: you can tell an AI "build a new quiz that looks like X" and it works entirely inside one folder, with zero risk to the rest of the app.
+
+---
+
+## 2 · The admin console (separate repo)
+
+A separate organizer-only surface in its **own repository** (not shipped in the consumer app, not in the app monorepo — so it can be rebuilt freely without risk to live users). It talks to the same API. What it controls:
+
+- **This week's quiz** — pick which registry quiz is live; it schedules and pushes to everyone's Home.
+- **Weekly activity / challenge** — host a themed collage prompt ("Band Tee Week", "your favorite band t-shirt"): set the **title + prompt**, turn it **on/off**, and schedule it. While on, it appears on everyone's Home as a collage people post into (double-tap to heart); while off, it's absent. Lets you wait until enough people are on before launching one.
+- **Co-op announcement** — write and **publish to members**; appears in the Home co-op banner for co-op members.
+- **Co-op members** — the recorded membership list/count.
+- **Quiz registry** — see every quiz folder with its status (live / draft / archived), and **New quiz** to scaffold a fresh folder.
+- **Home defaults / featured** — set the default widget arrangement and any pinned/featured content everyone starts with.
+- **Themed post prompts** — the three suggested-post squares on the capture screen (e.g. OOTD / Take 0.5 / Hot take); swap them in and out over time (see `STORIES.md`).
+- **Delights** — toggle, scope, schedule, and scaffold easter eggs (pet cats, emoji bombs, seasonal confetti); each is isolated and fail-safe (see `DELIGHT.md`).
+
+Admin sets **content and defaults**; it does not reach into each user's personal arrangement (that's the user's, below).
+
+---
+
+## 3 · Home widgets — two layers of control
+
+The Home sections become **widgets**:
+
+- **Users arrange their own Home.** Stories, updates, quiz, poll, This week, co-op banner, etc. can be reordered/toggled by each user for their own layout (widget-style).
+- **Admin sets the defaults + shared content.** The starting arrangement, the live quiz, co-op announcements, and any featured items come from admin. Users customize from there.
+
+So the organizer curates *what's available and featured*; each person curates *their own view of it*.
+
+---
+
+## 4 · Co-op membership (recorded in the DB)
+
+Co-op members are stored as membership records. Membership:
+- Unlocks **co-op widgets** (announcements, member-only content) on Home.
+- Unlocks **full story storage** (the retention benefit from `PROFILE.md`).
+- Is what the admin "publish to members" targets.
+
+```ts
+interface CoopMembership { userId: string; since: string; active: boolean; }
+```
+
+---
+
+## 5 · Previous quizzes stay alive
+
+A quiz doesn't die when its week ends — it goes **archived · takeable**:
+
+- **On Bridger's marketing website:** every launched quiz is **permanently takeable**, even by people without an account (this is the on-ramp — it ties into the quiz-link growth loop noted in `FRIENDS.md` / the still-to-write `QUIZZES.md`).
+- **In the app (Profile):** you can see **old quizzes you haven't taken**, each with a **count of how many of your friends have taken it** — light social proof that nudges "oh, I want to take this." No names, just a number.
+
+```ts
+interface QuizRegistryEntry {
+  slug: string;
+  title: string;
+  status: 'live' | 'draft' | 'archived';
+  liveWeek?: string;
+  friendsTakenCount?: number;   // shown in-app to encourage taking
+  webTakeable: boolean;         // archived quizzes stay takeable on the site
+}
+```
+
+---
+
+## Module mapping
+
+| Piece | Where |
+|---|---|
+| Quiz plugins + host + registry | `apps/mobile/quizzes/*` |
+| Admin console | separate **admin repo** (see topology below) |
+| Live-quiz scheduling, results | `quizzes` |
+| Co-op announcements + membership | `coop` |
+| Home widget defaults + arrangement | `feed` (defaults) + per-user layout |
+| Marketing-site takeable quizzes | Bridger website (+ growth loop) |
+
+---
+
+## Repository topology (isolation for safety)
+
+Some surfaces are deliberately kept **out of the main app's blast radius** so edits (including AI edits) can't break the live consumer app:
+
+- **Admin console → its own repository.** The organizer surface lives in a separate repo, so you can restructure or rebuild the entire admin freely without any risk to the app users are on. It talks to the same API.
+- **Marketing website → separate surface, connected login.** A public marketing/site (also where launched quizzes stay takeable). When a visitor clicks "log in" from the site, it hands off into the app's auth. Whether it's a separate repo or shares the app repo is an open call — the requirement is only that the login connects the two; noted for planning, not decided here.
+- **Co-op portal → external, not built here.** Already-existing, gatekept to members; Bridger only links to it (opens in-app for members, browser otherwise). Its structure is out of scope.
+
+The consumer app, the admin repo, and the co-op portal are three separately deployable things sharing the API; the marketing site is a fourth surface that just needs a login bridge.
+
+---
+
+## Acceptance criteria
+
+- [ ] Each quiz lives in its own folder with scoped styles; creating/editing one never affects others or the app UI.
+- [ ] The registry is the only shared quiz file; adding a quiz appends one entry.
+- [ ] The admin console can set the week's live quiz, publish co-op announcements, view membership, and scaffold a new quiz.
+- [ ] Admin controls defaults/featured content, not individual users' personal layouts.
+- [ ] Users can rearrange their own Home widgets.
+- [ ] Co-op membership is stored in the DB and gates co-op widgets and full storage.
+- [ ] Launched quizzes become archived-but-takeable and remain takeable on the marketing website (including by non-users).
+- [ ] The in-app Profile shows untaken past quizzes with a count of how many friends have taken each.

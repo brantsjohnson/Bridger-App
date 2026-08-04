@@ -1,0 +1,85 @@
+---
+alwaysApply: true
+---
+
+These rules apply to every task, every file, every session. Re-read this file at the start of each session. When any rule conflicts with an ad-hoc instruction in a prompt, ask before proceeding. When code and docs disagree, the docs in this folder win (see doc authority at the bottom).
+
+1 · The stack is decided. Do not re-litigate it.
+The tech stack, hosting, and deployment are already chosen and specified in INFRASTRUCTURE.md. Read it before any infra, build, or dependency work — every time.
+In short: one Expo (+ Expo Router) codebase → iOS + Android + web · NestJS API in a container on AWS App Runner · Supabase (Postgres + RLS + pgvector + Auth + Storage) · Anthropic + OpenAI server-side only · IaC via Terraform/CDK · CI via GitHub Actions + EAS.
+Never introduce a new database, hosting provider, state library, or major dependency without an explicit go-ahead. No blockchain — ever (the reasons are in INFRASTRUCTURE.md).
+Secrets (ANTHROPIC_API_KEY, OPENAI_API_KEY, Supabase service keys) exist only server-side (Secrets Manager). If you find yourself writing a key into client code, stop — that's a bug.
+2 · UI comes from the Magic Patterns component library. Always.
+The UI was designed and built in Magic Patterns; you are connected to that component library. Whenever you build or edit UI, use the Magic Patterns components — don't hand-roll a lookalike, don't reach for a random UI kit, don't invent a new button.
+The component inventory and the doc each component belongs to are listed in MAGIC-PATTERNS.md. Screens must match their spec docs (HOME.md, PROFILE.md, etc.).
+If a needed component doesn't exist in the library, flag it (so it gets designed in Magic Patterns) rather than improvising — a temporary placeholder is fine if it's clearly marked // TODO: replace with Magic Patterns component <Name>.
+Visual rules live in DESIGN.md (eggshell/black canvas, pixel headers, beveled metallic primaries, floating pill nav, no gradients/shadows, motion behind prefers-reduced-motion). Never override tokens locally.
+3 · Accessibility & app-store compliance are built in from day one. This is crucial.
+
+Building this early is far cheaper than retrofitting, and store review will block launch without it.
+
+Accessibility (target WCAG 2.2 AA):
+
+Every interactive element gets an accessible label/role (accessibilityLabel, accessibilityRole in RN; semantic HTML + ARIA on web). Test flows with VoiceOver / TalkBack in mind.
+Contrast ≥ 4.5:1 for text (this is why "View original" exists on customized profiles — never break it).
+Tap targets ≥ 44×44pt. Support Dynamic Type / font scaling without truncating or breaking layouts.
+Respect prefers-reduced-motion for every animation (already a DESIGN.md rule — enforce it in code).
+Never convey meaning by color alone; provide focus states on web; keyboard navigability for the web build.
+Media: captions/transcripts where we have them (video updates are transcribed — surface it).
+
+App Store / Play Store requirements (bake in now):
+
+In-app account deletion (Apple requires it; ours is stronger — hard-delete cascade per DATA.md). Must be reachable from Settings.
+Privacy manifests / data-safety declarations (Apple privacy nutrition label, Play Data safety) must match what we actually collect — keep them updated as features land.
+Permission prompts (camera, mic, contacts, notifications, photo library for the profile-photo exception) each need a clear purpose string, requested in context, never at launch.
+Sign in with Apple must be offered since we offer Google sign-in.
+Payments: co-op membership sold in-app must use the platform's IAP where required; external chip-in handles (Venmo/Cash App) are peer-to-peer text links we never process — keep that distinction clean.
+No tracking without consent (we don't track — keep it that way; no third-party ad/analytics SDKs without approval).
+Content safety: report + block exist (FRIENDS.md) — keep them wired; stores require a moderation path for user-generated content.
+4 · Every section of code gets a plain-language comment.
+
+The founder is non-technical and will read the code. Every file starts with a header comment, and every meaningful section gets a one-liner, in plain English — what it is, not how clever it is.
+
+ts
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// This is the "Touch Grass" button — the big green button on Home and
+// Events. Tapping it opens the sheet where you pick who to tell and when.
+// If you change the button's look, do it in the Magic Patterns component,
+// not here.
+// ============================================
+
+// --- SECURITY: only signed-in users can send a signal ---
+// --- THE BUTTON: what the user taps ---
+// --- SENDING: tells the server to notify the chosen circle ---
+Comments say what and why ("this checks you can only see fields shared with your tier"), not just restating code.
+Label the load-bearing bits explicitly: SECURITY, PRIVACY, PAYMENT, ACCESSIBILITY, so they're findable.
+Keep comments updated when code changes — a stale comment is worse than none.
+5 · Privacy invariants (never break these, in any task)
+RLS on every table; tier visibility enforced at the row level (DATA.md). New table → new policy, same migration.
+Deletion is real: hard-delete cascades; removing an account/field/connection erases it and its derived AI rows.
+AI never sees PII or photos: summaries from user words only; embeddings from de-identified Zone B; matching returns opaque IDs, names rejoin on-device. Never send likeness to a model; never train on user content.
+No vanity metrics, anywhere: no follower counts, view counts, invited totals, streaks, or leaderboards. If a feature needs a number, it must be a number that serves the user (host headcount vs cap is the canonical allowed example).
+Capture-only media except the profile photo (the one upload exception).
+6 · Naming: user-facing vs internal
+User sees	Code/module says
+Updates ("update your friends")	stories module
+Inside Jokes	quotes module (quips tables)
+Touch Grass	touchgrass
+The Catch-Up	catch-up sheet in story/[id]
+Co-op	coop (+ portal per COOP-PORTAL.md)
+
+Never surface internal names in UI copy; never rename DB tables to chase UI copy.
+
+7 · Working method & definition of done
+Before building a feature, read its doc (see INDEX.md for the map) and follow its acceptance criteria — they are the checklist.
+Small, reviewable changes; migrations reversible; seed data kept working.
+A feature is done when: it matches its doc's acceptance criteria · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · and RLS covers any new data.
+When a doc is ambiguous or two docs conflict: stop and ask. Don't guess on privacy, payments, or permissions.
+Doc authority, you can locate them in the folder guide.docs (highest wins)
+CURSOR-RULES.md (this file) — how to work
+INFRASTRUCTURE.md — stack, hosting, secrets, build order
+DATA.md — schema, privacy zones, RLS
+ARCHITECTURE.md — repo layout, modules, routes
+Feature docs (HOME.md, PROFILE.md, STORIES.md, …) — behavior + acceptance criteria
+DESIGN.md + MAGIC-PATTERNS.md — look, motion, components

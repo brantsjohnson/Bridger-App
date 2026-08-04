@@ -1,0 +1,11 @@
+# ============================================
+# WHAT THIS FILE DOES (plain English):
+# Lists every sub-project ("package") that lives inside this one repo.
+# pnpm reads this so all the apps and shared packages install together and can
+# import each other. apps/* = the runnable apps; packages/* = shared code.
+# The Magic Patterns web prototype in design/ is reference only, not part of
+# the build, so it is intentionally NOT listed here.
+# ============================================
+packages:
+  - "apps/*"
+  - "packages/*"

@@ -1,0 +1,45 @@
+# ============================================
+# WHAT THIS FILE DOES (plain English):
+# This is the automatic checker. Every time someone opens a Pull Request (a
+# proposed change) or pushes to main, GitHub runs these steps on a fresh
+# machine: install everything, make sure the code has no type errors, and run
+# the tests. If anything fails, the PR is flagged red so broken code doesn't
+# reach the app. (Code-style "lint" is added once its config lands.)
+# ============================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck all packages
+        run: pnpm -r --if-present typecheck
+
+      - name: Run tests
+        run: pnpm -r --if-present test
+
+      - name: Build the API
+        run: pnpm --filter @bridger/api build

@@ -1,0 +1,23 @@
+{
+  "name": "@bridger/permissions",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Pure tier/visibility/matchable logic. Imported by BOTH the API (to enforce) and the app (to predict).",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@bridger/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.0"
+  }
+}
