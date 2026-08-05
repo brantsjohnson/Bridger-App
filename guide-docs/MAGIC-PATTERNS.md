@@ -80,8 +80,8 @@ One line each; keep them dumb and reusable.
 | `StorageBar` | thin usage bar |
 | `NotificationRow` | avatar + text + time |
 | `CountdownChip` | "in 2 days" |
-| `TouchGrassButton` | **big green** "TOUCH GRASS" button (Home + Events; see `TOUCHGRASS-AND-QUIZ.md`) |
-| `AnnouncementsCarousel` | top-of-Home swipeable strip: touch-grass · quick check · co-op · birthdays; page dots; hidden when empty (see `HOME.md`) |
+| `TouchGrassButton` | **big green** "TOUCH GRASS" button (**Events page only**, not Home; see `TOUCHGRASS-AND-QUIZ.md`) |
+| `AnnouncementsCarousel` | top-of-Home swipeable strip: touch-grass answer cards · quick check · co-op · birthdays; page dots; hidden when empty (see `HOME.md`) |
 | `TouchGrassSignalList` | one featured signal + list below; who/when/why, tappable → "I'm in" / ✕ |
 | `ResponseStrip` | under stories: video/text responses to your update, tap to reply |
 | `EventShareSheet` | native iOS/Android share (friends or link) — header control only |

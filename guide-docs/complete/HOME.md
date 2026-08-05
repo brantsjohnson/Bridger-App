@@ -26,8 +26,6 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 ├─────────────────────────────┤
 │  ▸ What people said · reply │  4a · Responses to your update (conditional)
 ├─────────────────────────────┤
-│  [ 🌱  TOUCH GRASS  ]       │  4b · Big green touch-grass send button (always)
-├─────────────────────────────┤
 │  Notifications      See all │  5 · Notifications preview (2, → page)
 │  • Sam replied to your story│
 │  • You + Alex connected     │
@@ -39,9 +37,7 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 │  Your poll · results ▁▃     │  7 · Your live poll (conditional)
 ├─────────────────────────────┤
 │  This week                  │  8 · Weekly section (conditional)
-│  ▸ Friends' week · podcast  │
-│  + Add your recap · 20s     │
-│  Quiz · take → who got who  │
+│  Quiz · take → who got who  │  (recap podcast lives on Friends, not here)
 ├─────────────────────────────┤
 │  🖼 Band Tee Week · post →  │  8c · Weekly activity (conditional, admin-hosted)
 ├─────────────────────────────┤
@@ -59,12 +55,11 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 | 2 | **Announcements carousel** | One **swipeable** strip holding whatever's live — **touch-grass signals** (I'm in / ✕), the **quick check-in**, **co-op** announcements, and **coming up** (birthdays ≤1wk + day-of, custom date reminders, check-in nudges). Page dots; each card tappable | `AnnouncementsCarousel` | **hidden entirely when there are no announcements** |
 | 4 | Stories | Tier filter (Close / Friends / Everyone) + tiles; **first tile = "Your story"** — post *and* **tap to view your own** posted update | `StoryTile` | see state matrix |
 | 4a | What people said | Under the stories row: **reactions & video responses** to your update ("this is what people said") — **tap to watch/read and reply** | `ResponseStrip` | hidden when no responses |
-| 4b | Touch-grass button | **Big green "TOUCH GRASS" button** (not a subtle row) — sends your "I'm free" signal | `TouchGrassButton` | always shown |
 | 5 | Notifications preview | ~2–3 unread + **See all → Notifications page**; no unread → **"All caught up!"** | `NotificationRow` | shows unread; empty → All caught up |
 | 5b | Inside jokes | A few **new sticky-note inside jokes** from the week (from the Inside Jokes wall); when none are new, falls back to older ones as **"moments"** | — | always shows something (new or moments) |
 | 6 | Ask the group | **Create a poll** \| **Ask a question** — **co-op only** (creating; answering is free) — plus a **"See previous polls"** link into past/other polls | (split row) | shown; create gated to co-op |
 | 7 | Your live poll | Your active poll + running results, visible on your own Home | — | hidden when no live poll |
-| 8 | This week | Friends' recap **podcast** (play — audio answers stitched with speaker photos; see `RECAP-PODCAST.md`), **add your recap** prompt, and the **quiz**: take → your result + **Share quiz** + **"who got who"** dashboard (see `TOUCHGRASS-AND-QUIZ.md`) | — | hidden when nothing active |
+| 8 | This week | The **quiz**: take → your result + **Share quiz** + **"who got who"** dashboard (see `TOUCHGRASS-AND-QUIZ.md`). The recap **podcast** and **add-your-recap** prompt (the Friend Pod) are **not on Home**; they live on the **Friends** tab (see `RECAP-PODCAST.md`) | — | hidden when nothing active |
 | 8c | Weekly activity | Entry card into the hosted collage (e.g. "Band Tee Week · post yours") | — | **hidden unless an activity is live in admin** |
 | 9 | Co-op footer | "Join the co-op" — opens the co-op portal (also reachable from Profile settings) | — | always shown (non-member) |
 
@@ -100,7 +95,7 @@ Notifications no longer live behind a header bell. Instead:
 
 The top of Home is a single **swipeable carousel** that consolidates what used to be separate strips. It holds only what's **actually live**, one card per item, with **page dots** — swipe through them:
 
-- **Touch grass** — a friend's signal ("Maya's free tonight — grab food?") with **I'm in** / **✕**. (Sending your own is the big green button below; see that section.)
+- **Touch grass** — a friend's signal ("Maya's free tonight — grab food?") with **I'm in** / **✕**. (Sending your own happens on the **Events page**, not Home; see that section.)
 - **Quick check** — the profile-freshness nudge ("Still into beatboxing?" → **Yes** / **update**), from the model when your profile looks stale (see `ONBOARDING.md`).
 - **Co-op** — announcements / feedback asks from the co-op (community call, dues vote, a new feature).
 - **Coming up** — **birthdays** (within ~a week, and again on the day — cake icon; only friends who shared their birthday with your tier), **custom date reminders** (dates you saved on a friend, firing 1 week before + on the day — "Priya's graduation · in 1 week"), and optional **check-in nudges** ("Check in with Jade?") from private friend notes with no calendar date. **Row color = their circle** (green Close / blue Friends / orange Acquaintances). **Order is soonest first** (now → Today → weekday → in N days). Tapping opens that friend's profile. Check-ins also push as `friend_check_in` when due.
@@ -139,18 +134,20 @@ Right under the stories row, a strip surfaces the **reactions and video response
 
 **Creating** a poll or asking a question is a **co-op feature** (`COOP.md`) — the split "Create a poll | Ask a question" tiles prompt to join if you're not a member. **Answering** polls is always free. A poll uses the same audience picker; while live, its running results show on the author's Home (zone 7). A **"See previous polls"** link opens your **past and other polls** — tap any to revisit it and its results. (A poll is a question with lingering results, distinct from the ephemeral story capture — so it's its own action, never folded into the story composer.)
 
-### Touch grass — send, browse, answer
+### Touch grass — browse & answer (send lives on Events)
 
-- **Send** (the **big green "TOUCH GRASS" button** — prominent and fun to tap, on both Home and the Events page, and **always shown** even when the announcements carousel is empty): opens a quick sheet — pick an audience (Close/Friends/Everyone, concentric) and a "when" (Now/Tonight/Weekend), add a short **why** ("grab food + walk?"), then **Send signal**. Everyone in that audience gets a notification and sees your signal. You see who's in (private). No view counts. Full spec: `TOUCHGRASS-AND-QUIZ.md`.
-- **Browse** — on **Home**, friends' signals appear as **cards in the announcements carousel** (above). On the **Events page**, they're a **featured signal + list below the button**. Either way each shows **who + when + why**.
+**Founder decision:** the big green **"TOUCH GRASS" send button lives only on the Events page**, not on Home. Home never sends a signal; it only surfaces friends' signals for you to answer. Do not re-add the send button to Home unless the founder reverses this.
+
+- **Send** — happens on the **Events page** (the big green button + sheet there). Full spec: `TOUCHGRASS-AND-QUIZ.md`.
+- **Browse** — on **Home**, friends' signals appear as **cards in the announcements carousel** (above), each showing **who + when + why**.
 - **Answer** (a signal card or its detail): **"I'm in"** or dismiss with **✕** — no explicit "no." "I'm in" notifies the originator, turning the signal into a plan.
 
 ### This week (the weekly section)
 
 Home's weekly-cadence content, all conditional:
-- **Friends' week podcast** — a play button for the stitched recap of friends' recorded answers ("6 recaps · 4 min").
-- **Add your recap** — the week's **5 questions**, previewed first, then answered by voice (~20s each), so the user is included in the podcast (see `RECAP-PODCAST.md`; `recap` module).
-- **Quiz** — this week's quiz: a take-it CTA that becomes a result distribution after completion.
+- **Quiz** — this week's quiz: a take-it CTA that becomes a result distribution after completion, plus **Share quiz** and the **"who got who"** dashboard.
+
+**Moved off Home:** the **Friends' week podcast** (play the stitched recap) and the **Add your recap** prompt are the **Friend Pod**, which now lives on the **Friends** tab (opens `/recap`), not Home. See `RECAP-PODCAST.md`.
 
 ### Story tiles (the peek design)
 
@@ -174,7 +171,7 @@ interface HomeFeed {
   updates: Update[];               // bounded (e.g. last N), recency-ordered
   responses: UpdateResponse[];     // "what people said" on your update
   yourPoll?: PollResults;          // your live poll + running tallies (author-visible)
-  week?: WeeklySection;            // podcast recaps + recap prompt + quiz; omitted off-week
+  week?: WeeklySection;            // Home shows the quiz only; recap podcast + prompt live on Friends; omitted off-week
   coopPrompt?: CoopPrompt;         // footer; omitted for co-op members
   friendCount: number;             // drives cold-start vs populated (never shown as a total)
 }
@@ -221,9 +218,9 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 - **No infinite scroll.** Updates are capped; when exhausted, the list simply ends.
 - **Pull to refresh** re-fetches `HomeFeed`.
 - **Posting is capture-only and story-only from Home** (per app-wide rule): the "Your story" tile opens the camera, never a library picker, then shows the concentric multi-select audience picker (with per-person caret). Limits (3 stories/day, 20s video) are enforced by `stories`.
-- **Touch-grass** has two directions: send from the big green button (audience + when → notifies that circle), and answer on a friend's signal card — **"I'm in"** (notifies the originator) or **✕** to dismiss. No explicit "no."
+- **Touch-grass on Home is answer-only:** a friend's signal card offers **"I'm in"** (notifies the originator) or **✕** to dismiss. No explicit "no." **Sending** a signal happens on the **Events page**, not Home.
 - **Polls** are created from the action row (separate from stories), use the audience picker, and surface running results on the author's Home while live.
-- **This week** is the weekly-cadence hub: friends' recap podcast, the add-your-recap prompt, and the quiz (CTA → results). Hidden entirely off-week.
+- **This week** on Home is just the **quiz** (CTA → results). The recap podcast + add-your-recap prompt (Friend Pod) live on the Friends tab. Hidden entirely off-week.
 - **Split for actions, stack for content:** only the poll/ask-a-question action row is side-by-side; content sections never are.
 - **Co-op** appears twice by design: a conditional banner above Stories (announcements/feedback) and the persistent footer join-link (swaps to a member state once joined).
 
@@ -234,15 +231,15 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 | Piece | Component | Backend |
 |---|---|---|
 | Whole page assembly | `home.tsx` | `feed` |
-| Touch-grass send button (feed + Events) | `TouchGrassButton` | `touchgrass` |
-| Announcements carousel (touch grass · quick check · co-op · coming up) | `AnnouncementsCarousel` | `touchgrass` / `coop` / `notifications` |
+| Touch-grass send button (**Events page only**, not Home) | `TouchGrassButton` | `touchgrass` |
+| Announcements carousel (touch grass answer cards · quick check · co-op · coming up) | `AnnouncementsCarousel` | `touchgrass` / `coop` / `notifications` |
 | Responses to your update ("what people said") | `ResponseStrip` | `reactions` |
 | Story tiles + peek | `StoryTile`, `WeekSummaryPeek` | `stories` |
 | Post audience picker (multi-select + caret) | (compose sheet) | `stories` + `permissions` |
 | Tier filter | (inline dropdown) | `tiers` + `permissions` |
 | Create poll / ask a question | (action row) | `polls` / `quizzes` |
 | Your live poll results | (inline card) | `polls` |
-| This week (podcast, recap, quiz) | (weekly section) | `quizzes` (weekly-questions) |
+| This week (quiz only on Home) | (weekly section) | `quizzes` (weekly-questions) |
 | Cold-start actions | (reuse) | `connections` (`(connect)` flow) |
 | Co-op footer | (inline) | `coop` |
 
@@ -251,15 +248,15 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 ## Acceptance criteria
 
 - [ ] `friendCount === 0` renders the cold-start invitation, not empty zones.
-- [ ] There is no generic `+`; the header's right control is the messages icon, touch-grass send is the big green button, and the only post entry is the "Your story" tile.
+- [ ] There is no generic `+`; the header's right control is the messages icon, and the only post entry is the "Your story" tile. **Home has no Touch Grass send button** (send lives on the Events page).
 - [ ] The top of Home is a single swipeable announcements carousel (touch-grass signals, quick check-in, co-op announcements, coming-up birthdays/reminders/check-ins) with page dots; it hides entirely when there are nothing live.
 - [ ] The announcements carousel hides entirely when empty; updates, your poll, and This week each hide independently (no header, no gap) when empty.
 - [ ] Posting shows the multi-select audience picker: choosing Friends also checks Close friends (both lit); Everyone checks all three.
 - [ ] Each tier row has a caret that expands its members for per-person deselection; deselections apply only to that post.
-- [ ] Sending touch-grass notifies the chosen circle; a friend's card offers "I'm in" (notifies the originator) and ✕ to dismiss — no explicit "no."
+- [ ] On Home, a friend's touch-grass card offers "I'm in" (notifies the originator) and ✕ to dismiss — no explicit "no." (Sending a signal is on the Events page, not Home.)
 - [ ] Polls are created from the action row (not the story composer), use the audience picker, and show running results on the author's Home while live.
 - [ ] The action row (poll / ask a question) is the only side-by-side zone; content sections stack full-width.
-- [ ] This week shows the friends' recap podcast, an add-your-recap prompt, and the quiz (CTA → results), and hides off-week.
+- [ ] This week on Home shows only the quiz (CTA → results) and hides off-week; the recap podcast + add-your-recap prompt (Friend Pod) are on the Friends tab, not Home.
 - [ ] The co-op footer persists for non-members; co-op announcements appear as a card in the announcements carousel (distinct from the footer).
 - [ ] Story tiles are rectangular with pic-in-corner; the week badge opens the summary peek.
 - [ ] No story view count or follower count appears anywhere on Home.
