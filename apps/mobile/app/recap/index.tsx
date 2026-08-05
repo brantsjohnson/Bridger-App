@@ -1,7 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Full-page route for the weekly Friend Pod podcast. Opened from Play on
-// Friends (and later Home). Loads the playlist, then hands it to RecapPlayer.
+// Friends tab Friend Pod. Loads the playlist, then hands it to RecapPlayer.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';

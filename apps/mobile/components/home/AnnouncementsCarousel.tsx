@@ -5,6 +5,8 @@
 // When the list is empty, this whole section disappears — heading and all.
 // Cards stay inside the same page padding as Stories and the widgets below
 // (no full-bleed negative margin that drifts out of line on web).
+// Auto-advance: only when you leave a card alone. After you swipe or tap a
+// dot, we wait much longer so you can finish reading before it moves again.
 // Analytics: title opens section_info_tooltip; swipes report carousel depth.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
@@ -34,47 +36,75 @@ export type Announcement = {
   content: React.ReactNode;
 };
 
+/** How long a card stays up when nobody has touched the carousel. */
+const AUTO_ADVANCE_MS = 12_000;
+/**
+ * After a swipe or dot tap, give a full read before moving on — co-op cards
+ * have a title + body + button, and 5s was yanking people off mid-sentence.
+ */
+const AFTER_MANUAL_MS = 20_000;
+
 export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
   // Measure the real content width so pages match ScreenBody, not the window.
   const [pageWidth, setPageWidth] = useState(0);
   const [index, setIndex] = useState(0);
-  /** Set once the person swipes or taps a dot — from then on it stops rotating. */
-  const [paused, setPaused] = useState(false);
+  /**
+   * Bumped on every user swipe / dot tap (and after each auto tick) so the
+   * advance timer tears down and starts a fresh wait.
+   */
+  const [resumeKey, setResumeKey] = useState(0);
   const reduceMotion = useReduceMotion();
   /** Deepest page index the user has reached by swipe (for carousel_depth). */
   const maxDepth = useRef(0);
   const trackRef = useRef<ScrollView>(null);
+  /** True while a finger is dragging — blocks a mid-swipe auto-advance tick. */
+  const draggingRef = useRef(false);
+  /** Next wait length — longer right after a manual swipe so you can read. */
+  const nextDelayMs = useRef(AUTO_ADVANCE_MS);
 
   useEffect(() => {
     if (index > items.length - 1) setIndex(Math.max(0, items.length - 1));
   }, [items.length, index]);
 
   /*
-    --- THE LOOP: it plays itself through, then starts over ---
-    Announcements begin on the first card and move to the next every few seconds,
-    wrapping back to the first after the last, so you see all of them without
-    swiping. The moment you touch it, the auto-advance stops for good and the
-    carousel is yours — nothing yanks the card out from under your thumb.
-    ACCESSIBILITY: it also never auto-advances when Reduce Motion is on, since
-    self-moving content is exactly what that setting asks us not to do.
+    --- THE LOOP: plays through, then starts over ---
+    Announcements begin on the first card and move on their own only after a
+    long enough pause to read. If you swipe or tap a dot, we wait even longer
+    so the card you picked is not yanked away mid-read.
+    ACCESSIBILITY: never auto-advances when Reduce Motion is on.
   */
   useEffect(() => {
-    if (paused || reduceMotion || items.length < 2 || pageWidth <= 0) return;
-    const timer = setInterval(() => {
+    if (reduceMotion || items.length < 2 || pageWidth <= 0) return;
+    const delay = nextDelayMs.current;
+    const timer = setTimeout(() => {
+      // Don't fight the user's finger mid-drag — try again after a short beat.
+      if (draggingRef.current) {
+        setResumeKey((k) => k + 1);
+        return;
+      }
       setIndex((current) => {
         const next = (current + 1) % items.length;
         trackRef.current?.scrollTo({ x: next * pageWidth, animated: true });
         return next;
       });
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [paused, reduceMotion, items.length, pageWidth]);
+      // After an auto move, go back to the normal (still generous) pace.
+      nextDelayMs.current = AUTO_ADVANCE_MS;
+      setResumeKey((k) => k + 1);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [reduceMotion, items.length, pageWidth, resumeKey]);
 
   if (items.length === 0) return null;
 
+  /** Restart the countdown; pass true after a swipe / dot so reading has time. */
+  function resetAutoAdvance(manual: boolean) {
+    nextDelayMs.current = manual ? AFTER_MANUAL_MS : AUTO_ADVANCE_MS;
+    setResumeKey((k) => k + 1);
+  }
+
   function goTo(i: number) {
     if (pageWidth <= 0) return;
-    setPaused(true);
+    resetAutoAdvance(true);
     setIndex(i);
     trackRef.current?.scrollTo({ x: i * pageWidth, animated: true });
   }
@@ -137,9 +167,23 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
-        onScrollBeginDrag={() => setPaused(true)}
+        onScrollBeginDrag={() => {
+          draggingRef.current = true;
+          // Pause the countdown the moment a finger touches — don't advance under them.
+          resetAutoAdvance(true);
+        }}
+        onMomentumScrollEnd={() => {
+          draggingRef.current = false;
+          // Full read window starts when the page you swiped to settles.
+          resetAutoAdvance(true);
+        }}
+        onScrollEndDrag={() => {
+          // If there's no momentum (short drag), still clear the dragging flag
+          draggingRef.current = false;
+        }}
         scrollEventThrottle={16}
-        decelerationRate="fast"
+        // "normal" snaps gentler than "fast" so a swipe doesn't feel yanked.
+        decelerationRate="normal"
       >
         {items.map((item, i) => (
           <View

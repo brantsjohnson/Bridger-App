@@ -1,14 +1,16 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// React hook for the Bucket List tab. Loads items, adds new ones, and checks
-// them off — demo or live, same calls.
+// React hook for the Bucket List tab. Loads items, adds new ones, checks
+// them off, edits them, and deletes them — demo or live, same calls.
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
 import type { BucketItem } from '@bridger/shared';
 import {
   addBucketItem,
+  deleteBucketItem,
   listBucket,
   toggleBucketItem,
+  updateBucketItem,
   type AddBucketInput
 } from '../data/profile';
 
@@ -39,5 +41,15 @@ export function useBucketList() {
     setItems(await listBucket());
   }, []);
 
-  return { items, loading, refresh, onAdd, onToggle };
+  const onUpdate = useCallback(async (id: string, input: AddBucketInput) => {
+    await updateBucketItem(id, input);
+    setItems(await listBucket());
+  }, []);
+
+  const onDelete = useCallback(async (id: string) => {
+    await deleteBucketItem(id);
+    setItems(await listBucket());
+  }, []);
+
+  return { items, loading, refresh, onAdd, onToggle, onUpdate, onDelete };
 }

@@ -17,16 +17,23 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as apprunner from '@aws-cdk/aws-apprunner-alpha';
 
-// The foundation stack hands us the secret to wire into the server.
+// The foundation stack creates the secret; we look it up by the shared name so
+// CloudFormation does not wire a cross-stack construct reference (that caused
+// a dependency cycle with the App Runner instance role).
 export interface BridgerServiceStackProps extends cdk.StackProps {
-  serverSecret: secretsmanager.ISecret;
+  serverSecretName: string;
 }
 
 export class BridgerServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BridgerServiceStackProps) {
     super(scope, id, props);
 
-    const { serverSecret } = props;
+    // Import by name — no CFN dependency on the foundation stack's Secret.
+    const serverSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'ServerSecret',
+      props.serverSecretName
+    );
 
     // --- Build our Dockerfile into an image CDK pushes to AWS automatically. ---
     // Build context is the repo root (so the monorepo prune works); the Dockerfile
@@ -42,8 +49,30 @@ export class BridgerServiceStack extends cdk.Stack {
       assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
       description: 'Runtime identity for the Bridger API; can read only its own secret'
     });
-    // grantRead also allows decrypting with the secret's KMS key.
-    serverSecret.grantRead(instanceRole);
+    // Identity-based grant only (on this role). Do NOT call serverSecret.grantRead()
+    // against a secret owned by another stack — that writes a resource policy there
+    // and creates a cross-stack dependency cycle.
+    instanceRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'ReadBridgerServerSecret',
+        actions: ['secretsmanager:GetSecretValue', 'secretsmanager:DescribeSecret'],
+        // fromSecretNameV2 yields a partial ARN; append /* so stage/version works.
+        resources: [`${serverSecret.secretArn}-??????`, serverSecret.secretArn]
+      })
+    );
+    // Decrypt with the secret's KMS key when Secrets Manager asks for it.
+    instanceRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'DecryptViaSecretsManager',
+        actions: ['kms:Decrypt', 'kms:DescribeKey'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'kms:ViaService': `secretsmanager.${this.region}.amazonaws.com`
+          }
+        }
+      })
+    );
 
     // --- The App Runner service: our public, autoscaling API. ---
     const service = new apprunner.Service(this, 'ApiService', {

@@ -78,7 +78,7 @@ Kept apart deliberately so edits to them can never break the live consumer app (
 
 - **Admin console** — its **own repository**. Organizer-only; talks to the same `api`. Can be rebuilt freely with zero blast radius on users.
 - **Marketing website** — a public site (also hosts always-takeable launched quizzes). Its "log in" hands off into the app's auth; repo-sharing vs. separate is an open call, only the login bridge is required.
-- **Co-op portal** — the governance/stewardship surface (ideas, beta voting, mission, economics, roles, dues). It's a **real module** mounted at `/co-op`, reusing this app's auth + Prisma; **public to view, member to participate** (`optionalAuth` reads / `requireAuth` writes). Full spec: `COOP-PORTAL.md`. (This replaces the earlier "external / not built here" note — the portal already exists and is now integrated.)
+- **Co-op portal** — the governance/stewardship surface (ideas, beta voting, mission, cost simulator, roles). Nest module `apps/api/src/coop/` + Expo routes `apps/mobile/app/coop/*` (benefits at `/coop`, multi-page portal at `/coop/portal/*`). **Public to view, member to participate** (optional JWT reads / `RequireCoopMemberGuard` writes). Tallies stay admin-only. Full spec: `complete/COOP-PORTAL.md`. The orphan Express tree at repo-root `coop/` is deprecated.
 
 All four share the `api`.
 
@@ -170,7 +170,7 @@ apps/api/src/
 ├── recap/                      # weekly recap podcast: 5 audio Q&A, stitched playback with speaker photos (see RECAP-PODCAST.md)
 ├── quotes/                     # Inside Jokes wall (module `quotes`): sticky notes + photo tags; quote + tag people/event; shares to tagged + event attendees; cross-posts; feeds Home
 ├── payments/                   # processed payments: event-cap expansion, add-storage (chip-in handles are NOT processed here)
-├── coop/                       # co-op portal (governance: ideas, beta votes, mission, economics, roles, dues) + membership records; public reads / member writes — see COOP-PORTAL.md
+├── apps/api/src/coop/          # Nest: membership + portal (ideas, beta, mission, economics, roles, cost); public reads / member writes — see complete/COOP-PORTAL.md
 ├── notifications/              # tier-aware push + Home notifications preview → Notifications page (replies, mutual-connection, requests, touch-grass); also birthday + custom-date reminders (1wk + day-of) for the "Coming up" card in Home's announcements carousel
 └── messages/                   # intentionally-limited chat: 5/day per conversation, share-number + make-a-plan actions (see MESSAGES.md)
 ```
@@ -204,23 +204,21 @@ apps/mobile/
 │   │   ├── coop.tsx            # 8 · join the co-op?
 │   │   └── welcome-in.tsx      # 9 · sets onboardingComplete → Home
 │   ├── (tabs)/                 # the main app shell + FLOATING pill tab bar (detached, dynamic — see DESIGN.md)
-│   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; Profile opened from header avatar
+│   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; Profile opened from header avatar (pill hidden on Profile)
 │   │   ├── home.tsx            # hub: announcements carousel, stories+responses, touch grass, ask-the-group, this-week (see HOME.md)
 │   │   ├── friends.tsx         # contact list + drag-drop tiering
 │   │   ├── messages.tsx        # capped inbox (5/day); share contact + make a plan (see MESSAGES.md)
 │   │   ├── events.tsx          # create / friends' events / community (coming soon)
 │   │   ├── discover.tsx        # suggestions + connection-intent settings + network graph
 │   │   └── profile.tsx         # own profile (header avatar, not in the pill); shared card + Settings (see PROFILE.md)
-│   ├── (connect)/              # making a new connection
-│   │   ├── add.tsx             # search / generate invite link
-│   │   ├── qr.tsx              # show my QR + scan someone else's
-│   │   └── requests.tsx        # incoming + outgoing (accept / decline) — surfaced on Discover (see DISCOVER.md)
+│   ├── # Connect UX (no (connect)/ routes): Friends AddFriendSheet / ScanFriendSheet /
+│   ├── # QrBlock for invite+QR; Discover "Wants to connect" for accept/decline.
 │   ├── reveal/[id].tsx         # reveal: "how did you meet" opener (+ record where) → 3-screen "in common" (Venn → list → close); see REVEAL.md
-│   ├── person/[id].tsx         # friend profile = same shared card, tier-filtered; tabs: About them | In common | Inside Jokes | Bucket List + your private note
+│   ├── person/[id].tsx         # friend profile = same shared card, tier-filtered; tabs: About them | In common | Inside Jokes | Bucket List | Notes (private NotesReminders)
 │   ├── story/[id].tsx          # full-screen story viewer + week-summary peek
 │   ├── notifications/index.tsx # notifications page (feed preview links here); replies, mutual-connection, requests
 │   ├── messages/               # Messages list + conversation; 5/day cap, share-number + make-a-plan (see MESSAGES.md)
-│   └── coop/index.tsx          # co-op portal (linked from Home)
+│   └── coop/index.tsx + portal/*    # benefits + public multi-page portal (linked from Home / Settings / storage)
 ├── features/                   # logic per domain, mirrors the API modules
 │   ├── stories/  reactions/  feed/  discovery/  matching/
 │   ├── events/   polls/       touchgrass/  quizzes/
@@ -269,7 +267,7 @@ apps/api/src/connections/
 ### Three ways in — two instant, one needs accepting
 
 - **Invite link** and **QR at a meetup** are *instant*. Both parties acted (one sent / showed, the other tapped / scanned), so consent is already mutual — the edge is created immediately, no accept step.
-- **Add someone** (from search or a suggestion) is *one-sided*, so it becomes a request the other person accepts or declines in `(connect)/requests.tsx`.
+- **Add someone** (from search or a suggestion) is *one-sided*, so it becomes a request the other person accepts or declines on Discover ("Wants to connect").
 
 ### The reveal is shallow and pairwise (this is the anti-redundancy rule)
 
@@ -332,8 +330,8 @@ The load-bearing edges: `shared` feeds everyone, `permissions` is imported by **
 |---|---|---|
 | 3 depth layers (essential/profile/connection) | `profiles`, `attributes` | `(onboarding)`, `profile.tsx` |
 | Tiers + drag-drop sorting | `tiers` | `friends.tsx`, `TierPicker` |
-| Add / link / QR to connect | `connections` | `(connect)/add`, `qr`, `requests` |
-| Request → accept / decline | `connections` | `(connect)/requests.tsx` |
+| Add / link / QR to connect | `connections` | Friends `AddFriendSheet` / `ScanFriendSheet` / `QrBlock` |
+| Request → accept / decline | `connections` | Discover "Wants to connect" |
 | Connection reveal + tier prompt | `connections` + `matching` | `reveal/[id]`, `RevealCard`, `TierPrompt` |
 | Friend network graph + activities | `discovery` + `matching` | `discover.tsx`, `FriendNetworkGraph` |
 | Who-sees-what permissions | `attributes` + `common/guards` | `profile.tsx` settings |
@@ -347,7 +345,7 @@ The load-bearing edges: `shared` feeds everyone, `permissions` is imported by **
 | Polls | `polls` | `home.tsx` |
 | Touch-grass bat-signal | `touchgrass` | `TouchGrassButton`, `home.tsx` |
 | Quizzes + rankings/graphs | `quizzes` | `home.tsx`, `discover.tsx` |
-| Co-op portal | `coop` | `coop/index.tsx` |
+| Co-op portal | `coop` | `coop/index.tsx`, `coop/portal/*` (hub, mission, model, ideas, vote, cost, manage) |
 
 ---
 

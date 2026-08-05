@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Inside Jokes wall: sticky notes in a two-column grid with All / About /
-// By filters, plus a small "+" to add one. Used on Friends (compact) and
-// Profile. Data comes from useInsideJokes.
+// By filters. The "Add an Inside Joke" tile stays at the top of the grid so
+// it's always reachable. Used on Friends (compact) and Profile.
 // Pass analyticsIds when the wall lives on Profile so taps use PROFILE.inside_jokes.*.
 // ============================================
 import React, { useState } from 'react';
@@ -85,19 +85,20 @@ export function InsideJokesWall({
 
       {notes.length > 0 ? (
         <View className="flex-row flex-wrap gap-3.5">
+          {/* Add stays first so it's always reachable without scrolling past notes. */}
+          <View className="w-[47%]">
+            <AddNoteTile onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
+          </View>
           {notes.map((joke, i) => (
-            <Peel key={joke.id} index={i} style={{ width: '47%' }}>
+            <Peel key={joke.id} index={i + 1} style={{ width: '47%' }}>
               <InsideJokeNote
                 joke={joke}
-                index={i}
+                index={i + 1}
                 analyticsId={analyticsIds?.note}
                 noteBodyAnalyticsId={analyticsIds?.noteBody}
               />
             </Peel>
           ))}
-          <View className="w-[47%]">
-            <AddNoteTile onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
-          </View>
         </View>
       ) : (
         <AddNoteTile tall onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />

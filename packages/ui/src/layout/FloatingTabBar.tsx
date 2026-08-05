@@ -3,9 +3,13 @@
 // The bottom navigation — a detached, rounded PILL that floats inset from the
 // screen edge (not a full-width bar), per DESIGN.md. Five destinations: Home,
 // Friends, Messages, Events, Discover. Profile lives in the header avatar
-// instead. Active tab = filled coral circle; inactive = muted icon. A small
-// dot marks a tab with something new. Each tab press emits chrome.tab_bar.*
-// analytics so we can see how people move around the app.
+// instead.
+//
+// Each tab has its own accent (active fill + notification dot):
+//   Home teal · Friends coral/orange · Messages blue · Events touch-grass
+//   green · Discover amber/yellow.
+// Inactive icons stay muted. A small matching-color dot marks something new.
+// Each tab press emits chrome.tab_bar.* analytics.
 // ============================================
 import React from 'react';
 import { Pressable, View } from 'react-native';
@@ -18,11 +22,20 @@ import {
   UsersIcon
 } from 'lucide-react-native';
 import { CHROME } from '@bridger/shared';
-import { useThemeColors } from '../tokens';
+import { ACCENT_HEX, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
 import { withAnalyticsPress } from '../lib/analytics';
 
 export type TabKey = 'home' | 'friends' | 'messages' | 'events' | 'discover';
+
+/** Per-tab brand color — used for the selected circle and the badge dot. */
+export const TAB_COLOR: Record<TabKey, string> = {
+  home: ACCENT_HEX.teal,
+  friends: ACCENT_HEX.coral,
+  messages: ACCENT_HEX.blue,
+  events: ACCENT_HEX.green,
+  discover: ACCENT_HEX.amber
+};
 
 const TABS: Array<{
   key: TabKey;
@@ -55,6 +68,7 @@ export function FloatingTabBar({
 }: {
   value: TabKey | string;
   onChange: (key: TabKey) => void;
+  /** When true for a tab, show that tab's colored notification dot. */
   badges?: Partial<Record<TabKey, boolean>>;
 }) {
   const insets = useSafeAreaInsets();
@@ -69,6 +83,8 @@ export function FloatingTabBar({
       <View className="flex-row items-center gap-1 rounded-full border border-ink-line bg-surface px-2 py-2">
         {TABS.map(({ key, label, Icon, analyticsId }) => {
           const active = key === value;
+          const color = TAB_COLOR[key];
+          const showDot = Boolean(badges[key]) && !active;
           return (
             <Pressable
               key={key}
@@ -76,16 +92,25 @@ export function FloatingTabBar({
                 analyticsProps: { surface: String(value) }
               })}
               accessibilityRole="button"
-              accessibilityLabel={label}
+              accessibilityLabel={
+                showDot ? `${label}, new activity` : label
+              }
               accessibilityState={{ selected: active }}
-              className={cn(
-                'relative h-11 w-11 items-center justify-center rounded-full active:opacity-80',
-                active && 'bg-coral'
-              )}
+              style={active ? { backgroundColor: color } : undefined}
+              className="relative h-11 w-11 items-center justify-center rounded-full active:opacity-80"
             >
-              <Icon size={19} color={active ? '#FFFFFF' : c.inkMute} strokeWidth={active ? 2.6 : 2} />
-              {badges[key] && !active ? (
-                <View className="absolute right-2 top-2 h-2 w-2 rounded-full bg-coral" />
+              <Icon
+                size={19}
+                color={active ? '#FFFFFF' : c.inkMute}
+                strokeWidth={active ? 2.6 : 2}
+              />
+              {showDot ? (
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                  style={{ backgroundColor: color }}
+                  className="absolute right-2 top-2 h-2 w-2 rounded-full"
+                />
               ) : null}
             </Pressable>
           );

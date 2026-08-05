@@ -6,7 +6,7 @@
 // ============================================
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import type { Reaction, Story, UpcomingItem } from '@bridger/shared';
+import type { AppNotification, Reaction, Story, UpcomingItem } from '@bridger/shared';
 import {
   getHomeFlags,
   getMyStory,
@@ -21,6 +21,7 @@ import {
   type CoopAnnouncement,
   type HomePoll
 } from '../data/feed';
+import { fireDueCheckInReminders } from '../data/friend-notes';
 
 export function useHomeFeed() {
   const [loading, setLoading] = useState(true);
@@ -29,9 +30,7 @@ export function useHomeFeed() {
   const [stories, setStories] = useState<Story[]>([]);
   const [myStory, setMyStory] = useState<Story | null>(null);
   const [replies, setReplies] = useState<Reaction[]>([]);
-  const [notifications, setNotifications] = useState<
-    Array<{ id: string; personId: string; text: string; time: string }>
-  >([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [comingUp, setComingUp] = useState<UpcomingItem[]>([]);
   const [coopAnnouncements, setCoopAnnouncements] = useState<CoopAnnouncement[]>([]);
   const [weeklyActivity, setWeeklyActivity] =
@@ -45,13 +44,16 @@ export function useHomeFeed() {
       (async () => {
         setLoading(true);
         try {
+          // Coming up first (includes due check-ins), then fire nudges so the
+          // notifications strip picks them up without clearing the Home card.
+          const up = await listComingUp();
+          await fireDueCheckInReminders();
           const [
             flags,
             storyList,
             mine,
             replyList,
             notes,
-            up,
             coop,
             activity,
             quizData,
@@ -62,7 +64,6 @@ export function useHomeFeed() {
             getMyStory(),
             listStoryReplies(),
             listNotificationsPreview(),
-            listComingUp(),
             listCoopAnnouncements(),
             getWeeklyActivity(),
             getQuiz(),

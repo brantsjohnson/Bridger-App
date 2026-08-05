@@ -121,6 +121,8 @@ export function InviteStep({
           </View>
 
           {/* --- MIGHT BE A GOOD FIT (friends of friends) --- */}
+          {/* Hidden when empty — matching deferred, live returns []. */}
+          {filteredSuggested.length > 0 ? (
           <View className="gap-2">
             <Text className="font-sans-b text-[13px] text-ink">Might be a good fit</Text>
             <Text className="font-sans-sb text-[12px] leading-snug text-ink-mute">
@@ -166,6 +168,7 @@ export function InviteStep({
               );
             })}
           </View>
+          ) : null}
         </View>
       </ScrollView>
     </View>

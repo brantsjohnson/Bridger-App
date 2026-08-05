@@ -1,30 +1,57 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // "Places traveled" on the profile card. Two pages in one contained module,
-// the same idiom as the hobbies widget: page 1 is a clean map panel with
-// tappable pins (tap a pin to read the place and note), page 2 is a scrollable
-// list of every place. Swipe or tap the dots to switch.
+// the same idiom as the hobbies widget: page 1 is a real stylized world map
+// with country fills + coral pins (tap a pin to read the place and note),
+// page 2 is a scrollable list of every place. Swipe or tap the dots to switch.
+// Analytics: page changes record method swipe|dropdown + page_index on the
+// places_map id (own card or friend about_them, passed in).
 // ============================================
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import Svg, { Line, Path } from 'react-native-svg';
-import { cn, useThemeColors } from '@bridger/ui';
+import { PROFILE, trackUi } from '@bridger/shared';
+import { cn } from '@bridger/ui';
 import type { TravelPlace } from '../../data/profile';
+import { WorldMapSvg } from './WorldMapSvg';
 
 const PAGES = ['Map', 'List'];
-const MAP_HEIGHT = 168;
 
-export function TravelModule({ places }: { places: TravelPlace[] }) {
-  const c = useThemeColors();
+export function TravelModule({
+  places,
+  analyticsId = PROFILE.card.places_map
+}: {
+  places: TravelPlace[];
+  /** PROFILE.card.places_map or PROFILE.about_them.places_map */
+  analyticsId?: string;
+}) {
   const [page, setPage] = useState(0);
   const [active, setActive] = useState<string | null>(null);
   const [width, setWidth] = useState(0);
   const scroller = useRef<ScrollView>(null);
   const place = places.find((p) => p.id === active);
 
+  const taggedCountryCodes = useMemo(
+    () => [
+      ...new Set(
+        places
+          .map((p) => p.countryCode?.toUpperCase())
+          .filter((code): code is string => !!code && code.length === 2)
+      )
+    ],
+    [places]
+  );
+
+  /** Record a page change — dots = dropdown, swipe = swipe. */
+  const recordPage = (i: number, method: 'swipe' | 'dropdown') => {
+    if (analyticsId) {
+      trackUi('page_viewed', analyticsId, { method, page_index: i });
+    }
+  };
+
   const goTo = (i: number) => {
     setPage(i);
     scroller.current?.scrollTo({ x: i * width, animated: true });
+    recordPage(i, 'dropdown');
   };
 
   return (
@@ -35,78 +62,25 @@ export function TravelModule({ places }: { places: TravelPlace[] }) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
-          if (width > 0) setPage(Math.round(e.nativeEvent.contentOffset.x / width));
+          if (width > 0) {
+            const next = Math.round(e.nativeEvent.contentOffset.x / width);
+            if (next !== page) {
+              setPage(next);
+              recordPage(next, 'swipe');
+            }
+          }
         }}
       >
-        {/* Page 1: the map with pins */}
+        {/* Page 1: real world map with country fills + pins */}
         <View style={{ width: width || undefined }}>
-          <View className="relative overflow-hidden rounded-card border border-ink-line bg-surface">
-            <Svg
-              viewBox="0 0 100 60"
-              width="100%"
-              height={MAP_HEIGHT}
-              accessibilityLabel="Places traveled map"
-            >
-              {/* faint grid so the panel reads as a map, not a blank card */}
-              {Array.from({ length: 11 }).map((_, i) => (
-                <Line
-                  key={`v${i}`}
-                  x1={i * 10}
-                  y1={0}
-                  x2={i * 10}
-                  y2={60}
-                  stroke={c.ink}
-                  strokeOpacity={0.07}
-                  strokeWidth={0.3}
-                />
-              ))}
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Line
-                  key={`h${i}`}
-                  x1={0}
-                  y1={i * 10}
-                  x2={100}
-                  y2={i * 10}
-                  stroke={c.ink}
-                  strokeOpacity={0.07}
-                  strokeWidth={0.3}
-                />
-              ))}
-              {/* an abstract landmass — decorative, not a real projection */}
-              <Path
-                d="M6 26 L18 16 L30 22 L40 14 L52 20 L58 12 L70 18 L82 14 L94 24 L88 40 L74 46 L60 40 L48 48 L34 44 L20 48 L10 40 Z"
-                fill={c.ink}
-                fillOpacity={0.06}
-                stroke={c.ink}
-                strokeOpacity={0.35}
-                strokeWidth={0.5}
-              />
-            </Svg>
+          <WorldMapSvg
+            taggedCountryCodes={taggedCountryCodes}
+            places={places}
+            activeId={active}
+            onPinPress={(id) => setActive((v) => (v === id ? null : id))}
+            pinAnalyticsId={PROFILE.card.places_pin}
+          />
 
-            {/* pins sit over the map at their rough spots */}
-            {places.map((p) => (
-              <Pressable
-                key={p.id}
-                onPress={() => setActive((v) => (v === p.id ? null : p.id))}
-                accessibilityRole="button"
-                accessibilityLabel={p.label}
-                accessibilityState={{ selected: active === p.id }}
-                hitSlop={10}
-                style={{
-                  position: 'absolute',
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                  marginLeft: -6,
-                  marginTop: -12,
-                  transform: [{ scale: active === p.id ? 1.2 : 1 }]
-                }}
-              >
-                <View className="h-3 w-3 rounded-full border-2 border-ink bg-coral" />
-              </Pressable>
-            ))}
-          </View>
-
-          {/* the caption under the map: the tapped place, or a nudge to tap */}
           <View className="mt-2.5 min-h-[34px]">
             {place ? (
               <Text className="font-sans-sb text-[13px] text-ink">

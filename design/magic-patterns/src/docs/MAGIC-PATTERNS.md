@@ -103,7 +103,7 @@ One line each; keep them dumb and reusable.
 | Welcome / onboarding flow | `ONBOARDING.md` |
 | Auth (email · Google · Apple) | `ONBOARDING.md` |
 | Home (+ notifications preview) | `HOME.md` |
-| Notifications page | `HOME.md` |
+| Notifications page | `HOME.md` / `NOTIFICATIONS.md` |
 | Story viewer + Catch-Up | `STORIES.md` |
 | Post / capture (themed) | `STORIES.md` |
 | Friends + add-friend sheet | `FRIENDS.md` |

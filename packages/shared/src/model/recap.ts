@@ -10,7 +10,7 @@
 // - Co-op members keep their recaps (archived to the Profile stories calendar);
 //   non-members' audio is hard-deleted after 7 days.
 // PRIVACY: listeners only hear answers shared with a tier they belong to.
-// Mirrors guide-docs/RECAP-PODCAST.md.
+// Mirrors guide-docs/complete/RECAP-PODCAST.md.
 // ============================================
 
 import type { Tier } from './tier';

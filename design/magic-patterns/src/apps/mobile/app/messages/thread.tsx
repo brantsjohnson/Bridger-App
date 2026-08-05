@@ -56,9 +56,9 @@ export function ThreadScreen({
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F1ECFF]">
-          
-          <ChevronLeftIcon className="h-5 w-5" strokeWidth={2.6} />
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-ink text-canvas active:opacity-80"
+        >
+          <ChevronLeftIcon className="h-5 w-5 text-canvas" strokeWidth={3} />
         </button>
         <Avatar name={thread.name} emoji={thread.emoji} accent={thread.accent} size="sm" />
         <p className="min-w-0 flex-1 truncate text-[16px] font-bold tracking-tight text-ink">

@@ -1,13 +1,24 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Everything the Events tab needs: list your calendar, RSVP, create an event,
-// and update Assignments (snag / remove / check off). Demo mode keeps a copy
-// of the fixtures in memory so taps feel real. Live mode will call the Nest
-// events API — same function names either way.
+// update Assignments (assign / leave open / check off), and host edits.
+// Demo mode keeps a copy of the fixtures in memory so taps feel real. Live
+// mode calls the Nest events API — same function names either way.
 // ============================================
-import type { Cover, EventAssignment, EventItem, MeetSuggestion } from '@bridger/shared';
+import type {
+  Cover,
+  EventAssignment,
+  EventItem,
+  Introduction,
+  MeetSuggestion
+} from '@bridger/shared';
+import { trackProduct } from '@bridger/shared';
+import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
+import { uploadMedia } from '../lib/media-upload';
+import { pushNotification } from './feed';
 import {
+  EVENT_INTRODUCTIONS,
   EVENTS as FIXTURE_EVENTS,
   MEET_SUGGESTIONS as FIXTURE_MEET_SUGGESTIONS
 } from './fixtures/catalog';
@@ -19,7 +30,7 @@ const DEFAULT_COVER_BG = '#7F77DD';
 
 /** Pick a random emoji cover for events created without a photo. */
 function randomEmojiCover(): Cover {
-  const value = COVER_EMOJIS[Math.floor(Math.random() * COVER_EMOJIS.length)];
+  const value = COVER_EMOJIS[Math.floor(Math.random() * COVER_EMOJIS.length)]!;
   return { kind: 'emoji', value, bg: DEFAULT_COVER_BG };
 }
 
@@ -53,6 +64,7 @@ function cloneEvent(e: EventItem): EventItem {
     ...e,
     goingIds: [...e.goingIds],
     invitedIds: e.invitedIds ? [...e.invitedIds] : undefined,
+    broughtIds: e.broughtIds ? [...e.broughtIds] : undefined,
     coHostIds: e.coHostIds ? [...e.coHostIds] : undefined,
     assignments: e.assignments ? e.assignments.map((a) => ({ ...a })) : undefined
   };
@@ -67,13 +79,13 @@ export async function listEvents(): Promise<EventItem[]> {
   if (isDemoMode()) {
     return cloneEvents();
   }
-  // TODO: GET /events
-  return [];
+  return apiFetch<EventItem[]>('/events');
 }
 
 export type CreateEventInput = {
   title: string;
   bio?: string;
+  /** YYYY-MM-DD for the API */
   day: string;
   time: string;
   place: string;
@@ -86,8 +98,9 @@ export type CreateEventInput = {
   chipInAmount?: string;
   chipInMethod?: EventItem['chipInMethod'];
   chipInHandle?: string;
+  chipInNote?: string;
   /** cover the host picked, or a random emoji if they skipped it */
-  cover?: Cover;
+  cover?: Cover | { kind: 'photo'; uri: string; bannerText?: string };
   /** the Assignments sign-up list */
   assignments?: EventAssignment[];
 };
@@ -95,43 +108,83 @@ export type CreateEventInput = {
 /** Create an event. Demo: prepends to the local list. Live: POST /events. */
 export async function createEvent(input: CreateEventInput): Promise<EventItem> {
   const cover = input.cover ?? randomEmojiCover();
-  const event: EventItem = {
-    id: `e-${Date.now()}`,
-    title: input.title.trim() || 'Untitled',
-    // Keep a plain emoji around for tiny list chips; the cover drives big art.
-    emoji: cover.kind === 'emoji' ? cover.value : '📸',
-    cover,
-    accent: 'purple',
-    day: input.day,
-    time: input.time,
-    place: input.place,
-    address: input.address,
-    bio: input.bio,
-    goingIds: ['me'],
-    invitedIds: input.invitedIds ?? [],
-    coHostIds: input.coHostIds ?? [],
-    hostId: 'me',
-    role: 'host',
-    countdown: 'soon',
-    cap: input.cap ?? 35,
-    allowFriendsToInvite: input.allowFriendsToInvite,
-    chipInAmount: input.chipInAmount,
-    chipInMethod: input.chipInMethod,
-    chipInHandle: input.chipInHandle,
-    assignments: input.assignments ?? []
-  };
 
   if (isDemoMode()) {
+    const event: EventItem = {
+      id: `e-${Date.now()}`,
+      title: input.title.trim() || 'Untitled',
+      emoji: cover.kind === 'emoji' ? cover.value : '📸',
+      cover: cover.kind === 'photo' && 'uri' in cover
+        ? { kind: 'photo', url: cover.uri, bannerText: cover.bannerText }
+        : (cover as Cover),
+      accent: 'purple',
+      day: input.day,
+      time: input.time,
+      place: input.place,
+      address: input.address,
+      bio: input.bio,
+      goingIds: ['me'],
+      invitedIds: input.invitedIds ?? [],
+      coHostIds: input.coHostIds ?? [],
+      hostId: 'me',
+      role: 'host',
+      countdown: 'soon',
+      cap: input.cap ?? 35,
+      allowFriendsToInvite: input.allowFriendsToInvite,
+      chipInAmount: input.chipInAmount,
+      chipInMethod: input.chipInMethod,
+      chipInHandle: input.chipInHandle,
+      assignments: input.assignments ?? []
+    };
     demoEvents = [event, ...demoEvents];
-    // Anyone assigned an item gets nudged before the event (see stub below).
     void scheduleAssignmentReminders(event.id);
     return cloneEvent(event);
   }
 
-  // TODO: POST /events (body is the CreateEventInput; server assigns id + host).
-  //       New assignments table needs an RLS policy so only attendees can read
-  //       it and only host / assignee can change a row (DATA.md).
-  return event;
+  // MEDIA EXCEPTION: upload cover photo bytes, then send mediaId to Nest.
+  let coverPayload:
+    | Cover
+    | { kind: 'photo'; mediaId: string; bannerText?: string }
+    | undefined;
+  if (cover.kind === 'photo' && 'uri' in cover && cover.uri) {
+    const mediaId = await uploadMedia(
+      cover.uri,
+      'photo',
+      `events/tmp-${Date.now()}`
+    );
+    coverPayload = {
+      kind: 'photo',
+      mediaId,
+      bannerText: cover.bannerText
+    };
+  } else if (cover.kind !== 'photo') {
+    coverPayload = cover;
+  } else if (cover.kind === 'photo' && 'url' in cover) {
+    // Already a remote url cover — server expects mediaId; fall back to emoji.
+    coverPayload = randomEmojiCover();
+  }
+
+  return apiFetch<EventItem>('/events', {
+    method: 'POST',
+    body: JSON.stringify({
+      title: input.title,
+      bio: input.bio,
+      day: input.day,
+      time: input.time,
+      place: input.place,
+      address: input.address,
+      invitedIds: input.invitedIds,
+      coHostIds: input.coHostIds,
+      allowFriendsToInvite: input.allowFriendsToInvite,
+      cap: input.cap,
+      chipInAmount: input.chipInAmount,
+      chipInMethod: input.chipInMethod,
+      chipInHandle: input.chipInHandle,
+      chipInNote: input.chipInNote,
+      cover: coverPayload,
+      assignments: (input.assignments ?? []).map((a) => ({ label: a.label }))
+    })
+  });
 }
 
 /** Open one event for the detail / share page. */
@@ -140,8 +193,11 @@ export async function getEvent(id: string): Promise<EventItem | null> {
     const found = demoEvents.find((e) => e.id === id);
     return found ? cloneEvent(found) : null;
   }
-  // TODO: GET /events/:id
-  return null;
+  try {
+    return await apiFetch<EventItem>(`/events/${encodeURIComponent(id)}`);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -169,8 +225,13 @@ export async function assignItem(
     const updated = demoEvents.find((e) => e.id === eventId);
     return updated ? cloneEvent(updated) : null;
   }
-  // TODO: PATCH /events/:id/assignments/:itemId { assigneeId }
-  return null;
+  return apiFetch<EventItem>(
+    `/events/${encodeURIComponent(eventId)}/assignments/${encodeURIComponent(itemId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ assigneeId: personId ?? null })
+    }
+  );
 }
 
 /**
@@ -186,56 +247,64 @@ export async function setAssignmentDone(
       if (e.id !== eventId || !e.assignments) return e;
       return {
         ...e,
-        assignments: e.assignments.map((a) => (a.id === itemId ? { ...a, done } : a))
+        assignments: e.assignments.map((a) =>
+          a.id === itemId ? { ...a, done } : a
+        )
       };
     });
     const updated = demoEvents.find((e) => e.id === eventId);
     return updated ? cloneEvent(updated) : null;
   }
-  // TODO: PATCH /events/:id/assignments/:itemId { done }
-  return null;
+  return apiFetch<EventItem>(
+    `/events/${encodeURIComponent(eventId)}/assignments/${encodeURIComponent(itemId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ done })
+    }
+  );
 }
 
 /**
  * Tell the host that someone snagged or dropped an assignment.
- * Stub only — real push/email comes from the notifications module later.
+ * Live: the server inserts the notification from the assignment PATCH.
  */
 export async function notifyHostAssignmentChange(
   eventId: string,
   itemId: string,
   action: 'snagged' | 'released'
 ): Promise<void> {
-  // TODO: notifications module — alert the host that an assignment changed.
   if (isDemoMode()) {
     // eslint-disable-next-line no-console
     console.log('[events] host notify stub', { eventId, itemId, action });
   }
+  // Live path: Nest notifies the host on assignment PATCH.
 }
 
 /**
- * Line up the "bring your thing" nudges for everyone with an assignment:
- * one a day before and one 2 hours before, matching the event reminder rules
- * in EVENTS.md. Stubbed in demo — no real notifications are scheduled yet.
+ * Line up the "bring your thing" nudges for everyone with an assignment.
+ * Stubbed until a reminder scheduler ships.
  */
 export async function scheduleAssignmentReminders(eventId: string): Promise<void> {
   if (isDemoMode()) {
-    // Demo no-op: real scheduling happens server-side.
     return;
   }
   // TODO: notifications module — schedule 1-day + 2-hour reminders per assignee
-  //       (server-side; client never holds the schedule).
+  void eventId;
 }
 
-/** RSVP on an invite. Demo updates local role; live PATCHes the event. */
+/** RSVP on an invite. Demo updates local role; live POSTs the RSVP. */
 export async function rsvpEvent(
   id: string,
-  status: 'going' | 'cant'
+  status: 'going' | 'cant',
+  allergies?: { optIn?: boolean; text?: string }
 ): Promise<EventItem | null> {
   if (isDemoMode()) {
     demoEvents = demoEvents.map((e) => {
       if (e.id !== id) return e;
       if (status === 'going') {
-        const goingIds = e.goingIds.includes('me') ? e.goingIds : [...e.goingIds, 'me'];
+        const goingIds = e.goingIds.includes('me')
+          ? e.goingIds
+          : [...e.goingIds, 'me'];
         return { ...e, role: 'going' as const, goingIds, going: true };
       }
       return { ...e, role: 'invited' as const, going: false };
@@ -243,28 +312,134 @@ export async function rsvpEvent(
     return demoEvents.find((e) => e.id === id) ?? null;
   }
 
-  // TODO: POST /events/:id/rsvp
-  return null;
+  return apiFetch<EventItem>(`/events/${encodeURIComponent(id)}/rsvp`, {
+    method: 'POST',
+    body: JSON.stringify({
+      status,
+      allergiesOptIn: allergies?.optIn,
+      allergiesText: allergies?.text
+    })
+  });
 }
 
 /**
- * People at this event that Bridger thinks you should meet (not already in
- * your book). Used on the Home next-event tile beside friends who are going.
- * PRIVACY: never includes blocked people; demo list is fixture-only.
+ * People at this event that Bridger thinks you should meet.
+ * Includes invited and going. Matching deferred — live returns [].
  */
 export function meetSuggestionsForEvent(event: EventItem): MeetSuggestion[] {
   if (!isDemoMode()) {
-    // TODO: GET /events/:id/meet-suggestions
+    // TODO: GET /events/:id/meet-suggestions when matching ships
     return [];
   }
   const atEvent = new Set([
     ...event.goingIds,
-    ...(event.invitedIds ?? []),
-    event.hostId
+    ...(event.invitedIds ?? [])
   ]);
-  // Skip anyone already counted as a friend going (you already know them).
-  const friendGoing = new Set(event.goingIds);
-  return FIXTURE_MEET_SUGGESTIONS.filter(
-    (m) => atEvent.has(m.personId) && !friendGoing.has(m.personId)
-  );
+  // Drop yourself and the host from "people you should meet"
+  atEvent.delete('me');
+  atEvent.delete(event.hostId);
+  return FIXTURE_MEET_SUGGESTIONS.filter((m) => atEvent.has(m.personId)).map((m) => ({
+    ...m,
+    status: event.goingIds.includes(m.personId) ? ('going' as const) : ('invited' as const)
+  }));
+}
+
+/** Host Introductions: A & B · why, among invited + going. */
+export function introductionsForEvent(event: EventItem): Introduction[] {
+  if (!isDemoMode()) {
+    // TODO: GET /events/:id/introductions when matching ships
+    return [];
+  }
+  return (EVENT_INTRODUCTIONS[event.id] ?? []).map((row) => ({ ...row }));
+}
+
+/**
+ * Demo: push "you should meet" pings to people in introduction pairs.
+ * Live: Nest will fan out from matching when the event is published / updated.
+ */
+export async function notifyEventIntroductions(eventId: string): Promise<void> {
+  if (!isDemoMode()) {
+    // TODO: POST /events/:id/introductions/notify
+    return;
+  }
+  const event = demoEvents.find((e) => e.id === eventId);
+  if (!event) return;
+  const pairs = introductionsForEvent(event);
+  const seen = new Set<string>();
+  for (const pair of pairs) {
+    for (const personId of [pair.a, pair.b]) {
+      if (seen.has(personId) || personId === 'me') continue;
+      seen.add(personId);
+      pushNotification({
+        id: `intro-${eventId}-${personId}-${Date.now()}`,
+        kind: 'event_introduction',
+        personId,
+        text: `Someone at ${event.title} you should meet`,
+        time: 'Just now',
+        unread: true,
+        target: { eventId, personId }
+      });
+    }
+  }
+  if (seen.size > 0) {
+    trackProduct('event_introduction_notified', { count: seen.size });
+  }
+}
+
+/** Patch an event the host is editing. Demo mutates in memory. */
+export type UpdateEventInput = Partial<
+  Pick<
+    EventItem,
+    | 'title'
+    | 'bio'
+    | 'day'
+    | 'time'
+    | 'place'
+    | 'address'
+    | 'cover'
+    | 'emoji'
+    | 'chipInAmount'
+    | 'chipInMethod'
+    | 'chipInHandle'
+    | 'chipInNote'
+    | 'allowFriendsToInvite'
+    | 'coHostIds'
+    | 'assignments'
+    | 'remindDay'
+    | 'remindHours'
+  >
+>;
+
+export async function updateEvent(
+  eventId: string,
+  patch: UpdateEventInput
+): Promise<EventItem | null> {
+  if (isDemoMode()) {
+    demoEvents = demoEvents.map((e) => {
+      if (e.id !== eventId) return e;
+      return {
+        ...e,
+        ...patch,
+        goingIds: [...e.goingIds],
+        invitedIds: e.invitedIds ? [...e.invitedIds] : undefined,
+        broughtIds: e.broughtIds ? [...e.broughtIds] : undefined,
+        coHostIds: patch.coHostIds
+          ? [...patch.coHostIds]
+          : e.coHostIds
+            ? [...e.coHostIds]
+            : undefined,
+        assignments: patch.assignments
+          ? patch.assignments.map((a) => ({ ...a }))
+          : e.assignments
+            ? e.assignments.map((a) => ({ ...a }))
+            : undefined
+      };
+    });
+    const updated = demoEvents.find((e) => e.id === eventId);
+    return updated ? cloneEvent(updated) : null;
+  }
+  return apiFetch<EventItem>(`/events/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch)
+  });
 }

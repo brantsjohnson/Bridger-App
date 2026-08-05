@@ -2,11 +2,13 @@
 // WHAT THIS FILE DOES (plain English):
 // Everything the Friends tab needs for the roster: list your confirmed friends
 // grouped by tier, and move someone between Close / Friends / Acquaintances.
-// Demo mode keeps tiers in memory so Edit feels real. Live mode will call the
-// tiers API — same function names either way.
+// Demo mode keeps tiers in memory so Edit feels real. Live mode calls the
+// connections + tiers APIs — same function names either way.
 // ============================================
 import type { Person, Tier } from '@bridger/shared';
+import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
+import { getCachedPeople, loadPeople } from '../lib/people-cache';
 import { BIRTHDAYS, PEOPLE as FIXTURE_PEOPLE } from './fixtures/catalog';
 
 /** The three circles you can put a friend in (never "none" on this page). */
@@ -65,8 +67,17 @@ export async function listRoster(opts?: { includeEmpty?: boolean }): Promise<Ros
     })).filter((s) => opts?.includeEmpty || s.people.length > 0);
   }
 
-  // TODO: GET /connections + GET /tiers
-  return [];
+  // Live: refresh the people cache, then group by each person's tier.
+  await loadPeople();
+  const rows: FriendRow[] = getCachedPeople().map((p) => ({
+    ...p,
+    // TODO: festive birthday row needs each friend's shared birthday attribute.
+    birthdayToday: false
+  }));
+  return ROSTER_TIERS.map((tier) => ({
+    tier,
+    people: rows.filter((p) => p.tier === tier)
+  })).filter((s) => opts?.includeEmpty || s.people.length > 0);
 }
 
 /** Flat list of confirmed friends (for search stub / pickers). */
@@ -110,8 +121,13 @@ export async function moveTier(personId: string, target: Tier): Promise<MoveTier
     return { landedIn, upsell };
   }
 
-  // TODO: PATCH /tiers/:personId
-  return { landedIn: target, upsell: false };
+  const result = await apiFetch<MoveTierResult>(
+    `/tiers/${encodeURIComponent(personId)}`,
+    { method: 'PATCH', body: JSON.stringify({ tier: target }) }
+  );
+  // Keep the people cache's tier in sync so personById stays accurate.
+  await loadPeople();
+  return result;
 }
 
 /** Stub for the dormant search bar — ready when searchEnabled flips on. */

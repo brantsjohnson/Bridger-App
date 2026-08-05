@@ -8,6 +8,7 @@ import type {
   EventItem,
   GrassSignal,
   InsideJoke,
+  Introduction,
   MeetSuggestion,
   Person,
   Reaction,
@@ -24,7 +25,9 @@ export const ME: Person = {
   accent: 'pink',
   tier: 'close',
   label: 'Portland',
-  mutuals: 0
+  mutuals: 0,
+  // Demo: you have a live update today — ring shows on your Profile photo.
+  story: 'unseen'
 };
 
 export const PEOPLE: Person[] = [
@@ -37,7 +40,9 @@ export const PEOPLE: Person[] = [
     tier: 'close',
     label: 'Ceramics',
     mutuals: 12,
-    story: 'unseen'
+    story: 'unseen',
+    song: { title: 'Pink + White', artist: 'Frank Ocean' },
+    book: { title: 'Braiding Sweetgrass', author: 'Robin Wall Kimmerer' }
   },
   {
     id: 'devon',
@@ -48,7 +53,9 @@ export const PEOPLE: Person[] = [
     tier: 'friend',
     label: 'Vinyl club',
     mutuals: 8,
-    story: 'unseen'
+    story: 'unseen',
+    song: { title: 'Pyramids', artist: 'Frank Ocean' },
+    book: { title: 'The Overstory', author: 'Richard Powers' }
   },
   {
     id: 'ines',
@@ -59,7 +66,9 @@ export const PEOPLE: Person[] = [
     tier: 'friend',
     label: 'Trails',
     mutuals: 5,
-    story: 'seen'
+    story: 'seen',
+    song: { title: 'Holocene', artist: 'Bon Iver' },
+    book: { title: 'Bluets', author: 'Maggie Nelson' }
   },
   {
     id: 'theo',
@@ -69,7 +78,9 @@ export const PEOPLE: Person[] = [
     accent: 'coral',
     tier: 'acquaintance',
     label: 'Hot sauce',
-    mutuals: 3
+    mutuals: 3,
+    song: { title: 'Levitating', artist: 'Dua Lipa' },
+    book: { title: 'Tomorrow, and Tomorrow, and Tomorrow', author: 'Gabrielle Zevin' }
   },
   {
     id: 'nour',
@@ -79,7 +90,9 @@ export const PEOPLE: Person[] = [
     accent: 'purple',
     tier: 'acquaintance',
     label: 'Film photos',
-    mutuals: 2
+    mutuals: 2,
+    song: { title: 'Motion Picture Soundtrack', artist: 'Radiohead' },
+    book: { title: 'Stoner', author: 'John Williams' }
   },
   {
     id: 'kit',
@@ -90,7 +103,9 @@ export const PEOPLE: Person[] = [
     tier: 'friend',
     label: 'Rides at 6',
     mutuals: 9,
-    story: 'seen'
+    story: 'seen',
+    song: { title: 'Dreams', artist: 'Fleetwood Mac' },
+    book: { title: 'Atomic Habits', author: 'James Clear' }
   },
   {
     id: 'jordyn',
@@ -101,7 +116,9 @@ export const PEOPLE: Person[] = [
     tier: 'friend',
     label: 'Weekend plans',
     mutuals: 4,
-    story: 'unseen'
+    story: 'unseen',
+    song: { title: 'Good Days', artist: 'SZA' },
+    book: { title: 'Circe', author: 'Madeline Miller' }
   }
 ];
 
@@ -170,18 +187,34 @@ export const EVENTS: EventItem[] = [
     id: 'e1',
     title: 'Sketch night',
     emoji: '✏️',
-    cover: { kind: 'emoji', value: '✏️' },
+    cover: { kind: 'emoji', value: '✏️', bg: '#9B5DE5' },
     accent: 'purple',
     day: 'Fri 31 Jul',
     time: '18:30',
     place: 'Rowan Park',
-    goingIds: ['maya', 'devon', 'ines'],
-    invitedIds: ['theo', 'nour', 'kit'],
+    address: '120 Rowan Park Rd',
+    bio: 'Pens, paper, no pressure. Bring a sketchbook if you have one.',
+    goingIds: ['maya', 'devon', 'ines', 'kit'],
+    invitedIds: ['theo', 'nour', 'kit', 'jordyn'],
+    /** Guest-of-guest via bring-a-friend (host planning only) */
+    broughtIds: ['jordyn'],
     hostId: 'me',
     coHostIds: ['maya'],
     role: 'host',
     countdown: 'in 2 days',
-    cap: 35
+    cap: 35,
+    allowFriendsToInvite: true,
+    remindDay: true,
+    remindHours: true,
+    chipInAmount: '$5',
+    chipInMethod: 'Venmo',
+    chipInHandle: '@maya-r',
+    chipInNote: 'for snacks',
+    assignments: [
+      { id: 'a1', label: 'Extra pens', assigneeId: 'maya' },
+      { id: 'a2', label: 'Blank paper pack', assigneeId: undefined },
+      { id: 'a3', label: 'Bluetooth speaker', assigneeId: 'me', done: false }
+    ]
   },
   {
     id: 'e2',
@@ -221,9 +254,19 @@ export const EVENTS: EventItem[] = [
 // Friends-of-friends at an event you are hosting or going to. Shown on the
 // Home "This week" event tile next to friends who are already coming.
 export const MEET_SUGGESTIONS: MeetSuggestion[] = [
-  { personId: 'nour', thread: 'You both shoot film', status: 'going' },
-  { personId: 'kit', thread: 'Same morning loop', status: 'invited' }
+  { personId: 'nour', thread: 'You both shoot film', status: 'invited' },
+  { personId: 'kit', thread: 'Same morning loop', status: 'going' },
+  { personId: 'theo', thread: 'Both at the Kettle open mic', status: 'invited' }
 ];
+
+/** Host Introductions for Sketch night — pairs among invited + going. */
+export const EVENT_INTRODUCTIONS: Record<string, Introduction[]> = {
+  e1: [
+    { a: 'devon', b: 'nour', why: 'Both shoot film' },
+    { a: 'maya', b: 'theo', why: 'Both at the Kettle open mic' },
+    { a: 'ines', b: 'kit', why: 'Same morning loop' }
+  ]
+};
 
 export const FREE_SIGNALS: GrassSignal[] = [
   {
@@ -258,18 +301,63 @@ export const STORY_REPLIES: Reaction[] = [
   { id: 'x5', postId: 'sp-me-1', authorId: 'nour', kind: 'text', text: 'the mug is coming along', at: '12m' }
 ];
 
-export const NOTIFICATIONS: Array<{ id: string; personId: string; text: string; time: string }> = [
-  { id: 'n1', personId: 'maya', text: 'replied to your story', time: '12m' },
-  { id: 'n2', personId: 'nour', text: 'wants to connect', time: '1h' },
-  { id: 'n3', personId: 'kit', text: 'is free tonight', time: '3h' }
+export const NOTIFICATIONS: Array<{
+  id: string;
+  kind:
+    | 'story_reply'
+    | 'connect_request'
+    | 'touch_grass_signal'
+    | 'recap_reaction'
+    | 'mutual_connection'
+    | 'event_invite';
+  personId: string;
+  text: string;
+  time: string;
+  unread?: boolean;
+  target?: {
+    authorId?: string;
+    requestId?: string;
+    signalId?: string;
+    eventId?: string;
+    personId?: string;
+  };
+}> = [
+  {
+    id: 'n1',
+    kind: 'story_reply',
+    personId: 'maya',
+    text: 'replied to your story',
+    time: '12m',
+    unread: true,
+    target: { authorId: 'me' }
+  },
+  {
+    id: 'n2',
+    kind: 'connect_request',
+    personId: 'nour',
+    text: 'wants to connect',
+    time: '1h',
+    unread: true,
+    target: { requestId: 'r1', personId: 'nour' }
+  },
+  {
+    id: 'n3',
+    kind: 'touch_grass_signal',
+    personId: 'kit',
+    text: 'is free tonight',
+    time: '3h',
+    unread: true,
+    target: { signalId: 'tg-kit', personId: 'kit' }
+  }
 ];
 
 export const COMING_UP: UpcomingItem[] = [
-  // Birthdays paint pink regardless of tier. Notes (graduation) use the friend's circle.
+  // Row color = friend's circle (green Close / blue Friends / orange Acquaintances).
   // personIds still match the catalog ids (maya = Jade, devon = Kelton).
-  { id: 'u1', kind: 'birthday', label: "Kelton's birthday", when: 'Today', personId: 'devon' },
+  // Weekday chips omit daysUntil so sort uses today's calendar.
+  { id: 'u1', kind: 'birthday', label: "Kelton's birthday", when: 'Today', personId: 'devon', daysUntil: 0 },
   { id: 'u2', kind: 'birthday', label: "Jade's birthday", when: 'Friday', personId: 'maya' },
-  { id: 'u3', kind: 'note', label: "Jade's graduation", when: 'in 1 week', personId: 'maya' }
+  { id: 'u3', kind: 'note', label: "Jade's graduation", when: 'in 7 days', personId: 'maya', daysUntil: 7 }
 ];
 
 export const COOP_ANNOUNCEMENTS = [

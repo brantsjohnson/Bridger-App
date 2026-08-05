@@ -1,10 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Settings tab on your profile: appearance, who sees what, storage,
-// Discover, page customization, notifications, blocked people, account, and
-// Log out. Rows that lead to surfaces we haven't built yet show a small note
-// instead of going nowhere silently. Log out is always reachable here, which
-// the app stores require.
+// Discover, page customization, notifications (opens per-group prefs), blocked
+// people, account, and Log out. Rows that lead to surfaces we haven't built yet
+// show a small note instead of going nowhere silently. Log out is always
+// reachable here, which the app stores require.
 // Analytics: each row uses PROFILE.settings.* so taps land in PostHog by name.
 // ============================================
 import React, { useState } from 'react';
@@ -15,6 +15,7 @@ import { PROFILE } from '@bridger/shared';
 import { ButtonSecondary, Card, ListRow, Toggle } from '@bridger/ui';
 import { useColorScheme } from '../useColorScheme';
 import type { StorageState } from '../../data/profile';
+import { getMembership } from '../../data/coop';
 import { BlockedPeopleSheet } from './BlockedPeopleSheet';
 
 export function ProfileSettings({
@@ -32,13 +33,29 @@ export function ProfileSettings({
   const scheme = useColorScheme();
   /** a standing preference for other people's pages — never your own */
   const [preferOriginal, setPreferOriginal] = useState(false);
-  const [notifications, setNotifications] = useState(true);
   /** blocking is reversible, and undoing it lives here */
   const [blockedOpen, setBlockedOpen] = useState(false);
 
   // Surfaces that aren't built yet say so instead of silently doing nothing.
   const notYet = (what: string) => () =>
     Alert.alert(what, 'This screen is coming soon.');
+
+  // Co-op members enter the customize flow. Free accounts get a clear join choice.
+  const openCustomize = async () => {
+    try {
+      const member = storage.plan === 'coop' || (await getMembership()).member;
+      if (member) {
+        router.push('/profile/customize');
+        return;
+      }
+      Alert.alert('Co-op membership', 'Join the co-op to customize your profile.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'See membership', onPress: () => router.push('/coop') }
+      ]);
+    } catch {
+      Alert.alert('Could not check membership', 'Please try again in a moment.');
+    }
+  };
 
   return (
     <View className="gap-2.5">
@@ -74,7 +91,7 @@ export function ProfileSettings({
         label="Customize your page"
         sublabel="Members only · make it yours"
         trailing="chevron"
-        onPress={notYet('Customize your page')}
+        onPress={() => void openCustomize()}
         analyticsId={PROFILE.settings.customize_profile}
       />
       <ListRow
@@ -92,19 +109,15 @@ export function ProfileSettings({
         label="Co-op"
         sublabel="Membership · what you get"
         trailing="chevron"
-        onPress={notYet('Co-op')}
+        onPress={() => router.push('/coop')}
         analyticsId={PROFILE.settings.coop}
       />
       <ListRow
         label="Notifications"
-        action={
-          <Toggle
-            checked={notifications}
-            onChange={setNotifications}
-            label="Notifications"
-            analyticsId={PROFILE.settings.notifications}
-          />
-        }
+        sublabel="Choose what we nudge you about"
+        trailing="chevron"
+        onPress={() => router.push('/settings/notifications')}
+        analyticsId={PROFILE.settings.notifications}
       />
       <ListRow
         label="Blocked people"

@@ -9,7 +9,7 @@
 // ids from the shared taxonomy (no invented names).
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PlusIcon } from 'lucide-react-native';
 import type { Tier } from '@bridger/shared';
@@ -31,12 +31,15 @@ import { AddInsideJokeSheet } from '../../components/friends/AddInsideJokeSheet'
 import { FriendPodWidget } from '../../components/friends/FriendPodWidget';
 import { FriendRow, type FriendRowPerson } from '../../components/friends/FriendRow';
 import { InsideJokesWidget } from '../../components/friends/InsideJokesWall';
+import { ScanFriendSheet } from '../../components/friends/ScanFriendSheet';
 import { SubmitQuestion } from '../../components/friends/SubmitQuestion';
 import { TierPicker } from '../../components/friends/TierPicker';
 import { RecapRecorder } from '../../components/pod/RecapRecorder';
 import { useFriendPod } from '../../hooks/useFriendPod';
 import { useFriends } from '../../hooks/useFriends';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
+import { apiFetch } from '../../lib/api';
+import { isDemoMode } from '../../lib/demo';
 
 // Short "what this circle means" copy for each Friends tier title.
 const TIER_DESCRIPTIONS: Record<Tier, string> = {
@@ -62,6 +65,7 @@ export default function FriendsScreen() {
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [questionOpen, setQuestionOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
 
@@ -286,13 +290,32 @@ export default function FriendsScreen() {
         onClose={() => setAddOpen(false)}
         onShare={() => {
           setAddOpen(false);
-          Alert.alert('Invite link', 'Share sheet opens here when invite-links ship.');
+          void (async () => {
+            if (isDemoMode()) {
+              Alert.alert('Invite link', 'Demo mode — live builds share a real link.');
+              return;
+            }
+            try {
+              const { url } = await apiFetch<{ url: string }>(
+                '/connections/invite-link',
+                { method: 'POST', body: JSON.stringify({}) }
+              );
+              await Share.share({ message: url, url });
+            } catch (e) {
+              Alert.alert(
+                'Could not make invite link',
+                e instanceof Error ? e.message : 'Try again.'
+              );
+            }
+          })();
         }}
         onScan={() => {
           setAddOpen(false);
-          Alert.alert('Scan a code', 'Camera opens here when QR scan ships.');
+          setScanOpen(true);
         }}
       />
+
+      <ScanFriendSheet open={scanOpen} onClose={() => setScanOpen(false)} />
 
       <SubmitQuestion open={questionOpen} onClose={() => setQuestionOpen(false)} />
 

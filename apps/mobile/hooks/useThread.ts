@@ -12,6 +12,7 @@ import {
   shareContact,
   type ThreadDetail
 } from '../data/messages';
+import { clearStoryReplyNotifications } from '../data/feed';
 
 export function useThread(threadId: string) {
   const [thread, setThread] = useState<ThreadDetail | null>(null);
@@ -20,7 +21,12 @@ export function useThread(threadId: string) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setThread(await getThread(threadId));
+      const next = await getThread(threadId);
+      setThread(next);
+      // Opening the mirrored story-reply DM clears that alert (NOTIFICATIONS.md).
+      if (next?.personId) {
+        clearStoryReplyNotifications({ personId: next.personId });
+      }
     } finally {
       setLoading(false);
     }

@@ -127,12 +127,17 @@ export async function getLiveQuizDetail(slug: string): Promise<LiveQuiz | null> 
     return null;
   }
 
-  // Live API exposes the current quiz; archived take-by-slug lands later.
+  // Prefer slug route so admin-published quizzes work; fall back to current.
   try {
-    const live = await apiFetch<LiveQuiz>('/quizzes/current');
-    return live;
+    return await apiFetch<LiveQuiz>(`/quizzes/${encodeURIComponent(slug)}`);
   } catch {
-    return null;
+    try {
+      const live = await apiFetch<LiveQuiz>('/quizzes/current');
+      if (live.slug === slug || slug === 'road-trip') return live;
+      return null;
+    } catch {
+      return null;
+    }
   }
 }
 

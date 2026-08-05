@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Weekly Recap routes the app calls: this week's summary, the playlist to
-// play, posting your 5 recorded answers, and submitting / upvoting questions.
+// play, posting your 5 recorded answers, reacting to a clip, and submitting /
+// upvoting questions.
 // ============================================
 import {
   Body,
@@ -59,5 +60,14 @@ export class RecapController {
   @Post('questions/:id/vote')
   voteQuestion(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.recap.voteQuestion(user.id, id);
+  }
+
+  @Post('answers/:id/reactions')
+  reactToAnswer(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() body: { emoji: string }
+  ) {
+    return this.recap.reactToAnswer(user.id, id, body?.emoji ?? '');
   }
 }

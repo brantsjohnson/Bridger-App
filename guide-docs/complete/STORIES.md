@@ -41,8 +41,9 @@ Modeled on a music player's now-playing screen (Bridger-original, not a copy):
 **Tap zones on the media:** left third = previous post, **center = pause / resume**, right third = next post. Progress bars fill as you go.
 
 **End of an author's posts:**
-- From the **Home tray**, advance to the next friend in tray order (query `sequence=`).
-- From a **profile / Friends page** (`from=profile`), close and return there.
+- From the **Home tray**, advance to the next friend in tray order (query `sequence=`). Keep going until the sequence ends or the viewer closes.
+- When you finish someone's posts, that tile is **marked watched for you**: the colored outline drops, and on the next Home paint the tile moves to the **back of the tray** (Your story stays first). Unwatched stay up front. This is personal "have I watched?" state only — never a public view count.
+- From a **profile / Friends page** (`from=profile`), close and return there (still marks watched).
 - If **Catch-Up is open**, do not advance or close under the sheet.
 
 ---
@@ -114,9 +115,29 @@ Bigger, opt-in quirks (pet companions, emoji-bombing a friend on app open) live 
 
 ---
 
-## Reply notifications (Home)
+## Reply notifications (Home + Messages)
 
-When someone **responds to your post**, or **replies to a comment or video you left on someone else's page**, you're notified — in the Home **notifications preview** (which links to the full **Notifications page**; see `HOME.md`). This is what turns one-off reactions into ongoing threads: "there are new replies."
+When someone **responds to your post**:
+
+- **Home replies row** under Stories is the primary Home surface ("N replies to your story").
+- **Do not** also show that alert in the Home Notifications widget (duplicate). Full rules: `NOTIFICATIONS.md` § Story replies.
+- It **does** appear on the full Notifications page, can push, and **mirrors into Messages** as a `storyReply` bubble that **does not count** against the 5/day cap.
+- Opening **one chip** clears that person only; opening the **header**, opening that DM, or replying in the story **clears** the matching notification(s) **and** removes those people from the Home replies row.
+
+When someone **replies to a comment or video you left on someone else's page** (`story_reply_elsewhere`), that still uses the Home Notifications widget (there is no replies row for it).
+
+### After the story expires (~24h)
+
+Viewers can no longer open the expired story. The author can still answer a late reply; that answer lands as a normal DM to the replier. Tap destinations for stale reply alerts go to Messages, not the dead story.
+
+### Lifecycle (two clocks)
+
+| Clock | Field | What happens |
+|---|---|---|
+| **Live window (~24h)** | `live_until` (= `created_at + 24h`, generated) | Leaves the Home tray. Friends can no longer open it. **The picture is archived** on the author's Profile → Stories calendar so they can watch it back. |
+| **Retention (~30 days free / forever co-op)** | `expires_at` | Free: media may be deleted when this passes. Co-op: `expires_at` stays null — archive keeps everything. |
+
+Demo fixtures always show a populated calendar; live mode uses `GET /stories/archive`.
 
 ---
 
@@ -201,7 +222,7 @@ interface ThemedPrompt { slug: string; label: string; icon: string; }  // admin-
 - [ ] After capture the composer prompts an **update** ("what did you do today"), enterable by typing **or voice-to-text**; video updates are auto-transcribed.
 - [ ] Three themed-post squares (admin-rotatable) sit above capture; picking a theme labels the update.
 - [ ] The viewer shows one progress segment per post (≤3), the post, the update text, a bottom row with caption on the left and emoji → comment → record (red dot) on the right (vertically centered), and floating reply balloons that stay on-screen and do not auto-play video.
-- [ ] Tap left = previous, center = pause/resume, right = next. Finishing the last post advances the Home tray sequence, or closes back to profile when opened from a profile (and never dismisses under an open Catch-Up).
+- [ ] Tap left = previous, center = pause/resume, right = next. Finishing the last post advances the Home tray sequence, or closes back to profile when opened from a profile (and never dismisses under an open Catch-Up). Finishing an author marks them watched: colored tray ring off, tile moves behind unwatched on the next Home paint.
 - [ ] The weekly summary is **AI-written, ~1–2 sentences per day with that day's media**, **pre-generated at post time** (not on swipe), tier-filtered.
 - [ ] The summary is built **only from the user's update text + video transcripts** — never from analyzing or training on their photos/likeness.
 - [ ] Tapping the replies preview (or Comment) opens the full comment section with text, nested replies, video replies, and stickers — a second place to react.
@@ -216,4 +237,6 @@ interface ThemedPrompt { slug: string; label: string; icon: string; }  // admin-
 - [ ] Sticker photos and video replies are **capture only** — there is no library picker anywhere in this flow (the profile photo stays the app's one upload exception).
 - [ ] Camera and mic permissions are requested **in context** (on tapping record / the shutter) with a plain purpose string; declining leaves comments and emoji still usable.
 - [ ] The caption and each floating reply sit in **their own solid bubble** so they stay readable over any photo.
-- [ ] Responses to your posts, and replies to comments/videos you left elsewhere, notify you in the Home notifications preview (→ Notifications page).
+- [ ] Responses to your posts surface in the Home **replies row** (not the Home Notifications widget), the full Notifications page, push, and a Messages mirror that does not burn the 5/day cap. Clear on engage. After expiry, late answers are DMs only. See `NOTIFICATIONS.md`.
+- [ ] At **24h**, posts leave the Home tray and are **archived** on Profile → Stories (author can rewatch; friends cannot). At **~30d** free media may delete; co-op keeps forever. See lifecycle table above.
+- [ ] Replies to comments/videos you left elsewhere notify you in the Home notifications preview (→ Notifications page). Tap destination map: `NOTIFICATIONS.md`.

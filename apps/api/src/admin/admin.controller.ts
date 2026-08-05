@@ -12,6 +12,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards
 } from '@nestjs/common';
 import type {
@@ -24,6 +25,7 @@ import type {
   ThemedPrompt
 } from '@bridger/shared';
 import { AdminGuard } from '../admin-auth/admin.guard';
+import { PortalService } from '../coop/portal.service';
 import { AdminService } from './admin.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
 
@@ -32,7 +34,8 @@ import { TelemetryService } from '../telemetry/telemetry.service';
 export class AdminController {
   constructor(
     private readonly admin: AdminService,
-    private readonly telemetry: TelemetryService
+    private readonly telemetry: TelemetryService,
+    private readonly portal: PortalService
   ) {}
 
   // --- Home defaults + themed prompts + live quiz ---
@@ -192,6 +195,36 @@ export class AdminController {
   @Get('coop/members')
   listMembers() {
     return this.admin.listMembers();
+  }
+
+  // --- Co-op portal CRM (ideas + vote tallies for operators) ---
+
+  @Get('coop/portal/ideas')
+  listPortalIdeas(@Query('status') status?: string) {
+    return this.portal.adminListIdeas(status);
+  }
+
+  @Get('coop/portal/ideas/:id')
+  getPortalIdea(@Param('id') id: string) {
+    return this.portal.adminGetIdea(id);
+  }
+
+  @Patch('coop/portal/ideas/:id')
+  patchPortalIdea(
+    @Param('id') id: string,
+    @Body() body: { status: string; public?: boolean }
+  ) {
+    return this.portal.adminSetIdeaStatus(id, body.status, body.public);
+  }
+
+  @Get('coop/portal/votes/summary')
+  portalVotesSummary() {
+    return this.portal.adminVotesSummary();
+  }
+
+  @Get('coop/portal/pending-count')
+  portalPendingCount() {
+    return this.portal.adminPendingIdeaCount().then((n) => ({ count: n }));
   }
 
   // --- Delights ---

@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // "What people said" under the stories tray — horizontal chips for text and
-// video replies to your update. Tap opens the thread. Hidden when empty.
-// Analytics: header is dead-click; each chip is a response tap.
+// video replies to your update. Tap a chip to open that reply (only that chip
+// leaves the row). Tap the header to open all replies. Hidden when empty.
+// Analytics: header + each chip are response taps (opens comments).
 // PRIVACY: never log reply text or names in analytics.
 //
 // Dark mode: video chips keep a pale lavender fill, so their labels use
@@ -12,16 +13,20 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRightIcon, PlayIcon } from 'lucide-react-native';
 import { HOME, type Reaction } from '@bridger/shared';
-import { AnalyticsRegion, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { PersonAvatar } from '../PersonAvatar';
 import { personById } from '../../data/people';
 
 export function StoryRepliesRow({
   replies: allReplies,
-  onOpen
+  onOpenHeader,
+  onOpenChip
 }: {
   replies: Reaction[];
-  onOpen?: () => void;
+  /** Header / "see all replies" — opens your comments. */
+  onOpenHeader?: () => void;
+  /** One chip — only that person's reply should leave the row. */
+  onOpenChip?: (personId: string) => void;
 }) {
   const c = useThemeColors();
   const replies = allReplies.filter((r) => !r.parentReactionId);
@@ -31,12 +36,12 @@ export function StoryRepliesRow({
 
   return (
     <View className="mt-4">
-      {/* Analytics: section label is not a button; taps log dead_click. */}
-      <AnalyticsRegion
-        analyticsId={HOME.responses.responses_header}
-        interactive={false}
+      {/* Header opens the full replies thread (may clear the whole inbox). */}
+      <Pressable
+        onPress={withAnalyticsPress(HOME.responses.responses_header, onOpenHeader)}
+        accessibilityRole="button"
         accessibilityLabel={`${replies.length} replies to your story`}
-        className="mb-2 flex-row items-center gap-2"
+        className="mb-2 flex-row items-center gap-2 active:opacity-80"
       >
         <Text className="font-sans-b text-[13px] text-ink">{replies.length} replies to your story</Text>
         {videos.length > 0 ? (
@@ -45,7 +50,7 @@ export function StoryRepliesRow({
           </View>
         ) : null}
         <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.6} />
-      </AnalyticsRegion>
+      </Pressable>
 
       <ScrollView
         horizontal
@@ -60,7 +65,11 @@ export function StoryRepliesRow({
           return (
             <Pressable
               key={r.id}
-              onPress={withAnalyticsPress(HOME.responses.response, onOpen)}
+              onPress={withAnalyticsPress(
+                HOME.responses.response,
+                () => onOpenChip?.(r.authorId),
+                { analyticsProps: { method: r.kind === 'circleVideo' ? 'video' : r.kind === 'sticker' ? 'sticker' : 'comment' } }
+              )}
               accessibilityRole="button"
               accessibilityLabel={`Reply from ${p.name}`}
               className={cn(

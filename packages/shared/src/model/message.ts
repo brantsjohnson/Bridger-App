@@ -34,7 +34,7 @@ export interface ContactCard {
   fields: ContactField[];
 }
 
-export type MessageKind = 'text' | 'contactCard' | 'planNudge';
+export type MessageKind = 'text' | 'contactCard' | 'planNudge' | 'storyReply';
 
 /**
  * One message in a conversation.
@@ -59,7 +59,7 @@ export interface Message {
   /** Optional phone lifted for a tappable affordance after decrypt */
   phone?: string;
   createdAt: string;
-  /** false for Share contact and Make a plan — they do not burn a slot */
+  /** false for Share contact, Make a plan, and story-reply mirrors — they do not burn a slot */
   countsAgainstCap: boolean;
 }
 

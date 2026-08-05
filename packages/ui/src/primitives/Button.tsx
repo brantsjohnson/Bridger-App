@@ -11,7 +11,7 @@
 // ============================================
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { METAL_BEVEL, useThemeColors } from '../tokens';
+import { ACCENTS, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
 import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 
@@ -39,7 +39,9 @@ const textSizes = {
   lg: 'text-[15px]'
 };
 
-/** Primary CTA — old-Windows metallic. Always SQUARE: the bevel is the point. */
+/** Primary CTA — old-Windows metallic. Always SQUARE: the bevel is the point.
+ *  PRIVACY/DESIGN: the silver face + dark label stay light in dark mode on
+ *  purpose — a dark metallic button disappears on the near-black canvas. */
 export function ButtonPrimary({
   children,
   onPress,
@@ -55,7 +57,8 @@ export function ButtonPrimary({
   analyticsProps
 }: ButtonProps) {
   const inert = disabled || loading;
-  const c = useThemeColors();
+  // Always dark ink on silver — never theme-flip to cream (unreadable on dark metal)
+  const labelColor = '#1C1B16';
   return (
     <Pressable
       onPress={withAnalyticsPress(analyticsId, onPress, { interactive, analyticsProps })}
@@ -68,18 +71,25 @@ export function ButtonPrimary({
         heights[size],
         full && 'w-full',
         inert
-          ? 'rounded-none border-2 border-ink-line bg-metal-face/50'
-          : cn(METAL_BEVEL, 'active:bg-[#D3D1C7]'),
+          ? 'rounded-none border-2 border-[#E4E2DA] bg-[#DEDCD2]/50'
+          : // Hard-coded light bevel so dark mode cannot wash the CTA into the canvas
+            'rounded-none border-2 border-t-white border-l-white border-b-[#A7A498] border-r-[#A7A498] bg-[#DEDCD2] active:bg-[#D3D1C7]',
         className
       )}
     >
       {/* the old-Windows dotted focus frame — always on for the metallic CTA */}
       <View
         pointerEvents="none"
-        className={cn('absolute inset-[3px] border border-dashed', inert ? 'border-ink/20' : 'border-ink/70')}
+        className={cn(
+          'absolute inset-[3px] border border-dashed',
+          inert ? 'border-[#1C1B16]/20' : 'border-[#1C1B16]/70'
+        )}
       />
-      {loading ? <ActivityIndicator size="small" color={c.ink} /> : icon}
-      <Text className={cn('font-sans-b', textSizes[size], inert ? 'text-ink-mute' : 'text-ink')}>
+      {loading ? <ActivityIndicator size="small" color={labelColor} /> : icon}
+      <Text
+        className={cn('font-sans-b', textSizes[size])}
+        style={{ color: inert ? '#8A877B' : labelColor }}
+      >
         {loading ? 'Working' : children}
       </Text>
     </Pressable>
@@ -101,7 +111,7 @@ export function ButtonSecondary({
   analyticsId,
   interactive = true,
   analyticsProps
-}: ButtonProps & { tone?: 'outline' | 'solid' | 'ghost' | 'positive' | 'light' }) {
+}: ButtonProps & { tone?: 'outline' | 'solid' | 'ghost' | 'positive' | 'light' | 'destructive' }) {
   const inert = disabled || loading;
   const c = useThemeColors();
 
@@ -114,23 +124,29 @@ export function ButtonSecondary({
         ? 'bg-carbon'
         : tone === 'positive'
           ? 'bg-success'
-          : tone === 'light'
-            // Always-white pill — keep hard white so near-black label stays readable
-            // in dark mode (bg-surface would go dark and the label would vanish).
-            ? 'border border-ink-line bg-white'
-            : ''; // ghost = no fill
+          : tone === 'destructive'
+            ? 'border border-coral bg-surface'
+            : tone === 'light'
+              // Always-white pill — keep hard white so near-black label stays readable
+              // in dark mode (bg-surface would go dark and the label would vanish).
+              ? 'border border-ink-line bg-white'
+              : ''; // ghost = no fill
   const toneText =
     tone === 'solid' || tone === 'positive'
       ? 'text-white'
-      : tone === 'light'
-        ? 'text-[#1C1B16]'
-        : 'text-ink';
+      : tone === 'destructive'
+        ? 'text-coral'
+        : tone === 'light'
+          ? 'text-[#1C1B16]'
+          : 'text-ink';
   const spinnerColor =
     tone === 'solid' || tone === 'positive'
       ? '#FFFFFF'
-      : tone === 'light'
-        ? '#1C1B16'
-        : c.ink;
+      : tone === 'destructive'
+        ? ACCENTS.coral.hex
+        : tone === 'light'
+          ? '#1C1B16'
+          : c.ink;
 
   return (
     <Pressable

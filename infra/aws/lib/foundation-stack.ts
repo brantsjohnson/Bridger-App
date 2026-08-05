@@ -20,12 +20,19 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 
+export interface BridgerFoundationStackProps extends cdk.StackProps {
+  /** Shared Secrets Manager name (must match the service stack). */
+  serverSecretName?: string;
+}
+
 export class BridgerFoundationStack extends cdk.Stack {
-  // Exposed so the service stack can reference the same secret.
+  // Kept for outputs / seed scripts that look up the secret from this stack.
   public readonly serverSecret: secretsmanager.Secret;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: BridgerFoundationStackProps) {
     super(scope, id, props);
+
+    const secretName = props?.serverSecretName ?? 'bridger/api/server';
 
     // --- SECURITY: our own key that encrypts the secret (auto-rotates yearly) ---
     const secretKey = new kms.Key(this, 'SecretKmsKey', {
@@ -38,7 +45,7 @@ export class BridgerFoundationStack extends cdk.Stack {
     // Real values are written afterwards with a write-only step (see README), so
     // nothing sensitive ever lives in this code or the CloudFormation template.
     this.serverSecret = new secretsmanager.Secret(this, 'ServerSecret', {
-      secretName: 'bridger/api/server',
+      secretName,
       description: 'Server-only environment for the Bridger API (never shipped to the app)',
       encryptionKey: secretKey,
       removalPolicy: cdk.RemovalPolicy.RETAIN,

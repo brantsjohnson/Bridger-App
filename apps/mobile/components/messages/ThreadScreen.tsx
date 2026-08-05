@@ -30,6 +30,7 @@ import {
   AnalyticsRegion,
   Avatar,
   cn,
+  useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { useThread } from '../../hooks/useThread';
@@ -49,6 +50,7 @@ export function ThreadScreen({
   seedMessage
 }: Props) {
   const insets = useSafeAreaInsets();
+  const c = useThemeColors();
   const { thread, loading, onSend, onShareContact, onMakePlan, myLeft, theirLeft, atCap } =
     useThread(threadId);
   const touchGrass = useTouchGrass();
@@ -118,10 +120,11 @@ export function ThreadScreen({
           onPress={withAnalyticsPress(MESSAGES.conversation.back, onBack)}
           accessibilityRole="button"
           accessibilityLabel="Back"
-          className="h-9 w-9 items-center justify-center rounded-full active:bg-[#F1ECFF]"
+          // Solid ink fill + canvas chevron — same as ScreenHeader so dark mode
+          // never washes a near-black arrow into the dark header bar.
+          className="h-11 w-11 items-center justify-center rounded-full bg-ink active:opacity-80"
         >
-          {/* White header bar — always near-black icons/text (text-ink goes cream in dark mode). */}
-          <ChevronLeftIcon size={20} color="#1C1B16" strokeWidth={2.6} />
+          <ChevronLeftIcon size={22} color={c.canvas} strokeWidth={3} />
         </Pressable>
         <Avatar
           name={thread.name}
@@ -132,7 +135,7 @@ export function ThreadScreen({
         />
         <Text
           numberOfLines={1}
-          className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-[#1C1B16]"
+          className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-ink"
         >
           {thread.name}
         </Text>
@@ -171,6 +174,16 @@ export function ThreadScreen({
                   : 'rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[6px] rounded-br-[20px] border border-ink-line bg-white'
               )}
             >
+              {b.kind === 'storyReply' ? (
+                <Text
+                  className={cn(
+                    'mb-1 font-sans-b text-[10px] uppercase tracking-wide',
+                    b.from === 'me' ? 'opacity-70' : 'text-ink-mute'
+                  )}
+                >
+                  On your story
+                </Text>
+              ) : null}
               <Text
                 className={cn(
                   'font-sans-sb text-[15px] leading-snug',

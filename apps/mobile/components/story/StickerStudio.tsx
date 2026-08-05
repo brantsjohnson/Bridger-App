@@ -13,6 +13,8 @@
 // segmentation (Vision on iOS / ML Kit on Android). Until then the sticker is a
 // clean circular crop, which is a real sticker, just not a cut-out one.
 // ACCESSIBILITY: every control is labelled; the preview is described in words.
+// The studio is always a solid near-black stage (not theme ink) so dark mode
+// never turns the backdrop cream and white labels never vanish over the story.
 // ============================================
 import React, { useRef, useState } from 'react';
 import { Image, Modal, Platform, Pressable, Text, View } from 'react-native';
@@ -24,6 +26,10 @@ import { PixelHeading, SurfaceHost, withAnalyticsPress } from '@bridger/ui';
 import { addCustomSticker } from '../../data/stickers';
 
 const CIRCLE = 250;
+/** Fixed stage color — never follows light/dark ink (cream ink broke contrast). */
+const STAGE = '#0E0E0E';
+/** Label on the white primary pill — stays dark in every theme. */
+const ON_WHITE = '#1C1B16';
 
 type Props = {
   open: boolean;
@@ -69,15 +75,22 @@ export function StickerStudio({ open, onClose, onSaved }: Props) {
   };
 
   return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
       <SurfaceHost surface="sticker_studio" parentScreen="sticker_tray" open={open}>
         <View
           accessibilityViewIsModal
           style={{
+            flex: 1,
+            backgroundColor: STAGE,
             paddingTop: Math.max(insets.top, 16),
             paddingBottom: Math.max(insets.bottom, 20)
           }}
-          className="flex-1 items-center justify-center gap-6 bg-ink/95 px-6"
+          className="items-center justify-center gap-6 px-6"
         >
           <Pressable
             onPress={withAnalyticsPress(STICKER_STUDIO.capture.dismiss, onClose)}
@@ -120,14 +133,14 @@ export function StickerStudio({ open, onClose, onSaved }: Props) {
               />
             ) : (
               <View className="flex-1 items-center justify-center px-6">
-                <Text className="text-center font-sans-sb text-[13px] leading-snug text-white/70">
+                <Text className="text-center font-sans-sb text-[13px] leading-snug text-white/80">
                   Allow the camera and we'll turn your shot into a sticker.
                 </Text>
               </View>
             )}
           </View>
 
-          <Text className="max-w-[280px] text-center font-sans-sb text-[12px] leading-snug text-white/60">
+          <Text className="max-w-[280px] text-center font-sans-sb text-[13px] leading-snug text-white/80">
             Line something up in the circle. Your stickers stay yours until you
             send one.
           </Text>
@@ -151,7 +164,7 @@ export function StickerStudio({ open, onClose, onSaved }: Props) {
                 accessibilityLabel="Save this sticker"
                 className="h-12 flex-1 items-center justify-center rounded-full bg-white active:opacity-90"
               >
-                <Text className="font-sans-b text-[15px] text-ink">
+                <Text style={{ color: ON_WHITE }} className="font-sans-b text-[15px]">
                   {saving ? 'Saving…' : 'Use it'}
                 </Text>
               </Pressable>

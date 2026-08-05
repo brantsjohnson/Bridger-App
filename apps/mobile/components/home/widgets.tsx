@@ -10,11 +10,12 @@
 // Faces use dropped-in profile photos whenever we have one.
 // ============================================
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Share, Text, View } from 'react-native';
 import { ArrowUpRightIcon, ChevronRightIcon, Share2Icon } from 'lucide-react-native';
-import { HOME, type Cover, type EventItem } from '@bridger/shared';
+import { HOME, type Cover, type EventItem, type AppNotification } from '@bridger/shared';
 import {
   ACCENTS,
+  AnalyticsRegion,
   AvatarStack,
   ButtonSecondary,
   Card,
@@ -54,7 +55,7 @@ function faceStack(
   });
 }
 
-type NotifRow = { id: string; personId: string; text: string; time: string };
+type NotifRow = AppNotification;
 type WeeklyActivity = {
   id: string;
   title: string;
@@ -225,14 +226,20 @@ export function NextEventWidget({
 export function AlertsWidget({
   size,
   rows,
-  onOpen
+  onOpen,
+  onSeeAll
 }: {
   size: WidgetSize;
   rows: NotifRow[];
-  onOpen?: () => void;
+  /** Tap one preview row → go to what that alert is about. */
+  onOpen?: (item: NotifRow) => void;
+  /** See all → full Notifications page. */
+  onSeeAll?: () => void;
 }) {
-  const preview = rows.slice(0, 3);
+  // Home only cares about unread — once you've cleared them, say so.
+  const preview = rows.filter((n) => n.unread !== false).slice(0, 3);
   const unread = preview.length;
+  const caughtUp = unread === 0;
 
   return (
     <View
@@ -250,36 +257,56 @@ export function AlertsWidget({
           </View>
         ) : null}
 
-        <View className="gap-2.5">
-          {preview.map((n) => {
-            const person = personById(n.personId);
-            return (
-              // Analytics: each preview row (no notification text in the event).
-              <Pressable
-                key={n.id}
-                onPress={withAnalyticsPress(HOME.notifications_preview.row, onOpen)}
-                accessibilityRole="button"
-                accessibilityLabel="Notification"
-                className="flex-row items-center gap-2 active:opacity-90"
-              >
-                {/* Real profile photo when dropped in for this person */}
-                <PersonAvatar id={person.id} size="xs" />
-                <Text className="min-w-0 flex-1 text-[12px] leading-snug" numberOfLines={1}>
-                  <Text className="font-sans-b text-ink">{person.name.split(' ')[0]} </Text>
-                  <Text className="font-sans-md text-ink-soft">{n.text}</Text>
-                </Text>
-                {size === 'full' ? (
-                  <Text className="shrink-0 font-sans-sb text-[11px] text-ink-mute">{n.time}</Text>
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
+        {caughtUp ? (
+          // Null state when everything is read — still keep See all below.
+          <AnalyticsRegion
+            analyticsId={HOME.notifications_preview.empty_body}
+            interactive={false}
+            accessibilityLabel="All caught up"
+          >
+            <Text className="font-sans-sb text-[13px] leading-snug text-ink-soft">
+              All caught up!
+            </Text>
+            <Text className="mt-1 font-sans-md text-[11px] leading-snug text-ink-mute">
+              New replies and invites land here.
+            </Text>
+          </AnalyticsRegion>
+        ) : (
+          <View className="gap-2.5">
+            {preview.map((n) => {
+              const person = personById(n.personId ?? '');
+              return (
+                // Analytics: each preview row (kind only — no notification text).
+                <Pressable
+                  key={n.id}
+                  onPress={withAnalyticsPress(
+                    HOME.notifications_preview.row,
+                    () => onOpen?.(n),
+                    { analyticsProps: { kind: n.kind } }
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel="Notification"
+                  className="flex-row items-center gap-2 active:opacity-90"
+                >
+                  {/* Real profile photo when dropped in for this person */}
+                  {n.personId ? <PersonAvatar id={n.personId} size="xs" /> : null}
+                  <Text className="min-w-0 flex-1 text-[12px] leading-snug" numberOfLines={1}>
+                    <Text className="font-sans-b text-ink">{person.name.split(' ')[0]} </Text>
+                    <Text className="font-sans-md text-ink-soft">{n.text}</Text>
+                  </Text>
+                  {size === 'full' ? (
+                    <Text className="shrink-0 font-sans-sb text-[11px] text-ink-mute">{n.time}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </View>
 
-      {/* Analytics: open the full notifications list. */}
+      {/* Analytics: open the full Notifications list. */}
       <Pressable
-        onPress={withAnalyticsPress(HOME.notifications_preview.see_all, onOpen)}
+        onPress={withAnalyticsPress(HOME.notifications_preview.see_all, onSeeAll)}
         accessibilityRole="button"
         accessibilityLabel="See all notifications"
         className="mt-3 active:opacity-90"
@@ -312,10 +339,10 @@ export function ActivityWidget({
 
   if (size === 'full') {
     return (
-      // Analytics: open / play the weekly recap collage.
+      // Analytics: open the weekly activity collage.
       <Card className="overflow-hidden p-0">
         <Pressable
-          onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
+          onPress={withAnalyticsPress(HOME.activity.open, onOpen)}
           accessibilityRole="button"
           accessibilityLabel={activity.title}
         >
@@ -355,7 +382,7 @@ export function ActivityWidget({
 
   return (
     <Pressable
-      onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
+      onPress={withAnalyticsPress(HOME.activity.open, onOpen)}
       accessibilityRole="button"
       accessibilityLabel={activity.title}
       className="min-h-[140px] w-full overflow-hidden rounded-card active:opacity-90"
@@ -445,7 +472,15 @@ export function QuizWidget({
             <ButtonSecondary
               size="sm"
               icon={<Share2Icon size={16} color={c.ink} strokeWidth={2.4} />}
-              onPress={() => undefined}
+              analyticsId={HOME.quiz.share}
+              accessibilityLabel="Share this quiz"
+              onPress={() => {
+                void Share.share({
+                  message: `Take "${quiz.title}" on Bridger.${
+                    mine ? ` I got: ${mine.label}.` : ''
+                  }`
+                });
+              }}
             >
               Share quiz
             </ButtonSecondary>

@@ -5,12 +5,13 @@
 // ============================================
 import { Module } from '@nestjs/common';
 import { AdminAuthModule } from '../admin-auth/admin-auth.module';
+import { CoopModule } from '../coop/coop.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [AdminAuthModule, TelemetryModule],
+  imports: [AdminAuthModule, TelemetryModule, CoopModule],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService]

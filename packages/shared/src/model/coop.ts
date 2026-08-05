@@ -44,7 +44,86 @@ export interface CoopMembership {
   /** display only */
   since?: string;
   renews?: string;
+  /** Display price, e.g. "$24/year" */
   dues: string;
+  plan?: 'free' | 'coop';
+  storage?: 'rolling30' | 'unlimited';
+  eventCap?: number;
+  video?: boolean;
+  /** Scheduled leave; perks stay until renews / dues_paid_through */
+  cancelAtPeriodEnd?: boolean;
+  /**
+   * True once when reconcile just flipped active → free (paid period ended).
+   * Mobile emits coop_left on this read; not set on hard leave or cancel schedule.
+   */
+  endedThisRead?: boolean;
+}
+
+/** One public idea / proposal in the member portal. PRIVACY: no author names. */
+export interface CoopIdea {
+  id: string;
+  title: string;
+  body?: string;
+  category: string;
+  status: string;
+  /** Omitted on public/member portal (no vanity tallies). Admin may include. */
+  supportCount?: number;
+  supportedByMe?: boolean;
+  /** Admin-only opaque id — never returned on public portal DTOs. */
+  authorId?: string;
+  createdAt?: string;
+  evidence?: string;
+  drawbacks?: string;
+  urgency?: string;
+  impact?: string;
+  costGuess?: string;
+  fundingModel?: string;
+}
+
+export interface CoopIdeaComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  /** Always "A member" on portal — never a real name. */
+  authorLabel?: string;
+}
+
+export interface CoopBetaVersion {
+  id: string;
+  label: string;
+  releaseNotes?: string;
+  knownIssues?: string;
+  unfinished?: string;
+  testUrl?: string;
+  status: string;
+  roundEndsAt?: string;
+  /** Member's own vote only — never tallies on portal. */
+  myVote?: 'yes' | 'no' | 'extend';
+  unlocked?: boolean;
+}
+
+export interface CoopMissionPrinciple {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  supportedByMe?: boolean;
+}
+
+export interface CoopEconomicsRow {
+  id: string;
+  category: string;
+  label: string;
+  monthlyCents: number;
+  notes?: string;
+}
+
+export interface CoopRole {
+  id: string;
+  title: string;
+  responsibilities?: string;
+  hoursWeek?: string;
+  risks?: string;
 }
 
 /** A co-op notice published to members (Home banner). */

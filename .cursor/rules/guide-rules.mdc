@@ -75,8 +75,9 @@ Never surface internal names in UI copy; never rename DB tables to chase UI copy
 
 7 · Working method & definition of done
 Before building a feature, read its doc (see INDEX.md for the map) and follow its acceptance criteria — they are the checklist.
+**Always review (every task):** open INDEX.md’s “Always review” list. Today that includes `NOTIFICATIONS.md` — if this change can create, show, or deep-link an alert/push, check the destination map and update it in the same change when a kind is missing or wrong.
 Small, reviewable changes; migrations reversible; seed data kept working.
-A feature is done when: it matches its doc's acceptance criteria · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · and RLS covers any new data.
+A feature is done when: it matches its doc's acceptance criteria · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · and RLS covers any new data · and any new notify-able outcome is registered in `NOTIFICATIONS.md` with a tap/push destination.
 When a doc is ambiguous or two docs conflict: stop and ask. Don't guess on privacy, payments, or permissions.
 Doc authority, you can locate them in the folder guide.docs (highest wins)
 CURSOR-RULES.md (this file) — how to work
@@ -84,4 +85,5 @@ INFRASTRUCTURE.md — stack, hosting, secrets, build order
 DATA.md — schema, privacy zones, RLS
 ARCHITECTURE.md — repo layout, modules, routes
 Feature docs (HOME.md, PROFILE.md, STORIES.md, …) — behavior + acceptance criteria
+NOTIFICATIONS.md — always-review destination map for every alert/push (see INDEX.md)
 DESIGN.md + MAGIC-PATTERNS.md — look, motion, components

@@ -51,9 +51,12 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `catch_up` | `story` | the swipe-up sheet |
 | `create_event` | `events` | the 4-step create-event wizard — where in Details → Invite → Extras → Preview do hosts drop off? |
 | `event_share_sheet` | `events.detail` | native share invoked? |
+| `event_people_sheet` | `events.detail` | going / invited people list — open then bail? |
 | `section_info_tooltip` | any screen with section headers | do they open section help then bail? which sections? (`dwell_ms`, `section`) |
 | `recap_recorder` | `friends` (Friend Pod) | record the week's 5 answers by voice — do they start and give up? which question do they quit on? (`dwell_ms`) |
 | `recap_player` | `friends` / `home` (Friend Pod) | full-page weekly podcast — play, speed, filter, jump voices, react; do they bail? (`dwell_ms`) |
+| `add_bucket_sheet` | `profile` (own Bucket list tab) | add a want — do they open then bail? |
+| `edit_bucket_sheet` | `profile` (own Bucket list tab) | edit / delete a want — do they open then bail? |
 
 **Rule:** opening a sheet emits `surface_opened`; closing without acting emits `surface_dismissed` with `dwell_ms`. That single pair answers "do people open this and give up?"
 
@@ -95,6 +98,9 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `friend_added` | a connection is made | `method` (qr/link/scan/suggestion), `via` |
 | `friend_retiered` | a friend moves tiers (**not** just a drag) | `from_tier`, `to_tier` |
 | `friend_removed` / `friend_blocked` / `friend_reported` | the action completes | `—` |
+| `friend_note_added` | a private note / date / check-in is saved on a friend | `kind` (`text`\|`date`\|`check_in`), `cadence` (check_in only) — **never note text** |
+| `friend_note_deleted` | a private note is removed | `—` |
+| `friend_check_in_reminded` | a soft check-in nudge fires for the author | `cadence` — **never note text** |
 | `story_posted` | an update posts | `method` (photo/video/text/voice), `is_coop` |
 | `response_posted` | a reaction/reply posts | `method` (video/comment/sticker/custom_sticker/reaction), `duration_seconds` on video |
 | `sticker_created` | someone saves a sticker they made | `method` (photo) — **never the image** |
@@ -112,10 +118,13 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `event_assignment_taken` | a guest claims / is assigned an item | `—` (no item text or names) |
 | `event_assignment_released` | assignee removes themselves from an item | `—` |
 | `event_assignment_done` | assignee checks off (or unchecks) their item | `—` |
-| `event_shared` | event shared from its detail page | `method` (share_sheet / copy_link) |
+| `event_shared` | event shared from its detail page | `method` (share_sheet; copy_link retired) |
+| `event_introduction_notified` | introduction pings sent for an event | `count` (people notified — never names) |
 | `rsvp_going` / `rsvp_cant` | RSVP actions | `—` |
 | `inside_joke_posted` | a note is posted | `tagged_people`, `tagged_event` (bool) |
 | `bucket_item_checked` | an item is completed | `—` |
+| `bucket_item_updated` | an item's text / friends / privacy is saved | `friend_tagged` (bool), `visibility` |
+| `bucket_item_deleted` | an item is removed | `method` (`swipe` / `edit_mode` / `sheet`) |
 | `profile_customized` | customize is saved | `changes_count`, `dwell_ms` |
 | `connection_revealed` | a reveal completes | `recorded_where` (bool), `added_note` (bool), `meet_context` (`just-met` \| `already-know`), `to_tier` — NEVER place/note text or names |
 | `message_sent` | a chat message posts | `counts_against_cap` (bool) — NEVER include message text |
@@ -128,6 +137,13 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `activity_posted` | someone posts into the weekly activity | `—` |
 | `activity_hearted` | someone hearts an activity post | `—` |
 | `home_layout_saved` | user finishes editing their Home layout | `widget_count` |
+| `coop_joined` | soft join or IAP stub completes | `method` (apple/google/card/soft) — never receipt or PII |
+| `coop_cancel_scheduled` | member schedules period-end cancel | `—` (perks stay until paid-through) |
+| `coop_left` | membership ends (period elapsed or hard leave) | `—` |
+| `notification_opened` | user opens a notification (preview, list, or push) | `kind`, `source` (`preview` \| `list` \| `push`) — NEVER text or names |
+| `notification_see_all` | user opens the full Notifications page from Home | `—` |
+| `notifications_marked_read` | Mark all as read on the Notifications page (scoped to active `filter`) | `filter` (`all`\|`home`\|`friends`\|`events`\|`discover`) |
+| `notification_pref_changed` | user flips a Settings kind or circle toggle | `pref` (kind or circle id), `pref_scope` (`kind` \| `circle`), `enabled` (bool) |
 
 **The rule:** if a click changes data or advances the user toward a real goal, emit a **named product event** alongside the UI event — never rely on the click alone. The click lives in the taxonomy below; the outcome lives here.
 
@@ -190,9 +206,9 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `top_nav` | `search`, `messages_icon`, **`header_logo` (dead)**, **`page_title` (dead)**, `profile_icon`, `edit_layout` |
 | `announcements` | `carousel` (swipe, `carousel_depth`), `card`, `touch_grass_im_in`, `touch_grass_details`, `touch_grass_dismiss`, `quick_check_yes`, `quick_check_edit`, `coop_card`, `coming_up_card`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `stories_row` | `your_story` (opens `post_composer`), `story_tile`, `tier_filter`, `add_after_post` (the "+"), **`stories_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `responses` | `response`, `reply`, **`responses_header` (dead)** |
+| `responses` | `response`, `reply`, `responses_header` (opens your story replies / comments) |
 | `touch_grass_button` | `send` (opens `touch_grass_sheet`) |
-| `notifications_preview` | `row`, `see_all`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `notifications_preview` | `row`, `see_all`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "All caught up!")** |
 | `inside_jokes_strip` | `note`, `add`, **`sticky_note_body` (dead — do they tap the note itself?)** |
 | `ask_the_group` | `create_poll`, `ask_question`, `see_previous_polls`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
@@ -230,6 +246,12 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `audience` | `close`, `friends`, `everyone`, `group` |
 | `actions` | `post`, `add_another`, `discard` |
 
+### `ask_sheet` *(surface)*
+| section | elements |
+|---|---|
+| `fields` | `prompt`, `option` (focus only; never log text) |
+| `actions` | `add_option`, `remove_option`, `post` |
+
 ### `discover`
 | section | elements |
 |---|---|
@@ -261,30 +283,45 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | section | elements |
 |---|---|
 | `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list`, `settings_gear` (record `first_interaction` → what they open first) |
-| `header` | `avatar`, `name`, `song` (covers the "currently listening / currently reading" pair in the identity block), `overflow`, **`header_bg` (dead)** |
-| `card` | `currently`, `hobbies_widget` (expand/collapse counts; method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `about_me` (**dead** — do they tap it?), `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module` |
-| `module` | `audience_set_all`, `audience_row`, `hobby_select` |
+| `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, `mutuals` (friend view — opens In common), `song` (covers the "currently listening / currently reading" pair in the identity block), `overflow`, **`header_bg` (dead)** |
+| `card` | `currently`, `hobbies_widget` (expand/collapse counts; method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin` (tap a pin on the world map), `about_me` (**dead** — do they tap it?), `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module` |
+| `module` | `audience_set_all`, `audience_row`, `hobby_select`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
 | `stories_calendar` | `day` (opens story), `month_nav`, `storage_bar` |
 | `inside_jokes` | `note` (tap → meta), `add`, `filter`, **`note_body` (dead)** |
-| `bucket_list` | `item`, `add`, `check_off` |
+| `bucket_list` | `item`, `add`, `check_off`, `edit` (Edit/Done toggle), `edit_item` (open edit sheet), `delete` (method=`swipe`\|`edit_mode`\|`sheet`), `save` |
 | `quizzes` | `untaken_row`, **`section_header` (dead)** |
-| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `notifications`, `account`, `delete_account`, `analytics_toggle`, `log_out`, `appearance`, `blocked_people` |
+| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `notifications` (opens `notification_prefs`), `account`, `delete_account`, `analytics_toggle`, `log_out`, `appearance`, `blocked_people` |
 | `top_nav` | **`page_title` (dead)**, `edit`, `back` |
+
+### `customize` *(surface)*
+| section | elements |
+|---|---|
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `style` | **`intro_body` (dead)**, `accent_option`, `background_option`, **`preview` (dead)** |
+| `actions` | `save`, `view_original` |
 
 ### `profile` (friend view)
 | section | elements |
 |---|---|
-| `tabs` | `about_them`, `in_common`, `inside_jokes`, `bucket_list` (their list, read-only — rows reuse `profile.bucket_list.item` as a **dead** target) |
-| `about_them` | `about_me` (**dead** — do they tap it expecting more?), `this_or_that_row` (**dead**), `hobbies_widget` |
-| `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `tabs` | `about_them`, `in_common`, `inside_jokes`, `bucket_list` (their list, read-only — rows reuse `profile.bucket_list.item` as a **dead** target), `notes` (opens your private Notes & reminders) |
+| `about_them` | `about_me` (**dead** — do they tap it expecting more?), `this_or_that_row` (**dead**), `hobbies_widget`, `places_map` (swipe/list on a friend's map) |
+| `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `mutual_row` (opens that mutual's profile) |
 | `actions` | `message` (the "Message <name>" pill in the header — there is no separate button any more), `how_you_met`, `private_note`, `overflow` (opens `friend_options_sheet`) |
+| `notes_reminders` | **`section_header` (dead)**, `kind` (Note\|Date\|Check in), `cadence` (week\|biweek\|month), `add`, `delete` — never log note body text |
 
 ### `events`
 | section | elements |
 |---|---|
 | `list` | `tab`, `event_card` (opens `events.detail`), **`page_title` (dead)**, `create` (opens `create_event`), `profile_icon` |
-| `detail` | `back`, `share` (native share, method=share_sheet), `copy_link` (method=copy_link), `going` (starts countdown), `cant`, `going_count`, `to_meet_count`, `map`, `add_to_calendar`, `assignment_row`, **`cover_image` (dead)** |
-| `host` | `edit`, `going_count`, `invited_count`, `add_cohost`, `chip_in_edit`, `reminders_toggle` |
+| `detail` | `back`, `share` (header only; native share sheet; method=share_sheet), `going`, `cant`, `going_count`, `to_meet_count`, `meet_row`, `map`, `add_to_calendar`, `assignment_row`, `assign_name`, **`title_body` (dead)**, **`details_body` (dead)**, **`cover_image` (dead)**. `copy_link` retired |
+| `host` | `edit`, `going_count`, `invited_count`, `brought_count`, `add_cohost`, `chip_in_edit`, `reminders_toggle`, **`reminders_header` (dead)**, `introduction_row`, **`introductions_header` (dead)** |
+
+### `event_people_sheet` *(surface — parent `events.detail`)*
+| section | elements |
+|---|---|
+| `tabs` | `going`, `invited` |
+| `list` | `row` (**dead** — names not logged) |
+| `actions` | `dismiss` |
 | `touch_grass` | `send` (opens `touch_grass_sheet`, parent=events), `featured_signal`, `signal_row`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `hosting` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `going` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
@@ -366,6 +403,31 @@ Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_se
 | `composer` | `input`, `send` |
 | `contact_card` | `edit`, `field_toggle`, `share`, `field_row` (**dead**) |
 
+### `notifications` *(Notifications page — See all from Home)*
+| section | elements |
+|---|---|
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `list` | `row` (opens destination by `kind`; never opens nested list), **`empty_body` (dead)**, `filter` (All\|Home\|Friends\|Events\|Discover), `mark_all_read` (product `notifications_marked_read`) |
+
+### `activity` *(Weekly activity collage — opened from Home activity card)*
+| section | elements |
+|---|---|
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `prompt` | **`prompt_card` (dead)** |
+| `chrome` | `post` ("Post yours" button) |
+| `grid` | **`polaroid` (dead)** (single-tap), `heart` (double-tap; product `activity_hearted`), `dash_post`, **`empty_body` (dead)** |
+
+### `activity_capture` *(surface — capture sheet over the collage)*
+| section | elements |
+|---|---|
+| `chrome` | `shutter`, `caption_input`, `audience_picker`, `post` (product `activity_posted`), `close` |
+
+### `notification_prefs` *(Profile → Settings → Notifications)*
+| section | elements |
+|---|---|
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `list` | **`intro_body` (dead)**, **`who_header` (dead)**, **`section_header` (dead)**, `toggle` (per kind or circle id + `pref_scope`; product event `notification_pref_changed`) |
+
 ### `new_message_sheet` *(surface)*
 | section | elements |
 |---|---|
@@ -378,11 +440,17 @@ Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_se
 |---|---|
 | `flow` | `how_you_met_choice`, `record_place_toggle`, `tier_choice`, `meet_note`, `continue`, `see_profile`, `tap_next` (story forward), `tap_prev` (story back), `close` (X → new connection's profile), **`progress` (dead)**, **`orbs` (dead)**, **`venn` (dead, legacy)** |
 
-### `coop` (portal)
+### `coop` (benefits + multi-page portal)
 | section | elements |
 |---|---|
-| `ideas` | `idea_card`, `support`, `comment`, `submit` |
-| `vote` | `beta_vote`, `dues_vote`, `mission_support` |
+| `benefits` | `page_title`, `info`, `free_info`, `unlocks_info`, `hero` (dead), `join`, `use_free`, `open_portal` |
+| `portal` | `page_title`, `info`, `hero` (dead), `nav_overview`, `guide_card`, `join_cta`, `feedback`, `spend_body` (dead), `shipped_body` (dead) |
+| `mission` | `nav`, `info`, `page_title`, `section_header` (dead), `principle_card` (dead), `support` |
+| `model` | `nav`, `info`, `roadmap_info`, `compare_info`, `page_title`, `section_header` (dead), `phase_card` (dead), `comparison` (dead) |
+| `ideas` | `nav`, `info`, `section_header` (dead), `idea_card`, `support`, `comment`, `submit`, `open_submit` |
+| `vote` | `nav`, `info`, `section_header` (dead), `verify`, `beta_vote`, `dues_vote` (retired in UI), `mission_support` |
+| `cost` | `nav`, `info`, `books_info`, `sim_info`, `roles_info`, `page_title`, `section_header` (dead), `books` (dead), `slider`, `reset`, `role_card` |
+| `manage` | `info`, `page_title`, `open`, `cancel`, `confirm_cancel` |
 
 ### `quiz` (take / result surface)
 | section | elements |
@@ -407,7 +475,7 @@ Pairs with product events `quiz_started` / `quiz_question_answered` / `quiz_adap
 | section | elements |
 |---|---|
 | `login` | `password`, `submit` |
-| `nav` | `live_quiz`, `registry`, `activity`, `coop`, `members`, `home_defaults`, `prompts`, `delights`, `not_found_hits`, `logout` |
+| `nav` | `live_quiz`, `registry`, `activity`, `coop`, `portal`, `members`, `home_defaults`, `prompts`, `delights`, `not_found_hits`, `logout` |
 | `actions` | `set_live_quiz`, `new_quiz`, `save_quiz_design`, `save_activity`, `toggle_activity`, `publish_announcement`, `save_home_defaults`, `save_prompts`, `toggle_delight`, `new_delight` |
 
 ---
@@ -476,4 +544,17 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Date | Old ID | New ID | Reason |
 |---|---|---|---|
-| — | — | — | — |
+| 2026-08-05 | `home.responses.responses_header` (dead) | `home.responses.responses_header` (interactive) | Header row opens story replies; matched Magic Patterns + HOME.md |
+| 2026-08-05 | — | `notifications.*` surface + `notification_opened` / `notification_see_all` | Notifications page + destination map (`NOTIFICATIONS.md`) |
+| 2026-08-05 | — | `home.notifications_preview.empty_body` | Home Notifications "All caught up!" null state |
+| 2026-08-05 | — | `notifications.list.filter` / `mark_all_read` + `notifications_marked_read` | Page filters (no Messages) + mark all read |
+| 2026-08-05 | `profile.settings.notifications` (toggle) | opens `notification_prefs` + `notification_pref_changed` | Per-group prefs instead of master switch |
+| 2026-08-05 | group pref ids (`close`, `events`, …) | per-`kind` + circle prefs (`pref_scope`) | Individual kinds + Close/Friends/Acquaintances (acq off by default) |
+| 2026-08-05 | `home.this_week.play_recap` on ActivityWidget | `home.activity.open` | Activity card opens collage, not recap |
+| 2026-08-05 | — | `activity` + `activity_capture` surfaces | Weekly activity collage + capture sheet |
+| 2026-08-05 | — | `profile.header.mutuals`, `profile.in_common.mutual_row` | Friend header mutuals → In common faces |
+| 2026-08-05 | `events.detail.copy_link` | retired (id kept) | One Share opens native sheet; copy lives inside it |
+| 2026-08-05 | — | `event_people_sheet.*`, `events.host.brought_count`, `events.detail.assign_name` / `meet_row`, `event_introduction_notified` | Event detail people sheet, assignments dropdown, introductions |
+| 2026-08-05 | — | `profile.bucket_list.edit` / `edit_item` / `delete` / `save` + `add_bucket_sheet` / `edit_bucket_sheet` + `bucket_item_updated` / `bucket_item_deleted` | Bucket list swipe-to-delete + Edit mode |
+| 2026-08-05 | — | `profile.notes_reminders.*` + `friend_note_added` / `friend_note_deleted` / `friend_check_in_reminded` + `friend_check_in` notify kind | Private friend notes, date reminders, check-in nudges |
+| 2026-08-05 | — | `profile.tabs.notes` | Notes moved into friend profile tab bar |

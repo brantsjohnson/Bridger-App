@@ -30,7 +30,7 @@ When in doubt: fewer words.
 
 ## Navigation
 
-- **Floating tab bar** — a **detached, rounded pill** (inset from the bottom edge with margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Messages · Events · Discover. Active = filled circle; inactive = muted icon. Not a full-width bottom bar flush to the edge.
+- **Floating tab bar** — a **detached, rounded pill** (inset from the bottom edge with margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Messages · Events · Discover. Active = filled circle in that tab's color (**Home teal · Friends coral · Messages blue · Events touch-grass green · Discover amber**); inactive = muted icon. A small **matching-color dot** marks a tab with something new. Not a full-width bottom bar flush to the edge. **Hidden on your own Profile** (Profile opens from the header photo, so nothing in the pill would be selected).
 - **Header:** pixel screen title on the left. **Top-right slot is your profile photo circle** — tap opens Profile (Profile is not in the floating pill). **No notification bell** — notifications live in the feed + a dedicated page (below).
 
 ---
@@ -66,9 +66,10 @@ One line each; keep them dumb and reusable.
 | `AnsweredRow` | very-bottom "You answered '{poll}'" — results hidden |
 | `PolaroidCard` | white frame, photo, name, heart; slight rotation |
 | `InsideJokeNote` | sticky note: quoted person's photo + quote; tap → posted-by + event/place + date |
-| `InsideJokeWall` | sticky notes + "+" tile + null container; single All/About-you/By-you **filter** (not tabs) |
+| `InsideJokeWall` | sticky notes + **Add tile first** (top of grid) + null container; single All/About-you/By-you **filter** (not tabs) |
 | `InsideJokeComposer` | quote note + tag people + tag event; "shares to tagged + event guests" |
-| `BucketListTab` | own profile tab: items (solo or friend-tagged), public/private, check-off, "+" add + null container |
+| `BucketListTab` | own profile tab: items (solo or friend-tagged), public/private, check-off, title "+" add + Edit/Done, swipe-left delete, edit sheet |
+| `NotesReminders` | private notes on `person/[id]`: Note \| Date \| Check in + cadence chips; author-only; never on their shared card |
 | `InterestBlob` | colorful rounded blob, icon + label + check |
 | `HobbiesWidget` | two contained views: clean chips (tap = drop-down answer) + swipe page listing every hobby + answer, scroll inside (see `PROFILE.md`) |
 | `InCommonAnswers` | a shared hobby with both people's follow-up answers side by side |
@@ -83,7 +84,9 @@ One line each; keep them dumb and reusable.
 | `AnnouncementsCarousel` | top-of-Home swipeable strip: touch-grass · quick check · co-op · birthdays; page dots; hidden when empty (see `HOME.md`) |
 | `TouchGrassSignalList` | one featured signal + list below; who/when/why, tappable → "I'm in" / ✕ |
 | `ResponseStrip` | under stories: video/text responses to your update, tap to reply |
-| `EventShareSheet` | native iOS/Android share (friends or link) |
+| `EventShareSheet` | native iOS/Android share (friends or link) — header control only |
+| `EventPeopleSheet` | going / invited people list from event count taps |
+| `DetailAssignmentRow` | event detail assign dropdown (Open / name / leave open) + done checkbox |
 | `ChipInEditor` | amount + method(s) (Venmo/Cash App/person) + handle |
 | `CoHostRow` | co-host chip + "add a co-host" |
 | `QuizResultDashboard` | your result + share + "who got who" grouping (see `TOUCHGRASS-AND-QUIZ.md`) |
@@ -95,7 +98,7 @@ One line each; keep them dumb and reusable.
 | `RecapPlayer` | audio player; speaker photo + name pop-up, current question, progress dots (see `RECAP-PODCAST.md`) |
 | `RecapRecorder` | record audio answers to 5 questions, pick audience, post |
 | `NetworkMap` | clean node/edge friend map (neoclassical) |
-| `TravelMap` | places-traveled two-view: map with pins + swipe to scrollable list; co-op photos per place (see `PROFILE.md`) |
+| `TravelMap` | places-traveled two-view: stylized SVG world (country fills + coral pins at lat/lng) + swipe to scrollable list; co-op photos per place (see `PROFILE.md`) |
 | `SharedPlacePhotos` | in-common: a shared place with both people's photos side by side (co-op) |
 | `ThisOrThatColumns` | two columns in rows; chosen side highlighted, other dimmed; tappable; A/B/**both** |
 | `RevealOrbs` | two profile photos float in, dissolve into overlapping yellow + green circles (overlap mixes to orange); reveal screen 1 (see `complete/REVEAL.md`) |
@@ -113,7 +116,7 @@ One line each; keep them dumb and reusable.
 | Welcome / onboarding flow | `ONBOARDING.md` |
 | Auth (email · Google · Apple) | `ONBOARDING.md` |
 | Home (+ notifications preview) | `HOME.md` |
-| Notifications page | `HOME.md` |
+| Notifications page | `NOTIFICATIONS.md` |
 | Story viewer + Catch-Up | `STORIES.md` |
 | Post / capture (themed) | `STORIES.md` |
 | Friends + add-friend sheet | `FRIENDS.md` |

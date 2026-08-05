@@ -19,7 +19,6 @@ import type {
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
-import { supabase } from '../lib/supabase';
 import {
   PEOPLE,
   RECAP_ANSWERS,
@@ -184,6 +183,18 @@ export async function voteQuestion(id: string): Promise<void> {
   });
 }
 
+/** Send a sticker/emoji reaction to someone's recap clip (live API only). */
+export async function sendRecapReaction(
+  answerId: string,
+  emoji: string
+): Promise<void> {
+  if (isDemoMode()) return;
+  await apiFetch(`/recap/answers/${encodeURIComponent(answerId)}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({ emoji })
+  });
+}
+
 /**
  * Upload one recorded clip to storage and create its media row, returning the
  * media id the recap post needs. Demo mode returns a throwaway id (no upload).
@@ -198,29 +209,9 @@ export async function uploadRecapClip(
   if (isDemoMode()) {
     return `demo-media-${weekId}-${questionIndex}`;
   }
-
-  const { data: session } = await supabase.auth.getSession();
-  const userId = session.session?.user.id;
-  if (!userId) throw new Error('Not signed in');
-
-  // Pull the recorded file off the device and hand it to storage as bytes.
-  const res = await fetch(uri);
-  const bytes = await res.arrayBuffer();
-  const path = `${userId}/recap/${weekId}/${questionIndex}-${Date.now()}.m4a`;
-
-  const { error: upErr } = await supabase.storage
-    .from('media')
-    .upload(path, bytes, { contentType: 'audio/m4a', upsert: true });
-  if (upErr) throw upErr;
-
-  const { data: media, error: mErr } = await supabase
-    .from('media')
-    .insert({ owner_id: userId, storage_path: path, kind: 'audio' })
-    .select('id')
-    .single();
-  if (mErr) throw mErr;
-
-  return media.id;
+  // Shared helper: same bucket + media row rules as story / reaction uploads.
+  const { uploadMedia } = await import('../lib/media-upload');
+  return uploadMedia(uri, 'audio', `recap/${weekId}/${questionIndex}-${Date.now()}.m4a`);
 }
 
 /** Re-export the clip type so player code can import it from here. */

@@ -10,7 +10,9 @@ import type {
   DiscoverSettings,
   Suggestion
 } from '@bridger/shared';
+import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
+import { loadPeople } from '../lib/people-cache';
 import {
   ABOUT_ME_CATEGORIES,
   COMMONALITIES,
@@ -113,8 +115,7 @@ export async function listRequests(): Promise<ApprovalRequest[]> {
       .filter((r) => !demoBlockedIds.has(r.personId))
       .map((r) => ({ ...r }));
   }
-  // TODO: GET /connections/requests
-  return [];
+  return apiFetch<ApprovalRequest[]>('/connections/requests');
 }
 
 /** Lighter than block: drop one person from your suggestions. */
@@ -131,7 +132,12 @@ export async function acceptRequest(requestId: string): Promise<void> {
     demoRequests = demoRequests.filter((r) => r.id !== requestId);
     return;
   }
-  // TODO: POST /connections/requests/:id/accept
+  await apiFetch(`/connections/requests/${encodeURIComponent(requestId)}/accept`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
+  // New friend just landed — refresh the people cache for the roster / reveal.
+  await loadPeople();
 }
 
 export async function declineRequest(requestId: string): Promise<void> {
@@ -139,16 +145,35 @@ export async function declineRequest(requestId: string): Promise<void> {
     demoRequests = demoRequests.filter((r) => r.id !== requestId);
     return;
   }
-  // TODO: POST /connections/requests/:id/decline
+  await apiFetch(
+    `/connections/requests/${encodeURIComponent(requestId)}/decline`,
+    { method: 'POST', body: JSON.stringify({}) }
+  );
 }
 
-/** Start connecting from a suggestion (reveal ships later). */
+/**
+ * Start connecting from a suggestion.
+ * Live: suggestions stay demo until matching ships, so this posts a pending
+ * request when we have a real personId; otherwise it is a no-op. The live add
+ * path today is invite-link / QR redeem.
+ */
 export async function addSuggestion(suggestionId: string): Promise<void> {
   if (isDemoMode()) {
     demoSuggestions = demoSuggestions.filter((s) => s.id !== suggestionId);
     return;
   }
-  // TODO: POST /connections from suggestion → reveal
+  // Suggestions still come from fixtures in live mode until matching ships.
+  const sug = demoSuggestions.find((s) => s.id === suggestionId);
+  if (!sug) return;
+  await apiFetch('/connections', {
+    method: 'POST',
+    body: JSON.stringify({
+      targetId: sug.personId,
+      madeVia: 'suggestion',
+      viaFriendId: sug.viaFriendId
+    })
+  });
+  demoSuggestions = demoSuggestions.filter((s) => s.id !== suggestionId);
 }
 
 export async function getCommonalities(_personId?: string): Promise<Commonality[]> {

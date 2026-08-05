@@ -1,36 +1,23 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Birthdays and your private date notes, in one strip. The ROW color tells you
-// which circle that person is in (green = Close, blue = Friends, orange =
-// Acquaintances). Birthdays are the one exception — they stay pink, so a cake
-// day always looks like a cake day. The "Today / Friday / in 1 week" chip is
-// always the lighter version of the same color.
+// Birthdays, your private date notes, and soft check-in nudges, in one strip.
+// Every ROW uses the friend's circle color: green = Close, blue = Friends,
+// orange = Acquaintances. Cake / flag / bell icons still tell you the kind.
+// The countdown chip is the lighter version of the same color.
+// Rows are soonest-first (now → Today → Friday → in 7 days).
 //
 // Tap opens that friend's profile page (not the Friends roster).
 // Analytics: each row uses coming_up_card (no names/labels in event props).
 // ============================================
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { CakeIcon, FlagIcon } from 'lucide-react-native';
-import { HOME, type UpcomingItem } from '@bridger/shared';
+import { BellIcon, CakeIcon, FlagIcon } from 'lucide-react-native';
+import { HOME, sortUpcomingItems, type UpcomingItem } from '@bridger/shared';
 import { TIER_COLOR, ringToneForTier, withAnalyticsPress } from '@bridger/ui';
 import { personById } from '../../data/people';
 
-/** Birthdays keep their own pink so they never get mistaken for a tier color. */
-const BIRTHDAY = {
-  deep: '#FF3E8A',
-  light: '#FFC0D7',
-  onDeep: '#FFFFFF',
-  onLight: '#1C1B16'
-} as const;
-
-/**
- * Pick the card fill (deep) and the countdown chip (light) for one row.
- * Birthday always wins over tier. Notes / other date reminders follow the
- * friend's circle.
- */
+/** Card fill + chip from the friend's circle — every kind, including birthdays. */
 function colorsFor(item: UpcomingItem) {
-  if (item.kind === 'birthday') return BIRTHDAY;
   const person = personById(item.personId);
   return TIER_COLOR[ringToneForTier(person.tier)];
 }
@@ -42,9 +29,12 @@ export function ComingUpWidget({
   items: UpcomingItem[];
   onOpenPerson?: (id: string) => void;
 }) {
+  // Soonest first so "now" and "Today" sit above later chips.
+  const ordered = useMemo(() => sortUpcomingItems(items), [items]);
+
   return (
     <View className="gap-2">
-      {items.map((item) => {
+      {ordered.map((item) => {
         const birthday = item.kind === 'birthday';
         const tone = colorsFor(item);
         return (
@@ -60,6 +50,8 @@ export function ComingUpWidget({
           >
             {birthday ? (
               <CakeIcon size={20} color={tone.onDeep} strokeWidth={2.4} />
+            ) : item.kind === 'check_in' ? (
+              <BellIcon size={20} color={tone.onDeep} strokeWidth={2.4} />
             ) : (
               <FlagIcon size={20} color={tone.onDeep} strokeWidth={2.4} />
             )}
@@ -70,7 +62,7 @@ export function ComingUpWidget({
             >
               {item.label}
             </Text>
-            {/* Lighter chip of the same color — Today / Friday / in 1 week. */}
+            {/* Lighter chip of the same circle color — now / Today / Friday. */}
             <View
               style={{ backgroundColor: tone.light }}
               className="shrink-0 rounded-full px-2.5 py-1"

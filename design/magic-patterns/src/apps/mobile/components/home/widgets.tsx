@@ -79,13 +79,16 @@ export function NextEventWidget({
 
 export function AlertsWidget({
   size,
-  onOpen
-
-
-
-}: {size: WidgetSize;onOpen?: () => void;}) {
-  const unread = 2;
-  const rows = NOTIFICATIONS.slice(0, 3);
+  onOpen,
+  empty = false
+}: {
+  size: WidgetSize;
+  onOpen?: () => void;
+  /** No unread — show All caught up instead of rows. */
+  empty?: boolean;
+}) {
+  const rows = empty ? [] : NOTIFICATIONS.slice(0, 3);
+  const unread = rows.length;
 
   return (
     <button
@@ -94,35 +97,46 @@ export function AlertsWidget({
       className={cn(
         'flex w-full flex-col rounded-card border border-ink-line bg-white p-4 text-left transition-colors hover:border-purple/40 hover:bg-[#F1ECFF]',
         size === 'half' && 'h-full'
-      )}>
-      
-      {unread > 0 &&
-      <span className="mb-2 flex h-5 w-fit items-center justify-center rounded-full bg-coral px-2 text-[11px] font-bold text-white">
+      )}
+    >
+      {unread > 0 ? (
+        <span className="mb-2 flex h-5 w-fit items-center justify-center rounded-full bg-coral px-2 text-[11px] font-bold text-white">
           {unread} new
         </span>
-      }
+      ) : null}
 
-      <span className="space-y-2.5">
-        {rows.map((n) => {
-          const person = personById(n.personId);
-          return (
-            <span key={n.id} className="flex items-center gap-2">
-              <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="xs" />
-              <span className="min-w-0 flex-1 truncate text-[12px] leading-snug text-ink">
-                <span className="font-bold">{person.name.split(' ')[0]}</span>{' '}
-                <span className="font-medium text-ink-soft">{n.text}</span>
+      {unread === 0 ? (
+        <span className="block">
+          <span className="block text-[13px] font-semibold leading-snug text-ink-soft">
+            All caught up!
+          </span>
+          <span className="mt-1 block text-[11px] font-medium leading-snug text-ink-mute">
+            New replies and invites land here.
+          </span>
+        </span>
+      ) : (
+        <span className="space-y-2.5">
+          {rows.map((n) => {
+            const person = personById(n.personId);
+            return (
+              <span key={n.id} className="flex items-center gap-2">
+                <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="xs" />
+                <span className="min-w-0 flex-1 truncate text-[12px] leading-snug text-ink">
+                  <span className="font-bold">{person.name.split(' ')[0]}</span>{' '}
+                  <span className="font-medium text-ink-soft">{n.text}</span>
+                </span>
+                {size === 'full' ? (
+                  <span className="shrink-0 text-[11px] font-semibold text-ink-mute">{n.time}</span>
+                ) : null}
               </span>
-              {size === 'full' &&
-              <span className="shrink-0 text-[11px] font-semibold text-ink-mute">{n.time}</span>
-              }
-            </span>);
-
-        })}
-      </span>
+            );
+          })}
+        </span>
+      )}
 
       <span className="mt-3 text-[11px] font-bold text-purple">See all</span>
-    </button>);
-
+    </button>
+  );
 }
 
 export function ActivityWidget({ size, onOpen }: {size: WidgetSize;onOpen?: () => void;}) {

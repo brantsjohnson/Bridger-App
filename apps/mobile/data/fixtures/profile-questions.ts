@@ -631,26 +631,36 @@ export const CUSTOM_NOTES = {
   defaultTier: 'friend' as Tier
 };
 
-// --- Places (simple this phase) ---
+// --- Places (search → pin on the world map) ---
 
-/** Simple place-add questions. Richer tags/photos land in a follow-on. */
+/** Place-add questions. First step geocodes so the map gets real lat/lng. */
 export const PLACE_QUESTIONS = [
   {
     id: 'place-where',
     ask: 'Where have you been?',
-    placeholder: 'Lisbon',
-    emoji: '✈️'
+    placeholder: 'Search a city or country',
+    emoji: '✈️',
+    type: 'placeSearch' as const
+  },
+  {
+    id: 'place-tag',
+    ask: 'How do you know it?',
+    emoji: '🏷',
+    type: 'single' as const,
+    options: ['Visited', 'Lived there', 'Want to go']
   },
   {
     id: 'place-note',
     ask: 'What do you remember most?',
     placeholder: 'Custard tarts, daily',
-    emoji: '📝'
+    emoji: '📝',
+    type: 'text' as const
   },
   {
     id: 'place-next',
     ask: 'Where next?',
     placeholder: 'Anywhere with trains',
-    emoji: '🗺'
+    emoji: '🗺',
+    type: 'text' as const
   }
 ] as const;

@@ -3,8 +3,9 @@
 // The shared section header used across Home, Friends, Events, and Discover.
 // It draws the pixel title with a subtle teal dashed underline (so people can
 // tell it is tappable), and opens a short "what is this section?" bubble that
-// floats just under the title (tucked up so it is not lined up with the widget).
-// An optional count sits next to the title for Friends tiers ("Close  3").
+// floats just under the title. An optional count sits next to the title.
+// Optional action controls (e.g. "+") sit BESIDE the tip trigger — never inside
+// it — so we do not nest buttons on web (HTML forbids button-in-button).
 // ============================================
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -52,20 +53,20 @@ export function SectionTitle({
   action?: React.ReactNode;
 }) {
   return (
-    // InfoPopover floats the teal tip just under this header (over the widget).
-    <InfoPopover
-      description={description}
-      title={title}
-      infoAnalyticsId={infoAnalyticsId}
-      dismissAnalyticsId={SECTION_INFO_TOOLTIP.chrome.dismiss}
-      bodyAnalyticsId={SECTION_INFO_TOOLTIP.body.body}
-      parentScreen={parentScreen}
-      section={section}
-      analyticsProps={analyticsProps}
-      className={className}
-    >
-      <View className="flex-row items-center justify-between gap-3">
-        <View className="min-w-0 flex-1 flex-row items-center gap-2">
+    <View className={cn('flex-row items-center justify-between gap-3', className)}>
+      {/* Only the title is the tip trigger — action stays outside to avoid nested <button> */}
+      <InfoPopover
+        description={description}
+        title={title}
+        infoAnalyticsId={infoAnalyticsId}
+        dismissAnalyticsId={SECTION_INFO_TOOLTIP.chrome.dismiss}
+        bodyAnalyticsId={SECTION_INFO_TOOLTIP.body.body}
+        parentScreen={parentScreen}
+        section={section}
+        analyticsProps={analyticsProps}
+        className="min-w-0 flex-1"
+      >
+        <View className="flex-row items-center gap-2">
           {leading}
           <View className="min-w-0 flex-row items-baseline gap-2">
             {/* Teal dashed underline = "tap / hover me for a short explanation" */}
@@ -84,8 +85,8 @@ export function SectionTitle({
             ) : null}
           </View>
         </View>
-        {action}
-      </View>
-    </InfoPopover>
+      </InfoPopover>
+      {action}
+    </View>
   );
 }

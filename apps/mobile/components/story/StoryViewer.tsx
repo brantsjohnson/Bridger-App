@@ -38,6 +38,7 @@ import {
   cn,
   withAnalyticsPress
 } from '@bridger/ui';
+import { clearStoryReplyNotifications, markStorySeen } from '../../data/feed';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { useStoryViewer } from '../../hooks/useStoryViewer';
 import { CatchUpPanel } from './CatchUpPanel';
@@ -124,6 +125,8 @@ export function StoryViewer({
       stickerUri: input.stickerUri
     });
     trackProduct('response_posted', { method: input.method ?? 'sticker' });
+    // Answering on your own update clears the Home replies inbox.
+    if (authorId === 'me') clearStoryReplyNotifications();
   };
 
   // --- VIDEO: is the current slide a video we have real media for? ---
@@ -148,6 +151,8 @@ export function StoryViewer({
   // Catch-Up open = stay put (do not dismiss under the sheet).
   const handleExhausted = useCallback(() => {
     if (catchUpOpen) return;
+    // Finished every post for this person → ring off + move to back of tray
+    markStorySeen(authorId);
     if (fromProfile) {
       onClose?.();
       return;
@@ -534,6 +539,7 @@ export function StoryViewer({
         onClose={() => setRecorderOpen(false)}
         onSend={async (uri, seconds) => {
           await onAddReply({ kind: 'circleVideo', videoUri: uri, videoSeconds: seconds });
+          if (authorId === 'me') clearStoryReplyNotifications();
         }}
       />
 
@@ -554,7 +560,11 @@ export function StoryViewer({
         open={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         replies={replies}
-        onAddReply={onAddReply}
+        onAddReply={async (input) => {
+          const created = await onAddReply(input);
+          if (authorId === 'me') clearStoryReplyNotifications();
+          return created;
+        }}
         onOpenStickers={() => setTrayOpen(true)}
         onRecordVideo={() => setRecorderOpen(true)}
       />

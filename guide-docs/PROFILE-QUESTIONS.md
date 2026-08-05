@@ -177,15 +177,17 @@ Each asked as "Favorite {item}?" — all skippable.
 ---
 
 ## Module 3 · Places Traveled
-- Search / add places you've been.
+- **Search** places you've been (Photon / OpenStreetMap geocode — same helper as event addresses). Picking a result stores `label`, `lat`, `lng`, and ISO `countryCode` so the profile map can fill that country and drop a pin.
 - Per place tags: Visited · Lived there · Want to go
 - Optional note per place
 - Per-place visibility: who can see this?
 - **Co-op: add photos per place.**
 
-**Display:** a **two-view module** you swipe between (like the hobbies widget) — a **map with pins** and a **scrollable list** — contained within the widget. **Shared places surface both people's photos** in the In-common view for co-op members ("You've both been to France" → your photo + theirs). See `PROFILE.md`.
+**Display:** a **two-view module** you swipe between (like the hobbies widget) — a **stylized SVG world map** (country fills + coral pins at lat/lng) and a **scrollable list** — contained within the widget. **Shared places surface both people's photos** in the In-common view for co-op members ("You've both been to France" → your photo + theirs). See `PROFILE.md`.
 
 **Default visibility:** Everyone (or Friends).
+
+**PRIVACY:** typed search text goes only to Photon/OSM for geocoding; never logged to analytics. Coordinates are approximate place facts, not live tracking.
 
 ---
 

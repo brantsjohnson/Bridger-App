@@ -35,13 +35,21 @@ export const FRIEND_NOTES: FriendNote[] = [
   date: 'May 5',
   remind: true
 },
-{ id: 'n3', personId: 'maya', kind: 'text', body: 'Allergic to peanuts' }];
+{ id: 'n3', personId: 'maya', kind: 'text', body: 'Allergic to peanuts' },
+{
+  id: 'n4',
+  personId: 'maya',
+  kind: 'check_in',
+  body: 'Ask about the new job',
+  cadence: 'biweek'
+}];
 
 
 export const COMING_UP: UpcomingItem[] = [
 { id: 'u1', kind: 'birthday', label: "Devon's birthday", when: 'Today', personId: 'devon' },
 { id: 'u2', kind: 'birthday', label: "Maya's birthday", when: 'Friday', personId: 'maya' },
-{ id: 'u3', kind: 'note', label: "Maya's graduation", when: 'in 1 week', personId: 'maya' }];
+{ id: 'u3', kind: 'note', label: "Maya's graduation", when: 'in 1 week', personId: 'maya' },
+{ id: 'u4', kind: 'check_in', label: 'Check in with Maya?', when: 'now', personId: 'maya' }];
 
 
 export const notesFor = (personId: string) => FRIEND_NOTES.filter((n) => n.personId === personId);

@@ -199,6 +199,19 @@ function RootLayoutNav() {
           options={{ headerShown: false, presentation: 'fullScreenModal' }}
         />
         <Stack.Screen name="recap/index" options={{ headerShown: false }} />
+        <Stack.Screen name="activity/index" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
+        <Stack.Screen name="settings/notifications" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/customize" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/index" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/index" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/mission" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/model" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/ideas/index" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/ideas/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/vote" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/cost" options={{ headerShown: false }} />
+        <Stack.Screen name="coop/portal/manage" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

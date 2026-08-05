@@ -6,8 +6,10 @@
 // mark a profile entry (?from=profile), or pass the Home tray order
 // (?sequence=me,jade,kelton) so finishing one friend opens the next.
 // ============================================
+import { useEffect } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StoryViewer } from '../../components/story/StoryViewer';
+import { clearStoryReplyNotifications } from '../../data/feed';
 
 export default function StoryScreen() {
   const router = useRouter();
@@ -17,17 +19,31 @@ export default function StoryScreen() {
     comments?: string;
     from?: string;
     sequence?: string;
+    /** When set, only clear that person's story-reply chip — not the whole row. */
+    replyAuthor?: string;
   }>();
 
   const authorId = typeof params.id === 'string' ? params.id : 'maya';
   const startCatchUpOpen = params.catchup === '1';
   const startCommentsOpen = params.comments === '1';
   const fromProfile = params.from === 'profile';
+  const replyAuthor =
+    typeof params.replyAuthor === 'string' && params.replyAuthor.length > 0
+      ? params.replyAuthor
+      : undefined;
   // Comma-separated author ids from the Home tray (preserves watch order).
   const sequence =
     typeof params.sequence === 'string' && params.sequence.length > 0
       ? params.sequence.split(',').map((s) => s.trim()).filter(Boolean)
       : [];
+
+  // Opening your own replies clears story-reply alerts (NOTIFICATIONS.md).
+  // A specific chip pass replyAuthor so the rest of the Home row stays.
+  useEffect(() => {
+    if (authorId === 'me' && startCommentsOpen) {
+      clearStoryReplyNotifications(replyAuthor ? { personId: replyAuthor } : undefined);
+    }
+  }, [authorId, startCommentsOpen, replyAuthor]);
 
   return (
     <StoryViewer

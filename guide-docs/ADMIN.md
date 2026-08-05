@@ -112,7 +112,7 @@ Some surfaces are deliberately kept **out of the main app's blast radius** so ed
 
 - **Admin console → its own repository.** The organizer surface lives in a separate repo, so you can restructure or rebuild the entire admin freely without any risk to the app users are on. It talks to the same API.
 - **Marketing website → separate surface, connected login.** A public marketing/site (also where launched quizzes stay takeable). When a visitor clicks "log in" from the site, it hands off into the app's auth. Whether it's a separate repo or shares the app repo is an open call — the requirement is only that the login connects the two; noted for planning, not decided here.
-- **Co-op portal → external, not built here.** Already-existing, gatekept to members; Bridger only links to it (opens in-app for members, browser otherwise). Its structure is out of scope.
+- **Co-op portal → Nest + Expo.** Public multi-page governance at `/coop/portal/*` (benefits at `/coop`). Admin CRM at console `/portal` (ideas queue + vote tallies via `/admin/coop/portal/*`); announcements stay on `/coop`.
 
 The consumer app, the admin repo, and the co-op portal are three separately deployable things sharing the API; the marketing site is a fourth surface that just needs a login bridge.
 

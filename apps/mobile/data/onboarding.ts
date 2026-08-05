@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Tier } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
+import { applyOnboardingNotificationPrefs } from './notification-prefs';
 
 /** Device-local flag: this account already finished onboarding. */
 export const ONBOARDING_COMPLETE_KEY = 'bridger.onboardingComplete';
@@ -47,10 +48,20 @@ export function isOnboardingCompleteCached(): boolean {
 
 /**
  * Has this person finished onboarding? Returns false until welcome-in runs.
- * Demo mode reads the same device flag so localhost previews it once.
+ * Demo mode reads the device flag. Live mode asks the server (so the answer
+ * survives a reinstall) and mirrors it into the device cache as a fast path.
  */
 export async function getOnboardingComplete(): Promise<boolean> {
-  // TODO (live): read profiles.onboardingComplete from /me
+  if (!isDemoMode()) {
+    try {
+      const me = await apiFetch<{ onboardingComplete?: boolean }>('/me');
+      completeCache = me?.onboardingComplete === true;
+      await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, completeCache ? '1' : '0');
+      return completeCache;
+    } catch {
+      // Offline / API down: fall back to the last-known device flag below.
+    }
+  }
   const v = await AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY);
   completeCache = v === '1';
   return completeCache;
@@ -58,7 +69,13 @@ export async function getOnboardingComplete(): Promise<boolean> {
 
 /** Mark onboarding done — only welcome-in calls this. */
 export async function setOnboardingComplete(): Promise<void> {
-  // TODO (live): PATCH /me { onboardingComplete: true }
+  if (!isDemoMode()) {
+    await apiFetch('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ onboardingComplete: true })
+    });
+  }
+  // Always mirror into the device cache so the router gate reads it instantly.
   completeCache = true;
   await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, '1');
 }
@@ -73,9 +90,16 @@ export async function resetOnboarding(): Promise<void> {
 export async function saveNotifications(prefIds: string[]): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.notifications = [...prefIds];
+    // Mirror into the Settings prefs store so Profile → Notifications matches.
+    applyOnboardingNotificationPrefs(prefIds);
     return;
   }
-  // TODO: PATCH /me/notification-prefs
+  // Expand coarse chips into per-kind prefs on device so Settings matches.
+  applyOnboardingNotificationPrefs(prefIds);
+  await apiFetch('/me/notification-prefs', {
+    method: 'PATCH',
+    body: JSON.stringify({ prefIds })
+  });
 }
 
 /** 3 · Name — the one required field. */
@@ -84,7 +108,10 @@ export async function saveName(name: string): Promise<void> {
     demoDraftSaved.name = name.trim();
     return;
   }
-  // TODO: PATCH /me { name }
+  await apiFetch('/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ name: name.trim() })
+  });
 }
 
 /**
@@ -97,7 +124,9 @@ export async function savePhoto(input: { source: PhotoSource }): Promise<void> {
     demoDraftSaved.photo = input.source;
     return;
   }
-  // TODO: upload to media store (signed URL) + PATCH /me { avatar }
+  // FOLLOW-UP (needs a Supabase Storage bucket + signed upload, like recap
+  // audio): upload the file, create a `media` row, then PATCH /me with the new
+  // avatar media id. The /me PATCH route is ready; only the upload path is left.
 }
 
 /**
@@ -109,7 +138,17 @@ export async function saveBirthday(value: string): Promise<void> {
     demoDraftSaved.birthday = value;
     return;
   }
-  // TODO: POST /me/attributes { key: 'birthday', value }
+  // One "essential" fact under the fixed 'birthday' key. replacePrefix clears
+  // any old birthday first so re-answering never leaves two rows.
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      replacePrefix: 'birthday',
+      attributes: [
+        { key: 'birthday', value: { date: value }, layer: 'essential', visibleToTier: 'friend' }
+      ]
+    })
+  });
 }
 
 /**
@@ -134,7 +173,15 @@ export async function saveMeet(input: {
     demoDraftSaved.meet = { scope: input.scope, city: input.city ?? '' };
     return;
   }
-  // TODO: PATCH /discovery/settings { scope, city } (city coarse only)
+  // City is coarse only (never a street address). 'near' maps to the DB's
+  // 'nearby' meet scope.
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      meetScope: input.scope === 'near' ? 'nearby' : 'anywhere',
+      homeCity: input.city ?? ''
+    })
+  });
 }
 
 /** 7 · Per-answer visibility. Defaults to all friends; teaches tiers by use. */
@@ -143,17 +190,31 @@ export async function saveVisibility(rows: VisibilityRow[]): Promise<void> {
     demoDraftSaved.visibility = rows.map((r) => ({ id: r.id, tier: r.tier }));
     return;
   }
-  // TODO: PATCH /me/attributes visibility per row
+  // FOLLOW-UP: PATCH /me/attributes/:id { visibleToTier } for each row. Wiring
+  // this needs the basics step to first return the saved attribute ids so each
+  // review row knows which DB fact it controls; today the row id is the answer
+  // id, not the attribute id. The PATCH route itself is ready.
 }
 
 /** 8 · Co-op pitch outcome. "Use free" is first-class; never a paywall. */
-export async function joinCoop(join: boolean): Promise<void> {
+export async function joinCoop(
+  join: boolean,
+  method: 'apple' | 'google' | 'card' | 'soft' = 'soft'
+): Promise<void> {
+  if (join) {
+    // Product event coop_joined fires inside data/coop.joinCoop.
+    const { joinCoop: joinLive } = await import('./coop');
+    if (isDemoMode()) demoDraftSaved.coop = true;
+    await joinLive(method);
+    return;
+  }
+  // Use free: keep free plan, do not emit coop_left (they never joined).
   if (isDemoMode()) {
-    demoDraftSaved.coop = join;
+    demoDraftSaved.coop = false;
     return;
   }
   await apiFetch('/coop/membership', {
     method: 'POST',
-    body: JSON.stringify({ join })
+    body: JSON.stringify({ join: false })
   });
 }

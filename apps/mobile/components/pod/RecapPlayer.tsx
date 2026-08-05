@@ -46,6 +46,8 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { pushNotification } from '../../data/feed';
+import { isDemoMode } from '../../lib/demo';
+import { sendRecapReaction } from '../../data/pod';
 import { personById } from '../../data/people';
 import { EMOJI_STICKERS } from '../../data/stickers';
 
@@ -195,17 +197,28 @@ export function RecapPlayer({
   };
 
   const sendReaction = (emoji: string) => {
-    if (!speaker) return;
+    if (!speaker || !clip) return;
     trackClick(RECAP_PLAYER.react.emoji, { method: 'sticker' });
     trackProduct('recap_reaction_sent', { method: 'sticker' });
     const first = speaker.name.split(' ')[0] ?? speaker.name;
-    // Lands in the Home notifications preview (demo store for now).
-    pushNotification({
-      id: `recap-react-${Date.now()}`,
-      personId: speaker.id,
-      text: `reacted ${emoji} to ${first}'s recap`,
-      time: 'now'
-    });
+
+    if (isDemoMode()) {
+      // Demo: inject a local preview row; live mode notifies via the API.
+      pushNotification({
+        id: `recap-react-${Date.now()}`,
+        kind: 'recap_reaction',
+        personId: speaker.id,
+        text: `reacted ${emoji} to ${first}'s recap`,
+        time: 'now',
+        unread: true
+      });
+    } else {
+      void sendRecapReaction(clip.id, emoji).catch(() => {
+        setToast('Could not send. Try again.');
+        setTimeout(() => setToast(null), 1800);
+      });
+    }
+
     setToast(`Sent ${emoji} to ${first}`);
     setReactOpen(false);
     setTimeout(() => setToast(null), 1800);

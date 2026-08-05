@@ -29,13 +29,83 @@ export const ME: Person = {
 };
 
 export const PEOPLE: Person[] = [
-{ id: 'maya', name: 'Maya Ortiz', handle: '@maya', emoji: '🌻', accent: 'amber', tier: 'close', label: 'Ceramics', mutuals: 12, story: 'unseen' },
-{ id: 'devon', name: 'Devon Park', handle: '@devon', emoji: '🎧', accent: 'blue', tier: 'friend', label: 'Vinyl club', mutuals: 8, story: 'unseen' },
-{ id: 'ines', name: 'Inès Aubert', handle: '@ines', emoji: '🌿', accent: 'teal', tier: 'friend', label: 'Trails', mutuals: 5, story: 'seen' },
-{ id: 'theo', name: 'Theo Blake', handle: '@theo', emoji: '🌮', accent: 'coral', tier: 'acquaintance', label: 'Hot sauce', mutuals: 3 },
-{ id: 'nour', name: 'Nour Haddad', handle: '@nour', emoji: '📷', accent: 'purple', tier: 'acquaintance', label: 'Film photos', mutuals: 2 },
-{ id: 'kit', name: 'Kit Alvarez', handle: '@kit', emoji: '🚲', accent: 'green', tier: 'friend', label: 'Rides at 6', mutuals: 9, story: 'seen' }];
-
+  {
+    id: 'maya',
+    name: 'Maya Ortiz',
+    handle: '@maya',
+    emoji: '🌻',
+    accent: 'amber',
+    tier: 'close',
+    label: 'Ceramics',
+    mutuals: 12,
+    story: 'unseen',
+    song: { title: 'Pink + White', artist: 'Frank Ocean' },
+    book: { title: 'Braiding Sweetgrass', author: 'Robin Wall Kimmerer' }
+  },
+  {
+    id: 'devon',
+    name: 'Devon Park',
+    handle: '@devon',
+    emoji: '🎧',
+    accent: 'blue',
+    tier: 'friend',
+    label: 'Vinyl club',
+    mutuals: 8,
+    story: 'unseen',
+    song: { title: 'Pyramids', artist: 'Frank Ocean' },
+    book: { title: 'The Overstory', author: 'Richard Powers' }
+  },
+  {
+    id: 'ines',
+    name: 'Inès Aubert',
+    handle: '@ines',
+    emoji: '🌿',
+    accent: 'teal',
+    tier: 'friend',
+    label: 'Trails',
+    mutuals: 5,
+    story: 'seen',
+    song: { title: 'Holocene', artist: 'Bon Iver' },
+    book: { title: 'Bluets', author: 'Maggie Nelson' }
+  },
+  {
+    id: 'theo',
+    name: 'Theo Blake',
+    handle: '@theo',
+    emoji: '🌮',
+    accent: 'coral',
+    tier: 'acquaintance',
+    label: 'Hot sauce',
+    mutuals: 3,
+    song: { title: 'Levitating', artist: 'Dua Lipa' },
+    book: { title: 'Tomorrow, and Tomorrow, and Tomorrow', author: 'Gabrielle Zevin' }
+  },
+  {
+    id: 'nour',
+    name: 'Nour Haddad',
+    handle: '@nour',
+    emoji: '📷',
+    accent: 'purple',
+    tier: 'acquaintance',
+    label: 'Film photos',
+    mutuals: 2,
+    song: { title: 'Motion Picture Soundtrack', artist: 'Radiohead' },
+    book: { title: 'Stoner', author: 'John Williams' }
+  },
+  {
+    id: 'kit',
+    name: 'Kit Alvarez',
+    handle: '@kit',
+    emoji: '🚲',
+    accent: 'green',
+    tier: 'friend',
+    label: 'Rides at 6',
+    mutuals: 9,
+    story: 'seen',
+    song: { title: 'Dreams', artist: 'Fleetwood Mac' },
+    book: { title: 'Atomic Habits', author: 'James Clear' }
+  }
+];
 
 export function personById(id: string): Person {
   return PEOPLE.find((p) => p.id === id) ?? ME;
@@ -411,11 +481,11 @@ export const PROFILE_CURRENTLY = {
 };
 
 export const PLACES = [
-{ id: 'pl1', label: 'Lisbon', note: 'Ate custard tarts daily', x: 22, y: 48, emoji: '🥮', year: '2023' },
-{ id: 'pl2', label: 'Oaxaca', note: 'Mezcal + markets', x: 38, y: 66, emoji: '🌶', year: '2022' },
-{ id: 'pl3', label: 'Reykjavík', note: 'Saw the lights', x: 46, y: 22, emoji: '🌌', year: '2024' },
-{ id: 'pl4', label: 'Kyoto', note: 'Temple mornings', x: 78, y: 44, emoji: '⛩', year: '2019' },
-{ id: 'pl5', label: 'Banff', note: 'Cold lake swim', x: 18, y: 30, emoji: '🏔', year: '2021' }];
+{ id: 'pl1', label: 'Lisbon', note: 'Ate custard tarts daily', lat: 38.7223, lng: -9.1393, countryCode: 'PT', emoji: '🥮', year: '2023' },
+{ id: 'pl2', label: 'Oaxaca', note: 'Mezcal + markets', lat: 17.0732, lng: -96.7266, countryCode: 'MX', emoji: '🌶', year: '2022' },
+{ id: 'pl3', label: 'Reykjavík', note: 'Saw the lights', lat: 64.1466, lng: -21.9426, countryCode: 'IS', emoji: '🌌', year: '2024' },
+{ id: 'pl4', label: 'Kyoto', note: 'Temple mornings', lat: 35.0116, lng: 135.7681, countryCode: 'JP', emoji: '⛩', year: '2019' },
+{ id: 'pl5', label: 'Banff', note: 'Cold lake swim', lat: 51.1784, lng: -115.5708, countryCode: 'CA', emoji: '🏔', year: '2021' }];
 
 
 /**

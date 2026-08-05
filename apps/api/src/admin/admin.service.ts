@@ -565,14 +565,18 @@ export class AdminService {
   async listMembers() {
     const { data, error } = await this.supabase.admin
       .from('coop_memberships')
-      .select('user_id, active, since, dues_paid_through')
+      .select(
+        'user_id, active, since, dues_paid_through, cancel_at_period_end, cancelled_at'
+      )
       .eq('active', true)
       .order('since', { ascending: false });
     if (error) throw error;
     const members = (data ?? []).map((m) => ({
       userId: m.user_id,
       since: m.since,
-      duesPaidThrough: m.dues_paid_through ?? undefined
+      duesPaidThrough: m.dues_paid_through ?? undefined,
+      cancelAtPeriodEnd: !!m.cancel_at_period_end,
+      cancelledAt: m.cancelled_at ?? undefined
     }));
     return { count: members.length, members };
   }

@@ -6,11 +6,19 @@
 // "Set all" plus per-answered-item Close / Friends / All chips — so every
 // answer carries its own visibility before it's saved.
 // ============================================
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeftIcon, LockIcon, XIcon } from 'lucide-react-native';
-import type { Accent, Tier } from '@bridger/shared';
+import { trackClick, type Accent, type Tier } from '@bridger/shared';
 import { ButtonPrimary } from './Button';
 import { ACCENTS, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
@@ -18,10 +26,27 @@ import { withAnalyticsPress } from '../lib/analytics';
 
 export type HobbyOption = { id: string; label: string; emoji?: string };
 
+/** Minimal hit shape for placeSearch (caller supplies the geocoder). */
+export type GeocodeHit = {
+  label: string;
+  displayName: string;
+  lat: number;
+  lng: number;
+  countryCode: string;
+  countryName?: string;
+};
+
 export type ModuleQuestion =
   | { id: string; ask: string; type: 'single'; options: string[]; emoji?: string }
   | { id: string; ask: string; type: 'multi'; options: string[]; emoji?: string }
   | { id: string; ask: string; type: 'text'; placeholder?: string; emoji?: string }
+  | {
+      id: string;
+      ask: string;
+      type: 'placeSearch';
+      placeholder?: string;
+      emoji?: string;
+    }
   | {
       id: string;
       ask: string;
@@ -75,7 +100,10 @@ export function ModuleFlow({
   onClose,
   onDone,
   audienceSetAllAnalyticsId,
-  audienceRowAnalyticsId
+  audienceRowAnalyticsId,
+  searchPlaces,
+  placeSearchAnalyticsId,
+  placeResultAnalyticsId
 }: {
   open: boolean;
   title: string;
@@ -89,6 +117,10 @@ export function ModuleFlow({
   onDone?: (answers: Record<string, ModuleAnswer>, visibility?: ModuleVisibility) => void;
   audienceSetAllAnalyticsId?: string;
   audienceRowAnalyticsId?: string;
+  /** Injected geocoder for placeSearch questions (app supplies Photon). */
+  searchPlaces?: (query: string, signal?: AbortSignal) => Promise<GeocodeHit[]>;
+  placeSearchAnalyticsId?: string;
+  placeResultAnalyticsId?: string;
 }) {
   const isPrivate = mode === 'private';
   const insets = useSafeAreaInsets();
@@ -244,7 +276,15 @@ export function ModuleFlow({
                   audienceRowAnalyticsId={audienceRowAnalyticsId}
                 />
               ) : q ? (
-                <QuestionBody q={q} answers={answers} set={set} next={next} />
+                <QuestionBody
+                  q={q}
+                  answers={answers}
+                  set={set}
+                  next={next}
+                  searchPlaces={searchPlaces}
+                  placeSearchAnalyticsId={placeSearchAnalyticsId}
+                  placeResultAnalyticsId={placeResultAnalyticsId}
+                />
               ) : null}
             </ScrollView>
 
@@ -256,12 +296,17 @@ export function ModuleFlow({
               ) : q &&
                 (q.type === 'multi' ||
                   q.type === 'text' ||
+                  q.type === 'placeSearch' ||
                   q.type === 'hobbySelect' ||
                   q.type === 'yesNo') ? (
                 <ButtonPrimary
                   full
                   size="lg"
-                  disabled={q.type === 'hobbySelect' ? !answered(q.id) : false}
+                  disabled={
+                    q.type === 'hobbySelect' || q.type === 'placeSearch'
+                      ? !answered(q.id)
+                      : false
+                  }
                   onPress={next}
                 >
                   Continue
@@ -285,12 +330,18 @@ function QuestionBody({
   q,
   answers,
   set,
-  next
+  next,
+  searchPlaces,
+  placeSearchAnalyticsId,
+  placeResultAnalyticsId
 }: {
   q: ModuleQuestion | FollowupQuestion;
   answers: Record<string, ModuleAnswer>;
   set: (id: string, v: ModuleAnswer) => void;
   next: () => void;
+  searchPlaces?: (query: string, signal?: AbortSignal) => Promise<GeocodeHit[]>;
+  placeSearchAnalyticsId?: string;
+  placeResultAnalyticsId?: string;
 }) {
   const c = useThemeColors();
 
@@ -313,6 +364,19 @@ function QuestionBody({
             accessibilityLabel={q.ask}
             placeholderTextColor={c.inkMute}
             className="rounded-2xl border border-ink-line bg-surface px-4 py-3.5 font-sans-sb text-[16px] text-ink"
+          />
+        ) : null}
+
+        {q.type === 'placeSearch' ? (
+          <PlaceSearchBody
+            questionId={q.id}
+            ask={q.ask}
+            placeholder={q.placeholder}
+            value={(answers[q.id] as string) ?? ''}
+            onPick={(payload) => set(q.id, payload)}
+            searchPlaces={searchPlaces}
+            placeSearchAnalyticsId={placeSearchAnalyticsId}
+            placeResultAnalyticsId={placeResultAnalyticsId}
           />
         ) : null}
 
@@ -556,9 +620,7 @@ function ReviewStep({
               {x.ask}
             </Text>
             <Text numberOfLines={2} className="font-sans-b text-[14px] text-ink">
-              {Array.isArray(answers[x.id])
-                ? (answers[x.id] as string[]).join(' · ')
-                : (answers[x.id] as string)}
+              {formatAnswerPreview(answers[x.id])}
             </Text>
             {!isPrivate ? (
               <View
@@ -599,6 +661,180 @@ function ReviewStep({
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+/** Show a friendly preview — unwrap placeSearch JSON to just the label. */
+function formatAnswerPreview(raw: ModuleAnswer | undefined): string {
+  if (raw == null) return '';
+  if (Array.isArray(raw)) return raw.join(' · ');
+  try {
+    const o = JSON.parse(raw) as { label?: string; lat?: number };
+    if (typeof o.label === 'string' && typeof o.lat === 'number') return o.label;
+  } catch {
+    // plain text answer
+  }
+  return raw;
+}
+
+/**
+ * Place search step — type a city/country, pick a Photon result.
+ * Stores a JSON string { label, lat, lng, countryCode } as the answer.
+ * PRIVACY: never logs the query text; only that a result was picked.
+ */
+function PlaceSearchBody({
+  questionId,
+  ask,
+  placeholder,
+  value,
+  onPick,
+  searchPlaces,
+  placeSearchAnalyticsId,
+  placeResultAnalyticsId
+}: {
+  questionId: string;
+  ask: string;
+  placeholder?: string;
+  value: string;
+  onPick: (payload: string) => void;
+  searchPlaces?: (query: string, signal?: AbortSignal) => Promise<GeocodeHit[]>;
+  placeSearchAnalyticsId?: string;
+  placeResultAnalyticsId?: string;
+}) {
+  const c = useThemeColors();
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState<GeocodeHit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abort = useRef<AbortController | null>(null);
+
+  // Show the picked label if we already have a JSON answer.
+  let pickedLabel = '';
+  try {
+    if (value) {
+      const o = JSON.parse(value) as { label?: string };
+      if (typeof o.label === 'string') pickedLabel = o.label;
+    }
+  } catch {
+    pickedLabel = '';
+  }
+
+  useEffect(() => {
+    if (!searchPlaces) return;
+    if (debounce.current) clearTimeout(debounce.current);
+    abort.current?.abort();
+    const q = query.trim();
+    if (q.length < 2) {
+      setHits([]);
+      setError(false);
+      return;
+    }
+    debounce.current = setTimeout(() => {
+      void (async () => {
+        setLoading(true);
+        setError(false);
+        abort.current?.abort();
+        const controller = new AbortController();
+        abort.current = controller;
+        try {
+          const results = await searchPlaces(q, controller.signal);
+          if (controller.signal.aborted) return;
+          // Prefer hits that carry a country code (needed for the map fill).
+          setHits(results.filter((r) => r.countryCode.length === 2));
+        } catch {
+          if (!controller.signal.aborted) {
+            setHits([]);
+            setError(true);
+          }
+        } finally {
+          if (!controller.signal.aborted) setLoading(false);
+        }
+      })();
+    }, 300);
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current);
+      abort.current?.abort();
+    };
+  }, [query, searchPlaces]);
+
+  function pick(hit: GeocodeHit) {
+    onPick(
+      JSON.stringify({
+        label: hit.label,
+        lat: hit.lat,
+        lng: hit.lng,
+        countryCode: hit.countryCode.toUpperCase()
+      })
+    );
+    setQuery('');
+    setHits([]);
+  }
+
+  if (!searchPlaces) {
+    return (
+      <Text className="font-sans-sb text-[13px] text-ink-mute">
+        Place search is unavailable right now.
+      </Text>
+    );
+  }
+
+  return (
+    <View className="gap-3">
+      {pickedLabel ? (
+        <View className="rounded-2xl border border-green/40 bg-green/10 px-4 py-3">
+          <Text className="font-sans-b text-[14px] text-ink">{pickedLabel}</Text>
+          <Text className="mt-0.5 font-sans-sb text-[12px] text-ink-mute">
+            Selected · search again to change
+          </Text>
+        </View>
+      ) : null}
+      <View className="flex-row items-center gap-2 rounded-2xl border border-ink-line bg-surface px-4 py-3">
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          onFocus={() => {
+            if (placeSearchAnalyticsId) trackClick(placeSearchAnalyticsId);
+          }}
+          placeholder={placeholder ?? 'Search a city or country'}
+          placeholderTextColor={c.inkMute}
+          accessibilityLabel={ask}
+          accessibilityHint="Searches for a place to pin on your map"
+          className="min-w-0 flex-1 font-sans-sb text-[16px] text-ink"
+          style={{ padding: 0 }}
+        />
+        {loading ? <ActivityIndicator size="small" color={c.inkMute} /> : null}
+      </View>
+
+      {error ? (
+        <Text className="font-sans-sb text-[13px] text-ink-mute">
+          Couldn't look that up. Check your connection and try again.
+        </Text>
+      ) : null}
+
+      {hits.length > 0 ? (
+        <View className="overflow-hidden rounded-2xl border border-ink-line bg-surface">
+          {hits.map((hit, i) => (
+            <Pressable
+              key={`${hit.lat}-${hit.lng}-${i}`}
+              onPress={withAnalyticsPress(placeResultAnalyticsId, () => pick(hit), {
+                analyticsProps: { question_id: questionId }
+              })}
+              accessibilityRole="button"
+              accessibilityLabel={`${hit.label}${hit.countryName ? `, ${hit.countryName}` : ''}`}
+              className="border-b border-ink-line px-4 py-3 last:border-b-0 active:opacity-80"
+            >
+              <Text className="font-sans-b text-[14px] text-ink">{hit.label}</Text>
+              {hit.countryName || hit.displayName ? (
+                <Text numberOfLines={1} className="mt-0.5 font-sans-sb text-[12px] text-ink-mute">
+                  {hit.countryName ?? hit.displayName}
+                </Text>
+              ) : null}
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }

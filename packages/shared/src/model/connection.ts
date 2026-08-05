@@ -56,28 +56,90 @@ export interface HowYouMet {
 /** Whether you'd already met before connecting — asked once, at the reveal. */
 export type MeetContext = 'just-met' | 'already-know';
 
+/** How often a check-in note should nudge you (no calendar date). */
+export type FriendNoteCadence = 'week' | 'biweek' | 'month';
+
 /**
  * Your private scratchpad on a person. Never visible to them.
- * `text` = a little thing to remember. `date` = something to be reminded about.
+ * `text` = a little thing to remember.
+ * `date` = something to be reminded about on a calendar day.
+ * `check_in` = soft "nudge me sometimes" with no fixed date.
  */
 export interface FriendNote {
   id: string;
   personId: string;
-  kind: 'text' | 'date';
+  kind: 'text' | 'date' | 'check_in';
   body: string;
-  /** date notes only */
+  /** date notes only — display or ISO date */
   date?: string;
   /** date notes only — reminds 1 week before and on the day */
   remind?: boolean;
+  /** check_in only — how often to nudge */
+  cadence?: FriendNoteCadence;
+  /** check_in only — next soft reminder (ISO) */
+  nextRemindAt?: string;
 }
 
-/** Home's "Coming up" — a friend's shared birthday, or one of your date notes. */
+/** Home's "Coming up" — birthday, private date note, or check-in nudge. */
 export interface UpcomingItem {
   id: string;
-  kind: 'birthday' | 'note';
+  kind: 'birthday' | 'note' | 'check_in';
   label: string;
   when: string;
   personId: string;
+  /**
+   * Days until the moment (0 = today, negative fraction = "now").
+   * Used to sort soonest-first. Optional when `when` can be parsed.
+   */
+  daysUntil?: number;
+}
+
+/**
+ * Turn a Coming up "when" chip into a sort key (lower = sooner).
+ * "now" sits just before "Today".
+ */
+export function upcomingDaysUntil(when: string, now = new Date()): number {
+  const w = when.trim().toLowerCase();
+  if (w === 'now') return -0.5;
+  if (w === 'today') return 0;
+  if (w === 'tomorrow') return 1;
+
+  const inDays = /^in\s+(\d+)\s+days?$/.exec(w);
+  if (inDays) return Number(inDays[1]);
+
+  if (w === 'in 1 week' || w === 'in a week' || w === 'in one week') return 7;
+
+  const weekdays = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday'
+  ];
+  const dayIdx = weekdays.indexOf(w);
+  if (dayIdx >= 0) {
+    const today = now.getDay();
+    return (dayIdx - today + 7) % 7;
+  }
+
+  if (w === 'soon') return 14;
+  return 30;
+}
+
+/** Soonest first. Same day: check-in, then birthday, then note; then label. */
+export function sortUpcomingItems(items: UpcomingItem[]): UpcomingItem[] {
+  const kindOrder = { check_in: 0, birthday: 1, note: 2 } as const;
+  return [...items].sort((a, b) => {
+    const da = a.daysUntil ?? upcomingDaysUntil(a.when);
+    const db = b.daysUntil ?? upcomingDaysUntil(b.when);
+    if (da !== db) return da - db;
+    const ka = kindOrder[a.kind] ?? 9;
+    const kb = kindOrder[b.kind] ?? 9;
+    if (ka !== kb) return ka - kb;
+    return a.label.localeCompare(b.label);
+  });
 }
 
 export interface Commonality {

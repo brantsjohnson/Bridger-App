@@ -1,17 +1,17 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// One person on the Friends roster: avatar, name, mutuals (or "Birthday today"),
-// and a chevron. Rows are color-coded by circle — Close = green, Friends = blue,
-// Acquaintances = orange — all vibrant. Birthdays (and other "notice this" dates)
-// override to vibrant pink with cake + sparkle. Text stays near-black so it
-// reads on every wash. In Edit mode the chevron becomes a move handle.
+// One person on the Friends roster: avatar, name, song of the week or the book
+// they're reading (or "Birthday today"), and a chevron. Rows are color-coded by
+// circle — Close = green, Friends = blue, Acquaintances = orange. Birthdays
+// override to vibrant pink with a cake. Mutual counts stay on the profile
+// (In common), not here. In Edit mode the chevron becomes a move handle.
 // Analytics: normal tap = roster.row, birthday = birthday_row, edit = drag_handle.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Pressable, Text, View } from 'react-native';
-import { CakeIcon, ChevronRightIcon, PartyPopperIcon } from 'lucide-react-native';
+import { CakeIcon, ChevronRightIcon } from 'lucide-react-native';
 import type { Person, Tier } from '@bridger/shared';
-import { FRIENDS } from '@bridger/shared';
+import { FRIENDS, personVibeLine } from '@bridger/shared';
 import { Avatar, Sparkles, cn, withAnalyticsPress, type WashStoryRing } from '@bridger/ui';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 
@@ -67,6 +67,9 @@ export function FriendRow({
 
   const nameColor = onWash ? ON_WASH : undefined;
   const chevronColor = onWash ? ON_WASH : '#9A9688';
+  // Song first, then book — never mutual counts on this list.
+  const vibe = personVibeLine(person);
+  const subtitle = birthday ? 'Birthday today' : vibe;
 
   return (
     /*
@@ -94,11 +97,7 @@ export function FriendRow({
         onPress={withAnalyticsPress(rowId, onPress)}
         onLongPress={onLongPress}
         accessibilityRole="button"
-        accessibilityLabel={
-          birthday
-            ? `${person.name}, birthday today`
-            : `${person.name}, ${person.mutuals} mutual friends`
-        }
+        accessibilityLabel={subtitle ? `${person.name}, ${subtitle}` : person.name}
         accessibilityHint={editing ? 'Opens move to circle' : 'Opens profile'}
         className={cn(
           'min-h-[44px] min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90',
@@ -113,17 +112,18 @@ export function FriendRow({
           >
             {person.name}
           </Text>
-          <Text
-            numberOfLines={1}
-            className={cn('font-sans-sb text-[12px]', !onWash && 'text-ink-mute')}
-            style={nameColor ? { color: nameColor, opacity: 0.75 } : undefined}
-          >
-            {birthday ? 'Birthday today' : `${person.mutuals} mutual friends`}
-          </Text>
+          {subtitle ? (
+            <Text
+              numberOfLines={1}
+              className={cn('font-sans-sb text-[12px]', !onWash && 'text-ink-mute')}
+              style={nameColor ? { color: nameColor, opacity: 0.75 } : undefined}
+            >
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
 
-        {/* Confetti popping off the row, because it is their birthday. The row
-            also says "Birthday today" in words, so nothing depends on the party. */}
+        {/* Soft sparkle on birthday rows; cake icon is the main birthday cue. */}
         {birthday && !editing ? <Sparkles /> : null}
         {birthday && !editing ? <BirthdayDecor /> : null}
 
@@ -143,7 +143,7 @@ export function FriendRow({
   );
 }
 
-/** Cake + party popper for birthday rows. Skips the pulse when Reduce Motion is on. */
+/** Cake for birthday rows. Skips the pulse when Reduce Motion is on. */
 function BirthdayDecor() {
   const scale = useRef(new Animated.Value(1)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -175,8 +175,7 @@ function BirthdayDecor() {
       className="shrink-0 flex-row items-center gap-1"
       accessibilityElementsHidden
     >
-      {/* White party + cake on the pink wash so they still pop */}
-      <PartyPopperIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
+      {/* White cake on the pink wash so it still pops */}
       <Animated.View style={{ transform: [{ scale }] }}>
         <CakeIcon size={20} color="#FFFFFF" strokeWidth={2.4} />
       </Animated.View>

@@ -5,9 +5,11 @@
 // ============================================
 import { Module } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
+import { CoopModule } from '../coop/coop.module';
 import { MeController } from './me.controller';
 
 @Module({
+  imports: [CoopModule],
   controllers: [MeController],
   providers: [SupabaseAuthGuard]
 })

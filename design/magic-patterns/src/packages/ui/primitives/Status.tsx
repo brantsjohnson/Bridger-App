@@ -47,13 +47,16 @@ export function CountdownChip({ label }: {label: string;}) {
 export function StorageBar({
   used,
   total,
-  accent = 'teal'
-
-
-
-
-}: {used: number;total: number;accent?: Accent;}) {
-  const pct = Math.min(100, Math.round(used / total * 100));
+  accent = 'teal',
+  /** Hide the "X of Y GB" line when the parent card already shows usage. */
+  showMeta = true
+}: {
+  used: number;
+  total: number;
+  accent?: Accent;
+  showMeta?: boolean;
+}) {
+  const pct = Math.min(100, Math.round((used / total) * 100));
   return (
     <div>
       <div
@@ -61,13 +64,15 @@ export function StorageBar({
         aria-valuenow={used}
         aria-valuemin={0}
         aria-valuemax={total}
-        className="h-1.5 w-full overflow-hidden rounded-full bg-ink-line">
-        
+        className="h-1.5 w-full overflow-hidden rounded-full bg-ink-line"
+      >
         <div className={cn('h-full rounded-full', ACCENTS[accent].bg)} style={{ width: `${pct}%` }} />
       </div>
-      <p className="mt-1.5 text-[11px] font-semibold text-ink-mute">
-        {used} of {total} GB
-      </p>
-    </div>);
-
+      {showMeta ? (
+        <p className="mt-1.5 text-[11px] font-semibold text-ink-mute">
+          {used} of {total} GB
+        </p>
+      ) : null}
+    </div>
+  );
 }
