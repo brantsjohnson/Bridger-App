@@ -9,6 +9,7 @@ The tech stack, hosting, and deployment are already chosen and specified in INFR
 In short: one Expo (+ Expo Router) codebase → iOS + Android + web · NestJS API in a container on AWS App Runner · Supabase (Postgres + RLS + pgvector + Auth + Storage) · Anthropic + OpenAI server-side only · IaC via Terraform/CDK · CI via GitHub Actions + EAS.
 Never introduce a new database, hosting provider, state library, or major dependency without an explicit go-ahead. No blockchain — ever (the reasons are in INFRASTRUCTURE.md).
 Secrets (ANTHROPIC_API_KEY, OPENAI_API_KEY, Supabase service keys) exist only server-side (Secrets Manager). If you find yourself writing a key into client code, stop — that's a bug.
+
 2 · UI comes from the Magic Patterns component library. Always.
 The UI was designed and built in Magic Patterns; you are connected to that component library. Whenever you build or edit UI, use the Magic Patterns components — don't hand-roll a lookalike, don't reach for a random UI kit, don't invent a new button.
 The component inventory and the doc each component belongs to are listed in MAGIC-PATTERNS.md. Screens must match their spec docs (HOME.md, PROFILE.md, etc.).
@@ -37,8 +38,34 @@ Payments: co-op membership sold in-app must use the platform's IAP where require
 No tracking without consent (we don't track — keep it that way; no third-party ad/analytics SDKs without approval).
 Content safety: report + block exist (FRIENDS.md) — keep them wired; stores require a moderation path for user-generated content.
 Make sure to build the accessibility elements in there as you build out the features so that it can be accessed by Android or IOS's accessibility rules. We want to make sure the software is accessible to everyone if they have those options turned on. 
+Account & data (additions)
+- Deleting an account must also purge it from any third-party processor (e.g. the PostHog person, per analytics-rules.mdc), not just our own DB.
+- Account/data export available on request (privacy-law expectation; DATA.md already supports it).
+- Ship Apple's Privacy Manifest file (`PrivacyInfo.xcprivacy`) declaring "required-reason" APIs and every third-party SDK.
+- Don't require account creation to view content the app presents publicly; only ask for signup data we actually need (Apple 5.1.1).
 
-4 · Every section of code gets a plain-language comment.
+Permissions (additions)
+- Location permission (for the coarse "where you met") also needs its own in-context purpose string (not yet exactly applicable until we add local friend finding)
+- If contacts are ever used for friend-finding, that requires separate explicit consent + a clear reason, and must be optional -- would like to add this in the onbaording flow if possible when they invite friends they can connect their contacts. 
+- The app must fully function when a permission is denied — degrade gracefully, never dead-end.
+
+Payments (addition)
+- Do not link out to an external purchase flow for co-op membership (Apple 3.1.1 anti-steering). The IAP-vs-external-chip-in line must stay clean: membership = IAP only; chip-in handles = peer-to-peer text links we never process.
+
+Content safety / UGC (additions — required because we have user content + messaging, Apple Guideline 1.2)
+- Report the content itself, not just block the person, on stories, messages, inside jokes, and comments.
+- A mechanism to filter/remove objectionable content with a stated response time, and a reported-content pipeline that reaches a human (admin console, ADMIN.md).
+- An EULA/terms with a "no tolerance for objectionable content or abusive users" clause the user must agree to (Apple 1.2).
+- Age gate / minimum age appropriate to a social app, and an accurate age-rating questionnaire.
+
+AI content (addition)
+- Because summaries are model-written, ensure they can't emit harmful/objectionable output, and provide a report path on AI-written content too (stores are scrutinizing generative features).
+
+Accessibility (addition — build in per feature, not a later pass)
+- As each feature is built, make it work with iOS (VoiceOver, Dynamic Type, Voice Control, Switch Control, Reduce Motion) and Android (TalkBack, font scaling, Switch Access) when users have those enabled — mirroring CURSOR-RULES §3. Do not defer this to an accessibility pass at the end.
+
+
+4 · Every section of code gets a plain-language comment and every line break gets one sentence introducing the next portion of the code
 
 The founder is non-technical and will read the code. Every file starts with a header comment, and every meaningful section gets a one-liner, in plain English — what it is, not how clever it is.
 
@@ -57,12 +84,15 @@ ts
 Comments say what and why ("this checks you can only see fields shared with your tier"), not just restating code.
 Label the load-bearing bits explicitly: SECURITY, PRIVACY, PAYMENT, ACCESSIBILITY, so they're findable.
 Keep comments updated when code changes — a stale comment is worse than none.
+In addition! Every line break should have one sentence that says what the next section does -- really simply. // THIS SECTION DOES: ...
+
 5 · Privacy invariants (never break these, in any task)
 RLS on every table; tier visibility enforced at the row level (DATA.md). New table → new policy, same migration.
 Deletion is real: hard-delete cascades; removing an account/field/connection erases it and its derived AI rows.
 AI never sees PII or photos: summaries from user words only; embeddings from de-identified Zone B; matching returns opaque IDs, names rejoin on-device. Never send likeness to a model; never train on user content.
 No vanity metrics, anywhere: no follower counts, view counts, invited totals, streaks, or leaderboards. If a feature needs a number, it must be a number that serves the user (host headcount vs cap is the canonical allowed example).
 Capture-only media except the profile photo (the one upload exception).
+
 6 · Naming: user-facing vs internal
 User sees	Code/module says
 Updates ("update your friends")	stories module
@@ -87,3 +117,5 @@ ARCHITECTURE.md — repo layout, modules, routes
 Feature docs (HOME.md, PROFILE.md, STORIES.md, …) — behavior + acceptance criteria
 NOTIFICATIONS.md — always-review destination map for every alert/push (see INDEX.md)
 DESIGN.md + MAGIC-PATTERNS.md — look, motion, components
+
+8. As you code or review code, add to the `PRIVACY.md` and the `TERMS.md` file anything that should go in there so it is relatively easy to know what everything is used for as master Terms and Conditions Doc and Privacy Policy Doc to inform the real legal ones. 
