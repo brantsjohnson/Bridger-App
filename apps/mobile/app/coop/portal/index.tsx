@@ -66,6 +66,9 @@ const GUIDES: {
 export default function CoopPortalHub() {
   const router = useRouter();
   const [overview, setOverview] = useState<PortalOverview | null>(null);
+  // Read once per render so a missing COOP export fails clearly (and Metro
+  // picks up the named re-export from @bridger/shared).
+  const portal = COOP.portal;
 
   useEffect(() => {
     void getPortalOverview()
@@ -84,12 +87,12 @@ export default function CoopPortalHub() {
         onBack={() => router.back()}
         hideProfile
         analyticsSurface="coop"
-        titleAnalyticsId={COOP.portal.page_title}
+        titleAnalyticsId={portal.page_title}
       />
       <ScreenBody>
         <PortalNav />
 
-        <AnalyticsRegion analyticsId={COOP.portal.hero} interactive={false}>
+        <AnalyticsRegion analyticsId={portal.hero} interactive={false}>
           <View style={ORGANIC.banner} className="mb-4 overflow-hidden bg-teal p-5">
             <Text className="font-pixel text-[17px] leading-tight text-onaccent">
               Phase 0 · Bridger Co-op
@@ -114,7 +117,7 @@ export default function CoopPortalHub() {
           <SectionTitle
             title="What you can do here"
             description="Tap any room below to read how the co-op works. Voting and supporting stay with members, and we never show tallies or people's names on this portal."
-            infoAnalyticsId={COOP.portal.info}
+            infoAnalyticsId={portal.info}
             parentScreen="coop"
             section="portal"
             className="mb-3"
@@ -129,7 +132,7 @@ export default function CoopPortalHub() {
               return (
                 <Pressable
                   key={g.label}
-                  onPress={withAnalyticsPress(COOP.portal.guide_card, () =>
+                  onPress={withAnalyticsPress(portal.guide_card, () =>
                     router.push(g.href)
                   )}
                   accessibilityRole="button"
@@ -190,7 +193,7 @@ export default function CoopPortalHub() {
               <ButtonPrimary
                 full
                 size="lg"
-                analyticsId={COOP.portal.join_cta}
+                analyticsId={portal.join_cta}
                 onPress={() => router.push('/coop')}
                 accessibilityLabel="Join the co-op"
               >

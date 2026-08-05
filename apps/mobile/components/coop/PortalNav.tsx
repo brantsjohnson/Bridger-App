@@ -10,14 +10,18 @@ import { type Href, usePathname, useRouter } from 'expo-router';
 import { COOP } from '@bridger/shared';
 import { cn, withAnalyticsPress } from '@bridger/ui';
 
-const TABS: { label: string; href: Href; id: string }[] = [
-  { label: 'Overview', href: '/coop/portal', id: COOP.portal.nav_overview },
-  { label: 'Mission', href: '/coop/portal/mission', id: COOP.mission.nav },
-  { label: 'Model', href: '/coop/portal/model', id: COOP.model.nav },
-  { label: 'Ideas', href: '/coop/portal/ideas', id: COOP.ideas.nav },
-  { label: 'Vote', href: '/coop/portal/vote', id: COOP.vote.nav },
-  { label: 'Cost', href: '/coop/portal/cost', id: COOP.cost.nav }
-];
+// Build tab ids inside the component so a stale Fast Refresh binding cannot
+// leave COOP undefined at module load (crash: reading 'portal').
+function portalTabs(): { label: string; href: Href; id: string }[] {
+  return [
+    { label: 'Overview', href: '/coop/portal', id: COOP.portal.nav_overview },
+    { label: 'Mission', href: '/coop/portal/mission', id: COOP.mission.nav },
+    { label: 'Model', href: '/coop/portal/model', id: COOP.model.nav },
+    { label: 'Ideas', href: '/coop/portal/ideas', id: COOP.ideas.nav },
+    { label: 'Vote', href: '/coop/portal/vote', id: COOP.vote.nav },
+    { label: 'Cost', href: '/coop/portal/cost', id: COOP.cost.nav }
+  ];
+}
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/coop/portal') {
@@ -29,6 +33,7 @@ function isActive(pathname: string, href: string): boolean {
 export function PortalNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const tabs = portalTabs();
 
   return (
     <View className="mb-4">
@@ -37,7 +42,7 @@ export function PortalNav() {
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="gap-2 px-0"
       >
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const active = isActive(pathname, String(t.href));
           return (
             <Pressable
