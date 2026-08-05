@@ -8,7 +8,7 @@
 import React from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { COOP } from '@bridger/shared';
+import { COOP } from '../../../lib/analytics-ids';
 import {
   AnalyticsRegion,
   ORGANIC,

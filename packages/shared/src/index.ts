@@ -23,8 +23,11 @@ export * from './model/not-found-hit';
 export * from './model/notification';
 
 // Analytics: taxonomy IDs + consent-gated emit client (PostHog-ready).
-// Re-export IDs by name (not only `export *`) so Metro/Expo always bind them —
-// nested `export *` can leave COOP undefined at runtime ("reading 'portal'").
+// Export IDs straight from ids.ts (not only via nested `export *`) so Metro
+// always gets a real COOP binding. Do not also `export *` the same names first —
+// TypeScript emits `exports.COOP = void 0` which blocks star-reexports.
+export * from './analytics/types';
+export * from './analytics/client';
 export {
   AUTH,
   ONBOARDING,
@@ -63,4 +66,3 @@ export {
   aid,
   parseAnalyticsId
 } from './analytics/ids';
-export * from './analytics';

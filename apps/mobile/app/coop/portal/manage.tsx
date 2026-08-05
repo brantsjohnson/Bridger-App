@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { CoopMembership } from '@bridger/shared';
-import { COOP } from '@bridger/shared';
+import { COOP } from '../../../lib/analytics-ids';
 import {
   ButtonSecondary,
   SectionTitle,

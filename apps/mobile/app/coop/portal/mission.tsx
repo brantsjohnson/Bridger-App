@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { CoopMissionPrinciple } from '@bridger/shared';
-import { COOP } from '@bridger/shared';
+import { COOP } from '../../../lib/analytics-ids';
 import {
   AnalyticsRegion,
   ButtonPrimary,

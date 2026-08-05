@@ -3,25 +3,22 @@
 // Horizontal chips for the co-op portal sections so every page feels like one
 // place with multiple rooms (Overview, Mission, Model, Ideas, Vote, Cost).
 // Active chip uses teal (not black) so CTAs and nav stay colorful.
+// Analytics: COOP ids come from lib/analytics-ids (direct shared ids module).
 // ============================================
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { type Href, usePathname, useRouter } from 'expo-router';
-import { COOP } from '@bridger/shared';
+import { COOP } from '../../lib/analytics-ids';
 import { cn, withAnalyticsPress } from '@bridger/ui';
 
-// Build tab ids inside the component so a stale Fast Refresh binding cannot
-// leave COOP undefined at module load (crash: reading 'portal').
-function portalTabs(): { label: string; href: Href; id: string }[] {
-  return [
-    { label: 'Overview', href: '/coop/portal', id: COOP.portal.nav_overview },
-    { label: 'Mission', href: '/coop/portal/mission', id: COOP.mission.nav },
-    { label: 'Model', href: '/coop/portal/model', id: COOP.model.nav },
-    { label: 'Ideas', href: '/coop/portal/ideas', id: COOP.ideas.nav },
-    { label: 'Vote', href: '/coop/portal/vote', id: COOP.vote.nav },
-    { label: 'Cost', href: '/coop/portal/cost', id: COOP.cost.nav }
-  ];
-}
+const TABS: { label: string; href: Href; id: string }[] = [
+  { label: 'Overview', href: '/coop/portal', id: COOP.portal.nav_overview },
+  { label: 'Mission', href: '/coop/portal/mission', id: COOP.mission.nav },
+  { label: 'Model', href: '/coop/portal/model', id: COOP.model.nav },
+  { label: 'Ideas', href: '/coop/portal/ideas', id: COOP.ideas.nav },
+  { label: 'Vote', href: '/coop/portal/vote', id: COOP.vote.nav },
+  { label: 'Cost', href: '/coop/portal/cost', id: COOP.cost.nav }
+];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/coop/portal') {
@@ -33,7 +30,6 @@ function isActive(pathname: string, href: string): boolean {
 export function PortalNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const tabs = portalTabs();
 
   return (
     <View className="mb-4">
@@ -42,7 +38,7 @@ export function PortalNav() {
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="gap-2 px-0"
       >
-        {tabs.map((t) => {
+        {TABS.map((t) => {
           const active = isActive(pathname, String(t.href));
           return (
             <Pressable
