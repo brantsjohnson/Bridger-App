@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { CoopIdea, CoopIdeaComment } from '@bridger/shared';
-import { COOP } from '@bridger/shared';
+import { COOP } from '../../../../lib/analytics-ids';
 import {
   ButtonPrimary,
   ButtonSecondary,

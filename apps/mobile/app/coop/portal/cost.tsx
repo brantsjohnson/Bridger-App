@@ -8,11 +8,11 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { CoopEconomicsRow, CoopRole } from '@bridger/shared';
 import {
-  COOP,
   DEFAULT_COST_INPUTS,
   computeCosts,
   type CostModelInputs
 } from '@bridger/shared';
+import { COOP } from '../../../lib/analytics-ids';
 import {
   AnalyticsRegion,
   ButtonPrimary,

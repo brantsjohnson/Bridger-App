@@ -7,7 +7,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { type Href, useRouter } from 'expo-router';
-import { COOP } from '@bridger/shared';
+import { COOP } from '../../../lib/analytics-ids';
 import {
   ACCENTS,
   AnalyticsRegion,

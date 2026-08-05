@@ -9,12 +9,12 @@ import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CheckIcon } from 'lucide-react-native';
 import {
-  COOP,
   FREE_BENEFITS,
   HOME,
   MEMBER_BENEFITS,
   type Accent
 } from '@bridger/shared';
+import { COOP } from '../../lib/analytics-ids';
 import {
   AnalyticsRegion,
   ButtonPrimary,
