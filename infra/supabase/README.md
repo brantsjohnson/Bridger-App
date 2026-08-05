@@ -45,6 +45,7 @@ enforced at the row level — even a bug in the API can't leak a closer-tier fie
 | 0017 | quiz + weekly activity covers (`cover`, `emoji`, `closes_in`, `description`) |
 | 0018 | Touch Grass: `expires_at` + `touch_grass_responses` (I'm in / dismiss) + RLS |
 | 0019 | Weekly Recap Podcast tables, `story_type` audio, rolling expiry, purge function + RLS |
+| 0020 | `client_not_found_hits` — 404 / broken-path trail for the admin console (server-only) |
 
 ## Regenerating the TypeScript types
 
@@ -57,5 +58,8 @@ Supabase MCP `generate_typescript_types`, or the Supabase CLI
 
 - `person_embeddings` / `person_summaries` have RLS on but no policy — this is
   intentional: only the server (service key) touches Zone C.
+- `client_not_found_hits` has RLS on but no policy — intentional: only Nest
+  (service key) writes/reads 404 path trails; the app never queries this table
+  directly.
 - `can_view` is executable by signed-in users — required, because RLS policies
   call it; it only ever reveals the caller's own access, so it's safe.
