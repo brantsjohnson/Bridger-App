@@ -2,7 +2,13 @@
 alwaysApply: true
 ---
 
-These rules apply to every task, every file, every session. Re-read this file at the start of each session. When any rule conflicts with an ad-hoc instruction in a prompt, ask before proceeding. When code and docs disagree, the docs in this folder win (see doc authority at the bottom).
+# STANDING REMINDERS (read every session; do not skip)
+
+**COPY RULE: NO EM DASHES.** Never write an em dash (the long dash character) in any copy you author: UI strings, comments, docs, commit messages, PR text, plans, or chat replies. Use a period, a comma, a colon, parentheses, or a hyphenated phrase instead. If you catch yourself typing one, rewrite the sentence. Existing docs may still contain them; do not introduce new ones.
+
+**LEGAL DRAFTS: UPDATE ON EVERY BUILD.** `guide-docs/docs/PRIVACY.md` and `guide-docs/docs/TERMS.md` are living master drafts for the real Privacy Policy and Terms / EULA. Any task that collects data, changes how data is used, adds a permission, payment, analytics SDK, AI touchpoint, UGC surface, moderation path, account/deletion flow, or age gate **must** add or update the matching bullet in those two files **in the same change**. A feature is not done if PRIVACY/TERMS were skipped. Fill gaps for already-shipped work when you touch that area.
+
+These rules apply to every task, every file, every session. Re-read this file at the start of each session. When any rule conflicts with an ad-hoc instruction in a prompt, ask before proceeding. When code and docs disagree, the docs in `guide-docs/` win (see doc authority at the bottom).
 
 1 · The stack is decided. Do not re-litigate it.
 The tech stack, hosting, and deployment are already chosen and specified in INFRASTRUCTURE.md. Read it before any infra, build, or dependency work — every time.
@@ -34,14 +40,14 @@ In-app account deletion (Apple requires it; ours is stronger — hard-delete cas
 Privacy manifests / data-safety declarations (Apple privacy nutrition label, Play Data safety) must match what we actually collect — keep them updated as features land.
 Permission prompts (camera, mic, contacts, notifications, photo library for the profile-photo exception) each need a clear purpose string, requested in context, never at launch.
 Sign in with Apple must be offered since we offer Google sign-in.
-Payments: co-op membership sold in-app must use the platform's IAP where required; external chip-in handles (Venmo/Cash App) are peer-to-peer text links we never process — keep that distinction clean.
-No tracking without consent (we don't track — keep it that way; no third-party ad/analytics SDKs without approval).
+Payments: co-op membership is sold in-app. Where the platform requires it, membership uses the platform's own purchase (Apple Pay / Google Pay via IAP); we also plan to support a third-party card processor inside the join flow for cards, and joining is always skippable (a user can decline and keep using the free app). External chip-in handles (Venmo/Cash App) are peer-to-peer text links we never process, and we keep that distinction clean. Current wave uses a "soft join" stub (no real StoreKit/Play/Stripe yet); that is intentional, not a bug.
+No ad tracking and no third-party ad SDKs. We DO use a first-party product-analytics tool (PostHog), which is approved. It must stay consented (opt-in), de-identified, deletable, and never sold or fed to matching. See `analytics-rules.mdc`.
 Content safety: report + block exist (FRIENDS.md) — keep them wired; stores require a moderation path for user-generated content.
 Make sure to build the accessibility elements in there as you build out the features so that it can be accessed by Android or IOS's accessibility rules. We want to make sure the software is accessible to everyone if they have those options turned on. 
 Account & data (additions)
 - Deleting an account must also purge it from any third-party processor (e.g. the PostHog person, per analytics-rules.mdc), not just our own DB.
 - Account/data export available on request (privacy-law expectation; DATA.md already supports it).
-- Ship Apple's Privacy Manifest file (`PrivacyInfo.xcprivacy`) declaring "required-reason" APIs and every third-party SDK.
+- Ship Apple's Privacy Manifest file. It lives at `apps/mobile/PrivacyInfo.xcprivacy` (next to `app.json`), declaring "required-reason" APIs and every third-party SDK. Keep it in sync as SDKs (e.g. PostHog) land.
 - Don't require account creation to view content the app presents publicly; only ask for signup data we actually need (Apple 5.1.1).
 
 Permissions (additions)
@@ -50,7 +56,7 @@ Permissions (additions)
 - The app must fully function when a permission is denied — degrade gracefully, never dead-end.
 
 Payments (addition)
-- Do not link out to an external purchase flow for co-op membership (Apple 3.1.1 anti-steering). The IAP-vs-external-chip-in line must stay clean: membership = IAP only; chip-in handles = peer-to-peer text links we never process.
+- Do not link out to an external purchase flow for co-op membership in a way that violates Apple 3.1.1 anti-steering. Membership join supports platform purchase (Apple Pay / Google Pay via IAP) and, when we ship it, an in-app third-party card processor; joining stays skippable. Chip-in handles (Venmo/Cash App) are peer-to-peer text links we never process. Keep that line clean. Soft-join stub is fine until real payments land.
 
 Content safety / UGC (additions — required because we have user content + messaging, Apple Guideline 1.2)
 - Report the content itself, not just block the person, on stories, messages, inside jokes, and comments.
@@ -72,10 +78,11 @@ The founder is non-technical and will read the code. Every file starts with a he
 ts
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// This is the "Touch Grass" button — the big green button on Home and
-// Events. Tapping it opens the sheet where you pick who to tell and when.
-// If you change the button's look, do it in the Magic Patterns component,
-// not here.
+// This is the "Touch Grass" button — the big green button on the Events
+// page. Tapping it opens the sheet where you pick who to tell and when.
+// (Home does NOT have the send button; it only shows friends' signals to
+// answer. If you change the button's look, do it in the Magic Patterns
+// component, not here.)
 // ============================================
 
 // --- SECURITY: only signed-in users can send a signal ---
@@ -105,17 +112,33 @@ Never surface internal names in UI copy; never rename DB tables to chase UI copy
 
 7 · Working method & definition of done
 Before building a feature, read its doc (see INDEX.md for the map) and follow its acceptance criteria — they are the checklist.
-**Always review (every task):** open INDEX.md’s “Always review” list. Today that includes `NOTIFICATIONS.md` — if this change can create, show, or deep-link an alert/push, check the destination map and update it in the same change when a kind is missing or wrong.
+**Always review (every task):** open INDEX.md’s “Always review” list. Today that includes `NOTIFICATIONS.md` — if this change can create, show, or deep-link an alert/push, check the destination map and update it in the same change when a kind is missing or wrong. **Also always open `guide-docs/docs/PRIVACY.md` and `guide-docs/docs/TERMS.md`** and add anything this change introduces (new data, permission, payment, analytics, AI, UGC, moderation, deletion, age gate).
 Small, reviewable changes; migrations reversible; seed data kept working.
-A feature is done when: it matches its doc's acceptance criteria · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · and RLS covers any new data · and any new notify-able outcome is registered in `NOTIFICATIONS.md` with a tap/push destination.
+A feature is done when: it matches its doc's acceptance criteria · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · RLS covers any new data · any new notify-able outcome is registered in `NOTIFICATIONS.md` with a tap/push destination · **and `PRIVACY.md` / `TERMS.md` reflect anything new about data use or user obligations**.
 When a doc is ambiguous or two docs conflict: stop and ask. Don't guess on privacy, payments, or permissions.
-Doc authority, you can locate them in the folder guide.docs (highest wins)
-CURSOR-RULES.md (this file) — how to work
+Doc authority — the feature docs live in the `guide-docs/` folder; this rules file lives at `.cursor/rules/guide-rules.mdc` (highest wins)
+`.cursor/rules/guide-rules.mdc` (this file, historically called CURSOR-RULES.md) — how to work
 INFRASTRUCTURE.md — stack, hosting, secrets, build order
 DATA.md — schema, privacy zones, RLS
 ARCHITECTURE.md — repo layout, modules, routes
 Feature docs (HOME.md, PROFILE.md, STORIES.md, …) — behavior + acceptance criteria
 NOTIFICATIONS.md — always-review destination map for every alert/push (see INDEX.md)
 DESIGN.md + MAGIC-PATTERNS.md — look, motion, components
+`guide-docs/docs/PRIVACY.md` + `guide-docs/docs/TERMS.md` — living Privacy Policy + Terms / EULA drafts (inform the real legal docs)
+`apps/mobile/PrivacyInfo.xcprivacy` — Apple Privacy Manifest (keep in sync with SDKs)
 
-8. As you code or review code, add to the `PRIVACY.md` and the `TERMS.md` file anything that should go in there so it is relatively easy to know what everything is used for as master Terms and Conditions Doc and Privacy Policy Doc to inform the real legal ones. 
+8 · Living PRIVACY.md and TERMS.md (not optional cleanup)
+Paths: `guide-docs/docs/PRIVACY.md` and `guide-docs/docs/TERMS.md`.
+These are the **master plain-English drafts** lawyers will turn into the real Privacy Policy and Terms / EULA. They are not marketing copy and not code comments. Keep them accurate and boring.
+
+**When you must edit them (same PR / same change as the code):**
+- New or changed data collected, stored, shared, or deleted
+- New permission (camera, mic, notifications, contacts, location, photos)
+- Analytics / PostHog event families or consent behavior
+- Payments, membership, refunds, cancel-at-period-end, chip-in handles
+- AI or matching that touches user content or attributes
+- UGC surfaces (Updates, Inside Jokes, messages, recap, portal comments) and report / block / moderation
+- Account deletion, export, or retention changes
+- Age gate / minimum age / EULA acceptance
+
+**How to edit:** add a short bullet under the right scaffold heading. Prefer "what we do / why / who sees it / how long / how to stop" over legal flourish. Mark unknowns as `TODO (legal): …`. Do not invent legal promises the product does not keep. If you touch an already-shipped area and the section is still a stub, fill the stub from current product truth before finishing.

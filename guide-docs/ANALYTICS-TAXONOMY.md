@@ -54,7 +54,7 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `event_people_sheet` | `events.detail` | going / invited people list — open then bail? |
 | `section_info_tooltip` | any screen with section headers | do they open section help then bail? which sections? (`dwell_ms`, `section`) |
 | `recap_recorder` | `friends` (Friend Pod) | record the week's 5 answers by voice — do they start and give up? which question do they quit on? (`dwell_ms`) |
-| `recap_player` | `friends` / `home` (Friend Pod) | full-page weekly podcast — play, speed, filter, jump voices, react; do they bail? (`dwell_ms`) |
+| `recap_player` | `friends` (Friend Pod) | full-page weekly podcast — play, speed, filter, jump voices, react; do they bail? (`dwell_ms`) |
 | `add_bucket_sheet` | `profile` (own Bucket list tab) | add a want — do they open then bail? |
 | `edit_bucket_sheet` | `profile` (own Bucket list tab) | edit / delete a want — do they open then bail? |
 

@@ -6,11 +6,11 @@ Self-contained. Two behaviors Magic Patterns kept missing. Keep UI copy minimal 
 
 ## Touch Grass
 
-**What it is:** a **big, fun green button** labeled **"TOUCH GRASS"** — on **both Home and the Events page**. It broadcasts "I'm free to hang" to a group of friends — a one-tap "who wants to do something?" signal. It is **not** a subtle row; it's a large, satisfying-to-tap green button.
+**What it is:** a **big, fun green button** labeled **"TOUCH GRASS"** — on the **Events page** (founder decision: **send is Events-only**, not on Home). It broadcasts "I'm free to hang" to a group of friends — a one-tap "who wants to do something?" signal. It is **not** a subtle row; it's a large, satisfying-to-tap green button. On **Home** there is no send button; friends' signals appear as answer cards in the announcements carousel.
 
 **The button**
 - Big green rounded button, sprout icon, bold **"TOUCH GRASS"**, one small subtext line ("tell friends you're free").
-- Lives prominently on **Home** and on the **Events page** (where plans happen).
+- Lives prominently on the **Events page** (where plans happen). It is **not** on Home.
 
 **Tap → quick sheet**
 1. **Who to tell** — Close friends / Friends / Everyone. Concentric: Friends includes Close; Everyone includes all three.
@@ -20,11 +20,12 @@ Self-contained. Two behaviors Magic Patterns kept missing. Keep UI copy minimal 
 
 **On send**
 - Everyone in the chosen group gets a **notification**.
-- Your signal shows on their Home/Events **below the button**.
+- Your signal shows for them: on **Events** below the button, and on **Home** as a card in the announcements carousel.
 - **No view counts** anywhere.
 
-**Browsing signals (below the button, on Home and Events)**
-- **One featured** signal at a time, then **the rest listed below**.
+**Browsing signals**
+- On **Events** (below the button): **one featured** signal at a time, then **the rest listed below**.
+- On **Home**: friends' signals appear as **answer cards in the announcements carousel** (no send button on Home).
 - Each shows **who + when + why** — enough to decide — and is **tappable** to open the full signal.
 
 **Recipients respond** (on the card or its detail) with two options only:

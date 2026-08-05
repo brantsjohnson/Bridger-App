@@ -1,12 +1,12 @@
 # Bridger — Weekly Recap Podcast (spec)
 
-Self-contained. Keep UI copy minimal (short real labels only). Lives in the Home "This week" section.
+Self-contained. Keep UI copy minimal (short real labels only). Lives in the **Friend Pod on the Friends tab** (opens `/recap`). Founder decision: not on Home.
 
 ---
 
 ## What it is
 
-A **weekly audio check-in** with your friends. Everyone answers the **same 5 short questions by voice**; all the answers stitch into **one continuous "podcast"** you play on Home. As each person talks, **their photo and name pop up**. It's how you actually hear your friends' voices each week — not another feed to scroll.
+A **weekly audio check-in** with your friends. Everyone answers the **same 5 short questions by voice**; all the answers stitch into **one continuous "podcast"** you play from the **Friend Pod on the Friends tab** (opens `/recap`), not Home. As each person talks, **their photo and name pop up**. It's how you actually hear your friends' voices each week — not another feed to scroll.
 
 ---
 
@@ -19,7 +19,7 @@ A **weekly audio check-in** with your friends. Everyone answers the **same 5 sho
 
 ## Recording your recap
 
-1. On Home ("This week"), tap **Add your recap**.
+1. On the **Friends** tab (Friend Pod), tap **Add your recap**.
 2. First **see all 5 questions** (and that each answer is **20 seconds**), then record audio in-app for each. Re-record if you flub one.
 3. Pick **who to share with** — Close friends / Friends / Everyone (or a group).
 4. **Post.**
@@ -30,7 +30,7 @@ A **weekly audio check-in** with your friends. Everyone answers the **same 5 sho
 
 ## Listening (the podcast)
 
-- On Friends (or Home), hit **Play** — opens a **full page** (not a popup).
+- On the **Friends** tab (Friend Pod), hit **Play** — opens a **full page** (not a popup).
 - Filter by circle: **Close** (default) → **Friends** → **Acquaintances**.
 - It plays as **one continuous audio** within the chosen circle.
 - As each answer plays, the **speaker's photo + name** show, plus the **current question** and **how many days until that person's clips expire** (rolling 7 days).
