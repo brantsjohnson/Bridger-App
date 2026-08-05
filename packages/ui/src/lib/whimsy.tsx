@@ -295,6 +295,9 @@ export function Sparkles({
     <View accessible={false} pointerEvents="none" className="absolute inset-0 overflow-visible">
       {pieces.map((piece, i) => {
         const a = anims[i];
+        // Guard: with strict index checks `anims[i]` is typed as possibly
+        // undefined. Skip any piece without a matching animation value.
+        if (!a) return null;
         const drift = ((i % 5) - 2) * (spread / 2);
         return (
           <Animated.View
