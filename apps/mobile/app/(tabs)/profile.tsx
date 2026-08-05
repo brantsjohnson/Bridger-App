@@ -5,8 +5,9 @@
 // archive), Inside jokes (the sticky-note wall), Bucket list, and Settings.
 // A small Edit / Done next to your name (Profile tab only) turns on in-place
 // editing plus a "View as" row so you can check exactly what each circle sees.
-// Data flows through the useProfile / useBucketList / useStoryArchive hooks,
-// which serve demo fixtures today and the live API later.
+// The floating pill nav is hidden here (opened from the header avatar, not a
+// tab) — use Back to leave. Data flows through useProfile / useBucketList /
+// useStoryArchive.
 // Analytics: surface=profile; every tab and settings row uses PROFILE.* IDs.
 // ============================================
 import React, { useEffect, useState } from 'react';
@@ -109,7 +110,7 @@ export default function ProfileScreen() {
           else router.replace('/home');
         }}
       />
-      <ScreenBody>
+      <ScreenBody tabBarInset={false}>
         <SegmentedTabs
           tabs={TABS}
           value={tab}
@@ -172,6 +173,7 @@ export default function ProfileScreen() {
                 onCheckIn={(on) => void profile.onCheckIn(on)}
                 onEditHeader={(patch) => void profile.onEditHeader(patch)}
                 onAnswered={() => void profile.refresh()}
+                onOpenStory={() => router.push('/story/me?from=profile')}
               />
             </View>
 
@@ -243,6 +245,8 @@ export default function ProfileScreen() {
               editable
               onAdd={bucket.onAdd}
               onToggle={bucket.onToggle}
+              onUpdate={bucket.onUpdate}
+              onDelete={bucket.onDelete}
             />
           </View>
         ) : null}

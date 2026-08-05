@@ -2,26 +2,17 @@
 // WHAT THIS FILE DOES (plain English):
 // The scaffold every screen is built from, so all screens share the same shape:
 //  - Screen: fills the display and paints the background (eggshell canvas by
-//    default; onboarding/fill flows may go full color). Shares a tiny
-//    "has the user scrolled?" memory with its header and body.
-//  - ScreenHeader: floats over the top as one full-width row — pixel title on
-//    the left, Edit (or other trailing) + profile photo on the right. Tucks
-//    away when you scroll down, slides back when you scroll up (same idea as
-//    Magic Patterns). Respects Reduce Motion.
-//  - ScreenBody: the scrolling content area; reports scroll so the header
-//    can hide/show, padded so the floating tab bar never covers the last item.
+//    default; onboarding/fill flows may go full color).
+//  - ScreenHeader: the page title row (pixel title, Edit, profile). It lives
+//    at the top of the scrolling page — it scrolls off as you go down, and
+//    only comes back when you return to the very top. No mid-page tuck/reveal.
+//    Back uses solid ink + canvas chevron so it stays visible in dark mode.
+//  - ScreenBody: the scrolling content; renders the registered header first,
+//    then the screen's children. Padded so the floating tab bar never covers
+//    the last item.
 // ============================================
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Animated,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  Text,
-  View
-} from 'react-native';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeftIcon } from 'lucide-react-native';
 import type { Accent } from '@bridger/shared';
@@ -43,9 +34,6 @@ type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain';
   GAP_BELOW_HEADER   = air between the title row and the first section
                        ("Touch grass", "Announcements", …)
                        (bigger = more room under the title)
-
-  The scrolling body reserves:
-    safe-area + TOP + 44 (title row) + BOTTOM + GAP
 */
 const HEADER_TOP_PAD = 16;
 const HEADER_BOTTOM_PAD = 8;
@@ -55,23 +43,16 @@ const GAP_BELOW_HEADER = 10;
 const HEADER_ROW = 44;
 
 type ScreenContextValue = {
-  /** true = header is tucked off the top */
-  headerHidden: boolean;
-  setHeaderHidden: (hidden: boolean) => void;
   hasHeader: boolean;
-  registerHeader: () => void;
-  /** body calls this on every scroll so the header can react */
-  onBodyScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
-  headerPad: number;
+  /** ScreenHeader mounts its chrome here so ScreenBody can scroll it away. */
+  headerChrome: React.ReactNode;
+  setHeaderChrome: (node: React.ReactNode) => void;
 };
 
 const ScreenContext = React.createContext<ScreenContextValue>({
-  headerHidden: false,
-  setHeaderHidden: () => undefined,
   hasHeader: false,
-  registerHeader: () => undefined,
-  onBodyScroll: () => undefined,
-  headerPad: 0
+  headerChrome: null,
+  setHeaderChrome: () => undefined
 });
 
 export function Screen({
@@ -87,62 +68,15 @@ export function Screen({
   accent?: string;
   className?: string;
 }) {
-  const insets = useSafeAreaInsets();
-  const [headerHidden, setHeaderHidden] = useState(false);
-  const [hasHeader, setHasHeader] = useState(false);
-  const lastY = useRef(0);
-  // How far we've scrolled in the CURRENT direction since the last flip. We
-  // build this up across events so slow scrolling still tucks the header.
-  const accum = useRef(0);
-  const registerHeader = useCallback(() => setHasHeader(true), []);
-
-  // See HEADER_* constants at the top of this file to tune spacing by hand.
-  const headerPad =
-    insets.top + HEADER_TOP_PAD + HEADER_ROW + HEADER_BOTTOM_PAD + GAP_BELOW_HEADER;
-
-  // Direction-aware: scroll down → hide, scroll up (or near top) → show.
-  // We measure TOTAL travel in one direction, not the jump between two frames,
-  // so a slow drag adds up and crosses the threshold the same as a fast flick.
-  const onBodyScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const dy = y - lastY.current;
-    lastY.current = y;
-
-    // Near the very top: always show the header and forget any built-up travel.
-    if (y <= 12) {
-      accum.current = 0;
-      setHeaderHidden(false);
-      return;
-    }
-
-    // Ignore sub-pixel noise, but reset the tally whenever direction flips so
-    // we don't carry old downward travel into a new upward drag.
-    if (dy > 0.5) {
-      if (accum.current < 0) accum.current = 0;
-      accum.current += dy;
-    } else if (dy < -0.5) {
-      if (accum.current > 0) accum.current = 0;
-      accum.current += dy;
-    }
-
-    // Once total travel passes ~10px in a direction, tuck or reveal the header.
-    if (accum.current > 10) {
-      setHeaderHidden(true);
-    } else if (accum.current < -10) {
-      setHeaderHidden(false);
-    }
-  }, []);
+  const [headerChrome, setHeaderChrome] = useState<React.ReactNode>(null);
 
   const value = useMemo(
     () => ({
-      headerHidden,
-      setHeaderHidden,
-      hasHeader,
-      registerHeader,
-      onBodyScroll,
-      headerPad
+      hasHeader: headerChrome != null,
+      headerChrome,
+      setHeaderChrome
     }),
-    [headerHidden, hasHeader, registerHeader, onBodyScroll, headerPad]
+    [headerChrome]
   );
 
   const bg =
@@ -173,7 +107,12 @@ type ScreenHeaderProps = {
   onBack?: () => void;
   /** top-right profile photo — falls back to ProfileLink context when omitted */
   onProfile?: () => void;
-  profile?: { name: string; emoji?: string; accent?: Accent; photo?: import('react-native').ImageSourcePropType };
+  profile?: {
+    name: string;
+    emoji?: string;
+    accent?: Accent;
+    photo?: import('react-native').ImageSourcePropType;
+  };
   /** hide the profile circle (e.g. already on Profile, or a detail sheet) */
   hideProfile?: boolean;
   trailing?: React.ReactNode;
@@ -191,7 +130,11 @@ type ScreenHeaderProps = {
   backAnalyticsId?: string;
 };
 
-export function ScreenHeader({
+/**
+ * Builds the title row chrome. ScreenHeader registers this into the scroll
+ * body so it leaves the screen by scrolling, not by sliding away mid-page.
+ */
+function HeaderChrome({
   title,
   onBack,
   onProfile,
@@ -206,34 +149,11 @@ export function ScreenHeader({
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const link = useProfileLink();
-  const { headerHidden, registerHeader, headerPad } = React.useContext(ScreenContext);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const slide = useRef(new Animated.Value(0)).current;
-
-  useLayoutEffect(() => {
-    registerHeader();
-  }, [registerHeader]);
-
-  useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', setReduceMotion);
-    return () => sub?.remove?.();
-  }, []);
-
-  // ACCESSIBILITY: Reduce Motion → snap; otherwise ease the tuck.
-  useEffect(() => {
-    Animated.timing(slide, {
-      toValue: headerHidden ? 1 : 0,
-      duration: reduceMotion ? 0 : 280,
-      useNativeDriver: true
-    }).start();
-  }, [headerHidden, reduceMotion, slide]);
 
   const openProfile = onProfile ?? link.open;
   const face = profile ?? link.profile;
   const showProfile = !hideProfile && !!openProfile && !!face;
 
-  // Analytics IDs — reuse element names; surface tells us which screen.
   const resolvedTitleId =
     titleAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.page_title` : undefined);
@@ -244,40 +164,19 @@ export function ScreenHeader({
     backAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.back` : undefined);
 
-  const translateY = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -(headerPad + 8)]
-  });
-  const opacity = slide.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0]
-  });
-
   return (
-    <Animated.View
-      pointerEvents={headerHidden ? 'none' : 'box-none'}
+    <View
       style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        zIndex: 20,
         paddingTop: insets.top + HEADER_TOP_PAD,
-        transform: [{ translateY }],
-        opacity
+        paddingBottom: HEADER_BOTTOM_PAD + GAP_BELOW_HEADER
       }}
     >
-      {/*
-        Layout lives on a plain View — Animated.View on web often ignores
-        flexDirection, which stacked Edit + profile under the title.
-      */}
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
           paddingHorizontal: 20,
-          paddingBottom: HEADER_BOTTOM_PAD,
           minHeight: HEADER_ROW
         }}
       >
@@ -286,17 +185,15 @@ export function ScreenHeader({
             onPress={withAnalyticsPress(resolvedBackId, onBack)}
             accessibilityRole="button"
             accessibilityLabel="Back"
-            className="h-9 w-9 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-80"
+            hitSlop={4}
+            // Solid ink fill + canvas chevron so dark mode never washes the
+            // arrow into the near-black header (border-only looked invisible).
+            className="h-11 w-11 items-center justify-center rounded-full bg-ink active:opacity-80"
           >
-            <ChevronLeftIcon size={20} color={c.ink} strokeWidth={2.5} />
+            <ChevronLeftIcon size={22} color={c.canvas} strokeWidth={3} />
           </Pressable>
         ) : null}
 
-        {/*
-          Title takes all the free space so trailing + profile sit on the far
-          right. The flex wrapper is a plain View so it works even when there's
-          no analytics id (AnalyticsRegion drops its wrapper without one).
-        */}
         <View style={{ flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center' }}>
           <AnalyticsRegion
             analyticsId={resolvedTitleId}
@@ -309,7 +206,6 @@ export function ScreenHeader({
           </AnalyticsRegion>
         </View>
 
-        {/* Edit (and any other trailing) + profile stay on the right, one row */}
         {trailing || showProfile ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {trailing}
@@ -332,8 +228,37 @@ export function ScreenHeader({
           </View>
         ) : null}
       </View>
-    </Animated.View>
+    </View>
   );
+}
+
+/**
+ * Declares the page header. The chrome is scrolled with ScreenBody — it does
+ * not float or auto-hide mid-scroll.
+ */
+export function ScreenHeader(props: ScreenHeaderProps) {
+  const { setHeaderChrome } = React.useContext(ScreenContext);
+
+  useLayoutEffect(() => {
+    setHeaderChrome(<HeaderChrome {...props} />);
+    return () => setHeaderChrome(null);
+    // Re-register when any header prop changes (title, trailing Edit, etc.).
+  }, [
+    setHeaderChrome,
+    props.title,
+    props.onBack,
+    props.onProfile,
+    props.profile,
+    props.hideProfile,
+    props.trailing,
+    props.analyticsSurface,
+    props.titleAnalyticsId,
+    props.profileAnalyticsId,
+    props.backAnalyticsId
+  ]);
+
+  // Chrome lives inside ScreenBody's ScrollView — nothing to paint here.
+  return null;
 }
 
 export function ScreenBody({
@@ -348,23 +273,21 @@ export function ScreenBody({
   tabBarInset?: boolean;
   className?: string;
 }) {
-  const { onBodyScroll, hasHeader, headerPad } = React.useContext(ScreenContext);
+  const { headerChrome, hasHeader } = React.useContext(ScreenContext);
 
   return (
     <ScrollView
       className={cn('flex-1', className)}
       showsVerticalScrollIndicator={false}
-      scrollEventThrottle={16}
-      onScroll={onBodyScroll}
       contentContainerStyle={{
-        paddingHorizontal: padded ? 20 : 0,
-        // leave room under the floating header so the first line isn't covered
-        paddingTop: hasHeader ? headerPad : 8,
-        // leave room so the floating tab bar never hides the last item
+        // Header is full-bleed (own horizontal pad). Body content is padded below.
+        paddingTop: hasHeader ? 0 : 8,
         paddingBottom: tabBarInset ? 140 : 32
       }}
     >
-      {children}
+      {/* Title row scrolls away with the page; returns only at the top. */}
+      {headerChrome}
+      <View style={{ paddingHorizontal: padded ? 20 : 0 }}>{children}</View>
     </ScrollView>
   );
 }

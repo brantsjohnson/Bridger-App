@@ -1,9 +1,12 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Left-nav chrome around every signed-in admin page. Links to each console
-// section and a Logout button that clears the JWT.
+// section and a Logout button that clears the JWT. The Co-op portal link shows
+// how many ideas are waiting for review.
 // ============================================
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { api } from '../lib/api';
 import { useAdminAuth } from '../lib/auth';
 import { Button } from './ui/Button';
 
@@ -13,6 +16,7 @@ const NAV = [
   { to: '/activity', label: 'Weekly activity' },
   { to: '/recap', label: 'Weekly recap' },
   { to: '/coop', label: 'Co-op announcements' },
+  { to: '/portal', label: 'Co-op portal', badgeKey: 'portal' as const },
   { to: '/members', label: 'Co-op members' },
   { to: '/home-defaults', label: 'Home starting layout' },
   { to: '/prompts', label: 'Photo prompts' },
@@ -23,6 +27,22 @@ const NAV = [
 export function AdminShell() {
   const { logout } = useAdminAuth();
   const navigate = useNavigate();
+  // Pending idea count for the portal nav badge (ops queue, not vanity).
+  const [pendingIdeas, setPendingIdeas] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void api<{ count: number }>('/admin/coop/portal/pending-count')
+      .then((r) => {
+        if (!cancelled) setPendingIdeas(r.count ?? 0);
+      })
+      .catch(() => {
+        /* badge is best-effort; page errors surface elsewhere */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const onLogout = () => {
     logout();
@@ -48,14 +68,22 @@ export function AdminShell() {
               to={item.to}
               className={({ isActive }) =>
                 [
-                  'flex min-h-tap items-center rounded-xl px-3 text-sm',
+                  'flex min-h-tap items-center justify-between gap-2 rounded-xl px-3 text-sm',
                   isActive
                     ? 'bg-canvas font-medium text-ink'
                     : 'text-muted hover:bg-canvas hover:text-ink'
                 ].join(' ')
               }
             >
-              {item.label}
+              <span>{item.label}</span>
+              {'badgeKey' in item && pendingIdeas > 0 ? (
+                <span
+                  className="rounded-full bg-ink px-2 py-0.5 text-xs text-canvas"
+                  aria-label={`${pendingIdeas} ideas waiting for review`}
+                >
+                  {pendingIdeas}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

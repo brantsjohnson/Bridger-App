@@ -95,10 +95,11 @@ export default function CreateEventScreen() {
     if (creating) return;
     setCreating(true);
     try {
+      // API wants YYYY-MM-DD (dayIso), not the pretty "Fri, Jul 31" label.
       const input: CreateEventInput = {
         title: draft.title,
         bio: draft.bio || undefined,
-        day: draft.day,
+        day: draft.dayIso,
         time: draft.time,
         place: draft.place || draft.address || 'TBD',
         address: draft.address || undefined,

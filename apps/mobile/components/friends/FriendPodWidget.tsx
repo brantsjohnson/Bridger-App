@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Friend Pod entry on Friends: "Your friends' week" play card, plus
-// "Add your recap" and "Submit a question". Play opens a stub for now; the
-// full weekly podcast player ships with RECAP-PODCAST.md.
+// The Friend Pod entry on Friends (and Home "This week"): "Your friends' week"
+// play card, plus "Add your recap" and "Submit a question". Play opens the
+// full weekly podcast player at /recap.
 // The play card stays near-black with white type in every theme (bg-ink flips
 // cream in dark mode and white text would vanish). The mic wiggles so people
 // notice "Add your recap".
@@ -22,12 +22,15 @@ export function FriendPodWidget({
   size = 'full',
   onPlay,
   onRecord,
-  onSubmitQuestion
+  onSubmitQuestion,
+  /** Home uses HOME.this_week.play_recap; Friends tab uses FRIENDS.pod.play. */
+  playAnalyticsId = FRIENDS.pod.play
 }: {
   size?: 'full' | 'half';
   onPlay?: () => void;
   onRecord?: () => void;
   onSubmitQuestion?: () => void;
+  playAnalyticsId?: string;
 }) {
   const c = useThemeColors();
   const { recap } = useFriendPod();
@@ -38,7 +41,7 @@ export function FriendPodWidget({
   return (
     <View className="gap-2.5">
       <Pressable
-        onPress={withAnalyticsPress(FRIENDS.pod.play, onPlay)}
+        onPress={withAnalyticsPress(playAnalyticsId, onPlay)}
         accessibilityRole="button"
         accessibilityLabel={`Play your friends' week. ${voices.length} recaps, ${minutes} minutes`}
         style={[ORGANIC.soft, { backgroundColor: POD_INK }]}

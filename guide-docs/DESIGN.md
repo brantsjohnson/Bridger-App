@@ -2,7 +2,7 @@
 
 How Bridger should look and feel. This governs every screen; the page docs say *what* each screen does, this says *how* it's dressed. One-line summary:
 
-> **Playful retro-modern flat UI** — clean, rounded, mostly eggshell, colorful accents, pixel-style headers, occasional 90s-metallic buttons, with synth reserved for Discover.
+> **Playful retro-modern flat UI** — clean, mostly rounded (some have corners more rounded, some corners are all rounded and one edge is pointed-- mix it up), mostly eggshell, colorful accents, pixel-style headers, occasional 90s-metallic buttons, with synth reserved for Discover.
 
 The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% is the signature; if retro takes over, the app feels dated and hard to use. Retro is seasoning, not the meal.
 
@@ -47,6 +47,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 - Rounded rectangles, pill buttons, soft cards, clean modular blocks. Radius ~12–24px on cards, pill radius on chips/buttons.
 - **Floating nav bar.** The bottom navigation is a **detached, rounded pill** inset from the screen edge — Apple's newer dynamic/"liquid-glass" style: translucent where possible, subtly dynamic (may shrink or tuck away on scroll), active destination shown as a filled circle. Not a full-width bar flush to the bottom edge.
+- **Page title headers scroll with the page.** Home / Friends / Events / etc. title rows are not sticky and do not slide back when you scroll up mid-page. They leave only as content pushes them off the top, and they return only when you scroll all the way back to the top (`ScreenHeader` + `ScreenBody` in `packages/ui`).
 - **Flat.** No heavy shadows, no fake depth, no busy textures. A faint hairline or a solid color fill separates surfaces — that's enough.
 - **White is the default container; color is earned.** `surface` is plain white. Color does not come from tinting every card a pale shade — a pastel wash everywhere reads muted, not playful. It comes from making the things that matter **fully vivid**: the Touch Grass button, Connect Over cards, message rows, the event banner. When in doubt: white base, loud feature.
 - **Never the toned-down yellow.** Pale/dusty yellow is out of the palette. Yellow appears only as the vivid "you" tier color.

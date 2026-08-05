@@ -1,7 +1,7 @@
 import React from 'react';
 import { CakeIcon, ChevronRightIcon, PartyPopperIcon, PlusIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Tier, TIER_LABEL } from '../../../../packages/shared';
+import { Tier, TIER_LABEL, personVibeLine } from '../../../../packages/shared';
 import {
   Avatar,
   Breathe,
@@ -219,9 +219,9 @@ export function FriendsScreen({
                             {p.name}
                           </span>
                           <span className="block truncate text-[12px] font-medium text-ink-mute">
-                            {BIRTHDAYS[p.id]?.today ?
-                        'Birthday today' :
-                        `${p.mutuals} mutual friends`}
+                            {BIRTHDAYS[p.id]?.today
+                              ? 'Birthday today'
+                              : personVibeLine(p)}
                           </span>
                         </span>
                         {BIRTHDAYS[p.id]?.today && !editing &&

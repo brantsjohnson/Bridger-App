@@ -2,7 +2,7 @@
 // WHAT THIS FILE DOES (plain English):
 // Touch Grass signals: list who's free, send your own signal, join someone
 // else's. Demo mode mutates a local list so Home and Events stay in sync for
-// the session. Live mode will hit the touchgrass API module.
+// the session. Live mode calls the Nest /touchgrass API.
 // ============================================
 import type { GrassSignal, GrassWhen } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';

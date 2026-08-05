@@ -81,33 +81,145 @@ export class QuizService {
     return data ?? [];
   }
 
-  // --- GET /quizzes/current ---
+  /**
+   * Accepted friends for this user (both directions), minus anyone blocked
+   * either way. Same visibility rules as the friends list.
+   */
+  private async friendIdsOf(userId: string): Promise<Set<string>> {
+    const { data: rows, error } = await this.supabase.admin
+      .from('connections')
+      .select('user_a, user_b')
+      .eq('status', 'accepted')
+      .or(`user_a.eq.${userId},user_b.eq.${userId}`);
+    if (error) throw error;
 
-  async getCurrent(userId: string): Promise<LiveQuiz> {
-    const { data: cfg, error: cfgError } = await this.supabase.admin
-      .from('admin_config')
-      .select('live_quiz_slug')
-      .limit(1)
-      .maybeSingle();
-    if (cfgError) throw cfgError;
+    const otherIds = (rows ?? []).map((r) =>
+      r.user_a === userId ? r.user_b : r.user_a
+    );
 
-    const slug = cfg?.live_quiz_slug;
-    if (!slug) {
-      throw new NotFoundException('No live quiz is set');
+    const { data: blocks, error: bErr } = await this.supabase.admin
+      .from('blocks')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
+    if (bErr) throw bErr;
+
+    const blocked = new Set<string>();
+    for (const b of blocks ?? []) {
+      blocked.add(b.blocker_id === userId ? b.blocked_id : b.blocker_id);
     }
 
-    const reg = await this.resolveRegistryBySlug(slug);
+    return new Set(otherIds.filter((id) => !blocked.has(id)));
+  }
 
-    const { data: design, error: dErr } = await this.supabase.admin
-      .from('quizzes')
-      .select('*')
-      .eq('id', reg.quiz_id!)
-      .single();
-    if (dErr) throw dErr;
+  /**
+   * For comparable quizzes: bucket friends (not the viewer) by their top
+   * dimension result on this quiz.
+   */
+  private async loadComparableResults(
+    userId: string,
+    quizId: string,
+    dimensions: QuizDimension[]
+  ): Promise<Array<{ id: string; label: string; friendIds: string[] }>> {
+    const friends = await this.friendIdsOf(userId);
 
+    const { data: others, error } = await this.supabase.admin
+      .from('quiz_results')
+      .select('user_id, dimension_scores')
+      .eq('quiz_id', quizId)
+      .neq('user_id', userId);
+    if (error) throw error;
+
+    const groups = new Map<
+      string,
+      { id: string; label: string; friendIds: string[] }
+    >();
+
+    for (const d of dimensions) {
+      groups.set(d.key, { id: d.key, label: d.label, friendIds: [] });
+    }
+
+    for (const row of others ?? []) {
+      if (!friends.has(row.user_id)) continue;
+      const scores = (row.dimension_scores ?? {}) as Record<string, number>;
+      const key = topDimensionKey(scores);
+      if (!key) continue;
+      if (!groups.has(key)) {
+        groups.set(key, { id: key, label: key, friendIds: [] });
+      }
+      groups.get(key)!.friendIds.push(row.user_id);
+    }
+
+    return Array.from(groups.values());
+  }
+
+  /**
+   * After a quiz is scored, mirror each dimension into Zone B attributes so
+   * matching can read them. Hidden from every tier but matchable.
+   */
+  private async syncQuizMatchableAttributes(
+    userId: string,
+    slug: string,
+    quizId: string,
+    dimensionScores: Record<string, number>,
+    dimensions: QuizDimension[],
+    confidence: Record<string, number>
+  ) {
+    if (!dimensions.length) return;
+
+    const prefix = `quiz.${slug}.`;
+
+    // Re-takes replace the whole quiz slice so keys never pile up.
+    const { error: delErr } = await this.supabase.admin
+      .from('attributes')
+      .delete()
+      .eq('owner_id', userId)
+      .like('key', `${prefix}%`);
+    if (delErr) throw delErr;
+
+    const labelByKey = new Map(dimensions.map((d) => [d.key, d.label]));
+    const insertRows = Object.entries(dimensionScores).map(
+      ([dimensionKey, score]) => ({
+        owner_id: userId,
+        key: `${prefix}${dimensionKey}`,
+        value: {
+          score,
+          label: labelByKey.get(dimensionKey) ?? dimensionKey,
+          quizId,
+          confidence: confidence[dimensionKey] ?? 1
+        },
+        layer: 'profile' as const,
+        visible_to_tier: 'none' as const,
+        matchable: true
+      })
+    );
+
+    if (!insertRows.length) return;
+
+    const { error: insErr } = await this.supabase.admin
+      .from('attributes')
+      .insert(insertRows);
+    if (insErr) throw insErr;
+  }
+
+  /** Shared payload builder for live quiz + archived take-by-slug routes. */
+  private async assembleLiveQuiz(
+    userId: string,
+    reg: {
+      slug: string;
+      title: string;
+      description: string | null;
+      comparable: boolean;
+      cover: unknown;
+      quiz_id: string | null;
+    },
+    design: {
+      id: string;
+      version: number;
+      dimensions: unknown;
+    }
+  ): Promise<LiveQuiz> {
     const questions = await this.loadQuestions(design.id);
 
-    // Has this user already finished?
     const { data: result, error: rErr } = await this.supabase.admin
       .from('quiz_results')
       .select('id, dimension_scores')
@@ -133,21 +245,61 @@ export class QuizService {
       resultId: result?.id ?? null
     };
 
-    // Comparable quizzes: expose result buckets. Friend ids stay empty for now
-    // until we join connections; labels come from quiz dimensions.
     if (reg.comparable) {
       const dimensions =
         (design.dimensions as unknown as QuizDimension[]) ?? [];
       if (dimensions.length) {
-        payload.results = dimensions.map((d) => ({
-          id: d.key,
-          label: d.label,
-          friendIds: [] as string[]
-        }));
+        payload.results = await this.loadComparableResults(
+          userId,
+          design.id,
+          dimensions
+        );
       }
     }
 
     return payload;
+  }
+
+  // --- GET /quizzes/current ---
+
+  async getCurrent(userId: string): Promise<LiveQuiz> {
+    const { data: cfg, error: cfgError } = await this.supabase.admin
+      .from('admin_config')
+      .select('live_quiz_slug')
+      .limit(1)
+      .maybeSingle();
+    if (cfgError) throw cfgError;
+
+    const slug = cfg?.live_quiz_slug;
+    if (!slug) {
+      throw new NotFoundException('No live quiz is set');
+    }
+
+    const reg = await this.resolveRegistryBySlug(slug);
+
+    const { data: design, error: dErr } = await this.supabase.admin
+      .from('quizzes')
+      .select('*')
+      .eq('id', reg.quiz_id!)
+      .single();
+    if (dErr) throw dErr;
+
+    return this.assembleLiveQuiz(userId, reg, design);
+  }
+
+  // --- GET /quizzes/:slug (generic take by registry slug) ---
+
+  async getBySlug(userId: string, slug: string): Promise<LiveQuiz> {
+    const reg = await this.resolveRegistryBySlug(slug);
+
+    const { data: design, error: dErr } = await this.supabase.admin
+      .from('quizzes')
+      .select('*')
+      .eq('id', reg.quiz_id!)
+      .single();
+    if (dErr) throw dErr;
+
+    return this.assembleLiveQuiz(userId, reg, design);
   }
 
   // --- GET /quizzes/archived ---
@@ -449,6 +601,15 @@ export class QuizService {
       .single();
     if (uErr) throw uErr;
 
+    await this.syncQuizMatchableAttributes(
+      userId,
+      slug,
+      quizId,
+      dimensionScores,
+      dimensions,
+      mod.confidence
+    );
+
     const result: QuizResult = {
       quizId,
       userId,
@@ -464,34 +625,12 @@ export class QuizService {
       | Array<{ id: string; label: string; friendIds: string[] }>
       | undefined;
 
-    if (reg.comparable) {
-      const { data: others, error: oErr } = await this.supabase.admin
-        .from('quiz_results')
-        .select('user_id, dimension_scores')
-        .eq('quiz_id', quizId)
-        .neq('user_id', userId);
-      if (oErr) throw oErr;
-
-      const groups = new Map<
-        string,
-        { id: string; label: string; friendIds: string[] }
-      >();
-
-      for (const d of dimensions) {
-        groups.set(d.key, { id: d.key, label: d.label, friendIds: [] });
-      }
-
-      for (const row of others ?? []) {
-        const scores = (row.dimension_scores ?? {}) as Record<string, number>;
-        const key = topDimensionKey(scores);
-        if (!key) continue;
-        if (!groups.has(key)) {
-          groups.set(key, { id: key, label: key, friendIds: [] });
-        }
-        groups.get(key)!.friendIds.push(row.user_id);
-      }
-
-      whoGotWho = Array.from(groups.values());
+    if (reg.comparable && dimensions.length) {
+      whoGotWho = await this.loadComparableResults(
+        userId,
+        quizId,
+        dimensions
+      );
     }
 
     return { result, whoGotWho };

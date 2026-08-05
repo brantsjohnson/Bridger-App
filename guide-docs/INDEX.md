@@ -27,20 +27,23 @@
 | `DATA.md` | Schema (all tables), Zones A/B/C, RLS, blocks, deletion cascades, AI de-identification |
 | `DESIGN.md` | Retro-modern flat UI: eggshell/black, pixel headers, metallic bevels, floating nav, Discover grid, motion rules |
 | `MAGIC-PATTERNS.md` | Component inventory + screen→doc map (the UI library contract) |
-| `complete/ONBOARDING.md` | **Shipped.** One-ask-per-screen flow (single progress bar, Back button): privacy → name first (first+last) → photo → nudges → explain the 3 circles + invite a friend → meet (same-city Coming soon / anywhere, city required) → birthday → who-sees birthday+city → co-op (Apple/Google Pay/Card, "Use Free Limited Version") → you're in; root gate blocks the app until done |
-| `complete/HOME.md` | **Shipped.** Announcements carousel, stories + "what people said," touch grass, ask-the-group (co-op), this-week, inside-jokes strip, cold start |
-| `complete/STORIES.md` | **Shipped.** Updates framing, capture rules, viewer + reaction rail, the Catch-Up (compact top → week hero → answered), pre-generated word-only AI summaries |
-| `complete/PROFILE.md` | **Shipped.** Shared card (one card, two views), tabs incl. Bucket List, hobbies 2-view widget, this-or-that columns, places 2-view, Inside Jokes wall, stories calendar, notes & reminders, settings |
+| `ONBOARDING.md` | Welcome video → 9-step Typeform onboarding (privacy first, 10 basics, meet, visibility review, co-op) + module flow + AI freshness nudge |
+| `HOME.md` | Announcements carousel, stories + "what people said," touch grass, ask-the-group (co-op), this-week, inside-jokes strip, cold start |
+| `STORIES.md` | Updates framing, capture rules, viewer + reaction rail, the Catch-Up (compact top → week hero → answered), pre-generated word-only AI summaries |
+| `PROFILE.md` | Shared card (one card, two views), tabs incl. Bucket List, hobbies 2-view widget, this-or-that columns, places 2-view, Inside Jokes wall, stories calendar, notes & reminders, settings |
 | `PROFILE-QUESTIONS.md` | The full question bank: basics, ~95 hobby follow-ups, favs, places, this-or-that, bucket list, deeper questions |
 | `PROFILE-CUSTOMIZATION.md` | Co-op personalization: fixed core-widget skeleton + insert slots + always-available "View original" |
-| `complete/FRIENDS.md` | **Shipped.** Tiered roster, circle caps (free 10/25/∞ · co-op unlimited+groups), birthdays, how-you-met, remove/block ("hole in your graph"), add sheet |
-| `complete/DISCOVER.md` | **Shipped.** Overlap-first suggestion cards (Bridger's picks, "you both know X"), Discover Me questionnaire, friend maps, block exclusion, friends-of-friends today / nearby later |
-| `complete/REVEAL.md` | **Shipped.** Connection reveal: Screen 0 how-you-met (+ record-where default-on) → Venn → also-got → "You two should click."; re-openable as In common on person/[id] |
-| `complete/EVENTS.md` | **Shipped.** Rich detail (cover, address, share sheet), tappable counts, editable host view (co-host, chip-in amount+method), allergies, touch grass on Events, 35/100 caps |
-| `complete/MESSAGES.md` | **Shipped.** 5-per-person/day chat, contact card, maxed-out notice, share-contact/make-a-plan uncounted; E2EE at rest (staff cannot read plaintext) |
-| `RECAP-PODCAST.md` | Weekly 5-question voice recap stitched into one podcast with speaker pop-ups |
+| `FRIENDS.md` | Tiered roster, circle caps (free 10/25/∞ · co-op unlimited+groups), birthdays, how-you-met, remove/block ("hole in your graph"), add sheet |
+| `DISCOVER.md` | Overlap-first suggestion cards (Bridger's picks, "you both know X"), Discover Me questionnaire, friend maps, block exclusion, friends-of-friends today / nearby later |
+| `REVEAL.md` | Connection reveal: Screen 0 how-you-met (+ record-where default-on) → Venn → also-got → "You two should click." |
+| `EVENTS.md` | Rich detail (cover, address, share sheet), tappable counts, editable host view (co-host, chip-in amount+method), allergies, touch grass on Events, 35/100 caps |
+| `MESSAGES.md` | 5-per-person/day chat, contact card, maxed-out notice, share-contact/make-a-plan uncounted |
+| `complete/RECAP-PODCAST.md` | **Shipped.** Weekly 5-question voice recap stitched into one podcast with speaker pop-ups (reactions + lazy purge; AI stitch deferred) |
 | `TOUCHGRASS-AND-QUIZ.md` | Touch Grass mechanics (Home + Events, featured+list, why) + quiz share / who-got-who dashboard |
 | `QUIZ-ENGINE.md` | Deterministic rubric scoring + AI moderator (confidence, low-quality flags, bounded adaptation, per-quiz instructions) |
+| `AI-SYSTEM.md` | Every AI touchpoint (models, temperatures, params), the invisible-AI doctrine, prompt/eval standards, the in-house RAG engine, and the PII firewall gateway |
+| `MACHINE-LEARNING.md` | How the app learns: connection-outcomes objective (never engagement), signal taxonomy, v1→v3 model progression, loop hygiene, alive-not-creepy rules |
+| `MATCHING-ALGORITHMS.md` | The three matchers (Discover, post-connection bridges, event suggestions): evidence gates, both-sided quiz rule, thresholds-not-desperation, tier/block learning signals, embeddings + edge functions — written as a paste-ready Cursor prompt |
 | `COOP.md` | Membership benefits + never-pay-to-connect guardrails + single annual membership |
 | `COOP-PORTAL.md` | The governance portal (ideas CRM, beta votes, mission, economics, roles, dues poll) — public view / member participate |
 | `ADMIN.md` | Organizer console (separate repo), isolated quiz/delight plugins, themed prompts, weekly activity hosting |
@@ -58,4 +61,6 @@
 - **Co-op portal** is integrated at `/co-op` (not external); reads public, writes member.
 - **Analytics** is required on every component (auto-instrumented) but **first-party, consented, de-identified, deletable, never sold or fed to matching** — see `analytics-rules.mdc`.
 - **Every element is uniquely named** `screen.section.element`, registered in `ANALYTICS-TAXONOMY.md` (the naming source of truth); element names are reused across screens, never screen-prefixed.
+- **AI is invisible & firewalled:** all model calls go through the PII-scrubbing gateway (opaque IDs, no content/media), foundation models are never trained/fine-tuned on user data (RAG + our own small ranking models instead), and no model optimizes engagement — only real-world connection outcomes. See `AI-SYSTEM.md` + `MACHINE-LEARNING.md`.
+- **Near-term build order:** co-op (no AI) → Touch Grass Home parity → Quiz product without AI moderator → Recap finish → matching (`discover_matching_live` plan) → AI-SYSTEM gateway. See `AI-SYSTEM.md` §2b deferred and `MATCHING-ALGORITHMS.md` implementation status.
 - **No blockchain.**

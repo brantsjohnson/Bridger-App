@@ -55,6 +55,15 @@ export interface EventItem {
   allowFriendsToInvite?: boolean;
   /** default 35; beyond this is a paid expansion / co-op benefit */
   cap?: number;
+  /**
+   * People who joined via a friend's invite (bring-a-friend), not the host's
+   * original invite list. Host-only planning count — never shown to guests.
+   */
+  broughtIds?: string[];
+  /** Host reminder: ping guests 2 days before */
+  remindDay?: boolean;
+  /** Host reminder: ping guests 2 hours before */
+  remindHours?: boolean;
   /** Assignments sign-up list (optional) */
   assignments?: EventAssignment[];
 }

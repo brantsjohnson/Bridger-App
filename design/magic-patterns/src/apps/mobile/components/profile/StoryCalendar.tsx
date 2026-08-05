@@ -93,17 +93,21 @@ export function StoryCalendar({
 
       <div className="rounded-card border border-ink-line bg-white p-4">
         <div className="flex items-center justify-between">
-          <p className="text-[12px] font-bold uppercase tracking-wide text-ink-mute">Storage</p>
-          <p className="text-[12px] font-semibold text-ink-soft">Free month · {usedPct}% used</p>
+          <p className="text-[12px] font-bold text-ink-soft">Free month</p>
+          <p
+            className={`text-[12px] font-bold ${usedPct >= 100 ? 'text-coral' : 'text-ink-mute'}`}
+          >
+            {usedPct}% used
+          </p>
         </div>
         <div className="mt-2.5">
-          <StorageBar used={5} total={5} />
+          <StorageBar used={5} total={5} showMeta={false} />
         </div>
 
         {usedPct >= 100 ?
         <div className="mt-3">
             <p className="text-[13px] font-semibold text-ink">
-              Your free month is full. Older posts will roll off. Members keep everything.
+              Older posts will roll off. Members keep everything.
             </p>
             <div className="mt-3">
               <ButtonSecondary full size="sm" tone="solid">

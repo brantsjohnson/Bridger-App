@@ -313,6 +313,7 @@ export type Database = {
           met_at: string | null
           met_context: Database["public"]["Enums"]["met_context"] | null
           met_event_id: string | null
+          met_note: string | null
           met_place_label: string | null
           mutual_friend_id: string | null
           status: Database["public"]["Enums"]["connection_status"]
@@ -328,6 +329,7 @@ export type Database = {
           met_at?: string | null
           met_context?: Database["public"]["Enums"]["met_context"] | null
           met_event_id?: string | null
+          met_note?: string | null
           met_place_label?: string | null
           mutual_friend_id?: string | null
           status?: Database["public"]["Enums"]["connection_status"]
@@ -343,6 +345,7 @@ export type Database = {
           met_at?: string | null
           met_context?: Database["public"]["Enums"]["met_context"] | null
           met_event_id?: string | null
+          met_note?: string | null
           met_place_label?: string | null
           mutual_friend_id?: string | null
           status?: Database["public"]["Enums"]["connection_status"]
@@ -411,6 +414,8 @@ export type Database = {
       coop_memberships: {
         Row: {
           active: boolean
+          cancel_at_period_end: boolean
+          cancelled_at: string | null
           created_at: string
           dues_paid_through: string | null
           since: string
@@ -419,6 +424,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
           created_at?: string
           dues_paid_through?: string | null
           since?: string
@@ -427,6 +434,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
           created_at?: string
           dues_paid_through?: string | null
           since?: string
@@ -438,6 +447,426 @@ export type Database = {
             foreignKeyName: "coop_memberships_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_ideas: {
+        Row: {
+          id: string
+          author_id: string
+          title: string
+          problem: string | null
+          evidence: string | null
+          drawbacks: string | null
+          category: string
+          status: string
+          urgency: string | null
+          impact: string | null
+          cost_guess: string | null
+          funding_model: string | null
+          public: boolean
+          support_count: number
+          created_at: string
+          updated_at: string
+          approved_at: string | null
+        }
+        Insert: {
+          id?: string
+          author_id: string
+          title: string
+          problem?: string | null
+          evidence?: string | null
+          drawbacks?: string | null
+          category?: string
+          status?: string
+          urgency?: string | null
+          impact?: string | null
+          cost_guess?: string | null
+          funding_model?: string | null
+          public?: boolean
+          support_count?: number
+          created_at?: string
+          updated_at?: string
+          approved_at?: string | null
+        }
+        Update: {
+          id?: string
+          author_id?: string
+          title?: string
+          problem?: string | null
+          evidence?: string | null
+          drawbacks?: string | null
+          category?: string
+          status?: string
+          urgency?: string | null
+          impact?: string | null
+          cost_guess?: string | null
+          funding_model?: string | null
+          public?: boolean
+          support_count?: number
+          created_at?: string
+          updated_at?: string
+          approved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_ideas_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_idea_supports: {
+        Row: {
+          idea_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          idea_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          idea_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_idea_supports_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "coop_ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coop_idea_supports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_idea_comments: {
+        Row: {
+          id: string
+          idea_id: string
+          author_id: string
+          body: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          idea_id: string
+          author_id: string
+          body: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          idea_id?: string
+          author_id?: string
+          body?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_idea_comments_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "coop_ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coop_idea_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_beta_versions: {
+        Row: {
+          id: string
+          label: string
+          access_code_hash: string
+          release_notes: string | null
+          known_issues: string | null
+          unfinished: string | null
+          test_url: string | null
+          status: string
+          round_ends_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          access_code_hash: string
+          release_notes?: string | null
+          known_issues?: string | null
+          unfinished?: string | null
+          test_url?: string | null
+          status?: string
+          round_ends_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          access_code_hash?: string
+          release_notes?: string | null
+          known_issues?: string | null
+          unfinished?: string | null
+          test_url?: string | null
+          status?: string
+          round_ends_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      coop_beta_votes: {
+        Row: {
+          version_id: string
+          user_id: string
+          choice: string
+          created_at: string
+        }
+        Insert: {
+          version_id: string
+          user_id: string
+          choice: string
+          created_at?: string
+        }
+        Update: {
+          version_id?: string
+          user_id?: string
+          choice?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_beta_votes_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "coop_beta_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coop_beta_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_beta_unlocks: {
+        Row: {
+          version_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          version_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          version_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_beta_unlocks_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "coop_beta_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coop_beta_unlocks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_mission_principles: {
+        Row: {
+          id: string
+          slug: string
+          title: string
+          body: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          slug: string
+          title: string
+          body: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title?: string
+          body?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      coop_mission_supports: {
+        Row: {
+          principle_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          principle_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          principle_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_mission_supports_principle_id_fkey"
+            columns: ["principle_id"]
+            isOneToOne: false
+            referencedRelation: "coop_mission_principles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coop_mission_supports_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_economics_assumptions: {
+        Row: {
+          id: string
+          category: string
+          label: string
+          monthly_cents: number
+          notes: string | null
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          category: string
+          label: string
+          monthly_cents?: number
+          notes?: string | null
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          category?: string
+          label?: string
+          monthly_cents?: number
+          notes?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      coop_roles: {
+        Row: {
+          id: string
+          title: string
+          responsibilities: string | null
+          hours_week: string | null
+          risks: string | null
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          title: string
+          responsibilities?: string | null
+          hours_week?: string | null
+          risks?: string | null
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          title?: string
+          responsibilities?: string | null
+          hours_week?: string | null
+          risks?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      coop_dues_votes: {
+        Row: {
+          user_id: string
+          amount_cents: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          amount_cents: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          amount_cents?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_dues_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coop_waitlist: {
+        Row: {
+          id: string
+          email_hmac: string | null
+          user_id: string | null
+          interest: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          email_hmac?: string | null
+          user_id?: string | null
+          interest?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email_hmac?: string | null
+          user_id?: string | null
+          interest?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_waitlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -654,6 +1083,54 @@ export type Database = {
           },
         ]
       }
+      event_assignments: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          done: boolean
+          event_id: string
+          id: string
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          done?: boolean
+          event_id: string
+          id?: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          done?: boolean
+          event_id?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_assignments_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           address: string | null
@@ -663,6 +1140,7 @@ export type Database = {
           cap: number
           chip_in: Json | null
           co_host_ids: string[]
+          cover: Json | null
           created_at: string
           host_id: string
           id: string
@@ -679,6 +1157,7 @@ export type Database = {
           cap?: number
           chip_in?: Json | null
           co_host_ids?: string[]
+          cover?: Json | null
           created_at?: string
           host_id: string
           id?: string
@@ -695,6 +1174,7 @@ export type Database = {
           cap?: number
           chip_in?: Json | null
           co_host_ids?: string[]
+          cover?: Json | null
           created_at?: string
           host_id?: string
           id?: string
@@ -716,10 +1196,12 @@ export type Database = {
       friend_notes: {
         Row: {
           author_id: string
+          cadence: string | null
           created_at: string
           date: string | null
           id: string
           kind: Database["public"]["Enums"]["friend_note_kind"]
+          next_remind_at: string | null
           person_id: string
           remind: boolean
           text: string | null
@@ -727,10 +1209,12 @@ export type Database = {
         }
         Insert: {
           author_id: string
+          cadence?: string | null
           created_at?: string
           date?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["friend_note_kind"]
+          next_remind_at?: string | null
           person_id: string
           remind?: boolean
           text?: string | null
@@ -738,10 +1222,12 @@ export type Database = {
         }
         Update: {
           author_id?: string
+          cadence?: string | null
           created_at?: string
           date?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["friend_note_kind"]
+          next_remind_at?: string | null
           person_id?: string
           remind?: boolean
           text?: string | null
@@ -1074,6 +1560,7 @@ export type Database = {
       }
       polls: {
         Row: {
+          audience_tier: Database["public"]["Enums"]["tier"]
           author_id: string
           closes_at: string | null
           created_at: string
@@ -1081,6 +1568,7 @@ export type Database = {
           question: string
         }
         Insert: {
+          audience_tier?: Database["public"]["Enums"]["tier"]
           author_id: string
           closes_at?: string | null
           created_at?: string
@@ -1088,6 +1576,7 @@ export type Database = {
           question: string
         }
         Update: {
+          audience_tier?: Database["public"]["Enums"]["tier"]
           author_id?: string
           closes_at?: string | null
           created_at?: string
@@ -1498,6 +1987,8 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          /** generated: created_at + 24 hours — leaves Home tray → Profile archive */
+          live_until: string
           media_id: string | null
           theme_slug: string | null
           transcript: string | null
@@ -1953,6 +2444,8 @@ export type Database = {
           locale: string | null
           meet_scope: string
           notif_prefs: Json
+          onboarding_complete: boolean
+          profile_presentation: Json | null
           theme: string | null
           updated_at: string
           user_id: string
@@ -1964,6 +2457,8 @@ export type Database = {
           locale?: string | null
           meet_scope?: string
           notif_prefs?: Json
+          onboarding_complete?: boolean
+          profile_presentation?: Json | null
           theme?: string | null
           updated_at?: string
           user_id: string
@@ -1975,6 +2470,8 @@ export type Database = {
           locale?: string | null
           meet_scope?: string
           notif_prefs?: Json
+          onboarding_complete?: boolean
+          profile_presentation?: Json | null
           theme?: string | null
           updated_at?: string
           user_id?: string
@@ -2068,7 +2565,7 @@ export type Database = {
       coop_plan: "free" | "coop"
       delight_scope: "global" | "opt-in" | "gift"
       event_invite_status: "going" | "cant" | "invited"
-      friend_note_kind: "text" | "date"
+      friend_note_kind: "text" | "date" | "check_in"
       made_via: "link" | "qr" | "add" | "suggestion"
       media_kind: "photo" | "video" | "audio"
       met_context: "event" | "place" | "mutual" | "qr" | "link"
@@ -2213,7 +2710,7 @@ export const Constants = {
       coop_plan: ["free", "coop"],
       delight_scope: ["global", "opt-in", "gift"],
       event_invite_status: ["going", "cant", "invited"],
-      friend_note_kind: ["text", "date"],
+      friend_note_kind: ["text", "date", "check_in"],
       made_via: ["link", "qr", "add", "suggestion"],
       media_kind: ["photo", "video", "audio"],
       met_context: ["event", "place", "mutual", "qr", "link"],

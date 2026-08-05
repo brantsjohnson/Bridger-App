@@ -11,6 +11,8 @@
 // PRIVACY: nothing is uploaded until you press Send. Retake throws it away.
 // ACCESSIBILITY: every control is labelled, the countdown is announced in text
 // as well as by the ring, and the ring animation is skipped under Reduce Motion.
+// The recorder is always a solid near-black stage (not theme ink) so dark mode
+// never turns the backdrop cream over the story behind it.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -27,7 +29,7 @@ import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { RotateCcwIcon, SwitchCameraIcon, XIcon } from 'lucide-react-native';
 import { CIRCLE_RECORDER, trackProduct } from '@bridger/shared';
-import { PixelHeading, SurfaceHost, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { PixelHeading, SurfaceHost, withAnalyticsPress } from '@bridger/ui';
 
 /** The hard cap. A reply is a moment, not a monologue. */
 const MAX_SECONDS = 10;
@@ -43,7 +45,6 @@ type Props = {
 
 export function CircleRecorder({ open, onClose, onSend }: Props) {
   const insets = useSafeAreaInsets();
-  const c = useThemeColors();
   const cameraRef = useRef<CameraView>(null);
 
   const [camPermission, requestCamPermission] = useCameraPermissions();
@@ -160,13 +161,28 @@ export function CircleRecorder({ open, onClose, onSend }: Props) {
 
   const secondsLeft = Math.max(0, MAX_SECONDS - elapsed);
 
+  // Solid near-black stage — theme ink goes cream in dark mode and made
+  // white labels vanish over the story behind a transparent modal.
+  const STAGE = '#0E0E0E';
+  const ON_WHITE = '#1C1B16';
+
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
       <SurfaceHost surface="circle_recorder" parentScreen="story" open={open}>
         <View
           accessibilityViewIsModal
-          style={{ paddingTop: Math.max(insets.top, 16), paddingBottom: Math.max(insets.bottom, 20) }}
-          className="flex-1 items-center justify-center gap-6 bg-ink/95 px-6"
+          style={{
+            flex: 1,
+            backgroundColor: STAGE,
+            paddingTop: Math.max(insets.top, 16),
+            paddingBottom: Math.max(insets.bottom, 20)
+          }}
+          className="items-center justify-center gap-6 px-6"
         >
           <Pressable
             onPress={withAnalyticsPress(CIRCLE_RECORDER.capture.dismiss, onClose)}
@@ -270,7 +286,7 @@ export function CircleRecorder({ open, onClose, onSend }: Props) {
                 accessibilityLabel="Send video reply"
                 className="h-12 flex-1 items-center justify-center rounded-full bg-white active:opacity-90"
               >
-                <Text className="font-sans-b text-[15px] text-ink">
+                <Text style={{ color: ON_WHITE }} className="font-sans-b text-[15px]">
                   {sending ? 'Sending…' : 'Send'}
                 </Text>
               </Pressable>

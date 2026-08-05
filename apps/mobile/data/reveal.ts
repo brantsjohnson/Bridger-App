@@ -12,7 +12,9 @@
 //   only opaque outcomes like recorded_where (bool).
 // ============================================
 import type { HowYouMet, MeetContext, Person, Tier } from '@bridger/shared';
+import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
+import { getCachedPerson, loadPeople } from '../lib/people-cache';
 import { getCommonalities, getQuizMatches, type Commonality, type QuizMatch } from './discover';
 import {
   HOW_YOU_MET as FIXTURE_HOW,
@@ -75,8 +77,9 @@ export async function getReveal(
   const viaId = resolveViaId(personId, viaFriendId);
   const via = viaId ? personById(viaId) : null;
 
-  // Full overlap list — strongest flagged, rest for "you've also got"
-  // TODO: live GET /matching/commonalities/:personId (tier-filtered)
+  // Full overlap list — strongest flagged, rest for "you've also got".
+  // Live: matching/RAG is deferred, so getCommonalities / getQuizMatches return
+  // [] until that module ships. Person / me / via already come from the cache.
   const all = await getCommonalities(personId);
 
   const strongest = all.find((c) => c.strongest) ?? all[0] ?? null;
@@ -159,8 +162,23 @@ export async function saveHowYouMet(
     return { tier, recordedWhere: input.recordPlace, addedNote };
   }
 
-  // TODO: POST /connections/:personId/how-you-met (ciphertext-safe metadata only)
-  return { tier, recordedWhere: input.recordPlace, addedNote };
+  // PRIVACY: place / note text never go to analytics — only the bool outcomes.
+  const result = await apiFetch<{
+    tier: Tier;
+    recordedWhere: boolean;
+    addedNote: boolean;
+  }>(`/connections/${encodeURIComponent(personId)}/how-you-met`, {
+    method: 'POST',
+    body: JSON.stringify({
+      context: input.context,
+      recordPlace: input.recordPlace,
+      meetNote: input.meetNote,
+      tier: input.tier,
+      placeLabel: NEARBY_AREA
+    })
+  });
+  await loadPeople();
+  return result;
 }
 
 /** Shared memories on their profile — either of you can edit or remove later. */
@@ -168,8 +186,9 @@ export async function getHowYouMet(personId: string): Promise<HowYouMet[]> {
   if (isDemoMode()) {
     return (demoHowYouMet[personId] ?? []).map((r) => ({ ...r }));
   }
-  // TODO: GET /connections/:personId/how-you-met
-  return [];
+  return apiFetch<HowYouMet[]>(
+    `/connections/${encodeURIComponent(personId)}/how-you-met`
+  );
 }
 
 /** Side-by-side place photos for the In common tab (co-op expressive layer). */
@@ -185,8 +204,8 @@ export async function getSharedPlaces(_personId: string): Promise<SharedPlace[]>
   return [];
 }
 
-/** Demo helper: tier chosen at reveal, if any. */
+/** Tier chosen at reveal (or later on Friends), if any. */
 export async function getRevealTier(personId: string): Promise<Tier | null> {
   if (isDemoMode()) return demoTiers[personId] ?? null;
-  return null;
+  return getCachedPerson(personId)?.tier ?? null;
 }

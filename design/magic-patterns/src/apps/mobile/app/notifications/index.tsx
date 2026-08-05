@@ -22,7 +22,7 @@ export function NotificationsScreen({
 
   return (
     <Screen>
-      <ScreenHeader title="Alerts" onBack={onBack} />
+      <ScreenHeader title="Notifications" onBack={onBack} />
       <ScreenBody>
         <Breathe>
           {items.length === 0 ?

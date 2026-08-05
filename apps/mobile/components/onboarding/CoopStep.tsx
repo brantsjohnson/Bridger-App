@@ -36,19 +36,20 @@ export function CoopStep({
 }: {
   step: number;
   total: number;
-  onJoin: () => void;
+  /** method tells PurchaseGateway which pay button was used (soft IAP stub). */
+  onJoin: (method: 'apple' | 'google' | 'card') => void;
   onUseFree: () => void;
   onBack: () => void;
 }) {
   const footer = (
     <View className="gap-2.5">
-      {/* Pay the way you already pay */}
+      {/* Pay the way you already pay — soft-join until StoreKit plugs in */}
       <ButtonSecondary
         full
         size="lg"
         tone="solid"
         analyticsId={ONBOARDING.coop.apple_pay}
-        onPress={onJoin}
+        onPress={() => onJoin('apple')}
         accessibilityLabel="Join with Apple Pay"
       >
         Apple Pay
@@ -60,7 +61,7 @@ export function CoopStep({
             size="lg"
             tone="outline"
             analyticsId={ONBOARDING.coop.google_pay}
-            onPress={onJoin}
+            onPress={() => onJoin('google')}
             accessibilityLabel="Join with Google Pay"
           >
             Google Pay
@@ -73,7 +74,7 @@ export function CoopStep({
             tone="outline"
             icon={<CreditCardIcon size={16} strokeWidth={2.5} />}
             analyticsId={ONBOARDING.coop.card}
-            onPress={onJoin}
+            onPress={() => onJoin('card')}
             accessibilityLabel="Join with a card"
           >
             Card

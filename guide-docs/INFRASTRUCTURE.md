@@ -100,7 +100,7 @@ Client env (public): `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 5. **Privacy plumbing** — RLS policies, delete cascades, export endpoint, matchable/discoverable flags. Verify a delete actually erases.
 6. **AI layer** — server-side Anthropic/OpenAI clients; summaries at post time; embeddings on attribute change; the **quiz engine** (`QUIZ-ENGINE.md`).
 7. **Clients from Magic Patterns** — bring the built components in as the `packages/ui` kit; wire screens to the API.
-8. **Co-op portal** — mount the existing `/co-op` module (`COOP-PORTAL.md`), reusing app auth + `coop_memberships`.
+8. **Co-op portal** — Nest `apps/api/src/coop/` + Expo `/coop` routes (`complete/COOP-PORTAL.md`), reusing app auth + `coop_memberships`.
 9. **IaC + CI/CD** — Terraform/CDK for App Runner + Secrets Manager + S3/CloudFront; GitHub Actions + EAS.
 10. **Ship** — EAS builds for stores; web to CloudFront.
 

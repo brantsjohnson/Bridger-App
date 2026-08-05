@@ -157,9 +157,9 @@ export default function OnboardingScreen() {
         <CoopStep
           step={stepNo}
           total={total}
-          onJoin={() => {
+          onJoin={(method) => {
             patch({ coopJoined: true });
-            void joinCoop(true);
+            void joinCoop(true, method);
             goNext();
           }}
           onUseFree={() => {

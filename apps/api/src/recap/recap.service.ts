@@ -10,6 +10,8 @@
 // - You can re-record only once your own last recording is 7 days old.
 // - Co-op members' clips are kept (expires_at null) and archived into their
 //   Profile stories calendar; non-members' clips are purged after 7 days.
+// - LAZY PURGE: each playlist fetch deletes recap_answers rows whose
+//   expires_at is in the past (co-op null expires_at is never deleted).
 // PRIVACY: audio is returned as a short-lived signed URL, never a storage path.
 // ============================================
 import {
@@ -27,14 +29,9 @@ import type {
   SubmittedQuestion,
   Tier
 } from '@bridger/shared';
+import { canViewTier, isBlocked, TIER_RANK } from '../common/visibility';
+import { CoopService } from '../coop/coop.service';
 import { SupabaseService } from '../supabase/supabase.service';
-
-const TIER_RANK: Record<Tier, number> = {
-  close: 3,
-  friend: 2,
-  acquaintance: 1,
-  none: 0
-};
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -46,7 +43,8 @@ export class RecapService {
 
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly coop: CoopService
   ) {
     this.mediaBucket =
       this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
@@ -138,11 +136,27 @@ export class RecapService {
   // --- GET /recap/playlist : the one continuous listen ---
 
   async getPlaylist(userId: string): Promise<RecapPlaylist> {
+    // Drop expired free clips before building the listen (lazy purge job).
+    await this.purgeExpired();
     const week = await this.activeWeek();
     if (!week) {
       return { week: { id: '', weekOf: '', questions: [] }, clips: [], voiceIds: [] };
     }
     return this.buildPlaylist(userId, week);
+  }
+
+  /**
+   * Delete recap answers whose expires_at has passed. Co-op members keep
+   * expires_at null, so their clips are never removed here.
+   */
+  private async purgeExpired(): Promise<void> {
+    const now = new Date().toISOString();
+    const { error } = await this.supabase.admin
+      .from('recap_answers')
+      .delete()
+      .not('expires_at', 'is', null)
+      .lt('expires_at', now);
+    if (error) throw error;
   }
 
   /** Shared playlist builder: rolling window + tier filter + roundtable order. */
@@ -218,7 +232,7 @@ export class RecapService {
     }
 
     const audience: RecapAudience = body.audience ?? 'friend';
-    const isCoop = await this.isCoopMember(userId);
+    const isCoop = await this.coop.isActiveMember(userId);
     // Non-members' clips expire in 7 days; members keep theirs (archived).
     const expiresAt = isCoop
       ? null
@@ -272,16 +286,6 @@ export class RecapService {
       hasActive,
       canRecordAfter: hasActive ? unlockAt.toISOString() : null
     };
-  }
-
-  private async isCoopMember(userId: string): Promise<boolean> {
-    const { data, error } = await this.supabase.admin
-      .from('coop_memberships')
-      .select('active')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (error) throw error;
-    return Boolean(data?.active);
   }
 
   /** Drop a kept audio story so co-op members can relisten from Profile. */
@@ -368,5 +372,48 @@ export class RecapService {
         .eq('id', questionId);
       if (bumpErr) throw bumpErr;
     }
+  }
+
+  // --- POST /recap/answers/:id/reactions : sticker/emoji on someone's clip ---
+
+  async reactToAnswer(
+    userId: string,
+    answerId: string,
+    emoji: string
+  ): Promise<{ ok: true }> {
+    const clean = (emoji ?? '').trim();
+    if (!clean) throw new BadRequestException('Emoji is required');
+
+    const { data: answer, error } = await this.supabase.admin
+      .from('recap_answers')
+      .select('id, author_id, visible_to_tier')
+      .eq('id', answerId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!answer) throw new NotFoundException('Answer not found');
+
+    // Never notify yourself; blocks are silent (no notification either way).
+    if (answer.author_id === userId) return { ok: true };
+    if (await isBlocked(this.supabase, userId, answer.author_id)) {
+      return { ok: true };
+    }
+
+    // Listener must belong to a circle the clip was shared with.
+    const allowed = await canViewTier(
+      this.supabase,
+      answer.author_id,
+      userId,
+      answer.visible_to_tier as Tier
+    );
+    if (!allowed) throw new NotFoundException('Answer not found');
+
+    const { error: nErr } = await this.supabase.admin.from('notifications').insert({
+      user_id: answer.author_id,
+      kind: 'recap_reaction',
+      payload: { from: userId, answer_id: answerId, emoji: clean } as never
+    });
+    if (nErr) throw nErr;
+
+    return { ok: true };
   }
 }

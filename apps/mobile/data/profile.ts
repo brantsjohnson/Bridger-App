@@ -11,6 +11,7 @@
 // ============================================
 import type { Accent, BucketItem, Person, Tier } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
+import { apiFetch } from '../lib/api';
 import { PEOPLE } from './fixtures/catalog';
 import {
   ABOUT_ME_FIELDS,
@@ -28,7 +29,8 @@ import {
   type FavGroup,
   type Interest,
   type ThisOrThatRow,
-  type TravelPlace
+  type TravelPlace,
+  type TravelPlaceTag
 } from './fixtures/profile';
 import {
   ALL_HOBBIES,
@@ -49,7 +51,8 @@ export type {
   FavGroup,
   Interest,
   ThisOrThatRow,
-  TravelPlace
+  TravelPlace,
+  TravelPlaceTag
 };
 
 export type Currently = {
@@ -94,11 +97,62 @@ let demoThisOrThat: ThisOrThatRow[] = THIS_OR_THAT.map((t) => ({ ...t }));
 let demoPlaces: TravelPlace[] = TRAVEL_PLACES.map((p) => ({ ...p }));
 let demoCustomNotes: string | null = null;
 
+// --- LIVE WIRING HELPERS ---
+// Every "fact" comes back from the API as this shape. We store the exact
+// display object in `value`, so reading a category is just returning `value`.
+type ApiAttribute<T = unknown> = {
+  id: string;
+  key: string;
+  value: T;
+  layer: string;
+  visibleToTier: Tier;
+  matchable: boolean;
+  updatedAt: string;
+};
+
+/** Read one category of facts from the server (e.g. kind=hobby). */
+async function fetchAttributes<T>(kind: string): Promise<ApiAttribute<T>[]> {
+  return apiFetch<ApiAttribute<T>[]>(`/me/attributes?kind=${encodeURIComponent(kind)}`);
+}
+
+/**
+ * Replace a whole category of facts in one call. `prefix` clears the old rows
+ * (so re-running a module swaps the category instead of duplicating it); each
+ * item becomes one row whose `value` is the display object itself.
+ */
+async function replaceAttributes(
+  prefix: string,
+  items: { key: string; value: unknown; visibleToTier?: Tier }[]
+): Promise<void> {
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      replacePrefix: prefix,
+      attributes: items.map((it) => ({
+        key: it.key,
+        value: it.value,
+        layer: 'profile',
+        visibleToTier: it.visibleToTier ?? 'friend'
+      }))
+    })
+  });
+}
+
 /** Header bits: city, bio, profile song. */
 export async function getMyProfileHeader(): Promise<MyProfileHeader> {
   if (isDemoMode()) return { ...demoHeader, song: { ...demoHeader.song } };
-  // TODO: GET /me/profile
-  return { city: '', bio: '', song: { title: '', artist: '' } };
+  const p = await apiFetch<{
+    city: string;
+    bio: string;
+    song: { title: string; artist: string };
+    book?: { title: string; author: string } | null;
+  }>('/me/profile');
+  return {
+    city: p.city ?? '',
+    bio: p.bio ?? '',
+    song: { title: p.song?.title ?? '', artist: p.song?.artist ?? '' },
+    book: p.book?.title ? { title: p.book.title, author: p.book.author } : undefined
+  };
 }
 
 export async function setMyProfileHeader(patch: Partial<MyProfileHeader>): Promise<MyProfileHeader> {
@@ -106,7 +160,15 @@ export async function setMyProfileHeader(patch: Partial<MyProfileHeader>): Promi
     demoHeader = { ...demoHeader, ...patch };
     return getMyProfileHeader();
   }
-  // TODO: PATCH /me/profile
+  await apiFetch('/me/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      city: patch.city,
+      bio: patch.bio,
+      song: patch.song,
+      book: patch.book ?? null
+    })
+  });
   return getMyProfileHeader();
 }
 
@@ -145,14 +207,14 @@ export async function listAboutFields(): Promise<AboutField[]> {
     }
     return rows;
   }
-  // TODO: GET /me/attributes?kind=about
-  return [];
+  const rows = await fetchAttributes<AboutField>('about');
+  return rows.map((r) => r.value);
 }
 
 export async function listHobbies(): Promise<Interest[]> {
   if (isDemoMode()) return demoHobbies.map((h) => ({ ...h }));
-  // TODO: GET /me/attributes?kind=hobby
-  return [];
+  const rows = await fetchAttributes<Interest>('hobby');
+  return rows.map((r) => r.value);
 }
 
 /** Follow-up Q&A keyed by hobby id — what the hobbies widget peeks at. */
@@ -182,20 +244,20 @@ export const HOBBY_FOLLOW_UPS = new Proxy({} as Record<string, HobbyFollowUp>, {
 
 export async function listFavs(): Promise<FavGroup[]> {
   if (isDemoMode()) return demoFavs.map((g) => ({ ...g, items: [...g.items] }));
-  // TODO: GET /me/attributes?kind=fav
-  return [];
+  const rows = await fetchAttributes<FavGroup>('fav');
+  return rows.map((r) => r.value);
 }
 
 export async function listThisOrThat(): Promise<ThisOrThatRow[]> {
   if (isDemoMode()) return demoThisOrThat.map((t) => ({ ...t }));
-  // TODO: GET /me/attributes?kind=thisOrThat
-  return [];
+  const rows = await fetchAttributes<ThisOrThatRow>('thisOrThat');
+  return rows.map((r) => r.value);
 }
 
 export async function listTravelPlaces(): Promise<TravelPlace[]> {
   if (isDemoMode()) return demoPlaces.map((p) => ({ ...p }));
-  // TODO: GET /me/attributes?kind=place
-  return [];
+  const rows = await fetchAttributes<TravelPlace>('place');
+  return rows.map((r) => r.value);
 }
 
 // --- ModuleFlow writers (demo session + live TODOs) ---
@@ -243,8 +305,17 @@ export async function saveHobbies(
     demoHobbyFollowUps = { ...demoHobbyFollowUps, ...followUps };
     return listHobbies();
   }
-  // TODO: POST /me/attributes (hobby rows + follow-ups)
-  return next;
+  // Each hobby is one row (value = the display object). The follow-up Q&A is
+  // tucked onto the same row so it persists with the hobby.
+  await replaceAttributes(
+    'hobby:',
+    next.map((h) => ({
+      key: `hobby:${h.id}`,
+      value: { ...h, followUp: followUps[h.id] },
+      visibleToTier: h.tier
+    }))
+  );
+  return listHobbies();
 }
 
 /**
@@ -276,14 +347,21 @@ export async function saveFavs(
     });
   }
 
+  const replaced = new Set(next.map((g) => g.group));
   if (isDemoMode()) {
     // Merge into existing groups so re-running the module replaces those groups.
-    const replaced = new Set(next.map((g) => g.group));
     demoFavs = [...demoFavs.filter((g) => !replaced.has(g.group)), ...next];
     return listFavs();
   }
-  // TODO: POST /me/attributes?kind=fav
-  return next;
+  // Live merge: keep the groups this run didn't touch, swap the ones it did,
+  // then write the whole set back (one row per group).
+  const existing = await listFavs();
+  const merged = [...existing.filter((g) => !replaced.has(g.group)), ...next];
+  await replaceAttributes(
+    'fav:',
+    merged.map((g) => ({ key: `fav:${g.group.toLowerCase().replace(/\s+/g, '-')}`, value: g }))
+  );
+  return listFavs();
 }
 
 /**
@@ -313,41 +391,94 @@ export async function saveThisOrThat(
     demoThisOrThat = next.length > 0 ? next : demoThisOrThat;
     return listThisOrThat();
   }
-  // TODO: POST /me/attributes?kind=thisOrThat
-  return next;
+  if (next.length === 0) return listThisOrThat();
+  await replaceAttributes(
+    'tot:',
+    next.map((t) => ({ key: `tot:${t.id}`, value: t, visibleToTier: t.tier }))
+  );
+  return listThisOrThat();
+}
+
+/** JSON payload written by ModuleFlow placeSearch into answers['place-where']. */
+type PlaceWherePayload = {
+  label: string;
+  lat: number;
+  lng: number;
+  countryCode: string;
+};
+
+/** Parse a geocoded place pick. Never invents random map coords. */
+function parsePlaceWhere(raw: unknown): PlaceWherePayload | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  try {
+    const o = JSON.parse(raw) as Partial<PlaceWherePayload>;
+    if (
+      typeof o.label === 'string' &&
+      typeof o.lat === 'number' &&
+      Number.isFinite(o.lat) &&
+      typeof o.lng === 'number' &&
+      Number.isFinite(o.lng) &&
+      typeof o.countryCode === 'string' &&
+      o.countryCode.length === 2
+    ) {
+      return {
+        label: o.label.trim(),
+        lat: o.lat,
+        lng: o.lng,
+        countryCode: o.countryCode.toUpperCase()
+      };
+    }
+  } catch {
+    // Plain text is not enough to place a pin — skip.
+  }
+  return null;
 }
 
 /**
- * Save a simple place add (where / note / next). Richer place editor is next.
- * TODO: replace with tags + per-place visibility + co-op photos.
+ * Save a geocoded place (lat/lng/countryCode from place search) plus optional note.
+ * Pins never get random positions. TODO: richer tags + co-op photos.
  */
 export async function savePlaces(
   answers: Record<string, string | string[]>,
   visibility: Record<string, Tier> = {}
 ): Promise<TravelPlace[]> {
-  const where = typeof answers['place-where'] === 'string' ? answers['place-where'].trim() : '';
+  const parsed = parsePlaceWhere(answers['place-where']);
   const note = typeof answers['place-note'] === 'string' ? answers['place-note'].trim() : '';
-  if (!where) {
+  if (!parsed) {
     return listTravelPlaces();
   }
 
+  const tagRaw = typeof answers['place-tag'] === 'string' ? answers['place-tag'].toLowerCase() : '';
+  const tag =
+    tagRaw.includes('lived') ? 'lived' : tagRaw.includes('want') ? 'want' : 'visited';
+
   const place: TravelPlace = {
     id: `pl-${Date.now()}`,
-    label: where,
+    label: parsed.label,
     note: note || 'Visited',
-    x: 20 + Math.round(Math.random() * 60),
-    y: 20 + Math.round(Math.random() * 50),
+    lat: parsed.lat,
+    lng: parsed.lng,
+    countryCode: parsed.countryCode,
     emoji: '✈️',
     year: String(new Date().getFullYear()),
-    tier: visibility['place-where'] ?? 'friend'
+    tier: visibility['place-where'] ?? 'friend',
+    tags: [tag]
   };
 
   if (isDemoMode()) {
     demoPlaces = [place, ...demoPlaces];
     return listTravelPlaces();
   }
-  // TODO: POST /me/attributes?kind=place
-  return [place];
+  // Add one place row (no replace: places accumulate).
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      attributes: [
+        { key: `place:${place.id}`, value: place, layer: 'profile', visibleToTier: place.tier }
+      ]
+    })
+  });
+  return listTravelPlaces();
 }
 
 /**
@@ -359,12 +490,12 @@ export async function saveAboutFields(
   answers: Record<string, string | string[]>,
   visibility: Record<string, Tier> = {}
 ): Promise<AboutField[]> {
-  const byId = new Map(demoAbout.map((f) => [f.id, f]));
-
+  // The answers this run actually filled in.
+  const answered: AboutField[] = [];
   for (const q of PERSONAL_QUESTIONS) {
     const raw = answers[q.id];
     if (typeof raw !== 'string' || !raw.trim()) continue;
-    byId.set(q.id, {
+    answered.push({
       id: q.id,
       key: q.key,
       value: raw.trim(),
@@ -372,13 +503,23 @@ export async function saveAboutFields(
     });
   }
 
-  const next = Array.from(byId.values());
   if (isDemoMode()) {
-    demoAbout = next;
+    const byId = new Map(demoAbout.map((f) => [f.id, f]));
+    for (const f of answered) byId.set(f.id, f);
+    demoAbout = Array.from(byId.values());
     return listAboutFields();
   }
-  // TODO: POST /me/attributes?kind=about
-  return next;
+
+  // Live: merge onto the server's existing About rows, then write them all back.
+  const existing = await listAboutFields();
+  const byId = new Map(existing.map((f) => [f.id, f]));
+  for (const f of answered) byId.set(f.id, f);
+  const merged = Array.from(byId.values());
+  await replaceAttributes(
+    'about:',
+    merged.map((f) => ({ key: `about:${f.id}`, value: f, visibleToTier: f.tier }))
+  );
+  return listAboutFields();
 }
 
 /** Save the free-text Custom Notes module. */
@@ -388,13 +529,19 @@ export async function saveCustomNotes(
 ): Promise<void> {
   const raw = answers['notes-free'];
   if (typeof raw !== 'string' || !raw.trim()) return;
+  const tier = visibility['notes-free'] ?? 'friend';
   if (isDemoMode()) {
     demoCustomNotes = raw.trim();
-    // Also stash the chosen tier on a synthetic about row next read.
-    void visibility;
     return;
   }
-  // TODO: POST /me/attributes?kind=notes
+  // Store as a single About row so it shows up in the About Me section.
+  await replaceAttributes('about:about-notes', [
+    {
+      key: 'about:about-notes',
+      value: { id: 'about-notes', key: 'Notes', value: raw.trim(), tier },
+      visibleToTier: tier
+    }
+  ]);
 }
 
 // --- Friend profiles ---
@@ -407,7 +554,10 @@ export async function getPersonProfile(personId: string): Promise<FriendProfile 
   if (isDemoMode()) {
     return FRIEND_PROFILES[personId] ?? null;
   }
-  // TODO: GET /people/:id/profile
+  // FOLLOW-UP: GET /people/:id/profile is live (returns the person's identity +
+  // tier-filtered attributes). What's left is a mapper from those raw rows into
+  // the richer FriendProfile shape the card renders, plus a second real account
+  // to test against. Kept on fixtures until that mapper lands.
   return null;
 }
 
@@ -465,19 +615,53 @@ export async function toggleBucketItem(id: string): Promise<void> {
   // TODO: PATCH /me/bucket/:id
 }
 
+/** Change the text, tagged friends, or privacy on an existing bucket line. */
+export async function updateBucketItem(
+  id: string,
+  input: AddBucketInput
+): Promise<BucketItem | null> {
+  if (isDemoMode()) {
+    const idx = demoBucket.findIndex((b) => b.id === id);
+    if (idx < 0) return null;
+    const updated: BucketItem = {
+      ...demoBucket[idx],
+      text: input.text.trim(),
+      withIds: [...input.withIds],
+      isPrivate: input.isPrivate
+    };
+    demoBucket = demoBucket.map((b) => (b.id === id ? updated : b));
+    return { ...updated, withIds: [...updated.withIds] };
+  }
+  // TODO: PATCH /me/bucket/:id
+  return null;
+}
+
+/** Hard-delete a bucket line. Gone for good (same as other user data). */
+export async function deleteBucketItem(id: string): Promise<void> {
+  if (isDemoMode()) {
+    demoBucket = demoBucket.filter((b) => b.id !== id);
+    return;
+  }
+  // TODO: DELETE /me/bucket/:id
+}
+
 // --- Story archive ---
 
 /** Day of month -> story thumbnail emoji, for the calendar. */
-export async function listStoryDays(_month?: string): Promise<Record<number, string>> {
+export async function listStoryDays(month?: string): Promise<Record<number, string>> {
   if (isDemoMode()) return { ...STORY_CALENDAR };
-  // TODO: GET /me/stories/archive?month=
-  return {};
+  const q = month ? `?month=${encodeURIComponent(month)}` : '';
+  const res = await apiFetch<{ days: Record<number, string> }>(`/stories/archive${q}`);
+  return res.days ?? {};
 }
 
 export async function getStorageState(): Promise<StorageState> {
   if (isDemoMode()) return { usedPct: 100, plan: 'free' };
-  // TODO: GET /me/storage
-  return { usedPct: 0, plan: 'free' };
+  const res = await apiFetch<{
+    usedPct: number;
+    plan: 'free' | 'coop';
+  }>('/me/storage');
+  return { usedPct: res.usedPct ?? 0, plan: res.plan ?? 'free' };
 }
 
 // --- Blocked people (Settings → Blocked) ---
@@ -486,8 +670,7 @@ export async function listBlocked(): Promise<Person[]> {
   if (isDemoMode()) {
     return PEOPLE.filter((p) => demoBlockedIds.includes(p.id)).map((p) => ({ ...p }));
   }
-  // TODO: GET /me/blocked
-  return [];
+  return apiFetch<Person[]>('/me/blocked');
 }
 
 /** Silent + reversible. Unblocking never auto-reconnects. */
@@ -496,7 +679,9 @@ export async function unblock(personId: string): Promise<void> {
     demoBlockedIds = demoBlockedIds.filter((id) => id !== personId);
     return;
   }
-  // TODO: DELETE /me/blocked/:id
+  await apiFetch(`/me/blocked/${encodeURIComponent(personId)}`, {
+    method: 'DELETE'
+  });
 }
 
 /** Which tiers can see a field, ranked so filtering is one comparison. */

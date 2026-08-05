@@ -77,9 +77,9 @@ const MAYA: FriendProfile = {
     { id: 'm-t4', a: 'Road trip', b: 'Flight', pick: 'a', emoji: '✈️' }
   ],
   places: [
-    { id: 'm-p1', label: 'Oaxaca', note: 'Clay markets', x: 38, y: 66, emoji: '🌶', year: '2023' },
-    { id: 'm-p2', label: 'Banff', note: 'Cold lake swim', x: 18, y: 30, emoji: '🏔', year: '2022' },
-    { id: 'm-p3', label: 'Lisbon', note: 'Tile hunting', x: 22, y: 48, emoji: '🟦', year: '2024' }
+    { id: 'm-p1', label: 'Oaxaca', note: 'Clay markets', lat: 17.0732, lng: -96.7266, countryCode: 'MX', emoji: '🌶', year: '2023' },
+    { id: 'm-p2', label: 'Banff', note: 'Cold lake swim', lat: 51.1784, lng: -115.5708, countryCode: 'CA', emoji: '🏔', year: '2022' },
+    { id: 'm-p3', label: 'Lisbon', note: 'Tile hunting', lat: 38.7223, lng: -9.1393, countryCode: 'PT', emoji: '🟦', year: '2024' }
   ]
 };
 
@@ -145,8 +145,8 @@ const DEVON: FriendProfile = {
     { id: 'd-t3', a: 'Rewatch', b: 'Watch new', pick: 'a', emoji: '🔄' }
   ],
   places: [
-    { id: 'd-p1', label: 'Tokyo', note: 'Record hunting in Shimokitazawa', x: 82, y: 42, emoji: '🎶', year: '2023' },
-    { id: 'd-p2', label: 'Berlin', note: 'Three clubs, one night', x: 52, y: 28, emoji: '🪩', year: '2019' }
+    { id: 'd-p1', label: 'Tokyo', note: 'Record hunting in Shimokitazawa', lat: 35.6762, lng: 139.6503, countryCode: 'JP', emoji: '🎶', year: '2023' },
+    { id: 'd-p2', label: 'Berlin', note: 'Three clubs, one night', lat: 52.52, lng: 13.405, countryCode: 'DE', emoji: '🪩', year: '2019' }
   ]
 };
 
@@ -185,8 +185,8 @@ const INES: FriendProfile = {
     { id: 'i-t3', a: 'Sightseeing', b: 'Relaxing', pick: 'a', emoji: '🏖' }
   ],
   places: [
-    { id: 'i-p1', label: 'Banff', note: 'Backpacked the Rockies', x: 18, y: 30, emoji: '🏔', year: '2021' },
-    { id: 'i-p2', label: 'Patagonia', note: 'Wind that never stopped', x: 42, y: 88, emoji: '💨', year: '2024' }
+    { id: 'i-p1', label: 'Banff', note: 'Backpacked the Rockies', lat: 51.1784, lng: -115.5708, countryCode: 'CA', emoji: '🏔', year: '2021' },
+    { id: 'i-p2', label: 'Patagonia', note: 'Wind that never stopped', lat: -50.0, lng: -73.0, countryCode: 'AR', emoji: '💨', year: '2024' }
   ]
 };
 
@@ -236,7 +236,7 @@ const THEO: FriendProfile = {
     { id: 't-t2', a: 'Host', b: 'Guest', pick: 'a', emoji: '🏠' }
   ],
   places: [
-    { id: 't-p1', label: 'Oaxaca', note: 'Mole school', x: 38, y: 66, emoji: '🌶', year: '2022' }
+    { id: 't-p1', label: 'Oaxaca', note: 'Mole school', lat: 17.0732, lng: -96.7266, countryCode: 'MX', emoji: '🌶', year: '2022' }
   ]
 };
 
@@ -293,8 +293,8 @@ const NOUR: FriendProfile = {
     { id: 'n-t2', a: 'Cozy night in', b: 'Night out', pick: 'a', emoji: '🛋' }
   ],
   places: [
-    { id: 'n-p1', label: 'Kyoto', note: 'Temple mornings', x: 78, y: 44, emoji: '⛩', year: '2019' },
-    { id: 'n-p2', label: 'Reykjavík', note: 'Saw the lights', x: 46, y: 22, emoji: '🌌', year: '2024' }
+    { id: 'n-p1', label: 'Kyoto', note: 'Temple mornings', lat: 35.0116, lng: 135.7681, countryCode: 'JP', emoji: '⛩', year: '2019' },
+    { id: 'n-p2', label: 'Reykjavík', note: 'Saw the lights', lat: 64.1466, lng: -21.9426, countryCode: 'IS', emoji: '🌌', year: '2024' }
   ]
 };
 

@@ -64,6 +64,11 @@ export type AnalyticsProductEvent =
   | 'activity_posted'
   | 'activity_hearted'
   | 'home_layout_saved'
+  | 'notification_opened'
+  | 'notification_see_all'
+  | 'notification_pref_changed'
+  /** Mark all as read on the Notifications page */
+  | 'notifications_marked_read'
   | 'module_started'
   | 'module_completed'
   | 'module_item_added'
@@ -72,6 +77,11 @@ export type AnalyticsProductEvent =
   | 'friend_removed'
   | 'friend_blocked'
   | 'friend_reported'
+  /** private note / date / check-in saved on a friend (never note text) */
+  | 'friend_note_added'
+  | 'friend_note_deleted'
+  /** soft check-in nudge fired for the author */
+  | 'friend_check_in_reminded'
   | 'story_posted'
   | 'response_posted'
   /** someone made their own sticker (no image data — just that they made one) */
@@ -97,12 +107,20 @@ export type AnalyticsProductEvent =
   | 'event_assignment_released'
   | 'event_assignment_done'
   | 'event_shared'
+  | 'event_introduction_notified'
   | 'rsvp_going'
   | 'rsvp_cant'
   | 'inside_joke_posted'
   | 'bucket_item_checked'
+  | 'bucket_item_updated'
+  | 'bucket_item_deleted'
   | 'profile_customized'
   | 'connection_revealed'
+  /** soft or paid join — never receipt / PII */
+  | 'coop_joined'
+  | 'coop_left'
+  /** scheduled leave; perks stay until paid-through */
+  | 'coop_cancel_scheduled'
   | 'auth_signed_in'
   | 'auth_signed_up'
   | 'message_sent'

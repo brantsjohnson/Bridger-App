@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The big green "TOUCH GRASS" button on Events. One tap opens the sheet where
-// you pick who to tell and when. Matches Magic Patterns (organic banner shape).
-// Analytics: EVENTS.touch_grass.send — the tap that opens the sheet.
+// The big green "TOUCH GRASS" button on Home and Events. One tap opens the
+// sheet where you pick who to tell and when. Matches Magic Patterns (organic
+// banner shape). Pass analyticsId so Home and Events each get their own tap id.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -16,19 +16,26 @@ import { GrassGrow } from './GrassGrow';
 export function TouchGrassButton({
   live,
   inIds,
-  onOpen
+  onOpen,
+  analyticsId = EVENTS.touch_grass.send
 }: {
   live: boolean;
   inIds: string[];
   onOpen: () => void;
+  /** Taxonomy id for the open tap (Home vs Events). */
+  analyticsId?: string;
 }) {
   return (
     <View className="relative">
       <GrassBurst play={live} />
       <Pressable
-        onPress={withAnalyticsPress(EVENTS.touch_grass.send, onOpen)}
+        onPress={withAnalyticsPress(analyticsId, onOpen)}
         accessibilityRole="button"
-        accessibilityLabel={live ? "You're free. Open Touch Grass" : "Tell friends you're free"}
+        accessibilityLabel={
+          live
+            ? "You're free. Open Touch Grass"
+            : 'Touch grass — tell friends you are free'
+        }
         style={ORGANIC.banner}
         className={cn(
           'w-full items-center gap-2 overflow-hidden px-6 py-8 active:opacity-90',

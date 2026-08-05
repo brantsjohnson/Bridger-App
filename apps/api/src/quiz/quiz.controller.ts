@@ -23,6 +23,13 @@ export class QuizController {
     return this.quizzes.listArchived(user.id);
   }
 
+  // Registered after `current` and `archived` so Nest does not treat those
+  // words as slugs.
+  @Get(':slug')
+  getBySlug(@CurrentUser() user: AuthUser, @Param('slug') slug: string) {
+    return this.quizzes.getBySlug(user.id, slug);
+  }
+
   @Post(':slug/responses')
   saveResponse(
     @CurrentUser() user: AuthUser,

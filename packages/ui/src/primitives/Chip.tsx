@@ -11,6 +11,7 @@ import type { Accent, Tier } from '@bridger/shared';
 import { TIER_LABEL } from '@bridger/shared';
 import { ACCENTS } from '../tokens';
 import { cn } from '../lib/cn';
+import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 
 type ChipProps = {
   label: string;
@@ -19,13 +20,23 @@ type ChipProps = {
   onPress?: () => void;
   icon?: React.ReactNode;
   size?: 'sm' | 'md';
-};
+} & AnalyticsProps;
 
-export function Chip({ label, accent = 'purple', selected = false, onPress, icon, size = 'md' }: ChipProps) {
+export function Chip({
+  label,
+  accent = 'purple',
+  selected = false,
+  onPress,
+  icon,
+  size = 'md',
+  analyticsId,
+  analyticsProps
+}: ChipProps) {
   const token = ACCENTS[accent];
   const container = cn(
     'flex-row items-center gap-1.5 rounded-full',
-    size === 'sm' ? 'h-7 px-3' : 'h-9 px-4',
+    // ACCESSIBILITY: interactive chips keep a 44pt target even with compact text.
+    size === 'sm' ? 'min-h-11 px-3' : 'min-h-11 px-4',
     selected ? cn(token.bg, 'border border-transparent') : 'border border-ink-line bg-canvas-raised'
   );
   const textClasses = cn(
@@ -44,7 +55,7 @@ export function Chip({ label, accent = 'purple', selected = false, onPress, icon
   if (onPress) {
     return (
       <Pressable
-        onPress={onPress}
+        onPress={withAnalyticsPress(analyticsId, onPress, { analyticsProps })}
         accessibilityRole="button"
         accessibilityState={{ selected }}
         className={cn(container, 'active:opacity-90')}

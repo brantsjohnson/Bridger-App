@@ -8,6 +8,7 @@ import { AdminShell } from './components/AdminShell';
 import { RequireAuth } from './components/RequireAuth';
 import { CoopAnnouncements } from './pages/CoopAnnouncements';
 import { CoopMembers } from './pages/CoopMembers';
+import { CoopPortal } from './pages/CoopPortal';
 import { Delights } from './pages/Delights';
 import { HomeDefaultsPage } from './pages/HomeDefaults';
 import { Login } from './pages/Login';
@@ -39,6 +40,7 @@ export function App() {
           <Route path="/activity" element={<WeeklyActivity />} />
           <Route path="/recap" element={<WeeklyRecap />} />
           <Route path="/coop" element={<CoopAnnouncements />} />
+          <Route path="/portal" element={<CoopPortal />} />
           <Route path="/members" element={<CoopMembers />} />
           <Route path="/home-defaults" element={<HomeDefaultsPage />} />
           <Route path="/prompts" element={<ThemedPrompts />} />

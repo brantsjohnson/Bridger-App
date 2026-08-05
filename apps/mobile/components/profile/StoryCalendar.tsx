@@ -8,6 +8,7 @@
 // ============================================
 import React, { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react-native';
 import { PROFILE } from '@bridger/shared';
 import {
@@ -36,6 +37,7 @@ export function StoryCalendar({
   /** a posted day opens that day's story */
   onOpenStory?: (day: number) => void;
 }) {
+  const router = useRouter();
   const c = useThemeColors();
   // Month paging is visual-only until the archive API lands.
   const [month, setMonth] = useState('July 2026');
@@ -136,39 +138,68 @@ export function StoryCalendar({
         </View>
       </View>
 
-      {/* the storage card — honest about the free month rolling off */}
+      {/* Storage — free plan shows the bar; co-op members keep everything. */}
       <AnalyticsRegion
         analyticsId={PROFILE.stories_calendar.storage_bar}
         interactive={false}
         className="rounded-card border border-ink-line bg-surface p-4"
       >
-        <View className="flex-row items-center justify-between">
-          <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
-            Storage
-          </Text>
-          <Text className="font-sans-sb text-[12px] text-ink-soft">
-            Free month · {usedPct}% used
-          </Text>
-        </View>
-        <View className="mt-2.5">
-          <StorageBar usedPct={usedPct} />
-        </View>
-
-        {usedPct >= 100 ? (
-          <View className="mt-3">
-            <Text className="font-sans-sb text-[13px] text-ink">
-              Your free month is full. Older posts will roll off. Members keep everything.
+        {storage.plan === 'coop' ? (
+          <>
+            <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-soft">
+              Storage
             </Text>
-            <View className="mt-3">
-              <ButtonSecondary full size="sm" tone="solid">
-                Join the co-op
-              </ButtonSecondary>
-            </View>
-          </View>
+            <Text className="mt-1 font-sans-b text-[15px] text-ink">
+              Members keep everything
+            </Text>
+            <Text className="mt-1 font-sans-md text-[12px] text-ink-mute">
+              No 30-day roll-off on your story media.
+            </Text>
+          </>
         ) : (
-          <Text className="mt-2 font-sans-md text-[12px] text-ink-mute">
-            Story media older than 30 days rolls off.
-          </Text>
+          <>
+            <View className="flex-row items-center justify-between">
+              <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-soft">
+                Storage
+              </Text>
+              <Text
+                className={cn(
+                  'font-sans-b text-[12px]',
+                  usedPct >= 100 ? 'text-coral' : 'text-ink-mute'
+                )}
+              >
+                Free month · {usedPct}% used
+              </Text>
+            </View>
+            <Text className="mt-1 font-sans-b text-[15px] text-ink">Story storage</Text>
+            <View className="mt-2.5">
+              <StorageBar usedPct={usedPct} showMeta={false} />
+            </View>
+
+            {usedPct >= 100 ? (
+              <View className="mt-3">
+                <Text className="font-sans-sb text-[13px] text-ink">
+                  Your free month is full. Older posts will roll off.
+                </Text>
+                <View className="mt-3">
+                  <ButtonSecondary
+                    full
+                    size="sm"
+                    tone="solid"
+                    analyticsId={PROFILE.settings.coop}
+                    onPress={() => router.push('/coop')}
+                    accessibilityLabel="Join the co-op"
+                  >
+                    Join the co-op
+                  </ButtonSecondary>
+                </View>
+              </View>
+            ) : (
+              <Text className="mt-2 font-sans-md text-[12px] text-ink-mute">
+                Story media older than 30 days rolls off.
+              </Text>
+            )}
+          </>
         )}
       </AnalyticsRegion>
     </View>

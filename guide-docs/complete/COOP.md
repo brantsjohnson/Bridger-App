@@ -69,7 +69,8 @@ Co-op members **customize their profile** — background image, colors/vibe, ext
 
 - **One membership (annual dues) unlocks all of the above.** Recommended: **retire standalone micro-purchases** (e.g. the old $2/mo storage add-on) in favor of the single co-op story — cleaner narrative, and it avoids reintroducing the transactional feel. Storage, video, circles, etc. are **co-op benefits, not separate SKUs**.
 - Runs through `payments`; membership is recorded in `coop_memberships` (`DATA.md`).
-- **Governance lives in the co-op portal** (`COOP-PORTAL.md`) — where members steer the co-op via ideas, beta votes, mission support, and a **participatory dues vote** that informs this membership price. Public to view, member to participate.
+- **Governance lives in the co-op portal** (`complete/COOP-PORTAL.md`) — ideas, beta votes, mission support, open books + cost simulator. Display price **$24/year**. Public to view; member to participate. Vote tallies stay off the portal (admin only).
+- **Cancel is period-end.** Scheduling cancel keeps member perks until `dues_paid_through`. After that date, membership reconciles to free and story storage returns to rolling ~30 days (posts older than about a month roll off). Quiet manage screen: `/coop/portal/manage`.
 
 ---
 

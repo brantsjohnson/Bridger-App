@@ -3,17 +3,19 @@
 // Everything the Stories ("Updates") player needs: list someone's posts, load
 // their Catch-Up sheet, list/add replies, answer a poll/question, and create a
 // new post (with the 3-per-day quota). Demo mode keeps answers and new posts in
-// memory for the session. Live mode will call the stories API — same names.
+// memory for the session. Live mode calls the Nest /stories API.
 // ============================================
 import type {
   CatchUpItem,
   Reaction,
   ReactionKind,
   StoryPost,
-  ThemedPrompt
+  ThemedPrompt,
+  Tier
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
+import { uploadMedia } from '../lib/media-upload';
 import { STORY_REPLIES as CATALOG_REPLIES } from './fixtures/catalog';
 import { getStoryMedia } from './fixtures/demo-media';
 import {
@@ -48,9 +50,16 @@ export type CreatePostInput = {
   overlayText?: string;
   caption?: string;
   themeSlug?: string;
-  /** PRIVACY: concentric audience — stored for the API later; demo ignores tier filter */
+  /** PRIVACY: concentric audience — mapped to visible_to_tier on the API */
   audience?: 'close' | 'friend' | 'everyone';
   group?: string | null;
+  /**
+   * Local file uri from the camera (or a picker). Live mode uploads this into
+   * the private media bucket before calling POST /stories. Demo ignores it.
+   */
+  uri?: string;
+  /** Already-uploaded media row id (skips upload when set). */
+  mediaId?: string;
 };
 
 export type AddReplyInput = {
@@ -65,6 +74,9 @@ export type AddReplyInput = {
   videoSeconds?: number;
   parentReactionId?: string;
 };
+
+/** Wire DTO from Nest (signed URL instead of a require()'d asset). */
+type StoryPostDto = Omit<StoryPost, 'media'> & { mediaUrl?: string | null };
 
 // --- DEMO STATE: mutates across the session so answering / posting feels real ---
 let demoPosts: StoryPost[] = [...FIXTURE_POSTS];
@@ -102,9 +114,27 @@ function applyDroppedStoryMedia(authorId: string, posts: StoryPost[]): StoryPost
   });
 }
 
+/** Map composer audience to the DB tier column. */
+function audienceToTier(audience?: CreatePostInput['audience']): Tier {
+  if (audience === 'close') return 'close';
+  if (audience === 'everyone') return 'acquaintance';
+  return 'friend';
+}
+
+/** Turn a signed URL from the API into what Image / Video already accept. */
+function mapPostDto(dto: StoryPostDto): StoryPost {
+  const { mediaUrl, ...rest } = dto;
+  return {
+    ...rest,
+    accent: rest.accent ?? 'purple',
+    emoji: rest.emoji ?? (rest.type === 'video' ? '🎥' : '📸'),
+    media: mediaUrl ? { uri: mediaUrl } : undefined
+  };
+}
+
 /**
  * List that author's posts (newest last so the player advances forward).
- * PRIVACY: live API will tier-filter; demo returns all seeded posts.
+ * PRIVACY: live API tier-filters; demo returns all seeded posts.
  */
 export async function listPosts(authorId: string): Promise<StoryPost[]> {
   if (isDemoMode()) {
@@ -112,8 +142,10 @@ export async function listPosts(authorId: string): Promise<StoryPost[]> {
     const posts = demoPosts.filter((p) => p.authorId === id);
     return applyDroppedStoryMedia(id, posts);
   }
-  // TODO: GET /stories/:authorId/posts
-  return [];
+  const rows = await apiFetch<StoryPostDto[]>(
+    `/stories/${encodeURIComponent(authorId)}/posts`
+  );
+  return rows.map(mapPostDto);
 }
 
 /**
@@ -121,7 +153,7 @@ export async function listPosts(authorId: string): Promise<StoryPost[]> {
  * PRIVACY: answered rail omits poll results — callers never get POLL_RESULTS here.
  * PRIVACY / AI: week captions are user text only; never send photos to a model.
  */
-export async function getCatchUp(_authorId: string): Promise<CatchUpBundle> {
+export async function getCatchUp(authorId: string): Promise<CatchUpBundle> {
   if (isDemoMode()) {
     const live = demoCatchUp.filter((i) => !i.answeredByViewer);
     const answered = demoCatchUp.filter((i) => i.answeredByViewer);
@@ -132,12 +164,17 @@ export async function getCatchUp(_authorId: string): Promise<CatchUpBundle> {
       currently: STORY_CURRENTLY
     };
   }
-  // TODO: GET /stories/:authorId/catch-up
+  const bundle = await apiFetch<CatchUpBundle>(
+    `/stories/${encodeURIComponent(authorId)}/catch-up`
+  );
   return {
-    live: [],
-    answered: [],
-    week: [],
-    currently: STORY_CURRENTLY
+    live: bundle.live ?? [],
+    answered: bundle.answered ?? [],
+    week: (bundle.week ?? []) as WeekDay[],
+    currently: bundle.currently ?? {
+      listening: { title: '', artist: '', emoji: '💿' },
+      reading: { title: '', author: '', emoji: '📖' }
+    }
   };
 }
 
@@ -146,8 +183,9 @@ export async function listReplies(postId: string): Promise<Reaction[]> {
   if (isDemoMode()) {
     return demoReplies.filter((r) => r.postId === postId);
   }
-  // TODO: GET /stories/posts/:postId/replies
-  return [];
+  return apiFetch<Reaction[]>(
+    `/stories/posts/${encodeURIComponent(postId)}/replies`
+  );
 }
 
 /** Add a reply (text / sticker / circle-video). Demo appends in memory. */
@@ -169,13 +207,37 @@ export async function addReply(input: AddReplyInput): Promise<Reaction> {
     demoReplies = [...demoReplies, next];
     return next;
   }
-  // TODO: POST /stories/posts/:postId/replies
-  throw new Error('addReply requires the live API outside demo mode');
+
+  // Circle-video: upload the clip first, then send the media id.
+  let mediaId: string | undefined;
+  if (input.kind === 'circleVideo' && input.videoUri) {
+    mediaId = await uploadMedia(
+      input.videoUri,
+      'video',
+      `reactions/${Date.now()}`
+    );
+  }
+
+  return apiFetch<Reaction>(
+    `/stories/posts/${encodeURIComponent(input.postId)}/replies`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        kind: input.kind,
+        text: input.text,
+        stickerId: input.stickerId,
+        mediaId,
+        parentReactionId: input.parentReactionId,
+        videoSeconds: input.videoSeconds
+      })
+    }
+  );
 }
 
 /**
  * Answer a Catch-Up poll / question / event RSVP.
  * The item sinks to the answered rail; results stay hidden from the UI.
+ * Live route is a stub until polls/events ship.
  */
 export async function answerCatchUpItem(
   itemId: string,
@@ -187,7 +249,10 @@ export async function answerCatchUpItem(
     );
     return;
   }
-  // TODO: POST /stories/catch-up/:itemId/answer
+  await apiFetch(`/stories/catch-up/${encodeURIComponent(itemId)}/answer`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
 }
 
 /** Themed capture squares. */
@@ -205,8 +270,7 @@ export async function getPostQuota(): Promise<{ left: number; cap: number }> {
   if (isDemoMode()) {
     return { left: demoPostsLeft, cap: DAILY_POST_CAP };
   }
-  // TODO: GET /stories/quota
-  return { left: 0, cap: DAILY_POST_CAP };
+  return apiFetch<{ left: number; cap: number }>('/stories/quota');
 }
 
 /**
@@ -228,14 +292,36 @@ export async function createPost(input: CreatePostInput): Promise<StoryPost> {
       overlayText: input.overlayText,
       caption: input.caption,
       themeSlug: input.themeSlug,
-      createdAt: 'now'
+      createdAt: 'now',
+      media: input.uri ? { uri: input.uri } : undefined
     };
     demoPosts = [...demoPosts, next];
     demoPostsLeft = Math.max(0, demoPostsLeft - 1);
     return next;
   }
-  // TODO: POST /stories
-  throw new Error('createPost requires the live API outside demo mode');
+
+  // Upload local capture bytes when the composer handed us a file uri.
+  let mediaId = input.mediaId;
+  if (!mediaId && input.uri) {
+    mediaId = await uploadMedia(
+      input.uri,
+      input.type,
+      `stories/tmp-${Date.now()}`
+    );
+  }
+
+  const caption = input.caption ?? input.overlayText;
+  const dto = await apiFetch<StoryPostDto>('/stories', {
+    method: 'POST',
+    body: JSON.stringify({
+      type: input.type,
+      mediaId,
+      caption,
+      themeSlug: input.themeSlug,
+      visibleToTier: audienceToTier(input.audience)
+    })
+  });
+  return mapPostDto(dto);
 }
 
 /**

@@ -17,13 +17,13 @@ Before the profile can be filled, a **required marketing screen/video** plays (s
 A vertical scroll of visual modules — the same composition wherever a profile is shown:
 
 - **Header** — photo, display name, a line (e.g. "Denver · night owl"), profile song.
-- **Currently** — a **Listening** chip (connected **Spotify** — a track they're liking, "most played," or chosen) and a **Reading** chip (current book). Feeds the story swipe-up "Currently" (see `STORIES.md`).
+- **Currently** — a **Listening** chip (connected **Spotify** — a track they're liking, "most played," or chosen) and a **Reading** chip (current book). Feeds the story swipe-up "Currently" (see `STORIES.md`). On the Profile card, song + book also sit under the name in the header; the filled Currently panel is hidden when those are already shown so it does not duplicate. The stale check-in nudge still appears when it's time to update. The panel stays a fixed dark surface (never theme-flipped) so type stays readable.
 - **Hobbies** — every hobby has a **follow-up answer** (see `PROFILE-QUESTIONS.md`). The widget has **two contained views you swipe between** (a page indicator shows which):
   - **Page 1 — clean:** just the colorful hobby chips. **Tapping a chip drops down its follow-up answer** inline (a quick peek), then collapses. Out of the way by default.
   - **Page 2 — answers:** swipe within the widget to a list of **every hobby + its answer**, scrollable **inside the widget** (contained — it never blows out the profile).
   So a viewer can glance at the chips, tap one for a single answer, or swipe to read them all — their choice, all in one tidy widget.
 - **Places traveled** — a **two-view module you swipe between** (like the hobbies widget), with a page indicator:
-  - **Map view** — a **map with pins** for everywhere they've been (clean/neoclassical map per `DESIGN.md`); tap a pin for the place/note.
+  - **Map view** — a **stylized world map** (SVG country outlines, clean/neoclassical per `DESIGN.md`). Tagged countries get a soft coral fill; coral **pins** sit at each place's geocoded lat/lng. Tap a pin for the place/note.
   - **List view** — swipe within the module to a scrollable list of places (+ year/note), contained inside the widget.
   - **Co-op: photos per place.** Co-op members can attach **photos** to a place. And the payoff — **when you and a friend have both been somewhere, your photos from that place surface for both of you** in "In common" ("You've both been to France" → your photo + theirs). An instant "wait, you were there too?" moment. (Photos are a co-op expression feature — see `COOP.md`.)
 - **This or that** — shown as **two columns in rows** (not a grid of squares): each row is a pair (Coffee | Tea, Mountains | Beach), with the person's **chosen side highlighted** and the other **dimmed**, so you read "coffee, *not* tea" at a glance. Rows are **tappable** (to answer on your own; "both" lights up *both* sides). Choice is **this / that / both**.
@@ -71,10 +71,12 @@ Filling happens through the bite-size modules (§3).
 
 ## 3 · Friend profile (`person/[id]`)
 
-What you see when you tap into a friend. Tabs: **About them · In common · Inside Jokes · Bucket List** (plus your private note).
+What you see when you tap into a friend. Tabs: **About them · In common · Inside Jokes · Bucket List · Notes** (Notes is your private scratchpad — never part of their shared card).
+
+**Header identity block:** `{Name} · {N} mutuals` on one line (name bold; mutuals muted and tappable). Under that, **city (pin icon) · song · book** as one quiet details group. Tap **mutuals** → **In common** tab, which leads with faces of people you both know, then the overlap list. If they have a live update, their **photo shows a story ring** (circle color) — tap opens the story viewer (same as Friends roster / Home).
 
 - **About them** = the shared card, **filtered by your tier** with them — you only see fields they've shared with your circle. Not editable.
-- **In common** = the re-openable **connection reveal**: strongest shared thing, shared hobbies, matching this-or-that answers, places you've both been, matching quiz results. **Shared hobbies show *both* follow-up answers** — "You both run" → *your* answer and *their* answer, side by side — so there's an instant conversation starter, not just a matched label. This is the "what you have in common" view made permanent and re-accessible (from `DISCOVER.md`). Own profiles don't have this tab.
+- **In common** = mutual friends (faces) + the re-openable **connection reveal**: strongest shared thing, shared hobbies, matching this-or-that answers, places you've both been, matching quiz results. **Shared hobbies show *both* follow-up answers** — "You both run" → *your* answer and *their* answer, side by side — so there's an instant conversation starter, not just a matched label. This is the "what you have in common" view made permanent and re-accessible (from `DISCOVER.md`). Own profiles don't have this tab.
 - **Inside Jokes** = their wall.
 - **Bucket List** = their public bucket-list items (private ones stay hidden).
 - **How you met** = a small memory on their profile — "Met at Game Night · Mar 3 · via Priya," or "Met in RiNo, Denver," or "Met through Priya." Captured from the connection context (event / mutual friend / coarse place). The place is **opt-in and coarse** (see `DATA.md`), visible only to the two of you, and **either can edit or remove it**.
@@ -122,6 +124,7 @@ A **calendar** of your posted stories — not a grid of squares. Each date shows
 
 - A **subtle storage bar** lives at the **bottom of the calendar** — how much of the month you've used vs. what you have, with a quiet "Upgrade" link. It's ambient, not a nag.
 - **Everyone gets a rolling free month.** Story media older than 30 days is **deleted** (rolling) to keep co-op costs low.
+- **At 24 hours**, a post leaves the live Home tray and **lands in this calendar archive** (still watchable by you). Friends can no longer open it. See `STORIES.md` lifecycle.
 - The **buy prompt only appears once the free month is fully used (100%)** — that's when the bar surfaces the choice: **join the co-op** (unlimited storage is a membership benefit — standalone storage SKUs are retired per `COOP.md`), otherwise old posts keep rolling off. No upfront banner nagging people who haven't hit the limit.
 - Retention applies to **story media** (the expensive part). Lighter data — **quiz results, events attended, about-you fields, inside jokes** — persists regardless.
 
@@ -136,7 +139,7 @@ The **Inside Jokes** wall: colorful text sticky-notes — inside jokes, one-line
 Mechanics:
 - A sticky note is a **quote/one-liner**. The **quoted person's profile picture** sits on the note (with their name) — so you see *whose* line it is at a glance.
 - **Tap a note** to reveal its details: **who posted it** ("Posted by Sam"), **at what event / where**, and **the date**. (The face is the quoted person; the detail says who created it.)
-- **Adding is inline and light:** a small **"+" tile among the notes** — no big menu. The **null state is an inviting container** — an empty dashed note that reads **"Add an Inside Joke."**
+- **Adding is inline and light:** an **"Add an Inside Joke" / "+" tile at the top of the grid** so it's always reachable — no big menu. The **null state** is that same inviting container when the wall is empty.
 - **Tagging drives sharing:** a note **shares to the people you tagged + everyone at the tagged event**, and tagging a person **cross-posts it to their wall**.
 - **Photo tagging** works the same way: people tagged in photos surface on their profile.
 - They carry visibility like other fields (default: Friends), so the wall respects tiers.
@@ -166,18 +169,22 @@ The bucket list is a **dedicated tab** on the profile (own and friend), not a ca
 - Each item is **written solo** ("Learn to surf") or **tags friends** ("Hike the Inca Trail · with Sam & Priya"), and each is **public or private** (private = just them; public = friends per tier — a friend's tab shows only public items).
 - Items can be **checked off** when done. A just-checked item stays in place (strikethrough) until you leave the tab and come back — then it lives under a **Completed** section at the bottom.
 - **Add** — a circular "+" next to the "Bucket List" title at the top of the tab (not a dashed row at the bottom); empty lists still invite you to add via that same control.
+- **Edit** — an Edit / Done control sits beside the "+". In Edit mode, tap a row to change its text / friends / privacy, or tap the trash to delete. You can also **swipe left** on any row (Edit on or off) to reveal Delete. Deletes ask for confirmation and are hard-removed.
 - Tagging a friend puts it on the radar as something to do *together* (and can surface in In-common when you share a want).
 
 ---
 
 ## Related: notes & reminders on a friend's profile
 
-On someone else's `person/[id]`, you can keep **private notes & reminders** — visible only to you, never shown to them or anyone else. Each entry is one of two kinds:
+On someone else's `person/[id]`, you can keep **private notes & reminders** — visible only to you, never shown to them or anyone else. They live under the **Notes** tab (not mixed into About them), so the section never looks like something on their public profile.
+
+Each entry is one of three kinds:
 
 - **Note (text)** — a little thing to remember: "loves obscure horror films," "allergic to peanuts."
-- **Date** — a date you care about: "graduation · May 5," "work anniversary." A date entry **reminds you on Home** (a "Coming up" card in Home's announcements carousel — `HOME.md`) **1 week before and again on the day**.
+- **Date** — a date you care about: "graduation · May 5," "work anniversary." A date entry **reminds you on Home** (Coming up — `HOME.md`) **1 week before and again on the day**, and can push as `custom_date` (`NOTIFICATIONS.md`).
+- **Check in** — a soft "nudge me sometimes" with **no calendar date**. Toggle cadence **weekly / every 2 weeks / monthly** (default every 2 weeks). Fires as `friend_check_in` (push + Home Coming up card) and deep-links back to their profile. Never shown to them.
 
-Add via a small Text / Date toggle. These are your own scratchpad on that person (author-only, private), editable and deletable anytime.
+Add via a **Note | Date | Check in** toggle. These are your own scratchpad on that person (author-only, private), editable and deletable anytime. Never used for matching/AI; never in analytics as content.
 
 **Birthdays** are separate: a birthday is the *friend's own* shared attribute (from their profile), so it drives the birthday reminders on Home and the festive row in Friends automatically — you don't add it as a private note.
 
@@ -213,9 +220,12 @@ interface StorageState {
 interface FriendNote {                 // private, author-only
   id: string;
   personId: string;
-  kind: 'text' | 'date';
-  text?: string;                       // "loves horror movies", or the date's label ("Graduation")
-  date?: string;                       // for kind 'date' → reminds 1 week before + day-of, on Home
+  kind: 'text' | 'date' | 'check_in';
+  body: string;                        // "loves horror movies", date label, or optional check-in hint
+  date?: string;                       // kind 'date' → reminds 1 week before + day-of, on Home
+  remind?: boolean;                    // date notes
+  cadence?: 'week' | 'biweek' | 'month'; // check_in only
+  nextRemindAt?: string;               // check_in only — next soft nudge
 }
 ```
 
@@ -247,9 +257,9 @@ interface FriendNote {                 // private, author-only
 ## Acceptance criteria
 
 - [ ] Own profile and friend profile render the **same shared card**; the difference is edit access, tier filtering, and which tabs appear.
-- [ ] The card is a Hinge-style scroll of modules: header, currently (listening/reading), hobbies, **places-traveled map with pins**, **this-or-that grid**, about me, favs, inside jokes.
+- [ ] The card is a Hinge-style scroll of modules: header, currently (listening/reading), hobbies, **places-traveled world map with country fills + pins**, **this-or-that grid**, about me, favs, inside jokes.
 - [ ] Every hobby has a follow-up answer; the hobbies widget has a clean chips view (tap a chip → drop-down its answer) and a swipe-to page listing every hobby + answer, scrollable within the widget.
-- [ ] Places traveled is a two-view module (map with pins / list) you swipe between within the widget.
+- [ ] Places traveled is a two-view module (stylized SVG world map with country fills + lat/lng pins / list) you swipe between within the widget.
 - [ ] Co-op members can add photos per place; shared places surface both people's photos in the In-common view.
 - [ ] This-or-that renders as two columns in rows with the chosen side highlighted and the other dimmed, tappable; answers can be this, that, or both.
 - [ ] All profile modules use the baseline Typeform flow (one question per screen), matching onboarding.
@@ -258,7 +268,8 @@ interface FriendNote {                 // private, author-only
 - [ ] Every category holds an **unlimited** number of items (one `attributes` row each, each independently visible); the model imposes no per-category cap.
 - [ ] Long sections display calmly: collapsible, item counts, grouped sub-categories where relevant, and show-all/show-less.
 - [ ] Edit/manage surfaces **all** sections at once (empty ones as "add"), each item with its own visibility control, and the "View as" filter works in edit too.
-- [ ] Friend profile (`person/[id]`): tabs About them / In common / Inside Jokes / Bucket List (public items only), plus a private note; no Stories or Settings.
+- [ ] Friend profile (`person/[id]`): tabs About them / In common / Inside Jokes / Bucket List / Notes; Notes holds private Note / Date / Check in (author-only); no Stories or Settings.
+- [ ] Private notes are author-only (friend never sees them); date notes surface on Home Coming up; check-in nudges fire on cadence without a calendar date.
 - [ ] The **In common** tab (friend profiles only) shows strongest shared thing, shared hobbies, matching this-or-that answers, shared places, and matching quiz results — computed from attribute overlap, tier-respecting.
 - [ ] A mandatory, non-skippable intro screen plays once before the first fill, covering group-based sharing and delete-anytime.
 - [ ] Filling starts with basics + hobbies (hobbies near the top, quick to fill), then the rest; all optional, any order.
@@ -272,7 +283,7 @@ interface FriendNote {                 // private, author-only
 - [ ] Stories renders as a **calendar**: dot or thumbnail per posted day; tapping a day with a post opens the full story player (own profile only).
 - [ ] A subtle storage bar sits at the bottom of the calendar; the join-the-co-op prompt appears only once the free month is 100% used (no standalone storage SKU — see `COOP.md`).
 - [ ] Story media older than 30 days is deleted (rolling); quiz results, events, about-fields, and inside jokes persist.
-- [ ] The Inside Jokes wall uses a single filter (All / About you / By you), not two tabs; each sticky note shows the quoted person's profile photo and, on tap, who posted it + event/place + date. Adding is a "+" tile among the notes, with an "Add an Inside Joke" container as the null state; tagging shares to tagged people + event attendees and cross-posts.
+- [ ] The Inside Jokes wall uses a single filter (All / About you / By you), not two tabs; each sticky note shows the quoted person's profile photo and, on tap, who posted it + event/place + date. Adding is an "Add an Inside Joke" / "+" tile **at the top of the grid** (and the null state when empty); tagging shares to tagged people + event attendees and cross-posts.
 - [ ] Bucket list is its own profile tab: title + circular "+" to add, items written solo or friend-tagged, each public/private, checkable; completed items move to a Completed section only after you leave and return.
 - [ ] New inside jokes also surface on Home (a few recent; fall back to older "moments" when none are new).
 - [ ] A private, author-only entry (text note or date) can be added on any friend's profile; a date reminds you on Home 1 week before and on the day.

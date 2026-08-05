@@ -101,8 +101,9 @@ analytics_events id · analytics_id · action · screen · section · element ·
 tiers            user_id⟶users · other_id⟶users · tier(close|friend|acquaintance)   [per-viewer]
 invite_links     token · owner_id⟶users · expires_at
 qr_tokens        token · owner_id⟶users · expires_at
-friend_notes     id · author_id⟶users · person_id⟶users · kind(text|date)
-                 · text · date · remind(1wk+dayOf for dates)          [private, author-only]
+friend_notes     id · author_id⟶users · person_id⟶users · kind(text|date|check_in)
+                 · text · date · remind(1wk+dayOf for dates)
+                 · cadence(week|biweek|month) · next_remind_at        [private, author-only; never matching/AI]
 ```
 
 ### Content
@@ -110,7 +111,8 @@ friend_notes     id · author_id⟶users · person_id⟶users · kind(text|date)
 media            id · owner_id⟶users · storage_path · kind · created_at · expires_at   [retention]
 stories          id · author_id⟶users · type(photo|video) · media_id⟶media · update_text
                  · transcript(video speech→text) · theme_slug · visible_to_tier
-                 · created_at · expires_at(30d rolling)
+                 · created_at · live_until(created_at+24h → Profile archive)
+                 · expires_at(30d free / null co-op)
 day_summaries    author_id⟶users · date · text(AI, from update_text + transcript ONLY)
                  · media_refs · visible_to_tier · built_at     [pre-generated at post time]
 reactions        id · story_id⟶stories · author_id⟶users · kind(circleVideo|text|sticker)
@@ -143,7 +145,9 @@ person_summaries   user_id⟶users · summary_text · updated_at · maybe_stale(
 
 ### Membership & payments
 ```
-coop_memberships   user_id⟶users · since · active · dues_paid_through   [unlocks all co-op benefits, see COOP.md]
+coop_memberships   user_id⟶users · since · active · dues_paid_through
+                   · cancel_at_period_end(bool) · cancelled_at(timestamptz?)
+                   [unlocks all co-op benefits, see COOP.md; cancel_at_period_end keeps perks until dues_paid_through]
 plan_state         user_id⟶users · plan(free|coop) · storage(rolling30|unlimited) · used_bytes
                    · circle_caps(free 10/25/∞) · video(bool) · summary(weekly|daily) · event_cap(35|100)
 payments           id · user_id⟶users · kind(coop_dues) · amount · provider_ref   [one membership; no à-la-carte SKUs]

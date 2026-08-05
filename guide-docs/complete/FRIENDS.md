@@ -24,8 +24,8 @@ Friends is intentionally the simplest tab: it is the roster of people you're **a
 │  ⌕ Search  (dormant · off)  │  Search bar slot — flagged off, not rendered now
 ├─────────────────────────────┤
 │  Close friends · 3          │  Tier section (header + count)
-│  ◐ Jordan               ⠿   │  row: avatar · name · drag handle
-│  ◐ Sam                  ⠿   │
+│  ◐ Jordan · song / book ⠿   │  row: avatar · name · vibe line · handle
+│  ◐ Sam · song / book    ⠿   │  (song of the week, else book — not mutuals)
 │  ◐ Priya                ⠿   │
 ├─────────────────────────────┤
 │  Friends · 3                │
@@ -103,8 +103,11 @@ interface FriendRow {
   personId: string;
   name: string;
   avatarUrl: string;   // filtered; placeholder if none
-  birthdayToday?: boolean;   // drives the festive cake + sparkle row treatment
-  // no follower counts, no "friends since" leaderboards
+  birthdayToday?: boolean;   // drives the festive cake row treatment
+  /** Song of the week (preferred) or book they're reading — roster subtitle */
+  song?: { title: string; artist: string };
+  book?: { title: string; author: string };
+  // no mutual counts, follower counts, or "friends since" on the roster
 }
 ```
 
@@ -154,7 +157,7 @@ Net effect: the quiz is both a fun artifact and the on-ramp, and the payoff surf
 - [ ] A row can be moved to another tier via drag handle or long-press menu, writing through `tiers`.
 - [ ] Tapping a row opens that person's profile.
 - [ ] The `Add` sheet shows the user's QR code directly (no "show QR" tap), plus share-link and scan-QR as live instant paths.
-- [ ] A search bar exists at the top of the page behind `searchEnabled`; when false it is not rendered and shows no "coming soon" label.
+- [ ] Roster rows show song of the week (or book they're reading), never mutual counts; mutuals live on the friend profile → In common.
 - [ ] The search backend/route is stubbed and ready so the flag is the only switch needed to enable it.
 - [ ] No follower counts or "friends since" rankings appear anywhere.
 - [ ] On a friend's birthday, their row shows a festive cake + sparkle treatment (only if they've shared their birthday with your tier).

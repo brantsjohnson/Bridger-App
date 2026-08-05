@@ -113,7 +113,9 @@ export class ActivityService {
       throw new BadRequestException('This activity is not active');
     }
 
-    // emoji/caption have no DB columns yet; we only persist author + optional media.
+    // TODO: activity_posts needs caption / emoji / visible_to_tier columns
+    // (HOME.md audience + collage captions). Until then we only persist
+    // author + optional media; clients keep caption/emoji in demo session memory.
     const { data: post, error } = await this.supabase.admin
       .from('activity_posts')
       .insert({

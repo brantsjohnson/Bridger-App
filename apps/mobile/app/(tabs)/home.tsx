@@ -1,12 +1,12 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Home tab — ported from Magic Patterns. Announcements, stories, editable
-// widgets. Data comes from hooks (demo fixtures or live API) so this screen
-// is the real product either way. Touch Grass *send* lives on Events.
-// Analytics: opens the home surface; child components carry HOME.* ids.
+// The Home tab — ported from Magic Patterns. Announcements (including friend
+// Touch Grass signals you can answer), stories, and editable widgets. Touch
+// Grass *send* lives on Events; the Friend Pod lives on the Friends tab.
+// Analytics: home surface; child components carry HOME.* ids.
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { type Href, useRouter } from 'expo-router';
 import {
   ButtonSecondary,
@@ -27,6 +27,8 @@ import { AddStoryTile, StoryTile } from '../../components/StoryTile';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { ColdStart } from '../../components/ColdStart';
 import { GrassSignalSheet } from '../../components/GrassSignalSheet';
+import { hrefForCoopAnnouncement } from '../../lib/coop-links';
+import { pathForNotification } from '../../lib/notification-routes';
 import {
   Announcement,
   AnnouncementsCarousel,
@@ -45,7 +47,7 @@ import { AskSheet } from '../../components/home/AskSheet';
 import { ComingUpWidget } from '../../components/home/ComingUpWidget';
 import { FreshnessCard } from '../../components/home/FreshnessCard';
 import { StoryRepliesRow } from '../../components/home/StoryRepliesRow';
-import { getHomeLayout, saveHomeLayout } from '../../data/feed';
+import { getHomeLayout, saveHomeLayout, clearStoryReplyNotifications } from '../../data/feed';
 import { startThreadWith } from '../../data/messages';
 import { isDemoMode } from '../../lib/demo';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
@@ -115,6 +117,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const feed = useHomeFeed();
   const { events } = useEventsFeed();
+  // Answer path only — send button stays on Events.
   const { signals, onJoin, onDismiss } = useTouchGrass();
 
   const { empty, member } = feed;
@@ -228,7 +231,15 @@ export default function HomeScreen() {
           content: (
             <CoopAnnouncementCard
               announcement={a}
-              onOpen={() => Alert.alert('Co-op', 'Co-op portal ships next.')}
+              onOpen={() => {
+                // Fake demo copy is fine; the tap must open the real portal.
+                const dest = hrefForCoopAnnouncement(a);
+                if (dest.kind === 'external') {
+                  void Linking.openURL(dest.href);
+                  return;
+                }
+                router.push(dest.href as Href);
+              }}
               onDismiss={() => setDismissed((d) => [...d, a.id])}
             />
           )
@@ -265,14 +276,23 @@ export default function HomeScreen() {
             }
           />
         ) : (
-          <Text className="font-sans-sb text-[13px] text-ink-mute">Nothing this week yet.</Text>
+          <Text className="font-sans-sb text-[13px] text-ink-mute">
+            Nothing this week yet.
+          </Text>
         );
       case 'alerts':
         return (
           <AlertsWidget
             size={widget.size}
             rows={feed.notifications}
-            onOpen={() => Alert.alert('Notifications', 'Full notifications page ships next.')}
+            onOpen={(n) => {
+              trackProduct('notification_opened', { kind: n.kind, source: 'preview' });
+              router.push(pathForNotification(n) as Href);
+            }}
+            onSeeAll={() => {
+              trackProduct('notification_see_all');
+              router.push('/notifications' as Href);
+            }}
           />
         );
       case 'comingup':
@@ -298,7 +318,7 @@ export default function HomeScreen() {
           <ActivityWidget
             size={widget.size}
             activity={feed.weeklyActivity}
-            onOpen={() => Alert.alert('Activity', 'Weekly activity collage ships next.')}
+            onOpen={() => router.push('/activity' as Href)}
           />
         ) : null;
       case 'quiz':
@@ -316,7 +336,9 @@ export default function HomeScreen() {
           <CoopWidget
             size={widget.size}
             member={member}
-            onOpen={() => Alert.alert('Co-op', 'Co-op portal ships next.')}
+            onOpen={() =>
+              router.push((member ? '/coop/portal' : '/coop') as Href)
+            }
           />
         );
     }
@@ -386,7 +408,7 @@ export default function HomeScreen() {
                 story={feed.myStory}
                 mine
                 onOpen={() => {
-                  // Tray order so finishing one story opens the next friend.
+                  // From you forward through the tray; finish one → next friend.
                   const seq = [
                     'me',
                     ...(empty ? [] : feed.stories).map((s) => s.authorId)
@@ -401,10 +423,13 @@ export default function HomeScreen() {
                 key={s.id}
                 story={s}
                 onOpen={() => {
-                  const seq = [
+                  // Start at the friend you tapped, then keep going down the tray.
+                  const ids = [
                     ...(feed.myStory ? ['me'] : []),
                     ...feed.stories.map((x) => x.authorId)
-                  ].join(',');
+                  ];
+                  const at = ids.indexOf(s.authorId);
+                  const seq = (at >= 0 ? ids.slice(at) : ids).join(',');
                   router.push(`/story/${s.authorId}?sequence=${seq}`);
                 }}
               />
@@ -417,7 +442,16 @@ export default function HomeScreen() {
           ) : (
             <StoryRepliesRow
               replies={feed.replies}
-              onOpen={() => router.push('/story/me?comments=1')}
+              onOpenHeader={() => {
+                // Header = open the whole inbox → clear every waiting chip.
+                clearStoryReplyNotifications();
+                router.push('/story/me?comments=1');
+              }}
+              onOpenChip={(personId) => {
+                // One chip → only that person leaves the row (NOTIFICATIONS.md).
+                clearStoryReplyNotifications({ personId });
+                router.push(`/story/me?comments=1&replyAuthor=${personId}`);
+              }}
             />
           )}
         </View>

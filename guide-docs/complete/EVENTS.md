@@ -56,7 +56,7 @@ There is **no** global "Bring" field — use Assignments on step 3 instead.
 
 **Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it, then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`) — never the title, bio, or address text — and route to the new event page.
 
-After creating, the host lands on the **event page** where they can **Share** (native share sheet) or **Copy link**. If friends-invite-friends is on, share is emphasized so guests can invite within the cap.
+After creating, the host lands on the **event page** where they can **Share** (one action: the native share sheet, which covers AirDrop, Messages, and copy link). If friends-invite-friends is on, share is emphasized so guests can invite within the cap. Guests never see the guest cap or invited totals on this page.
 
 ### Guest cap (free vs co-op)
 
@@ -75,24 +75,25 @@ The detail page leads with **clear, complete event info** (see mockup): title, *
 - **Meaningful, tappable counts — never a raw invited/going total.** An event isn't a popularity readout. A guest sees two numbers that matter *to them*, and **each is tappable**:
   - **"{N} going"** — people **you know** going → tap to see **who's coming** (the ones you know).
   - **"{N} to meet"** — attendees **Bridger suggests you'd click with** → tap to see them (routes to Discover).
-- **Share** — a share button opens the **native iOS/Android share sheet**: share the event with friends (in-app) or copy a **link**.
+- **Share** — one control in the **top-right header** (iOS-style share icon) opens the **native iOS/Android share sheet** (Messages, AirDrop, Copy link). There is no separate Copy link button and **no Share at the bottom** of the page.
 - **RSVP** — Going / Can't make it.
 - **Allergy share (opt-in).** "Share any food allergies with [host]?" Food allergies are **sensitive**: collected only if the guest chooses, visible **only to the host**, never to other guests, never used for matching. Opt-in every time — not a stored default.
-- **Add to calendar** — one tap to Google / Apple Calendar with time + place prefilled.
-- **Who you should meet** — the attendees behind the "to meet" count; each card shows the shared thread ("you both love climbing"); tapping routes to **Discover**.
+- **Add to calendar** — one tap opens Google Calendar (prefilled) or shares an `.ics` for Apple Calendar.
+- **Who you should meet** — people at the event (invited or going) Bridger suggests you'd click with; each card shows the shared thread; tapping routes to **Discover**.
+- **Assignments** — public list. Tap **Open** (or a name) for a colorful dropdown to assign / reassign / leave open. No "Snag" label. Only the assignee checks an item off; hosts can see done state.
 
 ---
 
 ## 4 · Host view (editable)
 
-The host's own view of their event — and it's **fully editable in place** (an **Edit** control; you can change every detail after creating, which you currently can't). It shows:
+The host's own view of their event — **fully editable in place** via **Edit / Done** in the header (same page unlocks title, bio, when, where, chip-in, friends-invite, reminders, assignments). It shows:
 
-- **Tappable counts** — **"{N} going"** (tap → who's coming) and **"{N} invited"** (tap → who you invited). The host *does* see the invited list — that's functional planning, not the vanity number hidden from guests.
-- **Co-host** — add a **co-host** (they can edit and manage the event too). Shown at the top with the host.
-- **Chip-in (top of the page).** If the host wants help covering costs, they set **an amount** ("$8 suggested · for tacos") and **the method + handle** — e.g. **Venmo @maya-r**, **Cash App $mayar**, or "send to {person}" — so guests know exactly *how much* and *where to send it*. It's a plain link/handle the app never processes.
-- **Introductions** — who's being introduced to whom and why ("Sam & Alex · both climbers"), from `matching` over the attendee set.
-- **Allergies** — aggregated from guests who opted to share. **The "Only you can see this" note sits *under the Allergies header*, not inside the box** (it labels the section, not the data).
-- **Reminders** — automatic, toggleable: **2 days before** and **2 hours before**, via `notifications`.
+- **Tappable counts** — **"{N} going"** (→ people sheet), **"{N} invited"** (→ people sheet), and when friends-can-invite is on **"{N} brought"** (guest-of-guest / bring-a-friend). Invited and brought are host-only planning tools — never vanity for guests.
+- **Co-host** — shown at the top with the host; can edit and manage too.
+- **Chip-in.** Amount + method + handle (Venmo / Cash App / person). Plain link the app never processes.
+- **Introductions** — who's being introduced to whom and why ("Sam & Alex · both climbers"), from `matching` over **invited + going**. Suggested people can get an `event_introduction` notification.
+- **Allergies** — aggregated from guests who opted to share. **The "Only you can see this" note sits *under the Allergies header*, not inside the box**.
+- **Reminders** — toggleable in Edit: **2 days before** and **2 hours before**, via `notifications`.
 
 ---
 
@@ -175,12 +176,12 @@ interface RsvpInput {
 - [ ] Create surfaces friend-of-friend suggested invites from `matching`.
 - [ ] Hosting is free (never gated); the guest cap is 35 for free members and 100 for co-op members (see `COOP.md`).
 - [ ] The chip-in handle is a stored link only — never processed by the app (no Venmo/Cash App OAuth).
-- [ ] Assignments are public; assign ≠ done; only the assignee can check off; open items can be snagged; releasing notifies the host.
+- [ ] Assignments are public; assign ≠ done; only the assignee can check off; open items use an assign dropdown (no "Snag" label); leave-open / reassign notifies the host.
 - [ ] Invitee view offers Going / Can't, add-to-calendar (Google/Apple, prefilled), and who-you-should-meet cards that route to Discover.
 - [ ] Food-allergy sharing is opt-in per event, visible only to the host, and never used for matching.
 - [ ] Guests see only "{N} going" (people they know) and "{N} to meet" — never a raw invited/going total — and both counts are tappable.
-- [ ] The event detail clearly shows host (+ co-host), date/time, full address (maps link), a bio/description, bring, and the chip-in line; a Share button opens the native iOS/Android share sheet (share with friends or copy link).
-- [ ] The host view is fully editable in place; it shows tappable "{N} going" (→ who's coming) and "{N} invited" (→ who you invited).
+- [ ] The event detail clearly shows host (+ co-host) with real profile photos when available, date/time, full address (maps link), a bio/description, assignments, and the chip-in line; one header Share control (iOS-style icon) opens the native share sheet. Guests never see invited totals or guest caps. Host and guest views share the same layout.
+- [ ] The host view is fully editable in place (Edit / Done); it shows tappable "{N} going", "{N} invited", and when enabled "{N} brought" (bring-a-friend).
 - [ ] The host can add a co-host who can also edit/manage.
 - [ ] The chip-in sits at the top and includes an amount and a method + handle (Venmo / Cash App / person); the app never processes it.
 - [ ] The Allergies "Only you can see this" note sits under the header, not inside the box.

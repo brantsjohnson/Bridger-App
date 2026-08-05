@@ -12,6 +12,8 @@ type Member = {
   userId: string;
   since: string;
   duesPaidThrough?: string;
+  cancelAtPeriodEnd?: boolean;
+  cancelledAt?: string;
 };
 
 type MembersResponse = {
@@ -65,7 +67,8 @@ export function CoopMembers() {
                 <tr className="border-b border-line text-muted">
                   <th className="py-2 pr-3 font-medium">User id</th>
                   <th className="py-2 pr-3 font-medium">Since</th>
-                  <th className="py-2 font-medium">Dues through</th>
+                  <th className="py-2 pr-3 font-medium">Dues through</th>
+                  <th className="py-2 font-medium">Cancel</th>
                 </tr>
               </thead>
               <tbody>
@@ -80,10 +83,13 @@ export function CoopMembers() {
                     <td className="py-3 pr-3 text-muted">
                       {m.since ? new Date(m.since).toLocaleDateString() : 'n/a'}
                     </td>
-                    <td className="py-3 text-muted">
+                    <td className="py-3 pr-3 text-muted">
                       {m.duesPaidThrough
                         ? new Date(m.duesPaidThrough).toLocaleDateString()
                         : 'n/a'}
+                    </td>
+                    <td className="py-3 text-muted">
+                      {m.cancelAtPeriodEnd ? 'At period end' : '—'}
                     </td>
                   </tr>
                 ))}

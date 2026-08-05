@@ -160,7 +160,9 @@ export const HOME = {
     row: aid('home', 'notifications_preview', 'row'),
     see_all: aid('home', 'notifications_preview', 'see_all'),
     section_header: aid('home', 'notifications_preview', 'section_header'),
-    info: aid('home', 'notifications_preview', 'info')
+    info: aid('home', 'notifications_preview', 'info'),
+    /** Dead-click target for the "All caught up!" null state. */
+    empty_body: aid('home', 'notifications_preview', 'empty_body')
   },
   inside_jokes_strip: {
     note: aid('home', 'inside_jokes_strip', 'note'),
@@ -432,6 +434,8 @@ export const PROFILE = {
   header: {
     avatar: aid('profile', 'header', 'avatar'),
     name: aid('profile', 'header', 'name'),
+    /** Friend profiles: "N mutuals" beside the name → In common tab */
+    mutuals: aid('profile', 'header', 'mutuals'),
     song: aid('profile', 'header', 'song'),
     overflow: aid('profile', 'header', 'overflow'),
     header_bg: aid('profile', 'header', 'header_bg')
@@ -441,6 +445,7 @@ export const PROFILE = {
     hobbies_widget: aid('profile', 'card', 'hobbies_widget'),
     this_or_that_row: aid('profile', 'card', 'this_or_that_row'),
     places_map: aid('profile', 'card', 'places_map'),
+    places_pin: aid('profile', 'card', 'places_pin'),
     about_me: aid('profile', 'card', 'about_me'),
     favs: aid('profile', 'card', 'favs'),
     /** empty-state CTAs that open a fill module */
@@ -455,7 +460,9 @@ export const PROFILE = {
   module: {
     audience_set_all: aid('profile', 'module', 'audience_set_all'),
     audience_row: aid('profile', 'module', 'audience_row'),
-    hobby_select: aid('profile', 'module', 'hobby_select')
+    hobby_select: aid('profile', 'module', 'hobby_select'),
+    place_search: aid('profile', 'module', 'place_search'),
+    place_result: aid('profile', 'module', 'place_result')
   },
   stories_calendar: {
     day: aid('profile', 'stories_calendar', 'day'),
@@ -471,7 +478,17 @@ export const PROFILE = {
   bucket_list: {
     item: aid('profile', 'bucket_list', 'item'),
     add: aid('profile', 'bucket_list', 'add'),
-    check_off: aid('profile', 'bucket_list', 'check_off')
+    check_off: aid('profile', 'bucket_list', 'check_off'),
+    /** Toggle Edit / Done next to the + */
+    edit: aid('profile', 'bucket_list', 'edit'),
+    /** Open the edit sheet for one row (Edit mode) */
+    edit_item: aid('profile', 'bucket_list', 'edit_item'),
+    /** Delete via swipe, trash, or edit sheet — use method prop */
+    delete: aid('profile', 'bucket_list', 'delete'),
+    /** Save on add_bucket_sheet / edit_bucket_sheet */
+    save: aid('profile', 'bucket_list', 'save'),
+    add_dismiss: aid('add_bucket_sheet', 'actions', 'dismiss'),
+    edit_dismiss: aid('edit_bucket_sheet', 'actions', 'dismiss')
   },
   /** Untaken past quizzes with friends-taken counts (ADMIN.md §5). */
   quizzes: {
@@ -500,23 +517,72 @@ export const PROFILE = {
   about_them: {
     about_me: aid('profile', 'about_them', 'about_me'),
     this_or_that_row: aid('profile', 'about_them', 'this_or_that_row'),
-    hobbies_widget: aid('profile', 'about_them', 'hobbies_widget')
+    hobbies_widget: aid('profile', 'about_them', 'hobbies_widget'),
+    places_map: aid('profile', 'about_them', 'places_map')
   },
   friend_tabs: {
     about_them: aid('profile', 'tabs', 'about_them'),
     in_common: aid('profile', 'tabs', 'in_common'),
     inside_jokes: aid('profile', 'tabs', 'inside_jokes'),
-    bucket_list: aid('profile', 'tabs', 'bucket_list')
+    bucket_list: aid('profile', 'tabs', 'bucket_list'),
+    /** Private Notes & reminders tab on a friend's profile */
+    notes: aid('profile', 'tabs', 'notes')
   },
   in_common: {
     info: aid('profile', 'in_common', 'info'),
-    section_header: aid('profile', 'in_common', 'section_header')
+    section_header: aid('profile', 'in_common', 'section_header'),
+    /** A mutual friend's face in the In common strip */
+    mutual_row: aid('profile', 'in_common', 'mutual_row')
   },
   actions: {
     message: aid('profile', 'actions', 'message'),
     how_you_met: aid('profile', 'actions', 'how_you_met'),
     private_note: aid('profile', 'actions', 'private_note'),
     overflow: aid('profile', 'actions', 'overflow')
+  },
+  /**
+   * Private notes & reminders on a friend's profile (author-only).
+   * Never log note body text — only kind / cadence.
+   */
+  notes_reminders: {
+    section_header: aid('profile', 'notes_reminders', 'section_header'),
+    kind: aid('profile', 'notes_reminders', 'kind'),
+    cadence: aid('profile', 'notes_reminders', 'cadence'),
+    add: aid('profile', 'notes_reminders', 'add'),
+    delete: aid('profile', 'notes_reminders', 'delete'),
+    /** Alias kept for older references to the whole block */
+    private_note: aid('profile', 'actions', 'private_note')
+  }
+} as const;
+
+// --- Profile customize (co-op presentation-only MVP) ---
+export const CUSTOMIZE = {
+  top_nav: {
+    page_title: aid('customize', 'top_nav', 'page_title'),
+    back: aid('customize', 'top_nav', 'back')
+  },
+  style: {
+    intro_body: aid('customize', 'style', 'intro_body'),
+    accent_option: aid('customize', 'style', 'accent_option'),
+    background_option: aid('customize', 'style', 'background_option'),
+    preview: aid('customize', 'style', 'preview')
+  },
+  actions: {
+    save: aid('customize', 'actions', 'save'),
+    view_original: aid('customize', 'actions', 'view_original')
+  }
+} as const;
+
+// --- Ask sheet (poll/question composer over Home) ---
+export const ASK_SHEET = {
+  fields: {
+    prompt: aid('ask_sheet', 'fields', 'prompt'),
+    option: aid('ask_sheet', 'fields', 'option')
+  },
+  actions: {
+    add_option: aid('ask_sheet', 'actions', 'add_option'),
+    remove_option: aid('ask_sheet', 'actions', 'remove_option'),
+    post: aid('ask_sheet', 'actions', 'post')
   }
 } as const;
 
@@ -531,6 +597,7 @@ export const EVENTS = {
   },
   detail: {
     share: aid('events', 'detail', 'share'),
+    /** Retired: native share sheet covers copy. Kept so old events still parse. */
     copy_link: aid('events', 'detail', 'copy_link'),
     going: aid('events', 'detail', 'going'),
     cant: aid('events', 'detail', 'cant'),
@@ -539,16 +606,31 @@ export const EVENTS = {
     map: aid('events', 'detail', 'map'),
     add_to_calendar: aid('events', 'detail', 'add_to_calendar'),
     cover_image: aid('events', 'detail', 'cover_image'),
+    title_body: aid('events', 'detail', 'title_body'),
+    details_body: aid('events', 'detail', 'details_body'),
     assignment_row: aid('events', 'detail', 'assignment_row'),
+    assign_name: aid('events', 'detail', 'assign_name'),
+    meet_row: aid('events', 'detail', 'meet_row'),
     back: aid('events', 'detail', 'back')
   },
   host: {
     edit: aid('events', 'host', 'edit'),
     going_count: aid('events', 'host', 'going_count'),
     invited_count: aid('events', 'host', 'invited_count'),
+    brought_count: aid('events', 'host', 'brought_count'),
     add_cohost: aid('events', 'host', 'add_cohost'),
     chip_in_edit: aid('events', 'host', 'chip_in_edit'),
-    reminders_toggle: aid('events', 'host', 'reminders_toggle')
+    reminders_toggle: aid('events', 'host', 'reminders_toggle'),
+    reminders_header: aid('events', 'host', 'reminders_header'),
+    introduction_row: aid('events', 'host', 'introduction_row'),
+    introductions_header: aid('events', 'host', 'introductions_header')
+  },
+  /** Who's coming sheet opened from going / invited counts */
+  people_sheet: {
+    tab_going: aid('event_people_sheet', 'tabs', 'going'),
+    tab_invited: aid('event_people_sheet', 'tabs', 'invited'),
+    row: aid('event_people_sheet', 'list', 'row'),
+    dismiss: aid('event_people_sheet', 'actions', 'dismiss')
   },
   touch_grass: {
     send: aid('events', 'touch_grass', 'send'),
@@ -815,6 +897,66 @@ export const QUIZ = {
   }
 } as const;
 
+// --- Weekly activity collage (opened from Home activity card) ---
+export const ACTIVITY = {
+  top_nav: {
+    page_title: aid('activity', 'top_nav', 'page_title'),
+    back: aid('activity', 'top_nav', 'back')
+  },
+  prompt: {
+    /** Prompt card body — not tappable on purpose */
+    prompt_card: aid('activity', 'prompt', 'prompt_card')
+  },
+  chrome: {
+    post_yours: aid('activity', 'chrome', 'post')
+  },
+  grid: {
+    polaroid: aid('activity', 'grid', 'polaroid'),
+    heart: aid('activity', 'grid', 'heart'),
+    empty_body: aid('activity', 'grid', 'empty_body'),
+    dash_post: aid('activity', 'grid', 'dash_post')
+  }
+} as const;
+
+/** Capture sheet over the collage — own surface with parent_screen=activity */
+export const ACTIVITY_CAPTURE = {
+  shutter: aid('activity_capture', 'chrome', 'shutter'),
+  caption_input: aid('activity_capture', 'chrome', 'caption_input'),
+  audience_picker: aid('activity_capture', 'chrome', 'audience_picker'),
+  post: aid('activity_capture', 'chrome', 'post'),
+  close: aid('activity_capture', 'chrome', 'close')
+} as const;
+
+// --- Notifications page (Alerts — opened from Home "See all") ---
+export const NOTIFICATIONS = {
+  top_nav: {
+    page_title: aid('notifications', 'top_nav', 'page_title'),
+    back: aid('notifications', 'top_nav', 'back')
+  },
+  list: {
+    row: aid('notifications', 'list', 'row'),
+    empty_body: aid('notifications', 'list', 'empty_body'),
+    /** All / Home / Friends / Events / Discover chips */
+    filter: aid('notifications', 'list', 'filter'),
+    /** Clears unread on every listed alert */
+    mark_all_read: aid('notifications', 'list', 'mark_all_read')
+  },
+  /** Profile → Settings → Notifications prefs screen */
+  prefs: {
+    page_title: aid('notification_prefs', 'top_nav', 'page_title'),
+    back: aid('notification_prefs', 'top_nav', 'back'),
+    /** Intro copy under the title — not tappable on purpose */
+    intro_body: aid('notification_prefs', 'list', 'intro_body'),
+    /** "Who can nudge you" section label */
+    who_header: aid('notification_prefs', 'list', 'who_header'),
+    /** Kind-group section labels (Events, Big moments, …) */
+    section_header: aid('notification_prefs', 'list', 'section_header'),
+    /** Per kind or circle; props: pref + pref_scope */
+    toggle: aid('notification_prefs', 'list', 'toggle')
+  }
+} as const;
+
+
 // --- 404 / broken path (Magic Patterns Windows dialog) ---
 export const NOT_FOUND = {
   chrome: {
@@ -823,6 +965,88 @@ export const NOT_FOUND = {
   dialog: {
     body: aid('not_found', 'dialog', 'body'),
     ok: aid('not_found', 'dialog', 'ok')
+  }
+} as const;
+
+// --- Co-op portal (public governance surface; member writes) ---
+export const COOP = {
+  ideas: {
+    nav: aid('coop', 'ideas', 'nav'),
+    info: aid('coop', 'ideas', 'info'),
+    idea_card: aid('coop', 'ideas', 'idea_card'),
+    support: aid('coop', 'ideas', 'support'),
+    comment: aid('coop', 'ideas', 'comment'),
+    submit: aid('coop', 'ideas', 'submit'),
+    open_submit: aid('coop', 'ideas', 'open_submit'),
+    section_header: aid('coop', 'ideas', 'section_header')
+  },
+  vote: {
+    nav: aid('coop', 'vote', 'nav'),
+    info: aid('coop', 'vote', 'info'),
+    beta_vote: aid('coop', 'vote', 'beta_vote'),
+    dues_vote: aid('coop', 'vote', 'dues_vote'),
+    mission_support: aid('coop', 'vote', 'mission_support'),
+    verify: aid('coop', 'vote', 'verify'),
+    section_header: aid('coop', 'vote', 'section_header')
+  },
+  mission: {
+    nav: aid('coop', 'mission', 'nav'),
+    info: aid('coop', 'mission', 'info'),
+    page_title: aid('coop', 'mission', 'page_title'),
+    principle_card: aid('coop', 'mission', 'principle_card'),
+    support: aid('coop', 'mission', 'support'),
+    section_header: aid('coop', 'mission', 'section_header')
+  },
+  model: {
+    nav: aid('coop', 'model', 'nav'),
+    info: aid('coop', 'model', 'info'),
+    roadmap_info: aid('coop', 'model', 'roadmap_info'),
+    compare_info: aid('coop', 'model', 'compare_info'),
+    page_title: aid('coop', 'model', 'page_title'),
+    phase_card: aid('coop', 'model', 'phase_card'),
+    comparison: aid('coop', 'model', 'comparison'),
+    section_header: aid('coop', 'model', 'section_header')
+  },
+  cost: {
+    nav: aid('coop', 'cost', 'nav'),
+    info: aid('coop', 'cost', 'info'),
+    books_info: aid('coop', 'cost', 'books_info'),
+    sim_info: aid('coop', 'cost', 'sim_info'),
+    roles_info: aid('coop', 'cost', 'roles_info'),
+    page_title: aid('coop', 'cost', 'page_title'),
+    slider: aid('coop', 'cost', 'slider'),
+    reset: aid('coop', 'cost', 'reset'),
+    role_card: aid('coop', 'cost', 'role_card'),
+    books: aid('coop', 'cost', 'books'),
+    section_header: aid('coop', 'cost', 'section_header')
+  },
+  manage: {
+    info: aid('coop', 'manage', 'info'),
+    page_title: aid('coop', 'manage', 'page_title'),
+    cancel: aid('coop', 'manage', 'cancel'),
+    confirm_cancel: aid('coop', 'manage', 'confirm_cancel'),
+    open: aid('coop', 'manage', 'open')
+  },
+  benefits: {
+    info: aid('coop', 'benefits', 'info'),
+    free_info: aid('coop', 'benefits', 'free_info'),
+    unlocks_info: aid('coop', 'benefits', 'unlocks_info'),
+    page_title: aid('coop', 'benefits', 'page_title'),
+    join: aid('coop', 'benefits', 'join'),
+    use_free: aid('coop', 'benefits', 'use_free'),
+    open_portal: aid('coop', 'benefits', 'open_portal'),
+    hero: aid('coop', 'benefits', 'hero')
+  },
+  portal: {
+    info: aid('coop', 'portal', 'info'),
+    page_title: aid('coop', 'portal', 'page_title'),
+    hero: aid('coop', 'portal', 'hero'),
+    feedback: aid('coop', 'portal', 'feedback'),
+    spend_body: aid('coop', 'portal', 'spend_body'),
+    shipped_body: aid('coop', 'portal', 'shipped_body'),
+    nav_overview: aid('coop', 'portal', 'nav_overview'),
+    guide_card: aid('coop', 'portal', 'guide_card'),
+    join_cta: aid('coop', 'portal', 'join_cta')
   }
 } as const;
 
@@ -845,6 +1069,7 @@ export const ADMIN = {
     registry: aid('admin', 'nav', 'registry'),
     activity: aid('admin', 'nav', 'activity'),
     coop: aid('admin', 'nav', 'coop'),
+    portal: aid('admin', 'nav', 'portal'),
     members: aid('admin', 'nav', 'members'),
     home_defaults: aid('admin', 'nav', 'home_defaults'),
     prompts: aid('admin', 'nav', 'prompts'),

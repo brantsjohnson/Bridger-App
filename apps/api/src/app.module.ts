@@ -9,15 +9,22 @@ import { ConfigModule } from '@nestjs/config';
 import { ActivityModule } from './activity/activity.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AdminModule } from './admin/admin.module';
+import { ConnectionsModule } from './connections/connections.module';
 import { ContentModule } from './content/content.module';
 import { CoopModule } from './coop/coop.module';
 import { DelightModule } from './delight/delight.module';
+import { EventsModule } from './events/events.module';
+import { FeedModule } from './feed/feed.module';
 import { HealthModule } from './health/health.module';
 import { MeModule } from './me/me.module';
+import { PollsModule } from './polls/polls.module';
+import { ProfilesModule } from './profiles/profiles.module';
 import { QuizModule } from './quiz/quiz.module';
 import { RecapModule } from './recap/recap.module';
+import { StoriesModule } from './stories/stories.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
+import { TiersModule } from './tiers/tiers.module';
 import { TouchGrassModule } from './touchgrass/touchgrass.module';
 
 @Module({
@@ -28,6 +35,12 @@ import { TouchGrassModule } from './touchgrass/touchgrass.module';
     SupabaseModule,
     HealthModule,
     MeModule,
+    ProfilesModule,
+    TiersModule,
+    ConnectionsModule,
+    StoriesModule,
+    EventsModule,
+    FeedModule,
     AdminAuthModule,
     AdminModule,
     ContentModule,
@@ -36,6 +49,7 @@ import { TouchGrassModule } from './touchgrass/touchgrass.module';
     CoopModule,
     DelightModule,
     TouchGrassModule,
+    PollsModule,
     RecapModule,
     TelemetryModule
   ]

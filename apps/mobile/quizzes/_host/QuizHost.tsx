@@ -1,20 +1,19 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Loads a quiz plugin by slug from the registry and renders it. If the slug is
-// unknown or the plugin crashes, we show a friendly fallback instead of taking
-// down the whole app (error boundary).
+// Loads a quiz by slug: prefer a branded plugin from the registry; otherwise
+// fall back to GenericQuizTake (any admin-published quiz from the API). If the
+// plugin crashes, we show a friendly fallback instead of taking down the app.
 // ============================================
 import React, { Component, type ErrorInfo, type ReactNode, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ButtonSecondary, Screen, ScreenBody, ScreenHeader } from '@bridger/ui';
 import { findQuizPlugin } from '../registry';
+import GenericQuizTake from '../_generic/GenericQuizTake';
 
 type Props = {
   slug: string;
   onClose: () => void;
 };
-
-// --- ERROR BOUNDARY: one broken quiz must not crash Home ---
 
 type BoundaryState = { error: Error | null };
 
@@ -29,7 +28,6 @@ class QuizErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Keep this quiet in production; useful while building plugins.
     if (__DEV__) {
       console.warn('Quiz plugin crashed', error, info.componentStack);
     }
@@ -62,53 +60,43 @@ class QuizErrorBoundary extends Component<
   }
 }
 
-/** Dynamically load and mount a quiz plugin for the given slug. */
+/** Dynamically load a plugin, or fall back to the generic API take UI. */
 export function QuizHost({ slug, onClose }: Props) {
-  const [Comp, setComp] = useState<React.ComponentType<{ slug: string }> | null>(null);
-  const [missing, setMissing] = useState(false);
+  const [Comp, setComp] = useState<React.ComponentType<{ slug: string }> | null>(
+    null
+  );
+  const [useGeneric, setUseGeneric] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     const entry = findQuizPlugin(slug);
     if (!entry) {
-      setMissing(true);
+      setUseGeneric(true);
+      setLoading(false);
       return;
     }
     entry
       .load()
       .then((mod) => {
-        if (!cancelled) setComp(() => mod.default);
+        if (!cancelled) {
+          setComp(() => mod.default);
+          setLoading(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setMissing(true);
+        // Plugin failed to load — still try the generic API take.
+        if (!cancelled) {
+          setUseGeneric(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [slug]);
 
-  if (missing) {
-    return (
-      <Screen tone="canvas">
-        <ScreenHeader title="Quiz" onBack={onClose} />
-        <ScreenBody>
-          <View className="mt-8 items-center gap-3">
-            <Text
-              accessibilityRole="text"
-              className="font-pixel text-[22px] text-ink"
-            >
-              Quiz not found
-            </Text>
-            <ButtonSecondary onPress={onClose} accessibilityLabel="Go back">
-              Go back
-            </ButtonSecondary>
-          </View>
-        </ScreenBody>
-      </Screen>
-    );
-  }
-
-  if (!Comp) {
+  if (loading) {
     return (
       <Screen tone="canvas">
         <ScreenHeader title="Quiz" onBack={onClose} />
@@ -121,6 +109,14 @@ export function QuizHost({ slug, onClose }: Props) {
           </Text>
         </ScreenBody>
       </Screen>
+    );
+  }
+
+  if (useGeneric || !Comp) {
+    return (
+      <QuizErrorBoundary onClose={onClose}>
+        <GenericQuizTake slug={slug} />
+      </QuizErrorBoundary>
     );
   }
 

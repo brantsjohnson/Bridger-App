@@ -38,12 +38,19 @@ export const THREADS: DemoThread[] = [
     name: 'Jade Watkins',
     emoji: '🌻',
     accent: 'teal',
-    preview: 'yo you around this weekend?',
-    time: '2m',
+    preview: 'replied to your story · that sky is unreal',
+    time: '12m',
     unread: true,
     theirLeft: 3,
     myLeft: 2,
     bubbles: [
+      {
+        id: 'b0',
+        from: 'them',
+        text: 'that sky is unreal',
+        kind: 'storyReply',
+        countsAgainstCap: false
+      },
       { id: 'b1', from: 'them', text: 'yo you around this weekend?' },
       { id: 'b2', from: 'me', text: "yeah! let's climb" },
       { id: 'b3', from: 'them', text: 'perfect, text me', phone: '555-0142' }

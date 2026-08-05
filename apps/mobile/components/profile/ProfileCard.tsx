@@ -15,13 +15,14 @@ import {
   BookOpenIcon,
   CameraIcon,
   EyeIcon,
+  MapPinIcon,
   MusicIcon,
   PencilIcon,
   PlusIcon,
   RefreshCwIcon
 } from 'lucide-react-native';
 import type { Person, Tier } from '@bridger/shared';
-import { PROFILE, TIER_LABEL, trackProduct } from '@bridger/shared';
+import { PROFILE, TIER_LABEL, trackClick, trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
   AnalyticsRegion,
@@ -36,7 +37,8 @@ import {
   withAnalyticsPress,
   type Accent,
   type ModuleAnswer,
-  type ModuleVisibility
+  type ModuleVisibility,
+  type WashStoryRing
 } from '@bridger/ui';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { PROFILE_MODULES, type ProfileModuleId } from '../../data/profile-modules';
@@ -58,6 +60,7 @@ import {
   saveThisOrThat,
   TIER_RANK
 } from '../../data/profile';
+import { searchPlaces } from '../../lib/geocode';
 import { HobbiesWidget } from './HobbiesWidget';
 import { TravelModule } from './TravelModule';
 
@@ -81,7 +84,8 @@ export function ProfileCard({
   onToggleEdit,
   onCheckIn,
   onEditHeader,
-  onAnswered
+  onAnswered,
+  onOpenStory
 }: {
   person: Person;
   header: MyProfileHeader | null;
@@ -106,6 +110,8 @@ export function ProfileCard({
   onEditHeader?: (patch: Partial<MyProfileHeader>) => void;
   /** called after a module saves so the parent can refetch the card */
   onAnswered?: () => void;
+  /** Tap the photo story ring → open their (or your) live update */
+  onOpenStory?: () => void;
 }) {
   // PRIVACY: only fields shared at or below the viewing tier are shown
   const visible = empty ? [] : about.filter((f) => TIER_RANK[f.tier] <= TIER_RANK[asTier]);
@@ -122,6 +128,7 @@ export function ProfileCard({
   // Own card vs friend view pick different dead-click / widget ids.
   const aboutMeId = own ? PROFILE.card.about_me : PROFILE.about_them.about_me;
   const hobbiesId = own ? PROFILE.card.hobbies_widget : PROFILE.about_them.hobbies_widget;
+  const placesId = own ? PROFILE.card.places_map : PROFILE.about_them.places_map;
   const totId = own ? PROFILE.card.this_or_that_row : PROFILE.about_them.this_or_that_row;
 
   const openModule = (id: ProfileModuleId) => {
@@ -185,10 +192,17 @@ export function ProfileCard({
           empty={empty}
           onToggleEdit={onToggleEdit}
           onEditHeader={onEditHeader}
+          onOpenStory={onOpenStory}
         />
       ) : null}
 
-      <CurrentlyCard currently={currently} own={own} empty={empty} onCheckIn={onCheckIn} />
+      <CurrentlyCard
+        currently={currently}
+        own={own}
+        empty={empty}
+        headerHasSongBook={!!(header?.song?.title && header?.book?.title)}
+        onCheckIn={onCheckIn}
+      />
 
       <CollapsibleSection title="About me" count={visible.length}>
         {/* Body only — title stays expandable; taps on rows log dead_click */}
@@ -277,7 +291,7 @@ export function ProfileCard({
       {/* polls live on Home now — one place to ask, one place to read results */}
 
       <CollapsibleSection title="Places traveled" count={empty ? 0 : places.length}>
-        <AnalyticsRegion analyticsId={PROFILE.card.places_map} interactive={false}>
+        <AnalyticsRegion analyticsId={placesId} interactive={false}>
           {empty || places.length === 0 ? (
             <ModuleEmpty
               emoji="🗺"
@@ -287,7 +301,7 @@ export function ProfileCard({
               onPress={editable ? () => openModule('places') : undefined}
             />
           ) : (
-            <TravelModule places={places} />
+            <TravelModule places={places} analyticsId={placesId} />
           )}
         </AnalyticsRegion>
       </CollapsibleSection>
@@ -402,6 +416,9 @@ export function ProfileCard({
         mode="share"
         audienceSetAllAnalyticsId={PROFILE.module.audience_set_all}
         audienceRowAnalyticsId={PROFILE.module.audience_row}
+        searchPlaces={searchPlaces}
+        placeSearchAnalyticsId={PROFILE.module.place_search}
+        placeResultAnalyticsId={PROFILE.module.place_result}
         onClose={() => {
           moduleStartedAt.current = null;
           setModule(null);
@@ -429,6 +446,10 @@ function VisibilityPill({ tier }: { tier: Tier }) {
  * Photo, name, city, bio and profile song. On your own profile these become
  * editable in place once you tap the small Edit next to your name — otherwise
  * you see your profile exactly the way your friends do.
+ *
+ * Friend profiles: name and "N mutuals" share one line; city / song / book sit
+ * under it as one quiet details group (pin on city). Tap mutuals → In common.
+ * If they have a live update, their photo gets a story ring — tap opens it.
  */
 export function ProfileHeader({
   person,
@@ -437,7 +458,9 @@ export function ProfileHeader({
   editing,
   empty,
   onToggleEdit,
-  onEditHeader
+  onEditHeader,
+  onOpenMutuals,
+  onOpenStory
 }: {
   person: Person;
   header: MyProfileHeader | null;
@@ -447,6 +470,10 @@ export function ProfileHeader({
   empty: boolean;
   onToggleEdit?: () => void;
   onEditHeader?: (patch: Partial<MyProfileHeader>) => void;
+  /** Friend profiles: tap "N mutuals" to open the In common tab */
+  onOpenMutuals?: () => void;
+  /** Friend profiles: tap the photo ring to watch their live update */
+  onOpenStory?: () => void;
 }) {
   const c = useThemeColors();
   const canEdit = own && editing;
@@ -456,6 +483,18 @@ export function ProfileHeader({
   const [editingBio, setEditingBio] = useState(false);
   const [cityDraft, setCityDraft] = useState(city);
   const [bioDraft, setBioDraft] = useState(bio);
+  const showMutuals = !own && person.mutuals > 0;
+  const mutualsLabel = `${person.mutuals} mutual${person.mutuals === 1 ? '' : 's'}`;
+  // Live update: same ring language as Friends roster (you or a friend).
+  const hasStory = !!person.story;
+  const tier = person.tier ?? 'friend';
+  const ringWash: WashStoryRing = own
+    ? 'friend'
+    : tier === 'close'
+      ? 'close'
+      : tier === 'acquaintance'
+        ? 'acquaintance'
+        : 'friend';
 
   return (
     <AnalyticsRegion
@@ -464,19 +503,36 @@ export function ProfileHeader({
       className="gap-3"
     >
       <View className="flex-row items-center gap-4">
-        <Pressable
-          onPress={withAnalyticsPress(PROFILE.header.avatar, undefined)}
-          accessibilityRole="image"
-          accessibilityLabel={`${person.name}'s photo`}
-          className="shrink-0"
-        >
+        {/*
+          Story ring on the photo when they have an update — tap opens the
+          viewer. No story: photo is not a button (edit camera still works).
+        */}
+        <View className="relative shrink-0">
           <Avatar
             name={person.name}
             emoji={person.emoji}
             accent={person.accent}
             photo={getProfilePhoto(person.id)}
             size="xl"
+            story={hasStory ? person.story : undefined}
+            ringWash={ringWash}
+            onStory={
+              hasStory
+                ? () => {
+                    trackClick(PROFILE.header.avatar, { method: 'story' });
+                    onOpenStory?.();
+                  }
+                : undefined
+            }
           />
+          {!hasStory ? (
+            <AnalyticsRegion
+              analyticsId={PROFILE.header.avatar}
+              interactive={false}
+              accessibilityLabel={`${person.name}'s photo`}
+              className="absolute inset-0"
+            />
+          ) : null}
           {canEdit ? (
             <Pressable
               accessibilityRole="button"
@@ -486,23 +542,41 @@ export function ProfileHeader({
               <CameraIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
             </Pressable>
           ) : null}
-        </Pressable>
+        </View>
 
         <View className="min-w-0 flex-1">
-          {/* name on the left, quiet Edit / Done on the right */}
+          {/* Name · mutuals on one line (friend), or name + Edit (own). */}
           <View className="flex-row items-center gap-2">
-            <AnalyticsRegion
-              analyticsId={PROFILE.header.name}
-              interactive={false}
-              className="min-w-0 flex-1"
-            >
-              <Text
-                numberOfLines={1}
-                className="font-sans-b text-[20px] tracking-tight text-ink"
+            <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-1.5">
+              <AnalyticsRegion
+                analyticsId={PROFILE.header.name}
+                interactive={false}
+                className="shrink"
               >
-                {person.name}
-              </Text>
-            </AnalyticsRegion>
+                <Text
+                  numberOfLines={1}
+                  className="font-sans-b text-[20px] tracking-tight text-ink"
+                >
+                  {person.name}
+                </Text>
+              </AnalyticsRegion>
+              {showMutuals ? (
+                <>
+                  <Text accessible={false} className="font-sans-sb text-[13px] text-ink-mute">
+                    ·
+                  </Text>
+                  <Pressable
+                    onPress={withAnalyticsPress(PROFILE.header.mutuals, onOpenMutuals)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${mutualsLabel}. See who you both know.`}
+                    hitSlop={8}
+                    className="active:opacity-70"
+                  >
+                    <Text className="font-sans-sb text-[13px] text-ink-mute">{mutualsLabel}</Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </View>
             {own && onToggleEdit ? (
               <Pressable
                 onPress={withAnalyticsPress(PROFILE.top_nav.edit, onToggleEdit)}
@@ -525,68 +599,64 @@ export function ProfileHeader({
             ) : null}
           </View>
 
-          {editingCity ? (
-            <TextInput
-              autoFocus
-              value={cityDraft}
-              onChangeText={setCityDraft}
-              onBlur={() => {
-                setEditingCity(false);
-                onEditHeader?.({ city: cityDraft });
-              }}
-              accessibilityLabel="Your city"
-              className="mt-0.5 w-full rounded-md border border-ink-line bg-surface px-2 py-1 font-sans-sb text-[13px] text-ink"
-            />
-          ) : (
-            <Pressable
-              disabled={!canEdit}
-              onPress={() => {
-                setCityDraft(city);
-                setEditingCity(true);
-              }}
-              accessibilityRole={canEdit ? 'button' : 'text'}
-              accessibilityLabel={canEdit ? `Edit city, ${city}` : city}
-              className="flex-row items-center gap-1.5"
-            >
-              <Text numberOfLines={1} className="shrink font-sans-sb text-[13px] text-ink-soft">
-                {city}
-              </Text>
-              {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
-            </Pressable>
-          )}
-
-          {/* Mutuals: only meaningful on someone else's profile. */}
-          {!own && person.mutuals > 0 ? (
-            <Text className="font-sans-sb text-[13px] text-ink-mute">
-              {person.mutuals} mutual{person.mutuals === 1 ? '' : 's'}
-            </Text>
-          ) : null}
-
-          {/* What they're into right now: one song, one book, same treatment. */}
-          {!empty && header ? (
-            <AnalyticsRegion
-              analyticsId={PROFILE.header.song}
-              interactive={canEdit}
-              className="mt-1.5 gap-1"
-            >
-              <View className="flex-row items-center gap-1.5">
-                <MusicIcon size={14} color={c.inkMute} strokeWidth={2.6} />
-                <Text numberOfLines={1} className="shrink font-sans-sb text-[12px] text-ink-mute">
-                  {header.song.title} · {header.song.artist}
+          {/* City + song + book — one quiet details group under the name. */}
+          <View className="mt-1.5 gap-1">
+            {editingCity ? (
+              <TextInput
+                autoFocus
+                value={cityDraft}
+                onChangeText={setCityDraft}
+                onBlur={() => {
+                  setEditingCity(false);
+                  onEditHeader?.({ city: cityDraft });
+                }}
+                accessibilityLabel="Your city"
+                className="w-full rounded-md border border-ink-line bg-surface px-2 py-1 font-sans-sb text-[13px] text-ink"
+              />
+            ) : (
+              <Pressable
+                disabled={!canEdit}
+                onPress={() => {
+                  setCityDraft(city);
+                  setEditingCity(true);
+                }}
+                accessibilityRole={canEdit ? 'button' : 'text'}
+                accessibilityLabel={canEdit ? `Edit city, ${city}` : city}
+                className="flex-row items-center gap-1.5"
+              >
+                <MapPinIcon size={14} color={c.inkMute} strokeWidth={2.6} />
+                <Text numberOfLines={1} className="shrink font-sans-sb text-[13px] text-ink-soft">
+                  {city}
                 </Text>
                 {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
-              </View>
-              {header.book ? (
+              </Pressable>
+            )}
+
+            {!empty && header ? (
+              <AnalyticsRegion
+                analyticsId={PROFILE.header.song}
+                interactive={canEdit}
+                className="gap-1"
+              >
                 <View className="flex-row items-center gap-1.5">
-                  <BookOpenIcon size={14} color={c.inkMute} strokeWidth={2.6} />
+                  <MusicIcon size={14} color={c.inkMute} strokeWidth={2.6} />
                   <Text numberOfLines={1} className="shrink font-sans-sb text-[12px] text-ink-mute">
-                    {header.book.title} · {header.book.author}
+                    {header.song.title} · {header.song.artist}
                   </Text>
                   {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
                 </View>
-              ) : null}
-            </AnalyticsRegion>
-          ) : null}
+                {header.book ? (
+                  <View className="flex-row items-center gap-1.5">
+                    <BookOpenIcon size={14} color={c.inkMute} strokeWidth={2.6} />
+                    <Text numberOfLines={1} className="shrink font-sans-sb text-[12px] text-ink-mute">
+                      {header.book.title} · {header.book.author}
+                    </Text>
+                    {canEdit ? <PencilIcon size={12} color={c.inkMute} strokeWidth={2.6} /> : null}
+                  </View>
+                ) : null}
+              </AnalyticsRegion>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -637,32 +707,49 @@ export function ProfileHeader({
   );
 }
 
-/** The dark "Currently" card — a weekly check-in that goes stale on purpose. */
+/**
+ * The dark "Currently" weekly check-in card.
+ * Song + book already sit under the name in the header, so a filled card would
+ * just repeat them. We only show the nudge when the check-in is stale (own),
+ * or a friend's filled Currently when the header is not already showing them.
+ * ALWAYS dark panel + white type — bg-ink flips light in dark mode and was
+ * making this unreadable.
+ */
 function CurrentlyCard({
   currently,
   own,
   empty,
+  headerHasSongBook,
   onCheckIn
 }: {
   currently: Currently | null;
   own: boolean;
   empty: boolean;
+  /** Header already lists song + book under the name */
+  headerHasSongBook?: boolean;
   onCheckIn?: (on: boolean) => void;
 }) {
-  // PRIVACY: the check-in nudge ("Time for your weekly check-in") is a prompt
-  // for YOU, not something a friend should see on your profile. So in a friend
-  // view we only ever show a Currently they actually filled in.
+  // PRIVACY: the check-in nudge is for YOU only — friends never see it empty.
   if (!own && !currently?.checkedIn) return null;
 
   const checkedIn = !empty && (currently?.checkedIn ?? false);
   const stale = !empty && !checkedIn;
 
+  // Filled state already lives under the name — skip the duplicate card.
+  if (checkedIn && headerHasSongBook) return null;
+
+  // Fixed near-black so dark mode cannot wash the panel to eggshell.
+  const panel = 'rounded-card p-4';
+  const panelStyle = { backgroundColor: '#1C1B16' as const };
+
   if (!checkedIn || !currently) {
+    if (!own) return null;
     return (
       <AnalyticsRegion
         analyticsId={PROFILE.card.currently}
         interactive={false}
-        className="items-center rounded-card bg-ink p-5"
+        className={cn(panel, 'items-center p-5')}
+        style={panelStyle}
       >
         <Text className="font-sans-b text-[11px] uppercase tracking-wide text-white/60">
           Currently
@@ -673,19 +760,15 @@ function CurrentlyCard({
         <Text className="mt-1 text-center font-sans-sb text-[12px] text-white/60">
           One song, one book. Takes a second.
         </Text>
-        {own ? (
-          <>
-            <Pressable
-              onPress={withAnalyticsPress(PROFILE.card.currently, () => onCheckIn?.(true))}
-              accessibilityRole="button"
-              accessibilityLabel="Check in"
-              className="mt-3 min-h-[36px] justify-center rounded-full bg-surface px-4 py-2"
-            >
-              <Text className="font-sans-b text-[13px] text-ink">Check in</Text>
-            </Pressable>
-            <MusicConnect />
-          </>
-        ) : null}
+        <Pressable
+          onPress={withAnalyticsPress(PROFILE.card.currently, () => onCheckIn?.(true))}
+          accessibilityRole="button"
+          accessibilityLabel="Check in"
+          className="mt-3 min-h-[36px] justify-center rounded-full bg-white px-4 py-2"
+        >
+          <Text className="font-sans-b text-[13px] text-[#1C1B16]">Check in</Text>
+        </Pressable>
+        <MusicConnect />
       </AnalyticsRegion>
     );
   }
@@ -694,7 +777,8 @@ function CurrentlyCard({
     <AnalyticsRegion
       analyticsId={PROFILE.card.currently}
       interactive={false}
-      className="rounded-card bg-ink p-4"
+      className={panel}
+      style={panelStyle}
     >
       <View className="flex-row items-center justify-between gap-3">
         <Text className="font-sans-b text-[11px] uppercase tracking-wide text-white/60">

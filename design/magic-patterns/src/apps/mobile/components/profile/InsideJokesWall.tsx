@@ -53,10 +53,10 @@ export function InsideJokesWall({
 
       {notes.length > 0 ?
       <div className="grid grid-cols-2 gap-3.5">
-          {notes.map((joke, i) =>
-        <InsideJokeNote key={joke.id} joke={joke} index={i} />
-        )}
           <AddNoteTile onClick={() => setAdding(true)} />
+          {notes.map((joke, i) =>
+        <InsideJokeNote key={joke.id} joke={joke} index={i + 1} />
+        )}
         </div> :
 
       <AddNoteTile tall onClick={() => setAdding(true)} />

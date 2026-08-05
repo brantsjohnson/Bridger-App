@@ -4,6 +4,12 @@ How Bridger's quizzes — values, personality, communication style, and any futu
 
 The core principle: **the rubric sets the score; the AI moderates and adapts.** The LLM is *not* trusted to invent numbers — it's trusted to judge whether we have enough clear signal to score well, and to gather better signal when we don't.
 
+## Ship status (product wave before AI)
+
+**Shipped without AI:** deterministic scoring, admin authoring, generic mobile take (single/multi + optional explain), friends-only who-got-who, Home share, matchable attribute writes on complete (`quiz.<slug>.<dimension>` with confidence placeholder `1`).
+
+**Deferred to AI-SYSTEM.md §2b:** Claude moderator, contradiction flags, bounded adaptation (`adaptation_policy`), confidence-weighted matching, `quiz_adapted` events. Heuristic pass-through stays until then.
+
 ---
 
 ## 1. A quiz definition (authored in admin, versioned)

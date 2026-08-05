@@ -8,16 +8,18 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { CheckIcon } from 'lucide-react-native';
 import type { Accent } from '@bridger/shared';
-import { ONBOARDING } from '@bridger/shared';
+import { ONBOARDING, ONBOARDING_NOTIFICATION_GROUPS } from '@bridger/shared';
 import { ACCENTS, cn, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
 
-const PREFS: Array<{ id: string; label: string; emoji: string; accent: Accent }> = [
-  { id: 'close', label: "Close friends' updates", emoji: '💬', accent: 'purple' },
-  { id: 'birthdays', label: 'Birthdays', emoji: '🎂', accent: 'pink' },
-  { id: 'moments', label: 'Big moments', emoji: '✨', accent: 'amber' },
-  { id: 'events', label: 'Events', emoji: '📅', accent: 'teal' }
-];
+/** Coarse chips — Settings expands each into individual kind toggles. */
+const PREFS: Array<{ id: string; label: string; emoji: string; accent: Accent }> =
+  ONBOARDING_NOTIFICATION_GROUPS.map((g, i) => ({
+    id: g.id,
+    label: g.label,
+    emoji: (['💬', '🎂', '✨', '📅'] as const)[i] ?? '🔔',
+    accent: (['purple', 'pink', 'amber', 'teal'] as const)[i] ?? 'amber'
+  }));
 
 const SHAPES = [
   { borderTopLeftRadius: 28, borderTopRightRadius: 10, borderBottomRightRadius: 28, borderBottomLeftRadius: 10 },

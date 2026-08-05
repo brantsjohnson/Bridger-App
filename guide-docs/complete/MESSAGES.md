@@ -48,9 +48,17 @@ Everyone sets up a **contact card** once (below) so sharing it is one tap.
 
 - You can message **people you're connected with** (friends). Find-a-friend searches your roster.
 - The cap is **per recipient per day** — 5 messages to *each* person; the two directions of a thread are independent (being maxed toward someone doesn't stop them messaging you).
-- **Share contact** and **Make a plan** are **not** counted against the 5/day cap — the app *wants* you to use them.
+- **Share contact**, **Make a plan**, and **story-reply mirrors** (`kind: 'storyReply'`) are **not** counted against the 5/day cap — the app *wants* you to use the first two, and story replies already "spent" their attention on the story surface (`NOTIFICATIONS.md`).
 - No read receipts, no typing indicators, no "online now," no message counts shown to others — nothing that manufactures inbox pressure.
 - The daily count **resets each day**.
+
+### Story replies in the thread
+
+When a friend replies on your story, that reply also appears in your Messages thread with them (same copy as the reply). It looks like a DM so you can keep talking after the story tray, but:
+
+- It does **not** use one of their 5 messages to you.
+- Engaging (opening the thread, opening the Home replies row, or replying on the story) clears the matching `story_reply` notification.
+- After the story expires, further conversation stays in DMs; the expired story is not reopened.
 
 ### SECURITY — end-to-end encryption (non-negotiable)
 
@@ -76,11 +84,11 @@ interface Message {
   id: string;
   conversationId: string;
   senderId: string;
-  kind: 'text' | 'contactCard';    // contactCard = a shared contact
+  kind: 'text' | 'contactCard' | 'planNudge' | 'storyReply';  // storyReply = mirrored story reply
   text?: string;
   contactCardId?: string;
   createdAt: string;
-  countsAgainstCap: boolean;       // false for share-contact / make-a-plan
+  countsAgainstCap: boolean;       // false for share-contact / make-a-plan / storyReply
 }
 
 interface ContactCard {            // set up once per user
@@ -121,6 +129,7 @@ interface DailyCap {               // per sender → recipient, per day
 - [ ] At your cap the composer locks with a "share contact or make a plan" nudge; quick actions still work.
 - [ ] When you message someone who has used their 5 to you, the thread shows "{Name} can't reply until tomorrow" and prompts "Share your contact instead."
 - [ ] Everyone can set up a **contact card** once (choose which fields — phone / Instagram / email); **Share contact** shares it in one tap.
-- [ ] "Share contact" and "Make a plan" do NOT count against the cap.
+- [ ] "Share contact", "Make a plan", and story-reply mirrors do NOT count against the cap.
+- [ ] A story reply also appears in the thread as `storyReply`; opening the thread clears the matching notification (`NOTIFICATIONS.md`).
 - [ ] Text only — no media inbox. No read receipts, typing indicators, or presence.
 - [ ] The daily count resets each day.

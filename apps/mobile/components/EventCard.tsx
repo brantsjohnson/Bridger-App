@@ -17,6 +17,7 @@ import {
   CoverArt,
   withAnalyticsPress
 } from '@bridger/ui';
+import { EventDateChip } from './event/EventDateChip';
 import { personById } from '../data/people';
 
 type EventCardProps = {
@@ -45,7 +46,7 @@ export function EventCard({
         accessibilityLabel={event.title}
         className="w-full flex-row items-center gap-3 rounded-card border border-ink-line bg-surface p-3 active:opacity-90"
       >
-        <DateChip event={event} />
+        <EventDateChip event={event} />
         <View className="min-w-0 flex-1">
           <Text className="font-sans-b text-[15px] tracking-tight text-ink" numberOfLines={1}>
             {event.title}
@@ -80,7 +81,7 @@ export function EventCard({
 
       <View className="p-4">
         <View className="flex-row items-start gap-3">
-          <DateChip event={event} />
+          <EventDateChip event={event} />
           <View className="min-w-0 flex-1">
             <Pressable onPress={open} accessibilityRole="button">
               <Text className="font-sans-b text-[17px] leading-tight tracking-tight text-ink">
@@ -138,17 +139,5 @@ export function EventCard({
         </View>
       </View>
     </Card>
-  );
-}
-
-function DateChip({ event }: { event: EventItem }) {
-  const parts = event.day.split(' ');
-  const weekday = parts[0];
-  const date = parts[1] ?? parts[0];
-  return (
-    <View className="h-11 w-11 shrink-0 items-center justify-center rounded-none border-2 border-ink bg-surface">
-      <Text className="font-pixel text-[13px] leading-none text-ink">{date}</Text>
-      <Text className="mt-0.5 font-sans-b text-[9px] uppercase text-ink-mute">{weekday}</Text>
-    </View>
   );
 }

@@ -10,6 +10,8 @@ export * from './model/event';
 export * from './model/connection';
 export * from './model/cover';
 export * from './model/coop';
+export * from './coop/cost-model';
+export * from './coop/format-number';
 export * from './model/profile-theme';
 export * from './model/message';
 export * from './model/quiz';
@@ -18,6 +20,7 @@ export * from './model/delight';
 export * from './model/admin-config';
 export * from './model/recap';
 export * from './model/not-found-hit';
+export * from './model/notification';
 
 // Analytics: taxonomy IDs + consent-gated emit client (PostHog-ready).
 export * from './analytics';

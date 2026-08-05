@@ -121,25 +121,82 @@ export const THIS_OR_THAT: ThisOrThatRow[] = [
   { id: 't6', a: 'Plan', b: 'Wing it', pick: 'a', emoji: '🗓' }
 ];
 
+export type TravelPlaceTag = 'visited' | 'lived' | 'want';
+
 export type TravelPlace = {
   id: string;
   label: string;
   note: string;
-  /** rough map position as percentages of the panel */
-  x: number;
-  y: number;
+  /** WGS84 latitude */
+  lat: number;
+  /** WGS84 longitude */
+  lng: number;
+  /** ISO 3166-1 alpha-2, uppercase, e.g. "PT" */
+  countryCode: string;
   emoji: string;
   year?: string;
   /** PRIVACY: who can see this place */
   tier?: Tier;
+  /** Optional tags from PROFILE-QUESTIONS Module 3 */
+  tags?: TravelPlaceTag[];
 };
 
 export const TRAVEL_PLACES: TravelPlace[] = [
-  { id: 'pl1', label: 'Lisbon', note: 'Ate custard tarts daily', x: 22, y: 48, emoji: '🥮', year: '2023' },
-  { id: 'pl2', label: 'Oaxaca', note: 'Mezcal + markets', x: 38, y: 66, emoji: '🌶', year: '2022' },
-  { id: 'pl3', label: 'Reykjavík', note: 'Saw the lights', x: 46, y: 22, emoji: '🌌', year: '2024' },
-  { id: 'pl4', label: 'Kyoto', note: 'Temple mornings', x: 78, y: 44, emoji: '⛩', year: '2019' },
-  { id: 'pl5', label: 'Banff', note: 'Cold lake swim', x: 18, y: 30, emoji: '🏔', year: '2021' }
+  {
+    id: 'pl1',
+    label: 'Lisbon',
+    note: 'Ate custard tarts daily',
+    lat: 38.7223,
+    lng: -9.1393,
+    countryCode: 'PT',
+    emoji: '🥮',
+    year: '2023',
+    tags: ['visited']
+  },
+  {
+    id: 'pl2',
+    label: 'Oaxaca',
+    note: 'Mezcal + markets',
+    lat: 17.0732,
+    lng: -96.7266,
+    countryCode: 'MX',
+    emoji: '🌶',
+    year: '2022',
+    tags: ['visited']
+  },
+  {
+    id: 'pl3',
+    label: 'Reykjavík',
+    note: 'Saw the lights',
+    lat: 64.1466,
+    lng: -21.9426,
+    countryCode: 'IS',
+    emoji: '🌌',
+    year: '2024',
+    tags: ['visited']
+  },
+  {
+    id: 'pl4',
+    label: 'Kyoto',
+    note: 'Temple mornings',
+    lat: 35.0116,
+    lng: 135.7681,
+    countryCode: 'JP',
+    emoji: '⛩',
+    year: '2019',
+    tags: ['visited']
+  },
+  {
+    id: 'pl5',
+    label: 'Banff',
+    note: 'Cold lake swim',
+    lat: 51.1784,
+    lng: -115.5708,
+    countryCode: 'CA',
+    emoji: '🏔',
+    year: '2021',
+    tags: ['visited']
+  }
 ];
 
 /** Profile-only module. Solo wants and things to do with specific people. */

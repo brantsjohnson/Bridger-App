@@ -84,14 +84,34 @@ export const PROFILE_MODULES: ProfileModule[] = [
     label: 'Places traveled',
     emoji: '🗺',
     line: 'Pin where you have been',
-    // TODO: richer place editor (tags, per-place visibility, co-op photos)
-    questions: PLACE_QUESTIONS.map((p) => ({
-      id: p.id,
-      ask: p.ask,
-      type: 'text' as const,
-      placeholder: p.placeholder,
-      emoji: p.emoji
-    }))
+    // Search geocodes the place; co-op photos land in a follow-on.
+    questions: PLACE_QUESTIONS.map((p) => {
+      if (p.type === 'placeSearch') {
+        return {
+          id: p.id,
+          ask: p.ask,
+          type: 'placeSearch' as const,
+          placeholder: 'placeholder' in p ? p.placeholder : undefined,
+          emoji: p.emoji
+        };
+      }
+      if (p.type === 'single') {
+        return {
+          id: p.id,
+          ask: p.ask,
+          type: 'single' as const,
+          options: [...p.options],
+          emoji: p.emoji
+        };
+      }
+      return {
+        id: p.id,
+        ask: p.ask,
+        type: 'text' as const,
+        placeholder: 'placeholder' in p ? p.placeholder : undefined,
+        emoji: p.emoji
+      };
+    })
   },
   {
     id: 'tot',

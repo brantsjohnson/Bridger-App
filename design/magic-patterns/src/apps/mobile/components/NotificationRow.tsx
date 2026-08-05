@@ -21,7 +21,7 @@ export function NotificationRow({
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-3 rounded-card px-3.5 py-3 text-left transition-colors',
-        unread ? 'bg-[#EFE9FF] hover:bg-[#E6DEFF]' : 'hover:bg-[#F1ECFF]'
+        unread ? 'bg-purple/15 hover:bg-purple/20' : 'hover:bg-purple/10'
       )}>
       
       <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="sm" />

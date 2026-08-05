@@ -124,6 +124,8 @@ export function CaptureCompose({
     try {
       lastStep.current = 'post';
       trackFlowStep('post_story', 'post');
+      // Live createPost uploads `uri` when the real camera hands one over.
+      // Fake shutter (no file yet) still posts a caption-only Update.
       await onCreate({
         type: captured,
         overlayText: overlay || undefined,
