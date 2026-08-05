@@ -8,6 +8,11 @@
 //   * BridgerServiceStack    - the API server (deploy AFTER the secret is filled).
 //
 // The AWS account comes from whatever credentials are active.
+//
+// IMPORTANT: we do NOT pass the Secret construct object from foundation into
+// the service stack. That creates a CloudFormation dependency cycle (the
+// secret's resource policy would need the App Runner role ARN, and the role
+// would need the secret). The service stack looks the secret up by name instead.
 // ============================================
 import * as cdk from 'aws-cdk-lib';
 import { BridgerFoundationStack } from '../lib/foundation-stack';
@@ -21,13 +26,18 @@ const env = {
   region: 'us-east-1'
 };
 
-const foundation = new BridgerFoundationStack(app, 'BridgerFoundationStack', {
+// Shared secret name — both stacks agree on this string. Foundation creates it;
+// the service stack imports it by name (no cross-stack construct reference).
+const SERVER_SECRET_NAME = 'bridger/api/server';
+
+new BridgerFoundationStack(app, 'BridgerFoundationStack', {
   env,
-  description: 'Bridger secret vault + S3/CloudFront web hosting'
+  description: 'Bridger secret vault + S3/CloudFront web hosting',
+  serverSecretName: SERVER_SECRET_NAME
 });
 
 new BridgerServiceStack(app, 'BridgerServiceStack', {
   env,
   description: 'Bridger API on App Runner',
-  serverSecret: foundation.serverSecret
+  serverSecretName: SERVER_SECRET_NAME
 });
