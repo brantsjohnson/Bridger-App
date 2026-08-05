@@ -13,7 +13,7 @@
 // ============================================
 import type { HowYouMet, MeetContext, Person, Tier } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
-import { getCommonalities, type Commonality } from './discover';
+import { getCommonalities, getQuizMatches, type Commonality, type QuizMatch } from './discover';
 import {
   HOW_YOU_MET as FIXTURE_HOW,
   NEARBY_AREA,
@@ -37,6 +37,8 @@ export type RevealPayload = {
   others: Commonality[];
   /** Full set for the re-openable In common tab */
   all: Commonality[];
+  /** Compatibility scores from matching-only quizzes (e.g. "95% in Humor") */
+  quizMatches: QuizMatch[];
 };
 
 // --- DEMO STATE: mutates so saving how-you-met sticks for this session ---
@@ -80,21 +82,46 @@ export async function getReveal(
   const strongest = all.find((c) => c.strongest) ?? all[0] ?? null;
   const others = all.filter((c) => c.key !== strongest?.key).slice(0, 3);
 
-  return { person, me, via, strongest, others, all };
+  // Matching-quiz scores ("95% in Humor") — shown in the reveal, never on a card.
+  const quizMatches = await getQuizMatches(personId);
+
+  return { person, me, via, strongest, others, all, quizMatches };
 }
 
 /**
- * Persist Screen 0 choices. Appends a coarse place only when recordPlace is on.
- * Derives the starting tier so nothing private shows before a tier exists.
+ * Persist Screen 0 choices.
  *
- * PRIVACY: never stores precise coordinates. Label is neighborhood-scale only.
+ * Tier rules (SECURITY — nothing private shows before a tier exists):
+ * - just-met → always Acquaintances
+ * - already-know → their optional bucket, or Friends if they skipped
+ *
+ * Memory rules (PRIVACY):
+ * - coarse place only when recordPlace is on (never GPS / street)
+ * - optional short note for Discover connects (never logged to analytics)
  */
 export async function saveHowYouMet(
   personId: string,
-  input: { context: MeetContext; recordPlace: boolean; viaName?: string }
-): Promise<{ tier: Tier; recordedWhere: boolean }> {
-  // SECURITY: tier before private overlap — just-met starts narrower
-  const tier: Tier = input.context === 'just-met' ? 'acquaintance' : 'friend';
+  input: {
+    context: MeetContext;
+    recordPlace: boolean;
+    /** Optional how-you-met note (Discover). Trimmed; empty is ignored. */
+    meetNote?: string;
+    /** Optional circle when already-know. Ignored for just-met. */
+    tier?: Tier | null;
+    viaName?: string;
+  }
+): Promise<{ tier: Tier; recordedWhere: boolean; addedNote: boolean }> {
+  // SECURITY: just-met always starts as Acquaintances. Already-know can pick
+  // a circle; if they skip, Friends is the soft default.
+  const tier: Tier =
+    input.context === 'just-met'
+      ? 'acquaintance'
+      : input.tier === 'close' || input.tier === 'friend' || input.tier === 'acquaintance'
+        ? input.tier
+        : 'friend';
+
+  const note = input.meetNote?.trim() ?? '';
+  const addedNote = note.length > 0;
 
   if (isDemoMode()) {
     demoTiers[personId] = tier;
@@ -118,12 +145,22 @@ export async function saveHowYouMet(
       });
     }
 
+    if (addedNote) {
+      // PRIVACY: short freeform memory — only the two of you see it
+      next.push({
+        kind: 'note',
+        label: note.slice(0, 80),
+        date: todayLabel(),
+        viaName: input.viaName
+      });
+    }
+
     demoHowYouMet[personId] = next;
-    return { tier, recordedWhere: input.recordPlace };
+    return { tier, recordedWhere: input.recordPlace, addedNote };
   }
 
   // TODO: POST /connections/:personId/how-you-met (ciphertext-safe metadata only)
-  return { tier, recordedWhere: input.recordPlace };
+  return { tier, recordedWhere: input.recordPlace, addedNote };
 }
 
 /** Shared memories on their profile — either of you can edit or remove later. */

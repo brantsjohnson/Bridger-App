@@ -14,7 +14,7 @@ import {
   Maximize2Icon,
   Minimize2Icon
 } from 'lucide-react-native';
-import { PixelHeading, SectionTitle, cn, useThemeColors } from '@bridger/ui';
+import { PixelHeading, RADIUS, Reveal, SectionTitle, cn, useThemeColors } from '@bridger/ui';
 
 export type WidgetSize = 'half' | 'full';
 
@@ -31,6 +31,7 @@ export function HomeWidget({
   onMoveDown,
   canMoveUp,
   canMoveDown,
+  index = 0,
   children
 }: {
   title: string;
@@ -48,19 +49,26 @@ export function HomeWidget({
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  /** position down the page — widgets arrive one after another, not all at once */
+  index?: number;
   children: React.ReactNode;
 }) {
   const c = useThemeColors();
   const hasInfo = Boolean(description && infoAnalyticsId);
 
   return (
-    <View
-      className={cn(
-        // half widgets stretch to the taller neighbor in the row
-        'min-w-0 flex-col',
-        size === 'full' ? 'w-full' : 'w-[48%] self-stretch',
-        editing && 'rounded-card border border-dashed border-purple/40 bg-surface/60 p-2.5'
-      )}
+    // The widget's LAYOUT is written as real styles, not Tailwind classes: this
+    // is an animated wrapper, and class names don't reliably land on those. Half
+    // widgets stretch to match the taller neighbor in their row.
+    <Reveal
+      index={index}
+      style={[
+        { minWidth: 0, flexDirection: 'column' },
+        size === 'full'
+          ? { width: '100%' }
+          : { width: '48%', alignSelf: 'stretch' },
+        editing ? EDIT_FRAME : null
+      ]}
     >
       <View className="mb-2 flex-row items-center justify-between gap-2">
         <View className="min-w-0 flex-1 flex-row items-center gap-1.5">
@@ -128,8 +136,17 @@ export function HomeWidget({
 
       {/* flex-1 fills whatever height the row stretched this shell to */}
       <View className="min-h-0 flex-1">{children}</View>
-    </View>
+    </Reveal>
   );
 }
 
 const ACCENT_PURPLE = '#6B2FEA';
+
+/** The dashed purple frame that appears around a widget while rearranging. */
+const EDIT_FRAME = {
+  borderRadius: RADIUS.card,
+  borderWidth: 1,
+  borderStyle: 'dashed',
+  borderColor: 'rgba(107, 47, 234, 0.4)',
+  padding: 10
+} as const;

@@ -1,11 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The full-screen Updates player. Shows one friend's posts with timed progress
-// bars, a reaction rail (record / sticker / comment), floating reply balloons,
-// and the Catch-Up peek at the bottom. Auto-advances every ~6s unless a sheet
-// or menu is open. Respects reduce-motion via SegmentedProgress.
+// bars, caption on the left with bottom controls (emoji → comment → red-dot
+// record) on the right, floating
+// reply balloons, and the Catch-Up peek. Tap left = previous, center = pause,
+// right = next. When the last post ends, we either open the next friend in the
+// tray sequence or close back to where you came from (profile stays closed if
+// Catch-Up is open). Respects reduce-motion via SegmentedProgress.
 // ============================================
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -19,7 +22,6 @@ import {
   ChevronDownIcon,
   MessageCircleIcon,
   SmileIcon,
-  VideoIcon,
   XIcon
 } from 'lucide-react-native';
 import {
@@ -34,7 +36,6 @@ import {
   Avatar,
   SegmentedProgress,
   cn,
-  useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
@@ -47,22 +48,35 @@ import { StickerStudio } from './StickerStudio';
 import { StickerTray } from './StickerTray';
 
 const POST_MS = 6000;
+/** Always-dark icon / label on white chrome (does not flip in dark mode). */
+const CHROME_INK = '#1C1B16';
 
 type Props = {
   authorId: string;
   onClose?: () => void;
   startCatchUpOpen?: boolean;
   startCommentsOpen?: boolean;
+  /**
+   * Ordered author ids from the Home tray. When this author's posts finish,
+   * we move to the next id. Empty / single means "close when done".
+   */
+  sequence?: string[];
+  /** Opened from a profile / friend page — close when their posts end. */
+  fromProfile?: boolean;
+  /** Move to another author in the sequence (Home tray). */
+  onAdvanceAuthor?: (nextAuthorId: string) => void;
 };
 
 export function StoryViewer({
   authorId,
   onClose,
   startCatchUpOpen = false,
-  startCommentsOpen = false
+  startCommentsOpen = false,
+  sequence = [],
+  fromProfile = false,
+  onAdvanceAuthor
 }: Props) {
   const insets = useSafeAreaInsets();
-  const c = useThemeColors();
   const {
     author,
     posts,
@@ -87,8 +101,16 @@ export function StoryViewer({
   const [recorderOpen, setRecorderOpen] = useState(false);
   // Bumped when a new sticker is saved so the strip picks it up.
   const [stickerRefresh, setStickerRefresh] = useState(0);
-  const paused =
+  // User tapped the center to pause (separate from sheets holding playback).
+  const [userPaused, setUserPaused] = useState(false);
+  const overlayPaused =
     catchUpOpen || commentsOpen || menuOpen || trayOpen || studioOpen || recorderOpen;
+  const paused = overlayPaused || userPaused;
+
+  // New slide clears a manual pause so the next post can run.
+  useEffect(() => {
+    setUserPaused(false);
+  }, [index, authorId]);
 
   // --- SENDING A STICKER: one path for both the standard emoji and your own ---
   const sendSticker = async (input: {
@@ -120,6 +142,33 @@ export function StoryViewer({
   useEffect(() => {
     openSurface('story');
     return () => dismissSurface('story');
+  }, []);
+
+  // --- END OF THIS AUTHOR: next in tray sequence, or close back home/profile ---
+  // Catch-Up open = stay put (do not dismiss under the sheet).
+  const handleExhausted = useCallback(() => {
+    if (catchUpOpen) return;
+    if (fromProfile) {
+      onClose?.();
+      return;
+    }
+    const seq = sequence.length ? sequence : [authorId];
+    const at = seq.indexOf(authorId);
+    const nextId = at >= 0 ? seq[at + 1] : undefined;
+    if (nextId && onAdvanceAuthor) {
+      onAdvanceAuthor(nextId);
+      return;
+    }
+    onClose?.();
+  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor, onClose]);
+
+  const handleNext = useCallback(() => {
+    const result = goNext();
+    if (result === 'exhausted') handleExhausted();
+  }, [goNext, handleExhausted]);
+
+  const togglePause = useCallback(() => {
+    setUserPaused((v) => !v);
   }, []);
 
   // --- VIDEO: point the player at the current slide (or clear it) ---
@@ -165,21 +214,21 @@ export function StoryViewer({
   // --- VIDEO: when the clip finishes, advance to the next slide ---
   useEffect(() => {
     if (!isVideo) return;
-    const sub = player.addListener('playToEnd', () => goNext());
+    const sub = player.addListener('playToEnd', () => handleNext());
     return () => sub.remove();
-  }, [isVideo, player, goNext, post?.media]);
+  }, [isVideo, player, handleNext, post?.media]);
 
   // Photos auto-advance on a timer. Videos advance when they finish playing
   // (handled above), so skip the timer for them.
   useEffect(() => {
-    if (paused || !post || posts.length <= 1 || isVideo) return;
-    const t = setTimeout(() => goNext(), POST_MS);
+    if (paused || !post || isVideo) return;
+    const t = setTimeout(() => handleNext(), POST_MS);
     return () => clearTimeout(t);
-  }, [index, paused, post, posts.length, goNext, isVideo]);
+  }, [index, paused, post, handleNext, isVideo]);
 
   if (loading || !post) {
     return (
-      <View className="flex-1 items-center justify-center bg-ink">
+      <View className="flex-1 items-center justify-center bg-[#0E0E0E]">
         <Text className="font-sans-sb text-[14px] text-white/70">
           {loading ? 'Loading…' : 'No updates yet'}
         </Text>
@@ -189,7 +238,7 @@ export function StoryViewer({
           accessibilityLabel="Close"
           className="mt-4 min-h-[44px] rounded-full bg-white/85 px-5 py-2"
         >
-          <Text className="font-sans-b text-[14px] text-ink">Close</Text>
+          <Text className="font-sans-b text-[14px] text-[#1C1B16]">Close</Text>
         </Pressable>
       </View>
     );
@@ -203,22 +252,34 @@ export function StoryViewer({
   const CATCH_UP_PEEK = 172;
   const CATCH_UP_OVERLAP = 28;
   const mediaBottom = CATCH_UP_PEEK - CATCH_UP_OVERLAP;
+  // Bottom controls + caption sit just above the Catch-Up peek.
+  const controlsBottom = CATCH_UP_PEEK + 10;
 
   return (
     <View className={cn('relative flex-1 overflow-hidden', token.bg)}>
-      {/* Full-bleed tap zones: left = prev, right = next */}
-      <View className="absolute inset-0 flex-row">
+      {/*
+        Tap zones over the media: left = previous, center = pause/play,
+        right = next. Chrome (header, bottom controls, Catch-Up) sits above
+        and keeps its own taps.
+      */}
+      <View className="absolute inset-0 flex-row" style={{ bottom: mediaBottom }}>
         <Pressable
           onPress={withAnalyticsPress(STORY.viewer.tap_prev, goPrev)}
           accessibilityRole="button"
           accessibilityLabel="Previous post"
-          className="w-1/3"
+          className="w-[28%]"
         />
         <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_next, goNext)}
+          onPress={withAnalyticsPress(STORY.viewer.tap_pause, togglePause)}
+          accessibilityRole="button"
+          accessibilityLabel={userPaused ? 'Play' : 'Pause'}
+          className="flex-1"
+        />
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_next, handleNext)}
           accessibilityRole="button"
           accessibilityLabel="Next post"
-          className="flex-1"
+          className="w-[28%]"
         />
       </View>
 
@@ -252,7 +313,15 @@ export function StoryViewer({
         )}
         {post.overlayText ? (
           <View className="absolute left-1/2 top-[32%] -translate-x-1/2 -rotate-2 bg-white px-3 py-1">
-            <Text className="font-pixel text-[20px] text-ink">{post.overlayText}</Text>
+            <Text className="font-pixel text-[20px] text-[#1C1B16]">{post.overlayText}</Text>
+          </View>
+        ) : null}
+        {/* Quiet pause cue so people know they stopped the clip. */}
+        {userPaused && !overlayPaused ? (
+          <View className="absolute inset-0 items-center justify-center bg-black/25">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-black/55">
+              <Text className="font-sans-b text-[13px] text-white">Paused</Text>
+            </View>
           </View>
         ) : null}
       </View>
@@ -260,13 +329,14 @@ export function StoryViewer({
       <FloatingReactions
         replies={replies}
         paused={paused}
+        bottomInset={controlsBottom + 56}
         onOpen={() => setCommentsOpen(true)}
       />
 
       {/* timed progress + header */}
       <View
         style={{ paddingTop: Math.max(insets.top, 12) }}
-        className="absolute inset-x-0 top-0 px-4"
+        className="absolute inset-x-0 top-0 z-20 px-4"
       >
         <AnalyticsRegion analyticsId={STORY.viewer.progress_bar} interactive={false}>
           <SegmentedProgress
@@ -294,12 +364,20 @@ export function StoryViewer({
                 size="sm"
               />
               <View className="absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full bg-white">
-                <ChevronDownIcon size={12} color={c.ink} strokeWidth={3} />
+                <ChevronDownIcon size={12} color={CHROME_INK} strokeWidth={3} />
               </View>
             </View>
             <View>
-              <Text className="font-sans-b text-[14px] text-white">{author.name}</Text>
-              <Text className="font-sans-sb text-[11px] text-white/80">
+              <Text
+                className="font-sans-b text-[14px] text-white"
+                style={{ textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 4 }}
+              >
+                {author.name}
+              </Text>
+              <Text
+                className="font-sans-sb text-[11px] text-white/90"
+                style={{ textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 4 }}
+              >
                 {post.createdAt}
                 {post.themeSlug ? ' · Take 0.5' : ''}
               </Text>
@@ -308,13 +386,14 @@ export function StoryViewer({
 
           <View className="flex-1" />
 
+          {/* Always-white pill + near-black X so it stays readable in dark mode. */}
           <Pressable
             onPress={withAnalyticsPress(STORY.viewer.close, onClose)}
             accessibilityRole="button"
             accessibilityLabel="Close"
-            className="h-9 w-9 items-center justify-center rounded-full bg-white/85"
+            className="h-9 w-9 items-center justify-center rounded-full bg-white"
           >
-            <XIcon size={20} color={c.ink} strokeWidth={2.6} />
+            <XIcon size={20} color={CHROME_INK} strokeWidth={2.6} />
           </Pressable>
 
           {menuOpen ? (
@@ -336,7 +415,7 @@ export function StoryViewer({
                   accessibilityLabel={label}
                   className="min-h-[44px] justify-center px-4 py-2.5 active:bg-[#F1ECFF]"
                 >
-                  <Text className="font-sans-sb text-[13px] text-ink">{label}</Text>
+                  <Text className="font-sans-sb text-[13px] text-[#1C1B16]">{label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -345,61 +424,87 @@ export function StoryViewer({
       </View>
 
       {/*
-        Right reaction rail: record a 10-second round video, send a sticker,
-        or write a comment. The sticker button unrolls the emoji strip beside
-        itself rather than firing off a fixed emoji.
+        Bottom row: caption on the left, reaction icons on the right
+        (emoji → comment → record), vertically center-aligned.
+        Record is a red dot, like a classic record button.
       */}
-      <View className="absolute right-3 top-1/2 -translate-y-1/2 items-center gap-3">
-        <Pressable
-          onPress={withAnalyticsPress(
-            STORY.reaction_rail.record,
-            () => {
-              setTrayOpen(false);
-              setRecorderOpen(true);
-            },
-            { analyticsProps: { method: 'video' } }
-          )}
-          accessibilityRole="button"
-          accessibilityLabel="Record a 10 second video reply"
-          className="h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-ink"
-        >
-          <VideoIcon size={24} color="#FFFFFF" strokeWidth={2.4} />
-        </Pressable>
-        <Pressable
-          onPress={withAnalyticsPress(STORY.reaction_rail.sticker, () => setTrayOpen((v) => !v), {
-            analyticsProps: { method: 'sticker' }
-          })}
-          accessibilityRole="button"
-          accessibilityLabel="Stickers"
-          accessibilityState={{ expanded: trayOpen }}
-          className={cn(
-            'h-11 w-11 items-center justify-center rounded-full',
-            trayOpen ? 'bg-white' : 'bg-white/85'
-          )}
-        >
-          <SmileIcon size={20} color={c.ink} strokeWidth={2.4} />
-        </Pressable>
-        <Pressable
-          onPress={withAnalyticsPress(
-            STORY.reaction_rail.comment,
-            () => {
-              setTrayOpen(false);
-              setCommentsOpen(true);
-            },
-            { analyticsProps: { method: 'comment' } }
-          )}
-          accessibilityRole="button"
-          accessibilityLabel="Comments"
-          className="h-11 w-11 items-center justify-center rounded-full bg-white/85"
-        >
-          <MessageCircleIcon size={20} color={c.ink} strokeWidth={2.4} />
-        </Pressable>
+      <View
+        pointerEvents="box-none"
+        className="absolute inset-x-0 z-20 flex-row items-center gap-2.5 px-3"
+        style={{ bottom: controlsBottom }}
+      >
+        {/*
+          Caption uses a fixed dark scrim + white type. Theme ink flips light
+          in dark mode, so bg-ink + text-white used to vanish on cream.
+        */}
+        {post.caption ? (
+          <AnalyticsRegion
+            analyticsId={STORY.viewer.caption_body}
+            interactive={false}
+            className="min-w-0 flex-1 rounded-2xl bg-black/80 px-3.5 py-2.5"
+          >
+            <Text className="font-sans-b text-[15px] leading-snug text-white">
+              {post.caption}
+            </Text>
+          </AnalyticsRegion>
+        ) : (
+          <View className="min-w-0 flex-1" />
+        )}
+
+        <View className="shrink-0 flex-row items-center gap-2">
+          <Pressable
+            onPress={withAnalyticsPress(STORY.reaction_rail.sticker, () => setTrayOpen((v) => !v), {
+              analyticsProps: { method: 'sticker' }
+            })}
+            accessibilityRole="button"
+            accessibilityLabel="Stickers"
+            accessibilityState={{ expanded: trayOpen }}
+            className={cn(
+              'h-11 w-11 items-center justify-center rounded-full',
+              trayOpen ? 'bg-white' : 'bg-white/90'
+            )}
+          >
+            <SmileIcon size={20} color={CHROME_INK} strokeWidth={2.4} />
+          </Pressable>
+          <Pressable
+            onPress={withAnalyticsPress(
+              STORY.reaction_rail.comment,
+              () => {
+                setTrayOpen(false);
+                setCommentsOpen(true);
+              },
+              { analyticsProps: { method: 'comment' } }
+            )}
+            accessibilityRole="button"
+            accessibilityLabel="Comments"
+            className="h-11 w-11 items-center justify-center rounded-full bg-white/90"
+          >
+            <MessageCircleIcon size={20} color={CHROME_INK} strokeWidth={2.4} />
+          </Pressable>
+          <Pressable
+            onPress={withAnalyticsPress(
+              STORY.reaction_rail.record,
+              () => {
+                setTrayOpen(false);
+                setRecorderOpen(true);
+              },
+              { analyticsProps: { method: 'video' } }
+            )}
+            accessibilityRole="button"
+            accessibilityLabel="Record a 10 second video reply"
+            className="h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#1C1B16]"
+          >
+            {/* Red record dot — clearer than a camera glyph at this size. */}
+            <View className="h-5 w-5 rounded-full bg-[#FF3B30]" />
+          </Pressable>
+        </View>
       </View>
 
       <StickerTray
         open={trayOpen}
         onClose={() => setTrayOpen(false)}
         refreshKey={stickerRefresh}
+        anchorBottom={controlsBottom + 56}
         onPickEmoji={(emoji) => {
           void sendSticker({ stickerId: emoji });
           setTrayOpen(false);
@@ -431,22 +536,6 @@ export function StoryViewer({
           await onAddReply({ kind: 'circleVideo', videoUri: uri, videoSeconds: seconds });
         }}
       />
-
-      {/*
-        The caption sits in its own solid bubble. White-on-photo was getting
-        lost against bright shots, so it now has a surface of its own.
-      */}
-      {post.caption ? (
-        <AnalyticsRegion
-          analyticsId={STORY.viewer.caption_body}
-          interactive={false}
-          className="absolute bottom-[190px] left-4 max-w-[250px] rounded-2xl bg-ink/85 px-3.5 py-2.5"
-        >
-          <Text className="font-sans-b text-[15px] leading-snug text-white">
-            {post.caption}
-          </Text>
-        </AnalyticsRegion>
-      ) : null}
 
       {catchUp ? (
         <CatchUpPanel

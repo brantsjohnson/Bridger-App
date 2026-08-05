@@ -11,6 +11,7 @@ import { EVENTS } from '@bridger/shared';
 import { Avatar, ORGANIC, cn, withAnalyticsPress } from '@bridger/ui';
 import { personById } from '../data/people';
 import { GrassBurst } from './GrassBurst';
+import { GrassGrow } from './GrassGrow';
 
 export function TouchGrassButton({
   live,
@@ -30,10 +31,14 @@ export function TouchGrassButton({
         accessibilityLabel={live ? "You're free. Open Touch Grass" : "Tell friends you're free"}
         style={ORGANIC.banner}
         className={cn(
-          'w-full items-center gap-2 px-6 py-8 active:opacity-90',
+          'w-full items-center gap-2 overflow-hidden px-6 py-8 active:opacity-90',
           live ? 'bg-success' : 'bg-green'
         )}
       >
+        {/* Grass keeps growing and sinking inside the button until you tap it.
+            Once you're live it stops — the point has been made. */}
+        <GrassGrow active={!live} />
+
         <SproutIcon size={32} color="#FFFFFF" strokeWidth={2.2} />
         <Text className="font-pixel text-[26px] leading-none text-white">TOUCH GRASS</Text>
         <Text className="font-sans-sb text-[13px] text-white/85">

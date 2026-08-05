@@ -94,7 +94,7 @@ export function CatchUpPanel({
             accessibilityRole="button"
             accessibilityLabel="Close Catch-Up"
             onPress={withAnalyticsPress(CATCH_UP.chrome.dismiss, () => onOpenChange(false))}
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-black/45"
           />
         ) : null}
 
@@ -170,7 +170,7 @@ export function CatchUpPanel({
                     }
                     accessibilityRole="button"
                     accessibilityLabel={`${d.day}: ${d.note}. ${d.caption}`}
-                    className="overflow-hidden rounded-2xl bg-white"
+                    className="overflow-hidden rounded-2xl bg-surface"
                   >
                     {/* Just the day. The little emoji chip that used to sit in
                         the corner said nothing the photo below doesn't. */}
@@ -241,6 +241,11 @@ function ActionableCard({
   };
 
   return (
+    /*
+      Pastel accent fills stay bright in dark mode (dark: twins do not run on
+      web here). Theme ink flips light, so text-ink on these cards vanishes.
+      Always-dark onaccent type keeps event / poll titles readable.
+    */
     <View className={cn('overflow-hidden rounded-2xl', token.tintSolid)}>
       {item.kind === 'event' ? (
         <View className="h-24 w-full overflow-hidden">
@@ -251,15 +256,15 @@ function ActionableCard({
       <View className="p-4">
         <View className="flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">
-            <Text className="font-sans-b text-[10px] uppercase tracking-wide text-ink-mute">
+            <Text className="font-sans-b text-[10px] uppercase tracking-wide text-onaccent/60">
               {item.kind}
               {item.countdown ? ` · ${item.countdown}` : ''}
             </Text>
-            <Text className="mt-0.5 font-sans-b text-[16px] leading-snug tracking-tight text-ink">
+            <Text className="mt-0.5 font-sans-b text-[16px] leading-snug tracking-tight text-onaccent">
               {item.title}
             </Text>
             {item.detail ? (
-              <Text className="font-sans-sb text-[12px] text-ink-soft">{item.detail}</Text>
+              <Text className="font-sans-sb text-[12px] text-onaccent/75">{item.detail}</Text>
             ) : null}
           </View>
           {item.kind !== 'event' ? (
@@ -319,7 +324,7 @@ function SettledRow({ item }: { item: CatchUpItem }) {
     <AnalyticsRegion
       analyticsId={CATCH_UP.bottom.answered_row}
       interactive={false}
-      className="flex-row items-center gap-2.5 rounded-2xl border border-ink-line bg-white px-3.5 py-2.5"
+      className="flex-row items-center gap-2.5 rounded-2xl border border-ink-line bg-surface px-3.5 py-2.5"
       accessibilityLabel={`You answered: ${item.title}`}
     >
       <Text accessible={false} className="shrink-0 text-[15px]">
@@ -355,11 +360,15 @@ function CurrentlyCard({ currently }: { currently: Currently }) {
   ];
 
   return (
-    <View className="flex-row gap-px overflow-hidden rounded-2xl bg-white/15">
+    /*
+      Fixed near-black cells + white type. bg-ink would flip cream in dark mode
+      and wipe out text-white.
+    */
+    <View className="flex-row gap-px overflow-hidden rounded-2xl bg-[#151515]">
       {cells.map((cell) => (
         <View
           key={cell.label}
-          className="min-w-0 flex-1 flex-row items-center gap-2.5 bg-ink px-3 py-2.5"
+          className="min-w-0 flex-1 flex-row items-center gap-2.5 bg-[#1C1B16] px-3 py-2.5"
         >
           <View
             accessible={false}

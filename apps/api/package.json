@@ -9,7 +9,7 @@
     "dev": "nest start --watch",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "npx --yes tsx src/quiz/score.spec.ts"
   },
   "dependencies": {
     "@bridger/permissions": "workspace:*",
@@ -19,7 +19,7 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@supabase/supabase-js": "^2.112.0",
-    "jose": "^6.2.8",
+    "jose": "^4.15.9",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

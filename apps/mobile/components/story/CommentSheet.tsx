@@ -110,7 +110,7 @@ export function CommentSheet({
         <View
           accessibilityViewIsModal
           style={{ paddingBottom: Math.max(insets.bottom, 12), maxHeight: '80%' }}
-          className="rounded-t-3xl bg-white"
+          className="rounded-t-3xl bg-surface"
         >
             <View className="flex-row items-center justify-between px-5 pb-3 pt-4">
               <PixelHeading size="md">Replies</PixelHeading>
@@ -186,11 +186,15 @@ export function CommentSheet({
             ) : null}
 
             <View className="flex-row items-center gap-2 border-t border-ink-line px-5 py-3">
+              {/*
+                Fixed near-black fill + white camera. bg-ink flips cream in
+                dark mode, which made the white icon disappear on the pill.
+              */}
               <Pressable
                 onPress={openRecorder}
                 accessibilityRole="button"
                 accessibilityLabel="Record a 10 second video reply"
-                className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink"
+                className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1C1B16]"
               >
                 <VideoIcon size={20} color="#FFFFFF" strokeWidth={2.4} />
               </Pressable>

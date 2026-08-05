@@ -68,7 +68,10 @@ export const ACCENTS: Record<Accent, AccentToken> = {
   purple: { label: 'Purple', hex: '#6B2FEA', bg: 'bg-purple', tint: 'bg-purple/15', tintSolid: 'bg-[#D5C2FF] dark:bg-[#C4B0F5]', text: 'text-white' },
   coral: { label: 'Coral', hex: '#FF5A1F', bg: 'bg-coral', tint: 'bg-coral/20', tintSolid: 'bg-[#FFC7AC] dark:bg-[#E8A888]', text: 'text-onaccent' },
   teal: { label: 'Teal', hex: '#00A676', bg: 'bg-teal', tint: 'bg-teal/15', tintSolid: 'bg-[#9FE7CE] dark:bg-[#7BC4AC]', text: 'text-onaccent' },
-  amber: { label: 'Amber', hex: '#FFB515', bg: 'bg-amber', tint: 'bg-amber/20', tintSolid: 'bg-[#FFDE99] dark:bg-[#E8C56A]', text: 'text-onaccent' },
+  // Amber's "pale" fill is deliberately still SATURATED. A washed-out, dusty
+  // yellow is out of the palette — it reads as faded, not sunny. Dark ink is
+  // perfectly readable on this, so it costs nothing to keep it bright.
+  amber: { label: 'Amber', hex: '#FFB515', bg: 'bg-amber', tint: 'bg-amber/20', tintSolid: 'bg-[#FFC21A] dark:bg-[#F0AE10]', text: 'text-onaccent' },
   pink: { label: 'Pink', hex: '#FF3E8A', bg: 'bg-pink', tint: 'bg-pink/20', tintSolid: 'bg-[#FFC0D7] dark:bg-[#E89AB8]', text: 'text-white' },
   blue: { label: 'Blue', hex: '#1D6FE8', bg: 'bg-blue', tint: 'bg-blue/15', tintSolid: 'bg-[#BBD6FB] dark:bg-[#8EB4E8]', text: 'text-white' },
   green: { label: 'Green', hex: '#5FBF3A', bg: 'bg-green', tint: 'bg-green/20', tintSolid: 'bg-[#CDECB6] dark:bg-[#A8D090]', text: 'text-onaccent' }
@@ -211,12 +214,101 @@ export function ringToneForTier(tier: 'close' | 'friend' | 'acquaintance' | 'non
   return tier === 'none' ? 'acquaintance' : tier;
 }
 
-export const TIER_GRADIENT: Record<RingTone, { strong: [string, string]; soft: [string, string] }> = {
-  me: { strong: ['#FFD84A', '#FF9F1C'], soft: ['#FFEFB8', '#FFD98F'] },
-  close: { strong: ['#8FE05C', '#2FA85B'], soft: ['#DDF3C6', '#B2E0A0'] },
-  friend: { strong: ['#5AA0FF', '#1D6FE8'], soft: ['#CFE1FC', '#A6C4F2'] },
-  acquaintance: { strong: ['#FFB05B', '#FF5A1F'], soft: ['#FFDCC4', '#FFBE9B'] }
+/**
+ * `strong` is a THREE-color gradient (Instagram-story look): a dark tone, a
+ * light tone of the same color, and a neighboring hue for life — but that third
+ * hue stays close to the family (a lime, an indigo, a red-orange) so the ring
+ * reads as "green / blue / orange" and never turns into a yellow, purple, or
+ * red ring. Colors are punched up for maximum vibrancy.
+ *   me (yellow)          → gold, yellow, orange
+ *   close (green)        → deep green, bright green, lime
+ *   friend (blue)        → deep blue, bright blue, indigo-violet
+ *   acquaintance (orange)→ bright orange, deep orange, red-orange
+ * `soft` stays a simple two-color fade for the calm "nothing needed" state.
+ */
+export const TIER_GRADIENT: Record<
+  RingTone,
+  { strong: [string, string, string]; soft: [string, string] }
+> = {
+  me: { strong: ['#FFC01A', '#FFDE2E', '#FF8A12'], soft: ['#FFEFB8', '#FFD98F'] },
+  close: { strong: ['#08B84E', '#57F06A', '#9BF52A'], soft: ['#DDF3C6', '#B2E0A0'] },
+  friend: { strong: ['#0A5CF5', '#3FA4FF', '#6A4BF5'], soft: ['#CFE1FC', '#A6C4F2'] },
+  acquaintance: { strong: ['#FF9E14', '#FF6410', '#FF3B24'], soft: ['#FFDCC4', '#FFBE9B'] }
 };
+
+/**
+ * Story rings, Instagram-style: a THREE-color gradient tinted to the friend
+ * group that person is in, so the ring color tells you how close they are at a
+ * glance. The gradient travels around the outline when the update is unseen.
+ *
+ * Each group is: a light tone, a dark tone of the same color, and a third
+ * neighboring color to give the ring its lively multi-color look.
+ *   close (green)        → dark green, light green, yellow
+ *   friend (blue)        → dark blue, very light blue, purple
+ *   acquaintance (orange)→ light orange, dark orange, red
+ * Birthday rows stay pink (light pink → pink → magenta).
+ */
+export type WashStoryRing = 'close' | 'friend' | 'acquaintance' | 'birthday';
+
+export const WASH_STORY_RING: Record<WashStoryRing, [string, string, string]> = {
+  close: ['#08B84E', '#57F06A', '#9BF52A'],
+  friend: ['#0A5CF5', '#3FA4FF', '#6A4BF5'],
+  acquaintance: ['#FF9E14', '#FF6410', '#FF3B24'],
+  // Pink (birthday) still gets a lively story ring when they have an update.
+  birthday: ['#FF3E8A', '#FF7FB5', '#FF2E6B']
+};
+
+/**
+ * The same tier colors as FLAT fills, for anywhere a gradient would be too
+ * busy — message rows above all. One vivid color per circle:
+ *   close green · friend blue · acquaintance orange · you yellow
+ *
+ * `deep` is the loud version and means SOMETHING IS WAITING ON YOU.
+ * `light` is the calm version and means you already did your part.
+ * `onDeep` / `onLight` are the text colors that stay readable on each.
+ */
+export const TIER_COLOR: Record<
+  RingTone,
+  { deep: string; light: string; onDeep: string; onLight: string }
+> = {
+  me: { deep: '#E8940C', light: '#FFF0C2', onDeep: '#FFFFFF', onLight: '#1C1B16' },
+  close: { deep: '#2FA85B', light: '#DCF4CA', onDeep: '#FFFFFF', onLight: '#1C1B16' },
+  friend: { deep: '#1D6FE8', light: '#D5E5FD', onDeep: '#FFFFFF', onLight: '#1C1B16' },
+  acquaintance: { deep: '#F2560E', light: '#FFDFCB', onDeep: '#FFFFFF', onLight: '#1C1B16' }
+};
+
+/**
+ * FUN SHAPES — a card should not look like a rectangle with the corners sanded
+ * off. Each entry curves hard on one pair of corners and stays tight on the
+ * other, so a stack of cards leans different ways down the page.
+ *
+ * Use `funShape('some-stable-id')` to get one: the SAME id always gets the
+ * SAME shape, so a card doesn't reshuffle every time the screen redraws, but
+ * across a list the shapes look random.
+ *
+ * Some things should stay plain — story tiles, notifications, anything in a
+ * tight grid. Just don't call this on those.
+ */
+export const FUN_SHAPES = [
+  { borderTopLeftRadius: 40, borderTopRightRadius: 14, borderBottomRightRadius: 40, borderBottomLeftRadius: 14 },
+  { borderTopLeftRadius: 14, borderTopRightRadius: 40, borderBottomRightRadius: 14, borderBottomLeftRadius: 40 },
+  { borderTopLeftRadius: 48, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 20 },
+  { borderTopLeftRadius: 20, borderTopRightRadius: 48, borderBottomRightRadius: 20, borderBottomLeftRadius: 20 },
+  { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 48, borderBottomLeftRadius: 20 },
+  { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 48 },
+  { borderTopLeftRadius: 44, borderTopRightRadius: 44, borderBottomRightRadius: 16, borderBottomLeftRadius: 16 },
+  { borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomRightRadius: 44, borderBottomLeftRadius: 44 }
+] as const;
+
+/** Stable "random" pick: the same seed always lands on the same shape. */
+export function funShape(seed: string | number, options = FUN_SHAPES) {
+  const text = String(seed);
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash * 31 + text.charCodeAt(i)) % 100000;
+  }
+  return options[hash % options.length];
+}
 
 export const ORGANIC = {
   soft: {

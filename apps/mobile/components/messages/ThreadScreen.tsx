@@ -17,11 +17,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ArrowUpIcon,
   CalendarPlusIcon,
   ChevronLeftIcon,
   ClockIcon,
   PhoneIcon,
+  SendIcon,
   UserRoundPlusIcon
 } from 'lucide-react-native';
 import { DAILY_CAP, MESSAGES } from '@bridger/shared';
@@ -30,7 +30,6 @@ import {
   AnalyticsRegion,
   Avatar,
   cn,
-  useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { useThread } from '../../hooks/useThread';
@@ -50,7 +49,6 @@ export function ThreadScreen({
   seedMessage
 }: Props) {
   const insets = useSafeAreaInsets();
-  const c = useThemeColors();
   const { thread, loading, onSend, onShareContact, onMakePlan, myLeft, theirLeft, atCap } =
     useThread(threadId);
   const touchGrass = useTouchGrass();
@@ -114,7 +112,7 @@ export function ThreadScreen({
     <View className="flex-1 bg-canvas" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
       <View
         style={{ paddingTop: Math.max(insets.top, 8) }}
-        className="flex-row items-center gap-3 border-b border-ink-line bg-white px-4 py-3"
+        className="flex-row items-center gap-3 border-b border-ink-line bg-surface px-4 py-3"
       >
         <Pressable
           onPress={withAnalyticsPress(MESSAGES.conversation.back, onBack)}
@@ -122,7 +120,8 @@ export function ThreadScreen({
           accessibilityLabel="Back"
           className="h-9 w-9 items-center justify-center rounded-full active:bg-[#F1ECFF]"
         >
-          <ChevronLeftIcon size={20} color={c.ink} strokeWidth={2.6} />
+          {/* White header bar — always near-black icons/text (text-ink goes cream in dark mode). */}
+          <ChevronLeftIcon size={20} color="#1C1B16" strokeWidth={2.6} />
         </Pressable>
         <Avatar
           name={thread.name}
@@ -133,7 +132,7 @@ export function ThreadScreen({
         />
         <Text
           numberOfLines={1}
-          className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-ink"
+          className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-[#1C1B16]"
         >
           {thread.name}
         </Text>
@@ -175,7 +174,8 @@ export function ThreadScreen({
               <Text
                 className={cn(
                   'font-sans-sb text-[15px] leading-snug',
-                  b.from === 'me' ? token.text : 'text-ink'
+                  // Their bubbles stay white — text must stay near-black in dark mode.
+                  b.from === 'me' ? token.text : 'text-[#1C1B16]'
                 )}
               >
                 {b.text}
@@ -201,12 +201,12 @@ export function ThreadScreen({
           <AnalyticsRegion
             analyticsId={MESSAGES.conversation.maxed_notice}
             interactive={false}
-            className="rounded-2xl bg-[#FDEFD3] px-4 py-3.5"
+            className="rounded-2xl bg-amber px-4 py-3.5"
             accessibilityLabel={`${first} used their ${DAILY_CAP} for today. They cannot reply until tomorrow.`}
           >
-            <ClockIcon size={16} color="#FFB515" strokeWidth={2.6} style={{ alignSelf: 'center' }} />
-            <Text className="mt-1.5 text-center font-sans-sb text-[13px] leading-snug text-ink-soft">
-              <Text className="font-sans-b text-ink">
+            <ClockIcon size={16} color="#1C1B16" strokeWidth={2.6} style={{ alignSelf: 'center' }} />
+            <Text className="mt-1.5 text-center font-sans-sb text-[13px] leading-snug text-[#1C1B16]/80">
+              <Text className="font-sans-b text-[#1C1B16]">
                 {first}'s used their {DAILY_CAP} for today
               </Text>{' '}
               They can't reply until tomorrow.
@@ -279,8 +279,8 @@ export function ThreadScreen({
                   maxLength={MESSAGE_MAX}
                   placeholder="Message…"
                   accessibilityLabel="Message"
-                  placeholderTextColor={c.inkMute}
-                  className="min-w-0 flex-1 font-sans-sb text-[15px] text-ink"
+                  placeholderTextColor="#9A9688"
+                  className="min-w-0 flex-1 font-sans-sb text-[15px] text-[#1C1B16]"
                 />
                 <Pressable
                   onPress={withAnalyticsPress(MESSAGES.composer.send, () => void send())}
@@ -290,7 +290,7 @@ export function ThreadScreen({
                   accessibilityState={{ disabled: sending || !draft.trim() }}
                   className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-success disabled:opacity-40"
                 >
-                  <ArrowUpIcon size={20} color="#FFFFFF" strokeWidth={2.8} />
+                  <SendIcon size={18} color="#FFFFFF" strokeWidth={2.6} />
                 </Pressable>
               </View>
             )}

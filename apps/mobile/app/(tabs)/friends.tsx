@@ -22,6 +22,7 @@ import {
   SearchField,
   SectionTitle,
   cn,
+  useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { ColdStart } from '../../components/ColdStart';
@@ -32,6 +33,8 @@ import { FriendRow, type FriendRowPerson } from '../../components/friends/Friend
 import { InsideJokesWidget } from '../../components/friends/InsideJokesWall';
 import { SubmitQuestion } from '../../components/friends/SubmitQuestion';
 import { TierPicker } from '../../components/friends/TierPicker';
+import { RecapRecorder } from '../../components/pod/RecapRecorder';
+import { useFriendPod } from '../../hooks/useFriendPod';
 import { useFriends } from '../../hooks/useFriends';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 
@@ -50,14 +53,35 @@ const TIER_DESCRIPTIONS: Record<Tier, string> = {
 const searchEnabled = false;
 
 export default function FriendsScreen() {
+  const c = useThemeColors();
   const router = useRouter();
   const { sections, total, refresh, onMoveTier } = useFriends();
   const { jokes, onAdd: onAddJoke } = useInsideJokes('all');
+  const { recap, refresh: refreshPod } = useFriendPod();
 
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [questionOpen, setQuestionOpen] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
+
+  // Play opens the full-page weekly podcast (not a popup).
+  const openPlayer = () => {
+    router.push('/recap');
+  };
+
+  // Record opens the recorder, unless the user's rolling week hasn't reset yet.
+  const openRecorder = () => {
+    if (recap?.canRecordAfter) {
+      const when = new Date(recap.canRecordAfter);
+      Alert.alert(
+        'Already recorded',
+        `You can add a new recap after ${when.toLocaleDateString()}.`
+      );
+      return;
+    }
+    setRecordOpen(true);
+  };
   const [jokeOpen, setJokeOpen] = useState(false);
   const [moving, setMoving] = useState<FriendRowPerson | null>(null);
 
@@ -114,7 +138,7 @@ export default function FriendsScreen() {
             <ButtonSecondary
               size="sm"
               className="h-10"
-              tone={editing ? 'solid' : 'outline'}
+              tone={editing ? 'solid' : 'light'}
               onPress={() => setEditing((v) => !v)}
               accessibilityLabel={editing ? 'Done editing friends' : 'Edit friends'}
               analyticsId={FRIENDS.top_nav.edit}
@@ -126,9 +150,9 @@ export default function FriendsScreen() {
               onPress={withAnalyticsPress(FRIENDS.top_nav.add, () => setAddOpen(true))}
               accessibilityRole="button"
               accessibilityLabel="Add friend"
-              className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
+              className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-90"
             >
-              <PlusIcon size={18} color="#FFFFFF" strokeWidth={2.6} />
+              <PlusIcon size={18} color={c.ink} strokeWidth={2.6} />
             </Pressable>
           </View>
         }
@@ -160,15 +184,8 @@ export default function FriendsScreen() {
               />
               <FriendPodWidget
                 size="full"
-                onPlay={() =>
-                  Alert.alert(
-                    "Your friends' week",
-                    'The full Friend Pod player ships next. For now this is the entry.'
-                  )
-                }
-                onRecord={() =>
-                  Alert.alert('Add your recap', 'Voice recording for the weekly pod ships with the player.')
-                }
+                onPlay={() => void openPlayer()}
+                onRecord={openRecorder}
                 onSubmitQuestion={() => setQuestionOpen(true)}
               />
             </View>
@@ -254,7 +271,7 @@ export default function FriendsScreen() {
                       editing={editing}
                       onPress={() => handleRowPress(p)}
                       onLongPress={() => openMove(p)}
-                      onStory={() => router.push(`/story/${p.id}`)}
+                      onStory={() => router.push(`/story/${p.id}?from=profile`)}
                     />
                   ))}
                 </View>
@@ -278,6 +295,15 @@ export default function FriendsScreen() {
       />
 
       <SubmitQuestion open={questionOpen} onClose={() => setQuestionOpen(false)} />
+
+      {/* Add your recap: record the week's 5 questions by voice */}
+      <RecapRecorder
+        open={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        weekId={recap?.week.id ?? ''}
+        questions={recap?.week.questions ?? []}
+        onPosted={() => void refreshPod()}
+      />
 
       <AddInsideJokeSheet
         open={jokeOpen}

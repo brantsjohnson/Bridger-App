@@ -124,7 +124,10 @@ export function GrassSignalSheet({
 
         {signal.what ? (
           <View className="rounded-card bg-[#EEF8E3] p-3.5">
-            <Text className="font-sans-sb text-[14px] leading-snug text-ink">{signal.what}</Text>
+            {/* Light mint bubble — keep type near-black so dark mode stays readable. */}
+            <Text className="font-sans-sb text-[14px] leading-snug text-[#1C1B16]">
+              {signal.what}
+            </Text>
           </View>
         ) : null}
 

@@ -1,18 +1,27 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // One Inside Joke sticky note. Front shows the quote + whose words they are.
-// Tap flips to the credits (who posted it, where, when). The folded corner is
-// drawn with Views because React Native has no CSS sticky-note class.
+// Tap flips to the credits (who posted it, where, when). The dog-ear cuts the
+// bottom-right corner open and folds a light triangle inward over the cut.
 // Pass analyticsId so a flip is named; noteBodyAnalyticsId tags the quote for
 // dead_click when someone taps the text expecting more.
 // ============================================
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
 import type { InsideJoke } from '@bridger/shared';
-import { ACCENTS, AnalyticsRegion, Avatar, cn, withAnalyticsPress } from '@bridger/ui';
+import {
+  ACCENTS,
+  AnalyticsRegion,
+  Avatar,
+  cn,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
 import { personById } from '../../data/people';
 
 const TILTS = ['-rotate-2', 'rotate-1', '-rotate-1', 'rotate-2'] as const;
+/** Size of the dog-ear square in the bottom-right corner. */
+const FOLD = 22;
 
 export function InsideJokeNote({
   joke,
@@ -28,18 +37,70 @@ export function InsideJokeNote({
   noteBodyAnalyticsId?: string;
 }) {
   const token = ACCENTS[joke.accent];
+  const c = useThemeColors();
   const [meta, setMeta] = useState(false);
   const quoted = joke.quotedId ? personById(joke.quotedId) : null;
   const poster = joke.postedById ? personById(joke.postedById) : null;
   const tagged = joke.taggedIds?.length ?? 0;
 
+  /*
+    Dog-ear: think of a FOLD×FOLD square in the bottom-right.
+    - The outer half (what used to be the light triangle) is cut away so the
+      page shows through — on web via clip-path; on native a canvas-colored
+      triangle covers that half.
+    - The inner half is the fold flap: same triangle flipped over the long
+      edge so it points into the card (light = underside of the paper).
+  */
+  // clipPath is web-only; cast because RN's ViewStyle types omit it.
+  const notchClip: ViewStyle | undefined =
+    Platform.OS === 'web'
+      ? ({
+          clipPath: `polygon(0% 0%, 100% 0%, 100% calc(100% - ${FOLD}px), calc(100% - ${FOLD}px) 100%, 0% 100%)`
+        } as ViewStyle)
+      : undefined;
+
   return (
-    <View className={cn('relative w-full overflow-hidden p-4 pb-6', token.bg, TILTS[index % TILTS.length])}>
-      {/* folded corner — visual only */}
+    <View
+      className={cn('relative w-full p-4 pb-6', token.bg, TILTS[index % TILTS.length])}
+      style={notchClip}
+    >
+      {/* Native fallback: paint the outer half with the page color so the
+          corner looks empty (web uses clip-path above instead). */}
+      {Platform.OS !== 'web' ? (
+        <View
+          accessible={false}
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+            width: 0,
+            height: 0,
+            borderStyle: 'solid',
+            borderBottomWidth: FOLD,
+            borderLeftWidth: FOLD,
+            borderBottomColor: c.canvas,
+            borderLeftColor: 'transparent'
+          }}
+        />
+      ) : null}
+
+      {/* Inner fold — flipped over the hypotenuse, pointing into the note. */}
       <View
         accessible={false}
         pointerEvents="none"
-        className="absolute bottom-0 right-0 h-5 w-5 border-b-[10px] border-l-[10px] border-b-ink/10 border-l-transparent bg-white/40"
+        style={{
+          position: 'absolute',
+          right: 0,
+          bottom: 0,
+          width: 0,
+          height: 0,
+          borderStyle: 'solid',
+          borderTopWidth: FOLD,
+          borderRightWidth: FOLD,
+          borderTopColor: 'rgba(255,255,255,0.55)',
+          borderRightColor: 'transparent'
+        }}
       />
 
       <Pressable

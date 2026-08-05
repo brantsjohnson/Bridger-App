@@ -33,13 +33,17 @@ export interface ApprovalRequest {
 /**
  * How a connection began. Captured automatically where the app already knows
  * (an event, or the mutual friend who introduced you); optional and coarse
- * where it doesn't (a place). Shared by both people — either can edit or remove it.
+ * where it doesn't (a place or a short note). Shared by both people — either
+ * can edit or remove it.
+ *
+ * `note` is for Discover / no-shared-place connects: a short freeform memory
+ * when there is no event and no coarse place to record.
  */
-export type HowYouMetKind = 'event' | 'via' | 'place';
+export type HowYouMetKind = 'event' | 'via' | 'place' | 'note';
 
 export interface HowYouMet {
   kind: HowYouMetKind;
-  /** short label: "Game Night", "Priya", "RiNo, Denver" */
+  /** short label: "Game Night", "Priya", "RiNo, Denver", or a short note */
   label: string;
   /** display date the connection was made */
   date: string;
@@ -82,6 +86,12 @@ export interface Commonality {
   strongest?: boolean;
 }
 
+/** The timing window on a Touch Grass signal (matches the DB enum). */
+export type GrassWhen = 'now' | 'tonight' | 'weekend';
+
+/** How a recipient reacted to a signal. There is no "no" — only in or dismiss. */
+export type GrassResponseStatus = 'in' | 'dismissed';
+
 /**
  * Someone broadcasting that they're free. Rich enough that a friend can decide
  * whether they want in without having to message and ask.
@@ -89,7 +99,9 @@ export interface Commonality {
 export interface GrassSignal {
   id: string;
   personId: string;
-  /** "Tonight", "Now", "Saturday" */
+  /** Structured window used by the server/filtering. */
+  whenWindow?: GrassWhen;
+  /** Display version of the window, e.g. "Tonight", "Now", "This weekend". */
   when: string;
   /** the short version on the card */
   note?: string;
@@ -97,11 +109,23 @@ export interface GrassSignal {
   what?: string;
   /** roughly where — a neighbourhood, never a street address */
   where?: string;
-  /** who's already said yes */
+  /** who's already said yes (visible to the author only) */
   inIds?: string[];
   /** which circle they told */
   audience?: string;
   postedAt?: string;
+  /** When the signal stops showing (end of its window). */
+  expiresAt?: string;
+  /** True when this signal belongs to the signed-in user. */
+  mine?: boolean;
+}
+
+/** One recipient's response to a signal (author sees the list of "in"). */
+export interface GrassResponse {
+  signalId: string;
+  personId: string;
+  status: GrassResponseStatus;
+  createdAt: string;
 }
 
 /**

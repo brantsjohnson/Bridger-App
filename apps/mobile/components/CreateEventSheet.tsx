@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The create-event form sheet: title, when, where, optional bring / chip-in
+// The create-event form sheet: title, when, where, optional chip-in
 // handle, invite a few friends. Saves through createEvent() so demo and live
 // use the same door. Chip-in is a text handle only — we never process money.
 // Analytics: flow create_event; publish emits event_created (has_chip_in only —
@@ -44,7 +44,6 @@ export function CreateEventSheet({
   const [bio, setBio] = useState('');
   const [place, setPlace] = useState('');
   const [address, setAddress] = useState('');
-  const [bring, setBring] = useState('');
   const [chipInHandle, setChipInHandle] = useState('');
   const [chipInAmount, setChipInAmount] = useState('');
   const [chipInMethod, setChipInMethod] = useState<string>('');
@@ -83,7 +82,6 @@ export function CreateEventSheet({
         time: '18:30',
         place: place || 'TBD',
         address,
-        bring,
         invitedIds: invited,
         allowFriendsToInvite: friendsInvite,
         chipInAmount: chipInAmount || undefined,
@@ -171,12 +169,6 @@ export function CreateEventSheet({
           <Text className="-mt-1 font-sans-md text-[11px] text-ink-mute">
             Only people going or invited can see the address.
           </Text>
-          <TextField
-            label="Bring"
-            value={bring}
-            onChange={setBring}
-            placeholder="A drink to share"
-          />
 
           {/* PAYMENT: handle only — Bridger never processes chip-in money */}
           <View className="rounded-card border border-ink-line bg-surface p-3.5">

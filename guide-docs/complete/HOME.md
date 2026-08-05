@@ -40,7 +40,7 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 ├─────────────────────────────┤
 │  This week                  │  8 · Weekly section (conditional)
 │  ▸ Friends' week · podcast  │
-│  + Add your recap · 45s     │
+│  + Add your recap · 20s     │
 │  Quiz · take → who got who  │
 ├─────────────────────────────┤
 │  🖼 Band Tee Week · post →  │  8c · Weekly activity (conditional, admin-hosted)
@@ -148,7 +148,7 @@ Right under the stories row, a strip surfaces the **reactions and video response
 
 Home's weekly-cadence content, all conditional:
 - **Friends' week podcast** — a play button for the stitched recap of friends' recorded answers ("6 recaps · 4 min").
-- **Add your recap** — the week's **5 questions**, answered by voice (~45s each), so the user is included in the podcast (see `RECAP-PODCAST.md`; `recap` module).
+- **Add your recap** — the week's **5 questions**, previewed first, then answered by voice (~20s each), so the user is included in the podcast (see `RECAP-PODCAST.md`; `recap` module).
 - **Quiz** — this week's quiz: a take-it CTA that becomes a result distribution after completion.
 
 ### Story tiles (the peek design)

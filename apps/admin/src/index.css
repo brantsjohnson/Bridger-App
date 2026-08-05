@@ -1,0 +1,50 @@
+/* ============================================
+   WHAT THIS FILE DOES (plain English):
+   Global styles for the admin console. Loads Tailwind, the pixel header font,
+   and sets the eggshell page background with readable black text.
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- Page canvas: eggshell + near-black ink --- */
+:root {
+  color: #1c1b16;
+  background: #f4f1e7;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #f4f1e7;
+  color: #1c1b16;
+}
+
+/* ACCESSIBILITY: clear focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid #1c1b16;
+  outline-offset: 2px;
+}
+
+/* Headers use the pixel font; body stays clean sans */
+h1,
+h2,
+h3,
+.font-pixel {
+  font-family: 'Pixelify Sans', monospace;
+  letter-spacing: 0.02em;
+}

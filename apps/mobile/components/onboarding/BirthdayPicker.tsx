@@ -340,7 +340,8 @@ function Crumb({
         disabled && 'opacity-40'
       )}
     >
-      <Text className={cn('font-sans-b text-[12px]', active ? 'text-white' : 'text-ink-soft')}>
+      {/* text-canvas stays opposite of bg-ink when the theme flips */}
+      <Text className={cn('font-sans-b text-[12px]', active ? 'text-canvas' : 'text-ink-soft')}>
         {label}
       </Text>
     </Pressable>

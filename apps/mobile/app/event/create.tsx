@@ -100,15 +100,17 @@ export default function CreateEventScreen() {
         bio: draft.bio || undefined,
         day: draft.day,
         time: draft.time,
-        place: draft.place,
+        place: draft.place || draft.address || 'TBD',
         address: draft.address || undefined,
-        bring: draft.bring || undefined,
         invitedIds: draft.invitedIds,
-        coHostIds: draft.coHostId ? [draft.coHostId] : [],
+        coHostIds: draft.coHostIds,
         allowFriendsToInvite: draft.allowFriendsToInvite,
-        chipInAmount: draft.chipInAmount || undefined,
-        chipInMethod: (draft.chipInMethod || undefined) as CreateEventInput['chipInMethod'],
-        chipInHandle: draft.chipInHandle || undefined,
+        cap: draft.allowFriendsToInvite ? draft.guestCap : 35,
+        chipInAmount: draft.chipInEnabled ? draft.chipInAmount || undefined : undefined,
+        chipInMethod: draft.chipInEnabled
+          ? ((draft.chipInMethod || undefined) as CreateEventInput['chipInMethod'])
+          : undefined,
+        chipInHandle: draft.chipInEnabled ? draft.chipInHandle || undefined : undefined,
         cover: draft.cover,
         assignments: draft.assignments
       };
@@ -116,8 +118,8 @@ export default function CreateEventScreen() {
 
       // PRIVACY: booleans + counts only — never the title, bio, or address text.
       trackProduct('event_created', {
-        has_cohost: !!draft.coHostId,
-        has_chip_in: !!(draft.chipInHandle || draft.chipInAmount),
+        has_cohost: draft.coHostIds.length > 0,
+        has_chip_in: !!(draft.chipInEnabled && (draft.chipInHandle || draft.chipInAmount)),
         has_cover: !!draft.cover,
         assignment_count: draft.assignments.length,
         invited_count: draft.invitedIds.length

@@ -188,15 +188,24 @@ export const HOME = {
   },
   activity: {
     section_header: aid('home', 'activity', 'section_header'),
-    info: aid('home', 'activity', 'info')
+    info: aid('home', 'activity', 'info'),
+    open: aid('home', 'activity', 'open'),
+    heart: aid('home', 'activity', 'heart'),
+    post: aid('home', 'activity', 'post')
   },
   quiz: {
     section_header: aid('home', 'quiz', 'section_header'),
-    info: aid('home', 'quiz', 'info')
+    info: aid('home', 'quiz', 'info'),
+    take: aid('home', 'quiz', 'take'),
+    open_result: aid('home', 'quiz', 'open_result'),
+    share: aid('home', 'quiz', 'share')
   },
   coop: {
     section_header: aid('home', 'coop', 'section_header'),
-    info: aid('home', 'coop', 'info')
+    info: aid('home', 'coop', 'info'),
+    open_portal: aid('home', 'coop', 'open_portal'),
+    join: aid('home', 'coop', 'join'),
+    use_free: aid('home', 'coop', 'use_free')
   },
   cold_start: {
     body: aid('home', 'cold_start', 'body'),
@@ -255,7 +264,8 @@ export const DISCOVER = {
   wants_to_connect: {
     card: aid('discover', 'wants_to_connect', 'card'),
     approve: aid('discover', 'wants_to_connect', 'approve'),
-    decline: aid('discover', 'wants_to_connect', 'decline')
+    decline: aid('discover', 'wants_to_connect', 'decline'),
+    info: aid('discover', 'wants_to_connect', 'info')
   },
   people_to_meet: {
     suggestion_card: aid('discover', 'people_to_meet', 'suggestion_card'),
@@ -278,6 +288,11 @@ export const DISCOVER = {
     module_tile: aid('discover', 'connect_over', 'module_tile'),
     see_more: aid('discover', 'connect_over', 'see_more'),
     info: aid('discover', 'connect_over', 'info')
+  },
+  // Shared overlaps on a connection detail (request / suggestion) before you add them.
+  in_common: {
+    section_header: aid('discover', 'in_common', 'section_header'),
+    info: aid('discover', 'in_common', 'info')
   },
   maps: {
     node: aid('discover', 'maps', 'node'),
@@ -337,8 +352,71 @@ export const FRIENDS = {
     play: aid('friends', 'pod', 'play'),
     record: aid('friends', 'pod', 'record'),
     submit_question: aid('friends', 'pod', 'submit_question'),
+    vote_question: aid('friends', 'pod', 'vote_question'),
     section_header: aid('friends', 'pod', 'section_header'),
     info: aid('friends', 'pod', 'info')
+  }
+} as const;
+
+// --- Weekly recap recorder (own surface: record 5 answers by voice) ---
+export const RECAP_RECORDER = {
+  question: {
+    body: aid('recap_recorder', 'question', 'body'),
+    /** Full list shown before recording starts (dead — they read, then Start). */
+    list: aid('recap_recorder', 'question', 'list')
+  },
+  record: {
+    start: aid('recap_recorder', 'record', 'start'),
+    stop: aid('recap_recorder', 'record', 'stop'),
+    rerecord: aid('recap_recorder', 'record', 'rerecord'),
+    next: aid('recap_recorder', 'record', 'next')
+  },
+  audience: {
+    close: aid('recap_recorder', 'audience', 'close'),
+    friends: aid('recap_recorder', 'audience', 'friends'),
+    everyone: aid('recap_recorder', 'audience', 'everyone')
+  },
+  actions: {
+    /** Leaves the preview list and begins Q1. */
+    start: aid('recap_recorder', 'actions', 'start'),
+    post: aid('recap_recorder', 'actions', 'post'),
+    dismiss: aid('recap_recorder', 'actions', 'dismiss')
+  }
+} as const;
+
+// --- Weekly recap player (own surface / full page: play the stitched podcast) ---
+export const RECAP_PLAYER = {
+  transport: {
+    play: aid('recap_player', 'transport', 'play'),
+    pause: aid('recap_player', 'transport', 'pause'),
+    back: aid('recap_player', 'transport', 'back'),
+    skip: aid('recap_player', 'transport', 'skip'),
+    scrub: aid('recap_player', 'transport', 'scrub'),
+    /** playback rate chip — 1 / 1.3 / 1.5 / 2 (method = rate) */
+    speed: aid('recap_player', 'transport', 'speed')
+  },
+  filter: {
+    /** Close / Friends / Acquaintances chip (method = tier) */
+    chip: aid('recap_player', 'filter', 'chip')
+  },
+  speaker: {
+    body: aid('recap_player', 'speaker', 'body')
+  },
+  expiry: {
+    /** "Expires in N days" label (dead — informational) */
+    label: aid('recap_player', 'expiry', 'label')
+  },
+  in_this_week: {
+    body: aid('recap_player', 'in_this_week', 'body'),
+    /** tap a friend's face to jump to / relisten to their clips */
+    voice: aid('recap_player', 'in_this_week', 'voice')
+  },
+  react: {
+    open: aid('recap_player', 'react', 'open'),
+    emoji: aid('recap_player', 'react', 'emoji')
+  },
+  actions: {
+    dismiss: aid('recap_player', 'actions', 'dismiss')
   }
 } as const;
 
@@ -395,6 +473,11 @@ export const PROFILE = {
     add: aid('profile', 'bucket_list', 'add'),
     check_off: aid('profile', 'bucket_list', 'check_off')
   },
+  /** Untaken past quizzes with friends-taken counts (ADMIN.md §5). */
+  quizzes: {
+    untaken_row: aid('profile', 'quizzes', 'untaken_row'),
+    section_header: aid('profile', 'quizzes', 'section_header')
+  },
   settings: {
     who_sees_what: aid('profile', 'settings', 'who_sees_what'),
     customize_profile: aid('profile', 'settings', 'customize_profile'),
@@ -424,6 +507,10 @@ export const PROFILE = {
     in_common: aid('profile', 'tabs', 'in_common'),
     inside_jokes: aid('profile', 'tabs', 'inside_jokes'),
     bucket_list: aid('profile', 'tabs', 'bucket_list')
+  },
+  in_common: {
+    info: aid('profile', 'in_common', 'info'),
+    section_header: aid('profile', 'in_common', 'section_header')
   },
   actions: {
     message: aid('profile', 'actions', 'message'),
@@ -502,27 +589,36 @@ export const CREATE_EVENT = {
     bio: aid('create_event', 'details', 'bio'),
     date: aid('create_event', 'details', 'date'),
     time: aid('create_event', 'details', 'time'),
+    date_picker: aid('create_event', 'details', 'date_picker'),
+    time_picker: aid('create_event', 'details', 'time_picker'),
     place: aid('create_event', 'details', 'place'),
     address: aid('create_event', 'details', 'address'),
     address_result: aid('create_event', 'details', 'address_result'),
     cohost: aid('create_event', 'details', 'cohost'),
-    bring: aid('create_event', 'details', 'bring'),
+    cohost_toggle: aid('create_event', 'details', 'cohost_toggle'),
+    cohost_search: aid('create_event', 'details', 'cohost_search'),
+    cohost_row: aid('create_event', 'details', 'cohost_row'),
     chip_in_amount: aid('create_event', 'details', 'chip_in_amount'),
     chip_in_method: aid('create_event', 'details', 'chip_in_method'),
     chip_in_handle: aid('create_event', 'details', 'chip_in_handle'),
-    friends_invite_toggle: aid('create_event', 'details', 'friends_invite_toggle')
+    chip_in_toggle: aid('create_event', 'details', 'chip_in_toggle'),
+    friends_invite_toggle: aid('create_event', 'details', 'friends_invite_toggle'),
+    guest_cap: aid('create_event', 'details', 'guest_cap')
   },
   invite: {
     search: aid('create_event', 'invite', 'search'),
-    invite_row: aid('create_event', 'invite', 'invite_row')
+    invite_row: aid('create_event', 'invite', 'invite_row'),
+    suggest_row: aid('create_event', 'invite', 'suggest_row')
   },
   extras: {
     add_cover: aid('create_event', 'extras', 'add_cover'),
+    cover_mode: aid('create_event', 'extras', 'cover_mode'),
     cover_emoji: aid('create_event', 'extras', 'cover_emoji'),
+    cover_color: aid('create_event', 'extras', 'cover_color'),
+    cover_text: aid('create_event', 'extras', 'cover_text'),
     add_assignment: aid('create_event', 'extras', 'add_assignment'),
     assignment_row: aid('create_event', 'extras', 'assignment_row'),
-    assign_name: aid('create_event', 'extras', 'assign_name'),
-    chip_in: aid('create_event', 'extras', 'chip_in')
+    assign_name: aid('create_event', 'extras', 'assign_name')
   },
   preview: {
     // dead: the read-only preview card body
@@ -536,6 +632,8 @@ export const STORY = {
   viewer: {
     tap_next: aid('story', 'viewer', 'tap_next'),
     tap_prev: aid('story', 'viewer', 'tap_prev'),
+    /** Center of the media: pause / resume the current post. */
+    tap_pause: aid('story', 'viewer', 'tap_pause'),
     progress_bar: aid('story', 'viewer', 'progress_bar'),
     author: aid('story', 'viewer', 'author'),
     overflow: aid('story', 'viewer', 'overflow'),
@@ -678,11 +776,92 @@ export const REVEAL = {
   flow: {
     how_you_met_choice: aid('reveal', 'flow', 'how_you_met_choice'),
     record_place_toggle: aid('reveal', 'flow', 'record_place_toggle'),
+    /** optional Close / Friends / Acquaintances when they already know each other */
+    tier_choice: aid('reveal', 'flow', 'tier_choice'),
+    /** optional short how-you-met note (Discover path, when there is no place) */
+    meet_note: aid('reveal', 'flow', 'meet_note'),
     continue: aid('reveal', 'flow', 'continue'),
     see_profile: aid('reveal', 'flow', 'see_profile'),
+    /** tap the right half of a story screen to go forward */
+    tap_next: aid('reveal', 'flow', 'tap_next'),
+    /** tap the left half of a story screen to go back */
+    tap_prev: aid('reveal', 'flow', 'tap_prev'),
+    /** X in the corner — leaves the story and opens the new connection's profile */
+    close: aid('reveal', 'flow', 'close'),
     /** dead — decorative progress bars */
     progress: aid('reveal', 'flow', 'progress'),
-    /** dead — decorative Venn diagram */
+    /** dead — decorative overlapping color circles (was the Venn) */
+    orbs: aid('reveal', 'flow', 'orbs'),
+    /** dead — legacy Venn id, kept so old events still resolve */
     venn: aid('reveal', 'flow', 'venn')
+  }
+} as const;
+
+// --- Quiz take / result surface ---
+export const QUIZ = {
+  take: {
+    option: aid('quiz', 'take', 'option'),
+    explain: aid('quiz', 'take', 'explain'),
+    next: aid('quiz', 'take', 'next'),
+    back: aid('quiz', 'take', 'back'),
+    progress: aid('quiz', 'take', 'progress')
+  },
+  result: {
+    label: aid('quiz', 'result', 'label'),
+    share: aid('quiz', 'result', 'share'),
+    who_got_who: aid('quiz', 'result', 'who_got_who'),
+    see_more: aid('quiz', 'result', 'see_more'),
+    done: aid('quiz', 'result', 'done')
+  }
+} as const;
+
+// --- 404 / broken path (Magic Patterns Windows dialog) ---
+export const NOT_FOUND = {
+  chrome: {
+    dismiss: aid('not_found', 'chrome', 'dismiss')
+  },
+  dialog: {
+    body: aid('not_found', 'dialog', 'body'),
+    ok: aid('not_found', 'dialog', 'ok')
+  }
+} as const;
+
+// --- Delight layer (gift / global easter eggs) ---
+export const DELIGHT = {
+  gift: {
+    attribution: aid('delight', 'gift', 'attribution'),
+    dismiss: aid('delight', 'gift', 'dismiss')
+  }
+} as const;
+
+// --- Admin console (operator surface; first-party, de-identified) ---
+export const ADMIN = {
+  login: {
+    password: aid('admin', 'login', 'password'),
+    submit: aid('admin', 'login', 'submit')
+  },
+  nav: {
+    live_quiz: aid('admin', 'nav', 'live_quiz'),
+    registry: aid('admin', 'nav', 'registry'),
+    activity: aid('admin', 'nav', 'activity'),
+    coop: aid('admin', 'nav', 'coop'),
+    members: aid('admin', 'nav', 'members'),
+    home_defaults: aid('admin', 'nav', 'home_defaults'),
+    prompts: aid('admin', 'nav', 'prompts'),
+    delights: aid('admin', 'nav', 'delights'),
+    not_found_hits: aid('admin', 'nav', 'not_found_hits'),
+    logout: aid('admin', 'nav', 'logout')
+  },
+  actions: {
+    set_live_quiz: aid('admin', 'actions', 'set_live_quiz'),
+    new_quiz: aid('admin', 'actions', 'new_quiz'),
+    save_quiz_design: aid('admin', 'actions', 'save_quiz_design'),
+    save_activity: aid('admin', 'actions', 'save_activity'),
+    toggle_activity: aid('admin', 'actions', 'toggle_activity'),
+    publish_announcement: aid('admin', 'actions', 'publish_announcement'),
+    save_home_defaults: aid('admin', 'actions', 'save_home_defaults'),
+    save_prompts: aid('admin', 'actions', 'save_prompts'),
+    toggle_delight: aid('admin', 'actions', 'toggle_delight'),
+    new_delight: aid('admin', 'actions', 'new_delight')
   }
 } as const;

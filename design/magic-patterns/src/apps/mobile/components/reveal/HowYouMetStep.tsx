@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckIcon, MapPinIcon, SparklesIcon, UsersIcon } from 'lucide-react';
+import { CheckIcon, HandshakeIcon, MapPinIcon, UsersIcon } from 'lucide-react';
 import { MeetContext } from '../../../../packages/shared';
 import { cn } from '../../../../packages/ui';
 import { NEARBY_AREA } from '../../state/connections';
@@ -19,8 +19,8 @@ export function HowYouMetStep({
 
 
 }: {context: MeetContext | null;onContext: (c: MeetContext) => void;recordPlace: boolean;onRecordPlace: (v: boolean) => void;}) {
-  const options: Array<{value: MeetContext;label: string;Icon: typeof SparklesIcon;}> = [
-  { value: 'just-met', label: 'We just met', Icon: SparklesIcon },
+  const options: Array<{value: MeetContext;label: string;Icon: typeof HandshakeIcon;}> = [
+  { value: 'just-met', label: 'We just met', Icon: HandshakeIcon },
   { value: 'already-know', label: 'We already know each other', Icon: UsersIcon }];
 
 

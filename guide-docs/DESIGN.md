@@ -48,7 +48,9 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 - Rounded rectangles, pill buttons, soft cards, clean modular blocks. Radius ~12–24px on cards, pill radius on chips/buttons.
 - **Floating nav bar.** The bottom navigation is a **detached, rounded pill** inset from the screen edge — Apple's newer dynamic/"liquid-glass" style: translucent where possible, subtly dynamic (may shrink or tuck away on scroll), active destination shown as a filled circle. Not a full-width bar flush to the bottom edge.
 - **Flat.** No heavy shadows, no fake depth, no busy textures. A faint hairline or a solid color fill separates surfaces — that's enough.
-- **Cards carry color, not white.** `surface` is a soft tint, not white, so a card reads as a colored block on the canvas. The **profile section widgets are the one exception** (`CollapsibleSection` asks for white directly) because they are long reading blocks and want the calmest possible background.
+- **White is the default container; color is earned.** `surface` is plain white. Color does not come from tinting every card a pale shade — a pastel wash everywhere reads muted, not playful. It comes from making the things that matter **fully vivid**: the Touch Grass button, Connect Over cards, message rows, the event banner. When in doubt: white base, loud feature.
+- **Never the toned-down yellow.** Pale/dusty yellow is out of the palette. Yellow appears only as the vivid "you" tier color.
+- **Shapes lean.** A card should not be a rectangle with sanded corners. `funShape(id)` in tokens gives each card one hard-curved corner pair and one tight pair, picked from its own id — stable per card, varied down a list. Some things stay plain on purpose: story tiles, notifications, and anything in a tight grid.
 - Generous whitespace; bold but never cluttered.
 
 ---
@@ -68,16 +70,40 @@ The slowly-drifting perspective grid is **the app's background everywhere**, not
 - **The maps and graphs stay neoclassical.** The friend maps (Map A / Map B in `DISCOVER.md`) and any connection graphs render **clean and modern** — thin lines, tidy nodes, readable — on a crisp card floating over the grid. The grid is the *stage*; the map is the *content*, and content stays clean.
 - Pixel **Discover** header sits on the synth canvas.
 
-## Gradients — allowed in exactly two places
+## Tier color — one color per circle, everywhere
 
-Bridger is otherwise flat, but color-coded relationships need a gradient to read as a ring:
+How close someone is is shown as a color, and it is the SAME color everywhere they appear:
 
-- **Tier rings** around story tiles (`GradientRing`) — yellow for you, green for a close friend, blue for a friend, orange for an acquaintance.
-- **Message cards**, using the same four colors, with the pale (`soft`) pair meaning "you already replied, waiting on them".
+| Circle | Color |
+|---|---|
+| You | yellow |
+| Close | green |
+| Friend | blue |
+| Acquaintance | orange |
 
-Both come from `TIER_GRADIENT` in tokens. Do not hand-roll a gradient anywhere else, and never use one for depth or shine.
+- **Story tile rings** use the gradient version (`TIER_GRADIENT` + `GradientRing`) — a ring is the one place a gradient earns its keep.
+- **Message rows** use the FLAT version (`TIER_COLOR`). No gradient: **deep = it's your turn to reply**, **light = you already replied and are waiting on them**. That single dark/light split is the whole point of the inbox, and a gradient blurs it.
 
-**ACCESSIBILITY:** the ring color is never the only signal — the name, tier label, and card shape all say the same thing in words and form.
+Do not hand-roll a gradient anywhere else, and never use one for depth or shine.
+
+**ACCESSIBILITY:** color is never the only signal — the name, the tier heading, the card shape, and the spoken label all say the same thing.
+
+## Whimsy — the app should feel awake
+
+Life comes from `packages/ui/src/lib/whimsy.tsx`. Use these rather than hand-rolling animation:
+
+| Piece | What it's for |
+|---|---|
+| `Reveal` | content fades and lifts into place; pass `index` in a list so rows cascade |
+| `Peel` | a sticky note pressing onto the wall (Inside Jokes) |
+| `Wiggle` | an unfinished thing nudging itself every few seconds ("To do" tags) |
+| `Sparkles` | confetti popping off something worth celebrating (birthdays) |
+| `Glow` | a slow breath on a play button, so the eye finds it |
+| `GradientRing spin` | the tier gradient travelling around a story ring (Instagram-style) while an update is unseen — it **travels, it does not pulse** |
+| `useCountdown` | a live clock — "2d 4h 11m 06s" ticking, not a rounded-off "in 2 days" |
+| `GrassGrow` | grass rising inside the Touch Grass button, holding, sinking, repeating |
+
+Rules: transform and opacity only · every one checks Reduce Motion and goes still · motion never carries meaning on its own · decorative motion is hidden from screen readers.
 
 ---
 
@@ -127,7 +153,11 @@ radius: cards 12–24px · chips/buttons = pill
 - [ ] Surfaces are flat and rounded — no heavy shadows or textures.
 - [ ] Interest/hobby selectors are colorful illustrated blobs, not a plain checklist.
 - [ ] The slowly-drifting grid sits behind every screen (Discover boldest, `tone="plain"` screens excepted); maps/graphs render clean and neoclassical on top.
-- [ ] Cards are tinted, not white — except the profile section widgets.
-- [ ] Gradients appear only as tier rings and message cards, sourced from `TIER_GRADIENT`.
+- [ ] White is the base; color arrives as fully vivid feature blocks, never as a pale tint on everything. No dusty yellow anywhere.
+- [ ] Cards lean — `funShape(id)` — except story tiles, notifications, and tight grids.
+- [ ] Tier color is consistent everywhere: gradient on story rings, flat on message rows (deep = your turn, light = waiting on them).
+- [ ] Yellow is always the saturated amber. The dusty, washed-out yellow is not in the palette.
+- [ ] Animations use `NATIVE_DRIVER` from `whimsy`, never a bare `useNativeDriver: true` — the web build silently drops rotations on the native driver.
+- [ ] Pages arrive with `Reveal`; unfinished things `Wiggle`; celebrations get `Sparkles`; live times use `useCountdown`, not a rounded label.
 - [ ] Transitions are smooth and content breathes in; all motion is transform/opacity only and respects `prefers-reduced-motion`.
 - [ ] Retro cues stay ~20% of the surface; functional screens remain plain.

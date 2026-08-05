@@ -98,8 +98,8 @@ One line each; keep them dumb and reusable.
 | `TravelMap` | places-traveled two-view: map with pins + swipe to scrollable list; co-op photos per place (see `PROFILE.md`) |
 | `SharedPlacePhotos` | in-common: a shared place with both people's photos side by side (co-op) |
 | `ThisOrThatColumns` | two columns in rows; chosen side highlighted, other dimmed; tappable; A/B/**both** |
-| `VennDiagram` | two overlapping circles (you + them); reveal screen 1 (see `complete/REVEAL.md`) |
-| `HowYouMetStep` | reveal screen 0: just-met/already-know + "record where you met" (default on) |
+| `RevealOrbs` | two profile photos float in, dissolve into overlapping yellow + green circles (overlap mixes to orange); reveal screen 1 (see `complete/REVEAL.md`) |
+| `HowYouMetStep` | reveal screen 0: just-met/already-know (check + filled color), optional tier buckets, place or note |
 | `SuggestionCard` | leads with shared thread (headline) + name (subtitle) + mutual as connection ("you both know {friend}") + shared chips + interest color; marked as Bridger's pick; spotlight variant for top match (see `DISCOVER.md`) |
 | `RevealProgressBars` | 3 story-style segments for the connection reveal |
 | `EmptyState` | icon + short line + action |

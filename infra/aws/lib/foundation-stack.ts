@@ -7,8 +7,8 @@
 //   2) The locked vault (Secrets Manager) holding the server-only keys. It starts
 //      EMPTY (no secrets live in this code); we fill the real values in a separate
 //      write-only step BEFORE the API server is deployed.
-//   3) The website hosting: a private S3 bucket for the built web files + a
-//      CloudFront CDN that serves them fast and over HTTPS.
+//   3) Consumer web hosting: private S3 + CloudFront.
+//   4) Admin console hosting: its own private S3 + CloudFront (separate blast radius).
 //
 // We deploy this stack first, fill the secret, then deploy the service stack.
 // ============================================
@@ -54,6 +54,9 @@ export class BridgerFoundationStack extends cdk.Stack {
           COOP_ADMIN_USERNAMES: '',
           COOP_ADMIN_EMAILS: '',
           ADMIN_API_KEY: '',
+          // Admin console password gate (never ship to any client).
+          ADMIN_PASSWORD: '',
+          ADMIN_JWT_SECRET: '',
           EMAIL_HMAC_KEY: '',
           EMAIL_ENCRYPTION_KEY: ''
         }),
@@ -61,16 +64,15 @@ export class BridgerFoundationStack extends cdk.Stack {
       }
     });
 
-    // --- Private storage for the built web files (no direct public access). ---
+    // --- Private storage for the built consumer web files ---
     const webBucket = new s3.Bucket(this, 'WebBucket', {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
-      // The web build is reproducible, so it's safe to empty + delete on teardown.
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true
     });
 
-    // --- The CDN that serves the site fast + over HTTPS worldwide. ---
+    // --- CDN for the consumer web app ---
     const distribution = new cloudfront.Distribution(this, 'WebCdn', {
       defaultRootObject: 'index.html',
       defaultBehavior: {
@@ -78,6 +80,27 @@ export class BridgerFoundationStack extends cdk.Stack {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
       },
       // Expo Router routes in the browser, so send unknown paths to the app shell.
+      errorResponses: [
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' }
+      ]
+    });
+
+    // --- Admin console: its own bucket + CDN (separate from the consumer app) ---
+    const adminWebBucket = new s3.Bucket(this, 'AdminWebBucket', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true
+    });
+
+    const adminDistribution = new cloudfront.Distribution(this, 'AdminWebCdn', {
+      defaultRootObject: 'index.html',
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(adminWebBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
+      },
+      // Vite SPA: unknown paths fall back to the shell.
       errorResponses: [
         { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
         { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' }
@@ -92,6 +115,14 @@ export class BridgerFoundationStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'WebUrl', {
       description: 'Public HTTPS address of the web app',
       value: `https://${distribution.distributionDomainName}`
+    });
+    new cdk.CfnOutput(this, 'AdminWebBucketName', {
+      description: 'Upload the built admin console here (from apps/admin vite build)',
+      value: adminWebBucket.bucketName
+    });
+    new cdk.CfnOutput(this, 'AdminWebUrl', {
+      description: 'Public HTTPS address of the admin console',
+      value: `https://${adminDistribution.distributionDomainName}`
     });
     new cdk.CfnOutput(this, 'ServerSecretName', {
       description: 'Name of the server secret to fill with real values',

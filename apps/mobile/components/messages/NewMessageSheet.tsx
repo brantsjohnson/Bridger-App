@@ -69,7 +69,7 @@ export function NewMessageSheet({ open, onClose, onPick }: Props) {
                 )}
                 accessibilityRole="button"
                 accessibilityLabel={`Message ${p.name}`}
-                className="min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-white px-3.5 py-3 active:bg-[#F1ECFF]"
+                className="min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-3.5 py-3 active:bg-[#F1ECFF]"
               >
                 <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="sm" />
                 <Text

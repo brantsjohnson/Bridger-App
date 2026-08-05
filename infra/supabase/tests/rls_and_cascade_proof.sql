@@ -66,3 +66,68 @@ delete from auth.users where id in (
   '22222222-2222-2222-2222-222222222222',
   '33333333-3333-3333-3333-333333333333'
 );
+
+-- ============================================
+-- Admin content gaps (0016) proofs
+-- A regular user must not write admin-managed tables.
+-- A user may only heart / post / gift as themselves.
+-- Deleting a user cascades their activity posts, hearts, and delight triggers.
+-- ============================================
+
+-- --- A) Fresh users for activity / delight cascade checks ---
+insert into auth.users (id, email, created_at, updated_at) values
+  ('44444444-4444-4444-4444-444444444444', 'author@test.local', now(), now()),
+  ('55555555-5555-5555-5555-555555555555', 'recipient@test.local', now(), now());
+insert into public.users (id) values
+  ('44444444-4444-4444-4444-444444444444'),
+  ('55555555-5555-5555-5555-555555555555');
+
+insert into public.weekly_activities (id, title, prompt, active)
+values ('66666666-6666-6666-6666-666666666666', 'Proof Week', 'Say hi', true);
+
+insert into public.delights (id, name, slug, enabled, scope)
+values ('77777777-7777-7777-7777-777777777777', 'Emoji bomb', 'emoji-bomb', true, 'gift');
+
+insert into public.activity_posts (id, activity_id, author_id)
+values ('88888888-8888-8888-8888-888888888888', '66666666-6666-6666-6666-666666666666', '44444444-4444-4444-4444-444444444444');
+
+insert into public.activity_hearts (post_id, user_id)
+values ('88888888-8888-8888-8888-888888888888', '55555555-5555-5555-5555-555555555555');
+
+insert into public.delight_triggers (id, delight_id, from_user_id, to_user_id)
+values (
+  '99999999-9999-9999-9999-999999999999',
+  '77777777-7777-7777-7777-777777777777',
+  '44444444-4444-4444-4444-444444444444',
+  '55555555-5555-5555-5555-555555555555'
+);
+
+-- --- B) Authenticated user cannot write admin_config ---
+begin;
+  set local role authenticated;
+  select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}', true);
+  -- EXPECT: error / 0 rows affected (no insert policy)
+  insert into public.admin_config (home_defaults, themed_prompts)
+  values ('{}'::jsonb, '[]'::jsonb);
+rollback;
+
+-- --- C) User cannot heart as someone else ---
+begin;
+  set local role authenticated;
+  select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}', true);
+  -- EXPECT: error (with check user_id = auth.uid())
+  insert into public.activity_hearts (post_id, user_id)
+  values ('88888888-8888-8888-8888-888888888888', '55555555-5555-5555-5555-555555555555');
+rollback;
+
+-- --- D) Delete author -> their posts / hearts-as-author / sent triggers vanish ---
+delete from auth.users where id = '44444444-4444-4444-4444-444444444444';
+-- EXPECT: all zeros for author-owned rows
+select
+  (select count(*) from public.activity_posts where author_id = '44444444-4444-4444-4444-444444444444') as posts_left,
+  (select count(*) from public.delight_triggers where from_user_id = '44444444-4444-4444-4444-444444444444') as triggers_left;
+
+-- --- E) Clean up ---
+delete from auth.users where id = '55555555-5555-5555-5555-555555555555';
+delete from public.weekly_activities where id = '66666666-6666-6666-6666-666666666666';
+delete from public.delights where id = '77777777-7777-7777-7777-777777777777';

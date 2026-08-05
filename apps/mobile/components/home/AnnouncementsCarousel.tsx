@@ -16,13 +16,14 @@ import {
   Text,
   View
 } from 'react-native';
-import { ChevronRightIcon, MegaphoneIcon, XIcon } from 'lucide-react-native';
+import { ChevronRightIcon, XIcon } from 'lucide-react-native';
 import { HOME, trackUi } from '@bridger/shared';
 import {
   ButtonSecondary,
   ORGANIC,
   SectionTitle,
   cn,
+  useReduceMotion,
   useThemeColors
 } from '@bridger/ui';
 import type { CoopAnnouncement } from '../../data/feed';
@@ -37,19 +38,43 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
   // Measure the real content width so pages match ScreenBody, not the window.
   const [pageWidth, setPageWidth] = useState(0);
   const [index, setIndex] = useState(0);
+  /** Set once the person swipes or taps a dot — from then on it stops rotating. */
+  const [paused, setPaused] = useState(false);
+  const reduceMotion = useReduceMotion();
   /** Deepest page index the user has reached by swipe (for carousel_depth). */
   const maxDepth = useRef(0);
   const trackRef = useRef<ScrollView>(null);
-  const c = useThemeColors();
 
   useEffect(() => {
     if (index > items.length - 1) setIndex(Math.max(0, items.length - 1));
   }, [items.length, index]);
 
+  /*
+    --- THE LOOP: it plays itself through, then starts over ---
+    Announcements begin on the first card and move to the next every few seconds,
+    wrapping back to the first after the last, so you see all of them without
+    swiping. The moment you touch it, the auto-advance stops for good and the
+    carousel is yours — nothing yanks the card out from under your thumb.
+    ACCESSIBILITY: it also never auto-advances when Reduce Motion is on, since
+    self-moving content is exactly what that setting asks us not to do.
+  */
+  useEffect(() => {
+    if (paused || reduceMotion || items.length < 2 || pageWidth <= 0) return;
+    const timer = setInterval(() => {
+      setIndex((current) => {
+        const next = (current + 1) % items.length;
+        trackRef.current?.scrollTo({ x: next * pageWidth, animated: true });
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [paused, reduceMotion, items.length, pageWidth]);
+
   if (items.length === 0) return null;
 
   function goTo(i: number) {
     if (pageWidth <= 0) return;
+    setPaused(true);
     setIndex(i);
     trackRef.current?.scrollTo({ x: i * pageWidth, animated: true });
   }
@@ -86,7 +111,6 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
           infoAnalyticsId={HOME.announcements.info}
           parentScreen="home"
           section="announcements"
-          leading={<MegaphoneIcon size={16} color={c.inkMute} strokeWidth={2.5} />}
           className="min-w-0 flex-1"
         />
 
@@ -113,6 +137,7 @@ export function AnnouncementsCarousel({ items }: { items: Announcement[] }) {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
+        onScrollBeginDrag={() => setPaused(true)}
         scrollEventThrottle={16}
         decelerationRate="fast"
       >
@@ -146,23 +171,27 @@ export function CoopAnnouncementCard({
 }) {
   const c = useThemeColors();
   return (
-    <View style={ORGANIC.soft} className="relative min-h-[124px] bg-[#D7F0E8] px-4 py-3.5">
+    // Bright teal card with always-dark type. `text-ink` is deliberately not used
+    // here: it flips to white in dark mode and disappears on a colored fill.
+    <View style={ORGANIC.soft} className="relative min-h-[124px] bg-teal px-4 py-3.5">
       {onDismiss ? (
         <Pressable
           onPress={onDismiss}
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
-          className="absolute right-3 top-3 z-10 h-7 w-7 items-center justify-center rounded-full active:bg-surface"
+          className="absolute right-3 top-3 z-10 h-7 w-7 items-center justify-center rounded-full active:bg-white/25"
         >
-          <XIcon size={16} color={c.inkMute} strokeWidth={2.6} />
+          <XIcon size={16} color="#1C1B16" strokeWidth={2.6} />
         </Pressable>
       ) : null}
 
-      <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">From the co-op</Text>
-      <Text className="mt-1 pr-8 font-sans-b text-[16px] leading-snug tracking-tight text-ink">
+      <Text className="font-sans-b text-[11px] uppercase tracking-wide text-onaccent/75">
+        From the co-op
+      </Text>
+      <Text className="mt-1 pr-8 font-sans-b text-[16px] leading-snug tracking-tight text-onaccent">
         {announcement.title}
       </Text>
-      <Text className="mt-1 pr-4 font-sans-sb text-[13px] leading-snug text-ink-soft">
+      <Text className="mt-1 pr-4 font-sans-sb text-[13px] leading-snug text-onaccent/85">
         {announcement.body}
       </Text>
 
@@ -174,7 +203,7 @@ export function CoopAnnouncementCard({
           analyticsId={HOME.announcements.coop_card}
           icon={<ChevronRightIcon size={16} color={c.ink} strokeWidth={2.5} />}
         >
-          {announcement.action}
+          {announcement.action ?? announcement.ctaLabel ?? 'Open'}
         </ButtonSecondary>
       </View>
     </View>

@@ -35,6 +35,25 @@ import { SynthGrid } from './SynthGrid';
 
 type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain';
 
+/*
+  --- TWEAK THESE if title spacing feels wrong on every tab ---
+
+  HEADER_TOP_PAD     = air above "Events" / "Home" (bigger = more room at the top)
+  HEADER_BOTTOM_PAD  = air under the title row itself
+  GAP_BELOW_HEADER   = air between the title row and the first section
+                       ("Touch grass", "Announcements", …)
+                       (bigger = more room under the title)
+
+  The scrolling body reserves:
+    safe-area + TOP + 44 (title row) + BOTTOM + GAP
+*/
+const HEADER_TOP_PAD = 16;
+const HEADER_BOTTOM_PAD = 8;
+// Air between "Friends" / "Home" and the first section title. Keep this small —
+// too much reads as a blank band under the page title.
+const GAP_BELOW_HEADER = 10;
+const HEADER_ROW = 44;
+
 type ScreenContextValue = {
   /** true = header is tucked off the top */
   headerHidden: boolean;
@@ -77,8 +96,9 @@ export function Screen({
   const accum = useRef(0);
   const registerHeader = useCallback(() => setHasHeader(true), []);
 
-  // Title row (~44) + padding under it + safe-area top.
-  const headerPad = insets.top + 56;
+  // See HEADER_* constants at the top of this file to tune spacing by hand.
+  const headerPad =
+    insets.top + HEADER_TOP_PAD + HEADER_ROW + HEADER_BOTTOM_PAD + GAP_BELOW_HEADER;
 
   // Direction-aware: scroll down → hide, scroll up (or near top) → show.
   // We measure TOTAL travel in one direction, not the jump between two frames,
@@ -242,7 +262,7 @@ export function ScreenHeader({
         right: 0,
         top: 0,
         zIndex: 20,
-        paddingTop: insets.top + 8,
+        paddingTop: insets.top + HEADER_TOP_PAD,
         transform: [{ translateY }],
         opacity
       }}
@@ -257,7 +277,8 @@ export function ScreenHeader({
           alignItems: 'center',
           gap: 12,
           paddingHorizontal: 20,
-          paddingBottom: 12
+          paddingBottom: HEADER_BOTTOM_PAD,
+          minHeight: HEADER_ROW
         }}
       >
         {onBack ? (

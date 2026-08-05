@@ -31,14 +31,19 @@ Modeled on a music player's now-playing screen (Bridger-original, not a copy):
 - **Segmented progress bars** at the very top — one segment per post (≤3).
 - **Header** — down-chevron (close), name, timestamp, overflow (⋯).
 - **The post** — photo / in-the-moment video, filling the background.
-- **Caption block** — the post's context line.
-- **Reaction rail (right side, vertical).** Marco-Polo style: small stacked buttons — **Record** (largest, circle-video), **Sticker/emoji**, **Comment**. This is the quick-react rail.
-  - **Record** opens the **circle recorder**: a round camera view with a ring that drains over **10 seconds**, then stops itself. Watch it back, retake, or send. Camera + mic are asked for at the moment you tap record, never at launch.
-  - **Sticker** unrolls the **sticker tray** sideways from the button: a scrollable strip of emoji, with a **"+"** to make your own sticker out of a photo you take. Your own stickers sit at the front of the strip afterwards.
-- **Live replies preview.** Where the controls used to sit (lower area), a preview **rotates through recent replies every ~2s** — you see that people you know are commenting (a text reply, a video-reply chip, a sticker). The **video does not auto-play**; it's a signal of activity. Tapping it opens the full comment section.
+- **Caption block** — the post's context line, in a dark scrim so it stays readable on any photo.
+- **Bottom reaction row (right of the caption, vertically centered).** Order is **emoji → comment → record** (record is a red dot). This is the quick-react rail.
+  - **Record** (red dot) opens the **circle recorder**: a round camera view with a ring that drains over **10 seconds**, then stops itself. Watch it back, retake, or send. Camera + mic are asked for at the moment you tap record, never at launch.
+  - **Emoji** unrolls the **sticker tray** above the button: a scrollable strip of emoji, with a **"+"** to make your own sticker out of a photo you take. Your own stickers sit at the front of the strip afterwards.
+- **Live replies preview.** Floating reply balloons drift up over the media (clamped so they never leave the screen). The **video does not auto-play**; it's a signal of activity. Tapping a bubble opens the full comment section.
 - **Peek card = the Catch-Up.** A colored card at the bottom edge showing a peek of the Catch-Up's top item, inviting a swipe up.
 
-Tapping the post advances posts; the bars fill as you go.
+**Tap zones on the media:** left third = previous post, **center = pause / resume**, right third = next post. Progress bars fill as you go.
+
+**End of an author's posts:**
+- From the **Home tray**, advance to the next friend in tray order (query `sequence=`).
+- From a **profile / Friends page** (`from=profile`), close and return there.
+- If **Catch-Up is open**, do not advance or close under the sheet.
 
 ---
 
@@ -93,8 +98,8 @@ Tier-filtered: a viewer only sees the days/updates shared with their tier. If a 
 ## Reactions & replies — two entry points
 
 You can react from **two places**, by design:
-1. **The right rail** on the story — quick **Record** (circle video, **≤10s**, hard-stopped), **Sticker/emoji** (tray + your own stickers), or **Comment**.
-2. **The comment section** — opened by tapping the live replies preview (or the rail's Comment). There you see the full thread — text replies, **replies-to-replies** (nested), circle-video replies, and stickers — and can reply the same three ways.
+1. **The bottom reaction row** on the story (right of the caption) — quick **emoji** (tray + your own stickers), **Comment**, or **Record** (red dot → circle video, **≤10s**, hard-stopped).
+2. **The comment section** — opened by tapping a floating reply (or Comment). There you see the full thread — text replies, **replies-to-replies** (nested), circle-video replies, and stickers — and can reply the same three ways.
 
 A video reaction left on someone else's page is visible to mutual friends there too.
 
@@ -195,7 +200,8 @@ interface ThemedPrompt { slug: string; label: string; icon: string; }  // admin-
 - [ ] Max 3 posts/day; video ≤20s. One capture button (tap photo / hold video); no Photo or Text buttons.
 - [ ] After capture the composer prompts an **update** ("what did you do today"), enterable by typing **or voice-to-text**; video updates are auto-transcribed.
 - [ ] Three themed-post squares (admin-rotatable) sit above capture; picking a theme labels the update.
-- [ ] The viewer shows one progress segment per post (≤3), the post, the update text, a right-side vertical reaction rail (Record / Sticker / Comment), and a live replies preview that rotates ~every 2s without auto-playing video.
+- [ ] The viewer shows one progress segment per post (≤3), the post, the update text, a bottom row with caption on the left and emoji → comment → record (red dot) on the right (vertically centered), and floating reply balloons that stay on-screen and do not auto-play video.
+- [ ] Tap left = previous, center = pause/resume, right = next. Finishing the last post advances the Home tray sequence, or closes back to profile when opened from a profile (and never dismisses under an open Catch-Up).
 - [ ] The weekly summary is **AI-written, ~1–2 sentences per day with that day's media**, **pre-generated at post time** (not on swipe), tier-filtered.
 - [ ] The summary is built **only from the user's update text + video transcripts** — never from analyzing or training on their photos/likeness.
 - [ ] Tapping the replies preview (or Comment) opens the full comment section with text, nested replies, video replies, and stickers — a second place to react.

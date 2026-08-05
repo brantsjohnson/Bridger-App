@@ -242,7 +242,9 @@ function Segment({
               <Text
                 className={cn(
                   'font-sans-b text-[13px]',
-                  active ? 'text-white' : 'text-ink'
+                  // ink fill flips light in dark mode — use canvas text there;
+                  // success stay vivid green so white still contrasts.
+                  active ? (tone === 'ink' ? 'text-canvas' : 'text-white') : 'text-ink'
                 )}
               >
                 {o}

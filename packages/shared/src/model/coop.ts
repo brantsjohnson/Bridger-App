@@ -46,3 +46,15 @@ export interface CoopMembership {
   renews?: string;
   dues: string;
 }
+
+/** A co-op notice published to members (Home banner). */
+export interface CoopAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  publishedAt?: string;
+  /** Alias used by the mobile fixture / widget ("action" copy). */
+  action?: string;
+}

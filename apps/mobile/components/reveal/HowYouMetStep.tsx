@@ -1,37 +1,89 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Reveal Screen 0 — "How did you two meet?" Asked once before anything private
-// is shown. Pick just-met or already-know, and optionally save a coarse place
-// ("RiNo, Denver · approximate"). Default checkbox is ON; uncheck to skip.
+// is shown. Pick just-met or already-know (required — each option shows a
+// checkbox so it is obvious you need to choose). When one is picked, the whole
+// row fills with color. "Just met" puts them in Acquaintances automatically.
+// "Already know" optionally shows Close / Friends / Acquaintances buckets.
 //
-// PRIVACY: place is neighborhood-scale only. Only you two see it.
+// Discover connects usually have no place to save (unless you also share an
+// event). In that case we offer a short note instead of pushing a coarse place.
+// In-person / QR keeps the "Record where you met" checkbox (default on).
+//
+// Colors are fixed (not theme tokens) so dark mode cannot flip this step into
+// cream-on-cream. PRIVACY: place is neighborhood-scale only; note text never
+// goes into analytics.
 // ============================================
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { CheckIcon, MapPinIcon, SparklesIcon, UsersIcon } from 'lucide-react-native';
-import { REVEAL, type MeetContext } from '@bridger/shared';
+import { Pressable, Text, TextInput, View } from 'react-native';
+import { CheckIcon, HandshakeIcon, MapPinIcon, UsersIcon } from 'lucide-react-native';
+import { REVEAL, TIER_LABEL, trackUi, type MeetContext, type Tier } from '@bridger/shared';
 import { cn, withAnalyticsPress } from '@bridger/ui';
+import { ROSTER_TIERS } from '../../data/friends';
 import { NEARBY_AREA } from '../../data/reveal';
+
+/** Fixed reveal palette — stays readable when the app is in dark mode. */
+const ON_DARK = '#F5F0E6';
+const ON_DARK_SOFT = 'rgba(245, 240, 230, 0.72)';
+const ON_DARK_MUTE = 'rgba(245, 240, 230, 0.55)';
+const CARD_BORDER = 'rgba(245, 240, 230, 0.28)';
+const CARD_FILL = 'rgba(245, 240, 230, 0.08)';
+const PLACE_INK = '#1C1B16';
+
+/** How many characters they can put in a how-you-met note. */
+const NOTE_MAX = 80;
+
+/**
+ * Bright fill for each meet choice when selected. Whole container colors in so
+ * the pick is unmistakable — not just a thin border.
+ */
+const CHOICE_FILL: Record<MeetContext, string> = {
+  'just-met': '#00A676',
+  'already-know': '#6B2FEA'
+};
+
+/** Bright fills for the optional tier buckets (same family as story rings). */
+const TIER_FILL: Record<'close' | 'friend' | 'acquaintance', string> = {
+  close: '#2FA85B',
+  friend: '#1D6FE8',
+  acquaintance: '#F2560E'
+};
 
 type Props = {
   context: MeetContext | null;
   onContext: (c: MeetContext) => void;
+  /** Optional circle when they already know each other. Null = skip / default. */
+  tier: Tier | null;
+  onTier: (t: Tier | null) => void;
   recordPlace: boolean;
   onRecordPlace: (v: boolean) => void;
+  /** Short freeform how-you-met note (Discover path). Never logged. */
+  meetNote: string;
+  onMeetNote: (v: string) => void;
+  /**
+   * True when this connect came through Discover (a mutual friend). Those
+   * usually have no place to record, so we offer a note instead.
+   */
+  viaDiscover: boolean;
 };
 
 export function HowYouMetStep({
   context,
   onContext,
+  tier,
+  onTier,
   recordPlace,
-  onRecordPlace
+  onRecordPlace,
+  meetNote,
+  onMeetNote,
+  viaDiscover
 }: Props) {
   const options: Array<{
     value: MeetContext;
     label: string;
-    Icon: typeof SparklesIcon;
+    Icon: typeof HandshakeIcon;
   }> = [
-    { value: 'just-met', label: 'We just met', Icon: SparklesIcon },
+    { value: 'just-met', label: 'We just met', Icon: HandshakeIcon },
     {
       value: 'already-know',
       label: 'We already know each other',
@@ -43,78 +95,203 @@ export function HowYouMetStep({
     <View className="gap-3">
       {options.map(({ value, label, Icon }) => {
         const selected = context === value;
+        const fill = CHOICE_FILL[value];
         return (
           <Pressable
             key={value}
-            onPress={withAnalyticsPress(REVEAL.flow.how_you_met_choice, () =>
-              onContext(value)
+            onPress={withAnalyticsPress(
+              REVEAL.flow.how_you_met_choice,
+              () => {
+                onContext(value);
+                // Just-met always lands in Acquaintances — clear any optional pick.
+                if (value === 'just-met') onTier(null);
+              },
+              { analyticsProps: { method: value } }
             )}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            accessibilityLabel={label}
-            className={cn(
-              'min-h-[52px] flex-row items-center gap-3 rounded-2xl border-2 px-4 py-4',
-              selected
-                ? 'border-canvas bg-white/10'
-                : 'border-white/20 bg-white/5'
-            )}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selected }}
+            accessibilityLabel={`${label}. ${selected ? 'Selected' : 'Not selected'}`}
+            className="min-h-[56px] flex-row items-center gap-3 rounded-2xl border-2 px-4 py-4"
+            style={{
+              borderColor: selected ? fill : CARD_BORDER,
+              backgroundColor: selected ? fill : CARD_FILL
+            }}
           >
             <Icon
               size={20}
-              color={selected ? '#F5F0E6' : '#C8C2B4'}
+              color={selected ? '#FFFFFF' : ON_DARK_SOFT}
               strokeWidth={2.4}
             />
             <Text
-              className={cn(
-                'font-sans-b text-[15px]',
-                selected ? 'text-canvas' : 'text-white/70'
-              )}
+              className="min-w-0 flex-1 font-sans-b text-[15px]"
+              style={{ color: selected ? '#FFFFFF' : ON_DARK_SOFT }}
             >
               {label}
             </Text>
+            {/*
+              Empty box when unselected = "you need to pick one".
+              Filled check when selected = done.
+            */}
+            <View
+              accessible={false}
+              className="h-6 w-6 shrink-0 items-center justify-center rounded-md border-2"
+              style={{
+                borderColor: selected ? '#FFFFFF' : 'rgba(245, 240, 230, 0.55)',
+                backgroundColor: selected ? '#FFFFFF' : 'transparent'
+              }}
+            >
+              {selected ? (
+                <CheckIcon size={16} color={fill} strokeWidth={3.2} />
+              ) : null}
+            </View>
           </Pressable>
         );
       })}
 
-      {/* PRIVACY: opt-in coarse place — default on, never precise */}
-      <View className="rounded-2xl border border-white/20 bg-white/5 p-4">
-        <Pressable
-          onPress={withAnalyticsPress(REVEAL.flow.record_place_toggle, () =>
-            onRecordPlace(!recordPlace)
-          )}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: recordPlace }}
-          accessibilityLabel="Record where you met"
-          className="min-h-[44px] flex-row items-center gap-3"
-        >
-          <View
-            className={cn(
-              'h-6 w-6 shrink-0 items-center justify-center rounded-md border-2',
-              recordPlace ? 'border-success bg-success' : 'border-white/35'
-            )}
-          >
-            {recordPlace ? (
-              <CheckIcon size={16} color="#FFFFFF" strokeWidth={3.2} />
-            ) : null}
-          </View>
-          <Text className="font-sans-b text-[15px] text-canvas">
-            Record where you met
+      {/*
+        --- OPTIONAL CIRCLE (already-know only) ---
+        Just-met skips this and goes straight to Acquaintances. Already-know
+        can pick Close / Friends / Acquaintances, or skip and we default later.
+      */}
+      {context === 'already-know' ? (
+        <View className="gap-2 rounded-2xl border p-4" style={{ borderColor: CARD_BORDER }}>
+          <Text className="font-sans-b text-[15px]" style={{ color: ON_DARK }}>
+            Want to add them to a circle?
           </Text>
-        </Pressable>
-
-        {recordPlace ? (
-          <View className="mt-3 flex-row items-center gap-2 rounded-2xl bg-[#DFF3E4] px-3 py-2.5">
-            <MapPinIcon size={16} color="#00A676" strokeWidth={2.6} />
-            <Text className="font-sans-sb text-[14px] text-ink">
-              {NEARBY_AREA} · approximate
-            </Text>
+          <Text className="font-sans-md text-[12px]" style={{ color: ON_DARK_MUTE }}>
+            Optional · Close, Friends, or Acquaintances
+          </Text>
+          <View className="mt-1 gap-2">
+            {ROSTER_TIERS.map((t) => {
+              const selected = tier === t;
+              // ROSTER_TIERS is only the three circles — never "none".
+              const fill = TIER_FILL[t as keyof typeof TIER_FILL];
+              return (
+                <Pressable
+                  key={t}
+                  onPress={withAnalyticsPress(
+                    REVEAL.flow.tier_choice,
+                    () => onTier(selected ? null : t),
+                    { analyticsProps: { to_tier: t } }
+                  )}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={`Add to ${TIER_LABEL[t]}`}
+                  className="min-h-[48px] flex-row items-center gap-3 rounded-2xl border-2 px-4 py-3"
+                  style={{
+                    borderColor: selected ? fill : CARD_BORDER,
+                    backgroundColor: selected ? fill : CARD_FILL
+                  }}
+                >
+                  <Text
+                    className="min-w-0 flex-1 font-sans-b text-[15px]"
+                    style={{ color: selected ? '#FFFFFF' : ON_DARK_SOFT }}
+                  >
+                    {TIER_LABEL[t]}
+                  </Text>
+                  <View
+                    accessible={false}
+                    className="h-6 w-6 shrink-0 items-center justify-center rounded-md border-2"
+                    style={{
+                      borderColor: selected ? '#FFFFFF' : 'rgba(245, 240, 230, 0.55)',
+                      backgroundColor: selected ? '#FFFFFF' : 'transparent'
+                    }}
+                  >
+                    {selected ? (
+                      <CheckIcon size={16} color={fill} strokeWidth={3.2} />
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
-        ) : null}
+        </View>
+      ) : null}
 
-        <Text className="mt-2.5 font-sans-md text-[12px] text-white/55">
-          Only you two see it · edit or remove anytime
-        </Text>
-      </View>
+      {/*
+        --- MEMORY: place (in person) or note (Discover) ---
+        Discover usually has no coarse place. Offer a short note instead.
+        In-person / QR keeps the place checkbox.
+      */}
+      {viaDiscover ? (
+        <View
+          className="rounded-2xl border p-4"
+          style={{ borderColor: CARD_BORDER, backgroundColor: CARD_FILL }}
+        >
+          <Text className="font-sans-b text-[15px]" style={{ color: ON_DARK }}>
+            Add a note
+          </Text>
+          <Text className="mt-1 font-sans-md text-[12px]" style={{ color: ON_DARK_MUTE }}>
+            Optional · a tiny thing about how you connected · only you two see it
+          </Text>
+          <TextInput
+            value={meetNote}
+            onChangeText={(t) => onMeetNote(t.slice(0, NOTE_MAX))}
+            onBlur={() => {
+              // Analytics: they left a note — never the text itself.
+              if (meetNote.trim().length > 0) {
+                trackUi('click', REVEAL.flow.meet_note);
+              }
+            }}
+            placeholder="e.g. met through a hiking group"
+            placeholderTextColor={ON_DARK_MUTE}
+            maxLength={NOTE_MAX}
+            accessibilityLabel="How you met note"
+            className="mt-3 min-h-[48px] rounded-2xl border px-3.5 py-3 font-sans-sb text-[14px]"
+            style={{
+              borderColor: CARD_BORDER,
+              color: ON_DARK,
+              backgroundColor: 'rgba(245, 240, 230, 0.06)'
+            }}
+          />
+          <Text className="mt-1.5 text-right font-sans-md text-[11px]" style={{ color: ON_DARK_MUTE }}>
+            {meetNote.length}/{NOTE_MAX}
+          </Text>
+        </View>
+      ) : (
+        <View
+          className="rounded-2xl border p-4"
+          style={{ borderColor: CARD_BORDER, backgroundColor: CARD_FILL }}
+        >
+          <Pressable
+            onPress={withAnalyticsPress(REVEAL.flow.record_place_toggle, () =>
+              onRecordPlace(!recordPlace)
+            )}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: recordPlace }}
+            accessibilityLabel="Record where you met"
+            className="min-h-[44px] flex-row items-center gap-3"
+          >
+            <View
+              className={cn(
+                'h-6 w-6 shrink-0 items-center justify-center rounded-md border-2',
+                recordPlace ? 'border-success bg-success' : ''
+              )}
+              style={recordPlace ? undefined : { borderColor: 'rgba(245, 240, 230, 0.45)' }}
+            >
+              {recordPlace ? (
+                <CheckIcon size={16} color="#FFFFFF" strokeWidth={3.2} />
+              ) : null}
+            </View>
+            <Text className="font-sans-b text-[15px]" style={{ color: ON_DARK }}>
+              Record where you met
+            </Text>
+          </Pressable>
+
+          {recordPlace ? (
+            <View className="mt-3 flex-row items-center gap-2 rounded-2xl bg-teal px-3 py-2.5">
+              <MapPinIcon size={16} color={PLACE_INK} strokeWidth={2.6} />
+              <Text className="font-sans-sb text-[14px]" style={{ color: PLACE_INK }}>
+                {NEARBY_AREA} · approximate
+              </Text>
+            </View>
+          ) : null}
+
+          <Text className="mt-2.5 font-sans-md text-[12px]" style={{ color: ON_DARK_MUTE }}>
+            Only you two see it · edit or remove anytime
+          </Text>
+        </View>
+      )}
     </View>
   );
 }

@@ -1,25 +1,54 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The event page you land on right after creating an event (and when you tap an
-// event card). It shows the cover, the basics, and the "who's bringing what"
-// list, plus two ways to share: the phone's native share sheet, or copy a link
-// to paste anywhere. This is the light version; the full host dashboard comes
-// later (see EVENTS.md).
+// The event page you land on after creating an event (and when you tap an
+// event card). Shows a vibrant cover, the basics, Assignments (public list —
+// snag open items, remove yourself, check off only your own), and share.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarIcon, ChevronLeftIcon, LinkIcon, MapPinIcon, Share2Icon, UsersIcon } from 'lucide-react-native';
-import type { EventItem } from '@bridger/shared';
+import {
+  CalendarIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  LinkIcon,
+  MapPinIcon,
+  Share2Icon,
+  UsersIcon
+} from 'lucide-react-native';
+import type { EventAssignment, EventItem } from '@bridger/shared';
 import { EVENTS, trackProduct } from '@bridger/shared';
-import { ButtonPrimary, ButtonSecondary, CoverArt, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
-import { getEvent } from '../../data/events';
+import {
+  ACCENTS,
+  ButtonPrimary,
+  ButtonSecondary,
+  CoverArt,
+  cn,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
+import {
+  assignItem,
+  getEvent,
+  notifyHostAssignmentChange,
+  setAssignmentDone
+} from '../../data/events';
 import { personById } from '../../data/people';
+
+const ME_ID = 'me';
 
 // Demo share link. Live: a real deep link / web URL for the event.
 function shareLink(id: string): string {
   return `https://bridger.app/e/${id}`;
+}
+
+function coverTint(event: EventItem): string | undefined {
+  const cover = event.cover;
+  if (!cover) return ACCENTS[event.accent]?.hex;
+  if (cover.kind === 'color' || cover.kind === 'text') return cover.bg;
+  if (cover.kind === 'emoji' && cover.bg) return cover.bg;
+  return ACCENTS[event.accent]?.hex;
 }
 
 export default function EventDetailScreen() {
@@ -42,23 +71,25 @@ export default function EventDetailScreen() {
     };
   }, [id]);
 
+  async function refresh() {
+    const e = await getEvent(String(id));
+    setEvent(e);
+  }
+
   async function onShare() {
     if (!event) return;
     const url = shareLink(event.id);
     try {
-      // Open the phone's native share sheet (Messages, etc.).
       await Share.share({ message: `${event.title} — ${event.day} ${event.time}\n${url}`, url });
       trackProduct('event_shared', { method: 'share_sheet' });
     } catch {
-      // User cancelled or share unavailable — nothing to do.
+      // User cancelled — nothing to do.
     }
   }
 
   async function onCopy() {
     if (!event) return;
     const url = shareLink(event.id);
-    // Web has a clipboard API; on native we show the link so it can be copied.
-    // TODO: add expo-clipboard for one-tap copy on iOS / Android.
     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(url);
       Alert.alert('Link copied', url);
@@ -67,6 +98,31 @@ export default function EventDetailScreen() {
     }
     trackProduct('event_shared', { method: 'copy_link' });
   }
+
+  async function onSnag(item: EventAssignment) {
+    if (!event) return;
+    await assignItem(event.id, item.id, ME_ID);
+    await notifyHostAssignmentChange(event.id, item.id, 'snagged');
+    trackProduct('event_assignment_taken');
+    await refresh();
+  }
+
+  async function onRemoveMe(item: EventAssignment) {
+    if (!event) return;
+    await assignItem(event.id, item.id, undefined);
+    await notifyHostAssignmentChange(event.id, item.id, 'released');
+    trackProduct('event_assignment_released');
+    await refresh();
+  }
+
+  async function onToggleDone(item: EventAssignment) {
+    if (!event || item.assigneeId !== ME_ID) return;
+    await setAssignmentDone(event.id, item.id, !item.done);
+    trackProduct('event_assignment_done');
+    await refresh();
+  }
+
+  const tint = event ? coverTint(event) : undefined;
 
   return (
     <View
@@ -97,11 +153,18 @@ export default function EventDetailScreen() {
       ) : (
         <ScrollView className="flex-1 px-4" showsVerticalScrollIndicator={false}>
           <View className="gap-4 pb-8">
-            <View className="overflow-hidden rounded-card border border-ink-line" style={{ aspectRatio: 16 / 9 }}>
+            <View
+              className="overflow-hidden rounded-card border border-ink-line"
+              style={{ aspectRatio: 16 / 9 }}
+            >
               <CoverArt cover={event.cover} accent={event.accent} rounded />
             </View>
 
-            <View>
+            {/* Accent band under the title — keeps the page colorful */}
+            <View
+              className="rounded-card border border-ink-line p-4"
+              style={tint ? { backgroundColor: `${tint}28` } : undefined}
+            >
               <Text className="font-pixel text-[22px] text-ink">{event.title}</Text>
               {event.bio ? (
                 <Text className="mt-1 font-sans-sb text-[14px] leading-snug text-ink-soft">
@@ -114,42 +177,113 @@ export default function EventDetailScreen() {
               <DetailRow icon={<CalendarIcon size={16} color={c.inkMute} strokeWidth={2.4} />}>
                 {event.day} · {event.time}
               </DetailRow>
-              {event.place ? (
+              {event.place || event.address ? (
                 <DetailRow icon={<MapPinIcon size={16} color={c.inkMute} strokeWidth={2.4} />}>
-                  {event.place}
+                  {event.place || event.address}
                 </DetailRow>
               ) : null}
               <DetailRow icon={<UsersIcon size={16} color={c.inkMute} strokeWidth={2.4} />}>
                 {event.goingIds.length} going · {(event.invitedIds ?? []).length} invited
+                {event.cap ? ` · cap ${event.cap}` : ''}
               </DetailRow>
             </View>
 
+            {event.chipInAmount || event.chipInHandle ? (
+              <View className="rounded-card border border-ink-line bg-surface p-4">
+                <Text className="font-sans-b text-[12px] text-ink-mute">Chip in</Text>
+                <Text className="mt-0.5 font-sans-sb text-[14px] text-ink">
+                  {[event.chipInAmount, event.chipInMethod, event.chipInHandle]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Text>
+              </View>
+            ) : null}
+
             {event.assignments && event.assignments.length > 0 ? (
-              <View className="gap-2 rounded-card border border-ink-line bg-surface p-4">
-                <Text className="font-sans-b text-[13px] text-ink">Who's bringing what</Text>
+              <View className="gap-2.5 rounded-card border border-ink-line bg-surface p-4">
+                <Text className="font-sans-b text-[13px] text-ink">Assignments</Text>
+                <Text className="font-sans-sb text-[12px] text-ink-mute">
+                  Everyone can see these. Only you can check off your own.
+                </Text>
                 {event.assignments.map((a) => {
                   const who = a.assigneeId ? personById(a.assigneeId) : null;
+                  const mine = a.assigneeId === ME_ID;
+                  const open = !a.assigneeId;
                   return (
-                    <View key={a.id} className="flex-row items-center justify-between">
-                      <Text
-                        className={cn(
-                          'min-w-0 flex-1 font-sans-sb text-[13px]',
-                          who ? 'text-ink-mute line-through' : 'text-ink'
+                    <View
+                      key={a.id}
+                      className="gap-2 rounded-2xl border border-ink-line bg-canvas px-3 py-2.5"
+                    >
+                      <View className="flex-row items-center gap-2">
+                        {mine ? (
+                          <Pressable
+                            onPress={withAnalyticsPress(EVENTS.detail.assignment_row, () =>
+                              void onToggleDone(a)
+                            )}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: !!a.done }}
+                            accessibilityLabel={a.done ? 'Mark not done' : 'Check off'}
+                            className={cn(
+                              'h-7 w-7 items-center justify-center rounded-full border',
+                              a.done ? 'border-green bg-green' : 'border-ink-line'
+                            )}
+                          >
+                            {a.done ? <CheckIcon size={14} color="#fff" strokeWidth={3} /> : null}
+                          </Pressable>
+                        ) : (
+                          <View className="h-7 w-7 rounded-full border border-ink-line" />
                         )}
-                      >
-                        {a.label}
-                      </Text>
-                      <Text className="font-sans-b text-[13px] text-ink-mute">
-                        {who ? who.name.split(' ')[0] : 'Open'}
-                      </Text>
+                        <Text
+                          className={cn(
+                            'min-w-0 flex-1 font-sans-sb text-[13px] text-ink',
+                            a.done && 'text-ink-mute line-through'
+                          )}
+                        >
+                          {a.label}
+                        </Text>
+                        <Text className="font-sans-b text-[13px] text-ink-mute">
+                          {who ? who.name.split(' ')[0] : 'Open'}
+                        </Text>
+                      </View>
+                      <View className="flex-row gap-2">
+                        {open ? (
+                          <Pressable
+                            onPress={withAnalyticsPress(EVENTS.detail.assignment_row, () =>
+                              void onSnag(a)
+                            )}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Snag ${a.label}`}
+                            className="rounded-full border border-green bg-green/15 px-3 py-1.5"
+                          >
+                            <Text className="font-sans-b text-[12px] text-ink">Snag</Text>
+                          </Pressable>
+                        ) : null}
+                        {mine ? (
+                          <Pressable
+                            onPress={withAnalyticsPress(EVENTS.detail.assignment_row, () =>
+                              void onRemoveMe(a)
+                            )}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove me from ${a.label}`}
+                            className="rounded-full border border-ink-line px-3 py-1.5"
+                          >
+                            <Text className="font-sans-b text-[12px] text-ink-mute">Remove me</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
                     </View>
                   );
                 })}
               </View>
             ) : null}
 
-            {/* --- SHARE: native sheet + copy link --- */}
+            {/* --- SHARE --- */}
             <View className="gap-2 pt-2">
+              {event.allowFriendsToInvite ? (
+                <Text className="mb-1 font-sans-sb text-[12px] leading-snug text-ink-mute">
+                  Friends can invite friends (up to {event.cap ?? 35} guests). Share the link below.
+                </Text>
+              ) : null}
               <ButtonPrimary
                 full
                 size="lg"

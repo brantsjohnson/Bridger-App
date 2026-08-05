@@ -84,6 +84,8 @@ Every connection records **how you met**, shown later on that person's profile (
 - **Via an event** — if you connected around a shared event, the event is recorded automatically.
 - **Via a mutual friend** — the reveal/Discovery path records who introduced you.
 - **In person (QR/link)** — the connection reveal's **first screen** ("How did you two meet?") includes a **"Record where you met" checkbox, defaulted on**, which saves a **coarse place** ("save where you met?"). Approximate only, visible to just the two of you, editable/removable by either, stored as PII and never used by the model (see `REVEAL.md` and `DATA.md`). Unchecking skips it.
+- **Discover (via a mutual)** — there usually is no place to record. The reveal offers an optional short **how-you-met note** instead. Same visibility rules (only the two of you; either can edit or remove).
+- **Tier at connect:** "We just met" always starts them in **Acquaintances**. "We already know each other" optionally lets you pick Close / Friends / Acquaintances (skipping soft-defaults to Friends).
 
 ---
 

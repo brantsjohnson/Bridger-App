@@ -1,25 +1,52 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Everything the Events tab needs: list your calendar, RSVP, create an event.
-// Demo mode keeps a copy of the fixtures in memory so taps feel real. Live
-// mode will call the Nest events API — same function names either way.
+// Everything the Events tab needs: list your calendar, RSVP, create an event,
+// and update Assignments (snag / remove / check off). Demo mode keeps a copy
+// of the fixtures in memory so taps feel real. Live mode will call the Nest
+// events API — same function names either way.
 // ============================================
-import type { Cover, EventAssignment, EventItem } from '@bridger/shared';
+import type { Cover, EventAssignment, EventItem, MeetSuggestion } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
-import { EVENTS as FIXTURE_EVENTS } from './fixtures/catalog';
+import {
+  EVENTS as FIXTURE_EVENTS,
+  MEET_SUGGESTIONS as FIXTURE_MEET_SUGGESTIONS
+} from './fixtures/catalog';
 
 // A small pool of playful emoji used when a host skips the cover photo, so a
 // new event still gets a face instead of a blank square.
 const COVER_EMOJIS = ['🎉', '✨', '🌿', '🍜', '🎧', '🎬', '🏔️', '☕️', '🎨', '🍕'];
+const DEFAULT_COVER_BG = '#7F77DD';
 
 /** Pick a random emoji cover for events created without a photo. */
 function randomEmojiCover(): Cover {
   const value = COVER_EMOJIS[Math.floor(Math.random() * COVER_EMOJIS.length)];
-  return { kind: 'emoji', value };
+  return { kind: 'emoji', value, bg: DEFAULT_COVER_BG };
+}
+
+/**
+ * Give a demo event a real start time so the countdown can actually tick.
+ * The fixtures only say "in 2 days", so we read the number out of that and add
+ * the event's clock time on top. Real events will come from the API with a
+ * proper timestamp and this never runs.
+ */
+function demoStartsAt(e: EventItem): number | undefined {
+  if (e.startsAt) return e.startsAt;
+  const days = Number(/in (\d+) day/.exec(e.countdown ?? '')?.[1]);
+  if (!Number.isFinite(days)) return undefined;
+
+  const when = new Date();
+  when.setDate(when.getDate() + days);
+  const [h, m] = (e.time ?? '18:00').split(':').map(Number);
+  when.setHours(Number.isFinite(h) ? h : 18, Number.isFinite(m) ? m : 0, 0, 0);
+  return when.getTime();
 }
 
 /** In-memory calendar for demo mode (so create / RSVP stick for the session). */
-let demoEvents: EventItem[] = FIXTURE_EVENTS.map((e) => ({ ...e, goingIds: [...e.goingIds] }));
+let demoEvents: EventItem[] = FIXTURE_EVENTS.map((e) => ({
+  ...e,
+  goingIds: [...e.goingIds],
+  startsAt: demoStartsAt(e)
+}));
 
 function cloneEvent(e: EventItem): EventItem {
   return {
@@ -51,16 +78,17 @@ export type CreateEventInput = {
   time: string;
   place: string;
   address?: string;
-  bring?: string;
   invitedIds?: string[];
   coHostIds?: string[];
   allowFriendsToInvite?: boolean;
+  /** max guests (used when friends can invite friends) */
+  cap?: number;
   chipInAmount?: string;
   chipInMethod?: EventItem['chipInMethod'];
   chipInHandle?: string;
-  /** photo the host picked, or an emoji cover if they skipped it */
+  /** cover the host picked, or a random emoji if they skipped it */
   cover?: Cover;
-  /** the "who's bringing what" sign-up list */
+  /** the Assignments sign-up list */
   assignments?: EventAssignment[];
 };
 
@@ -78,7 +106,6 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
     time: input.time,
     place: input.place,
     address: input.address,
-    bring: input.bring,
     bio: input.bio,
     goingIds: ['me'],
     invitedIds: input.invitedIds ?? [],
@@ -86,7 +113,7 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
     hostId: 'me',
     role: 'host',
     countdown: 'soon',
-    cap: 35,
+    cap: input.cap ?? 35,
     allowFriendsToInvite: input.allowFriendsToInvite,
     chipInAmount: input.chipInAmount,
     chipInMethod: input.chipInMethod,
@@ -96,7 +123,7 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
 
   if (isDemoMode()) {
     demoEvents = [event, ...demoEvents];
-    // Anyone assigned a bring-item gets nudged before the event (see stub below).
+    // Anyone assigned an item gets nudged before the event (see stub below).
     void scheduleAssignmentReminders(event.id);
     return cloneEvent(event);
   }
@@ -118,7 +145,7 @@ export async function getEvent(id: string): Promise<EventItem | null> {
 }
 
 /**
- * Claim (or clear) one bring-item for a person. Passing no personId opens the
+ * Claim (or clear) one assignment for a person. Passing no personId opens the
  * item back up. Demo mutates in memory; live PATCHes the assignment row.
  */
 export async function assignItem(
@@ -132,17 +159,57 @@ export async function assignItem(
       return {
         ...e,
         assignments: e.assignments.map((a) =>
-          a.id === itemId ? { ...a, assigneeId: personId } : a
+          a.id === itemId
+            ? { ...a, assigneeId: personId, done: personId ? a.done : false }
+            : a
         )
       };
     });
-    // A freshly-claimed item schedules that person's reminders.
     if (personId) void scheduleAssignmentReminders(eventId);
     const updated = demoEvents.find((e) => e.id === eventId);
     return updated ? cloneEvent(updated) : null;
   }
   // TODO: PATCH /events/:id/assignments/:itemId { assigneeId }
   return null;
+}
+
+/**
+ * Mark an assignment done or not. Only the assignee should call this from the UI.
+ */
+export async function setAssignmentDone(
+  eventId: string,
+  itemId: string,
+  done: boolean
+): Promise<EventItem | null> {
+  if (isDemoMode()) {
+    demoEvents = demoEvents.map((e) => {
+      if (e.id !== eventId || !e.assignments) return e;
+      return {
+        ...e,
+        assignments: e.assignments.map((a) => (a.id === itemId ? { ...a, done } : a))
+      };
+    });
+    const updated = demoEvents.find((e) => e.id === eventId);
+    return updated ? cloneEvent(updated) : null;
+  }
+  // TODO: PATCH /events/:id/assignments/:itemId { done }
+  return null;
+}
+
+/**
+ * Tell the host that someone snagged or dropped an assignment.
+ * Stub only — real push/email comes from the notifications module later.
+ */
+export async function notifyHostAssignmentChange(
+  eventId: string,
+  itemId: string,
+  action: 'snagged' | 'released'
+): Promise<void> {
+  // TODO: notifications module — alert the host that an assignment changed.
+  if (isDemoMode()) {
+    // eslint-disable-next-line no-console
+    console.log('[events] host notify stub', { eventId, itemId, action });
+  }
 }
 
 /**
@@ -178,4 +245,26 @@ export async function rsvpEvent(
 
   // TODO: POST /events/:id/rsvp
   return null;
+}
+
+/**
+ * People at this event that Bridger thinks you should meet (not already in
+ * your book). Used on the Home next-event tile beside friends who are going.
+ * PRIVACY: never includes blocked people; demo list is fixture-only.
+ */
+export function meetSuggestionsForEvent(event: EventItem): MeetSuggestion[] {
+  if (!isDemoMode()) {
+    // TODO: GET /events/:id/meet-suggestions
+    return [];
+  }
+  const atEvent = new Set([
+    ...event.goingIds,
+    ...(event.invitedIds ?? []),
+    event.hostId
+  ]);
+  // Skip anyone already counted as a friend going (you already know them).
+  const friendGoing = new Set(event.goingIds);
+  return FIXTURE_MEET_SUGGESTIONS.filter(
+    (m) => atEvent.has(m.personId) && !friendGoing.has(m.personId)
+  );
 }

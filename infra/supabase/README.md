@@ -40,6 +40,11 @@ enforced at the row level — even a bug in the API can't leak a closer-tier fie
 | 0012 | all RLS policies |
 | 0013 | security hardening of the helper functions |
 | 0014 | move pgvector into the `extensions` schema |
+| 0015 | new-user trigger |
+| 0016 | admin content gaps (announcement title/CTA, delight name/slug + triggers, quiz_registry links, home_layout, seed) |
+| 0017 | quiz + weekly activity covers (`cover`, `emoji`, `closes_in`, `description`) |
+| 0018 | Touch Grass: `expires_at` + `touch_grass_responses` (I'm in / dismiss) + RLS |
+| 0019 | Weekly Recap Podcast tables, `story_type` audio, rolling expiry, purge function + RLS |
 
 ## Regenerating the TypeScript types
 

@@ -16,14 +16,16 @@ import {
   COMMONALITIES,
   DEFAULT_DISCOVER_SETTINGS,
   MATCH_MODULES,
+  QUIZ_MATCHES,
   REQUESTS as FIXTURE_REQUESTS,
   SUGGESTIONS as FIXTURE_SUGGESTIONS,
   type Commonality,
   type MatchModule,
-  type ModuleQuestion
+  type ModuleQuestion,
+  type QuizMatch
 } from './fixtures/discover';
 
-export type { Commonality, MatchModule, ModuleQuestion };
+export type { Commonality, MatchModule, ModuleQuestion, QuizMatch };
 export { ABOUT_ME_CATEGORIES };
 
 /** PRIVACY: people you've blocked never appear as suggestions or bridges. */
@@ -155,6 +157,16 @@ export async function getCommonalities(_personId?: string): Promise<Commonality[
     return COMMONALITIES.map((c) => ({ ...c }));
   }
   // TODO: GET /matching/commonalities/:personId
+  return [];
+}
+
+/**
+ * Compatibility scores from matching-only quizzes (e.g. "95% in Humor").
+ * PRIVACY: only the dimension + number cross the connection, never answers.
+ */
+export async function getQuizMatches(_personId?: string): Promise<QuizMatch[]> {
+  if (isDemoMode()) return QUIZ_MATCHES.map((q) => ({ ...q }));
+  // TODO: GET /matching/quiz-scores/:personId (server computes the %)
   return [];
 }
 

@@ -64,6 +64,8 @@ export class BridgerServiceStack extends cdk.Stack {
             COOP_ADMIN_USERNAMES: apprunner.Secret.fromSecretsManager(serverSecret, 'COOP_ADMIN_USERNAMES'),
             COOP_ADMIN_EMAILS: apprunner.Secret.fromSecretsManager(serverSecret, 'COOP_ADMIN_EMAILS'),
             ADMIN_API_KEY: apprunner.Secret.fromSecretsManager(serverSecret, 'ADMIN_API_KEY'),
+            ADMIN_PASSWORD: apprunner.Secret.fromSecretsManager(serverSecret, 'ADMIN_PASSWORD'),
+            ADMIN_JWT_SECRET: apprunner.Secret.fromSecretsManager(serverSecret, 'ADMIN_JWT_SECRET'),
             EMAIL_HMAC_KEY: apprunner.Secret.fromSecretsManager(serverSecret, 'EMAIL_HMAC_KEY'),
             EMAIL_ENCRYPTION_KEY: apprunner.Secret.fromSecretsManager(serverSecret, 'EMAIL_ENCRYPTION_KEY')
           }

@@ -12,11 +12,9 @@ import { useRouter } from 'expo-router';
 import { SettingsIcon } from 'lucide-react-native';
 import { DISCOVER, openSurface } from '@bridger/shared';
 import {
-  Avatar,
   Badge,
   EmptyState,
   ListRow,
-  PixelHeading,
   Screen,
   ScreenBody,
   ScreenHeader,
@@ -29,6 +27,7 @@ import { DiscoverGate } from '../../components/discover/DiscoverGate';
 import { DiscoverSettingsSheet } from '../../components/discover/DiscoverSettingsSheet';
 import { MatchModules } from '../../components/discover/MatchModules';
 import { SuggestionCard } from '../../components/discover/SuggestionCard';
+import { PersonAvatar } from '../../components/PersonAvatar';
 import type { Commonality } from '../../data/discover';
 import { personById } from '../../data/people';
 import { useDiscover } from '../../hooks/useDiscover';
@@ -44,8 +43,8 @@ type Selection = {
 };
 
 export default function DiscoverScreen() {
-  const router = useRouter();
   const c = useThemeColors();
+  const router = useRouter();
   const {
     settings,
     suggestions,
@@ -199,8 +198,17 @@ export default function DiscoverScreen() {
 
         {requests.length > 0 ? (
           <View className="mt-7">
+            {/* Title opens the same info bubble as People to meet; badge stays next to it */}
             <View className="mb-2 flex-row items-center gap-2">
-              <PixelHeading size="md">Wants to connect</PixelHeading>
+              <View>
+                <SectionTitle
+                  title="Wants to connect"
+                  description="People who asked to connect with you through a mutual friend. Confirm to add them, or dismiss."
+                  infoAnalyticsId={DISCOVER.wants_to_connect.info}
+                  parentScreen="discover"
+                  section="wants_to_connect"
+                />
+              </View>
               <Badge tone="new">{requests.length}</Badge>
             </View>
             <View className="gap-2.5">
@@ -210,7 +218,7 @@ export default function DiscoverScreen() {
                 return (
                   <ListRow
                     key={r.id}
-                    leading={<Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} />}
+                    leading={<PersonAvatar id={p.id} />}
                     label={p.name}
                     sublabel={`via ${via.name.split(' ')[0]}`}
                     trailing="chevron"

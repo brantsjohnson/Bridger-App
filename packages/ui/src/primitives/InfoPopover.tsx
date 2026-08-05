@@ -2,9 +2,13 @@
 // WHAT THIS FILE DOES (plain English):
 // A tiny "what is this?" bubble that floats just under a section title (over
 // the content below, not pushing it down). On a phone you tap the title to
-// open it; on a computer you can hover or click. The bubble is teal (same
-// family as Hikes) with a light shadow, tucked up close to the title so it
-// does not sit inline with the widget.
+// open it; on a computer you can hover or click. The bubble is a light teal
+// mint (same family as Hikes) with a soft shadow, tucked up close to the
+// title so it does not sit inline with the widget.
+//
+// Dark mode: the mint fill stays pale on purpose. Body text uses text-onaccent
+// (always near-black) so it stays readable when text-ink flips to near-white.
+// Do not use text-ink here — light type on a light mint bubble is unreadable.
 //
 // IMPORTANT (web hover): we do NOT put a full-screen Modal under the mouse
 // while hovering. A Modal steals the pointer from the title, which fires
@@ -208,10 +212,11 @@ export function InfoPopover({
       analyticsId={bodyAnalyticsId}
       interactive={false}
       accessibilityLabel={description}
-      className="rounded-2xl border border-teal bg-[#E6F7F1] px-3.5 py-3 dark:bg-[#14352C]"
+      className="rounded-2xl border border-teal bg-[#E6F7F1] px-3.5 py-3"
       style={BUBBLE_SHADOW}
     >
-      <Text className="font-sans-sb text-[13px] leading-[18px] text-ink">
+      {/* onaccent = always-dark type, safe on the pale mint fill in both themes */}
+      <Text className="font-sans-sb text-[13px] leading-[18px] text-onaccent">
         {description}
       </Text>
     </AnalyticsRegion>

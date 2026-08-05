@@ -14,7 +14,7 @@ import {
   CalendarIcon,
   CompassIcon,
   HouseIcon,
-  MessageSquareIcon,
+  SendIcon,
   UsersIcon
 } from 'lucide-react-native';
 import { CHROME } from '@bridger/shared';
@@ -35,8 +35,9 @@ const TABS: Array<{
   {
     key: 'messages',
     label: 'Messages',
+    // Paper airplane = messages everywhere in the app (not the flag-like bubble).
     analyticsId: CHROME.tab_bar.tab_messages,
-    Icon: MessageSquareIcon
+    Icon: SendIcon
   },
   { key: 'events', label: 'Events', analyticsId: CHROME.tab_bar.tab_events, Icon: CalendarIcon },
   {

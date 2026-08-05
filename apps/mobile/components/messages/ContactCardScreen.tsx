@@ -90,7 +90,7 @@ export function ContactCardScreen({ onBack, onShareIntoThread }: Props) {
           Set up once · share it anytime
         </Text>
 
-        <View className="mt-4 rounded-2xl border border-ink-line bg-white px-5 py-6">
+        <View className="mt-4 rounded-2xl border border-ink-line bg-surface px-5 py-6">
           <View className="items-center">
             <Avatar name={card.displayName} emoji={card.emoji} accent="teal" personId="me" size="xl" />
             <Text className="mt-3 font-sans-b text-[19px] tracking-tight text-ink">

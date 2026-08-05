@@ -11,19 +11,28 @@ import type { Cover, EventAssignment } from '@bridger/shared';
 export type CreateEventDraft = {
   title: string;
   bio: string;
+  /** human-readable day label shown in the UI (e.g. "Fri, Jul 31") */
   day: string;
+  /** ISO date YYYY-MM-DD for the calendar picker */
+  dayIso: string;
   time: string;
+  /** short spot name — filled from address lookup when a suggestion is picked */
   place: string;
   address: string;
-  /** one optional co-host (they can edit + their acquaintances join the pool) */
-  coHostId?: string;
-  bring: string;
+  /** one or more co-hosts (they can edit + their acquaintances join suggestions) */
+  coHostIds: string[];
+  /** whether the co-host picker is open on the Details step */
+  addCoHosts: boolean;
+  /** whether the chip-in card is expanded */
+  chipInEnabled: boolean;
   chipInAmount: string;
   chipInMethod: string;
   chipInHandle: string;
   allowFriendsToInvite: boolean;
+  /** max guests when friends can invite friends; default 35 */
+  guestCap: number;
   invitedIds: string[];
-  /** photo the host picked; unset means "use a random emoji at create time" */
+  /** cover the host picked; unset means "use a random emoji at create time" */
   cover?: Cover;
   assignments: EventAssignment[];
 };
@@ -40,21 +49,37 @@ export const STEP_TITLES: Record<StepName, string> = {
   preview: 'Preview'
 };
 
+/** Friendly default day = today, as ISO + readable label. */
+function defaultDay(): { day: string; dayIso: string } {
+  const d = new Date();
+  const dayIso = d.toISOString().slice(0, 10);
+  const day = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  }).format(d);
+  return { day, dayIso };
+}
+
 /** A fresh draft with friendly defaults so the form is never blank/broken. */
 export function emptyDraft(): CreateEventDraft {
+  const { day, dayIso } = defaultDay();
   return {
     title: '',
     bio: '',
-    day: 'Fri 31 Jul',
+    day,
+    dayIso,
     time: '18:30',
     place: '',
     address: '',
-    coHostId: undefined,
-    bring: '',
+    coHostIds: [],
+    addCoHosts: false,
+    chipInEnabled: false,
     chipInAmount: '',
     chipInMethod: '',
     chipInHandle: '',
     allowFriendsToInvite: true,
+    guestCap: 35,
     invitedIds: [],
     cover: undefined,
     assignments: []

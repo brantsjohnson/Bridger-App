@@ -1,5 +1,5 @@
 import React from 'react';
-import { CakeIcon, ChevronRightIcon, PlusIcon, SparklesIcon } from 'lucide-react';
+import { CakeIcon, ChevronRightIcon, PartyPopperIcon, PlusIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tier, TIER_LABEL } from '../../../../packages/shared';
 import {
@@ -226,7 +226,7 @@ export function FriendsScreen({
                         </span>
                         {BIRTHDAYS[p.id]?.today && !editing &&
                     <span className="flex shrink-0 items-center gap-1 text-pink">
-                            <SparklesIcon className="h-4 w-4" strokeWidth={2.4} />
+                            <PartyPopperIcon className="h-4 w-4" strokeWidth={2.4} />
                             <motion.span
                         animate={{ scale: [1, 1.15, 1] }}
                         transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}>

@@ -20,6 +20,7 @@ import {
   ScreenBody,
   ScreenHeader,
   SectionTitle,
+  useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { EventCard } from '../../components/EventCard';
@@ -64,6 +65,7 @@ const SECTIONS: Array<{
 
 export default function EventsScreen() {
   const router = useRouter();
+  const c = useThemeColors();
   const { events, onRsvp } = useEventsFeed();
   const { signals, myLive, onSend, onJoin, onDismiss, onEndMine } = useTouchGrass();
 
@@ -89,9 +91,9 @@ export default function EventsScreen() {
             onPress={withAnalyticsPress(EVENTS.list.create, () => router.push('/event/create'))}
             accessibilityRole="button"
             accessibilityLabel="Create event"
-            className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
+            className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-90"
           >
-            <PlusIcon size={18} color="#FFFFFF" strokeWidth={2.6} />
+            <PlusIcon size={18} color={c.ink} strokeWidth={2.6} />
           </Pressable>
         }
       />

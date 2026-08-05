@@ -8,6 +8,7 @@ import {
   getRecapWeek,
   listSubmittedQuestions,
   submitQuestion,
+  voteQuestion,
   type RecapSummary,
   type SubmittedQuestion
 } from '../data/pod';
@@ -37,5 +38,10 @@ export function useFriendPod() {
     setQuestions(await listSubmittedQuestions());
   }, []);
 
-  return { recap, questions, loading, refresh, onSubmitQuestion };
+  const onVoteQuestion = useCallback(async (id: string) => {
+    await voteQuestion(id);
+    setQuestions(await listSubmittedQuestions());
+  }, []);
+
+  return { recap, questions, loading, refresh, onSubmitQuestion, onVoteQuestion };
 }

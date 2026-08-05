@@ -59,6 +59,11 @@ export type AnalyticsProductEvent =
   | 'quiz_adapted'
   | 'quiz_abandoned'
   | 'quiz_completed'
+  | 'delight_gifted'
+  | 'delight_played'
+  | 'activity_posted'
+  | 'activity_hearted'
+  | 'home_layout_saved'
   | 'module_started'
   | 'module_completed'
   | 'module_item_added'
@@ -74,11 +79,23 @@ export type AnalyticsProductEvent =
   | 'touch_grass_sent'
   | 'touch_grass_answered'
   | 'touch_grass_declined'
+  /** posted your weekly recap (voice answers) — counts only, never audio */
+  | 'recap_posted'
+  /** played the weekly recap podcast */
+  | 'recap_played'
+  /** sent a sticker/emoji reaction to someone's recap (never the emoji itself) */
+  | 'recap_reaction_sent'
+  /** suggested a question for a future recap week */
+  | 'recap_question_submitted'
+  /** upvoted a submitted recap question */
+  | 'recap_question_voted'
   | 'poll_created'
   | 'poll_answered'
   | 'event_created'
   | 'event_assignment_added'
   | 'event_assignment_taken'
+  | 'event_assignment_released'
+  | 'event_assignment_done'
   | 'event_shared'
   | 'rsvp_going'
   | 'rsvp_cant'
@@ -89,7 +106,9 @@ export type AnalyticsProductEvent =
   | 'auth_signed_in'
   | 'auth_signed_up'
   | 'message_sent'
-  | 'contact_shared';
+  | 'contact_shared'
+  /** unmatched route or broken connection path — path trail goes to admin */
+  | 'screen_not_found';
 
 /** Shared properties stamped on every event. */
 export type AnalyticsBaseProps = {

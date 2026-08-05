@@ -10,6 +10,7 @@
 export * from './tokens';
 export * from './lib/cn';
 export * from './lib/analytics';
+export * from './lib/whimsy';
 
 // --- Primitives (the small reusable building blocks) ---
 export * from './primitives/PixelHeading';
@@ -37,6 +38,8 @@ export * from './primitives/AudiencePicker';
 export * from './primitives/GradientRing';
 export * from './primitives/SegmentedProgress';
 export * from './primitives/StepProgress';
+export * from './primitives/WindowsDialog';
+export * from './primitives/NotFoundScreen';
 
 // --- Layout (the screen scaffold + the floating navigation) ---
 export * from './layout/Screen';

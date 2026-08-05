@@ -101,10 +101,12 @@ export function ButtonSecondary({
   analyticsId,
   interactive = true,
   analyticsProps
-}: ButtonProps & { tone?: 'outline' | 'solid' | 'ghost' | 'positive' }) {
+}: ButtonProps & { tone?: 'outline' | 'solid' | 'ghost' | 'positive' | 'light' }) {
   const inert = disabled || loading;
   const c = useThemeColors();
 
+  // "light" = always white pill + near-black label (header chrome that must
+  // stay readable in dark mode — text-ink alone flips to cream and vanishes).
   const toneBg =
     tone === 'outline'
       ? 'border border-ink-line bg-surface'
@@ -112,10 +114,23 @@ export function ButtonSecondary({
         ? 'bg-carbon'
         : tone === 'positive'
           ? 'bg-success'
-          : ''; // ghost = no fill
+          : tone === 'light'
+            // Always-white pill — keep hard white so near-black label stays readable
+            // in dark mode (bg-surface would go dark and the label would vanish).
+            ? 'border border-ink-line bg-white'
+            : ''; // ghost = no fill
   const toneText =
-    tone === 'solid' || tone === 'positive' ? 'text-white' : 'text-ink';
-  const spinnerColor = tone === 'solid' || tone === 'positive' ? '#FFFFFF' : c.ink;
+    tone === 'solid' || tone === 'positive'
+      ? 'text-white'
+      : tone === 'light'
+        ? 'text-[#1C1B16]'
+        : 'text-ink';
+  const spinnerColor =
+    tone === 'solid' || tone === 'positive'
+      ? '#FFFFFF'
+      : tone === 'light'
+        ? '#1C1B16'
+        : c.ink;
 
   return (
     <Pressable

@@ -6,20 +6,22 @@
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { CalendarIcon, MapPinIcon, UsersIcon } from 'lucide-react-native';
+import { CalendarIcon, MapPinIcon, NotebookPenIcon, UsersIcon } from 'lucide-react-native';
 import type { HowYouMet } from '@bridger/shared';
 import { PixelHeading, cn, useThemeColors } from '@bridger/ui';
 import { getHowYouMet } from '../../data/reveal';
 
 const TINT = {
-  event: 'bg-[#EDE6FF]',
-  via: 'bg-[#FFE1D2]',
-  place: 'bg-[#DFF3E4]'
+  event: 'bg-purple',
+  via: 'bg-coral',
+  place: 'bg-teal',
+  note: 'bg-amber'
 } as const;
 
 function title(m: HowYouMet): string {
   if (m.kind === 'place') return `Met in ${m.label}`;
   if (m.kind === 'via') return `Met through ${m.label}`;
+  if (m.kind === 'note') return m.label;
   return `Met at ${m.label}`;
 }
 
@@ -39,9 +41,14 @@ export function HowYouMetCard({ personId }: { personId: string }) {
       <View className="mt-2 gap-2">
         {records.map((m) => {
           const Icon =
-            m.kind === 'event' ? CalendarIcon : m.kind === 'via' ? UsersIcon : MapPinIcon;
-          const iconColor =
-            m.kind === 'event' ? '#7C5CFF' : m.kind === 'via' ? '#FF5A1F' : '#00A676';
+            m.kind === 'event'
+              ? CalendarIcon
+              : m.kind === 'via'
+                ? UsersIcon
+                : m.kind === 'note'
+                  ? NotebookPenIcon
+                  : MapPinIcon;
+          // White icon on the bright tint — same rule as other vivid chips.
           return (
             <View
               key={`${m.kind}-${m.label}-${m.date}`}
@@ -53,7 +60,7 @@ export function HowYouMetCard({ personId }: { personId: string }) {
                   TINT[m.kind]
                 )}
               >
-                <Icon size={20} color={iconColor} strokeWidth={2.4} />
+                <Icon size={20} color="#FFFFFF" strokeWidth={2.4} />
               </View>
               <View className="min-w-0 flex-1">
                 <Text className="font-sans-b text-[16px] text-ink" numberOfLines={1}>

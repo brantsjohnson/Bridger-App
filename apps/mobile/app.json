@@ -46,7 +46,8 @@
           "microphonePermission": "Bridger uses your microphone so your video replies have sound.",
           "recordAudioAndroid": true
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

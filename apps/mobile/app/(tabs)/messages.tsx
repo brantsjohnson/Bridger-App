@@ -7,9 +7,8 @@
 // SECURITY: message bodies are end-to-end encrypted at rest — staff cannot read them.
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRightIcon, IdCardIcon, SquarePenIcon } from 'lucide-react-native';
 import {
   DAILY_CAP,
@@ -26,8 +25,9 @@ import {
   Screen,
   ScreenBody,
   ScreenHeader,
+  Reveal,
   SearchField,
-  TIER_GRADIENT,
+  TIER_COLOR,
   cn,
   ringToneForTier,
   useThemeColors,
@@ -79,7 +79,7 @@ export default function MessagesScreen() {
             )}
             accessibilityRole="button"
             accessibilityLabel="New message"
-            className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-white active:bg-[#F1ECFF]"
+            className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:bg-[#F1ECFF]"
           >
             <SquarePenIcon size={18} color={c.ink} strokeWidth={2.2} />
           </Pressable>
@@ -143,76 +143,74 @@ export default function MessagesScreen() {
                     </Text>
                   </AnalyticsRegion>
 
-                  {group.map((t) => {
-                    // COLOR = how close they are (same colors as the story
-                    // rings). SHAPE = whose turn it is. And when you've already
-                    // replied and are just waiting on them, the same color goes
-                    // pale so the inbox shows you what actually needs you.
+                  {group.map((t, i) => {
+                    // COLOR = how close they are (green close, blue friends,
+                    // orange acquaintances — the same colors as the story rings).
+                    // DARK means it is your turn to reply. LIGHT means you already
+                    // did and you're waiting on them. SHAPE says the same thing
+                    // again in the outline, for anyone who can't rely on color.
                     const state = cardState(t);
                     const waiting = state === 'replied';
                     const shape = MESSAGE_SHAPES[state];
-                    const colors =
-                      TIER_GRADIENT[ringToneForTier(tier)][waiting ? 'soft' : 'strong'];
-                    const textClass = waiting ? 'text-ink' : 'text-white';
+                    const tone = TIER_COLOR[ringToneForTier(tier)];
+                    const fill = waiting ? tone.light : tone.deep;
+                    const textColor = waiting ? tone.onLight : tone.onDeep;
                     return (
-                      <Pressable
-                        key={t.id}
-                        onPress={withAnalyticsPress(MESSAGES.conversation.row, () =>
-                          router.push(`/messages/${t.id}`)
-                        )}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${t.name}. ${t.preview}`}
-                        style={shape}
-                        className="min-h-[44px] w-full flex-row items-center gap-3 overflow-hidden px-4 py-3.5 active:opacity-90"
-                      >
-                        {/* The colored fill sits behind the row content. */}
-                        <LinearGradient
-                          colors={colors}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFill}
-                        />
-                        {/* White ring keeps every face readable on the color. */}
-                        <View className="rounded-full bg-white/90 p-[2px]">
-                          <Avatar
-                            name={t.name}
-                            emoji={t.emoji}
-                            accent={t.accent}
-                            photo={getProfilePhoto(t.personId)}
-                          />
-                        </View>
-                        <View className="min-w-0 flex-1">
-                          <Text
-                            numberOfLines={1}
-                            className={cn('font-sans-b text-[15px]', textClass)}
-                          >
-                            {t.name}
-                          </Text>
-                          <Text
-                            numberOfLines={1}
-                            className={cn('font-sans-sb text-[13px] opacity-80', textClass)}
-                          >
-                            {t.preview}
-                          </Text>
-                        </View>
-                        <View className="shrink-0 items-end gap-1.5">
-                          <Text
-                            className={cn('font-sans-b text-[11px] opacity-70', textClass)}
-                          >
-                            {t.time}
-                          </Text>
-                          {t.unread ? (
-                            <View
-                              accessible
-                              accessibilityLabel="Unread"
-                              className={cn(
-                                'h-2.5 w-2.5 rounded-full',
-                                waiting ? 'bg-ink' : 'bg-white'
-                              )}
+                      <Reveal key={t.id} index={i}>
+                        <Pressable
+                          onPress={withAnalyticsPress(MESSAGES.conversation.row, () =>
+                            router.push(`/messages/${t.id}`)
+                          )}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${t.name}. ${t.preview}. ${
+                            waiting ? 'Waiting on them' : 'Your turn to reply'
+                          }`}
+                          style={{ ...shape, backgroundColor: fill }}
+                          className="min-h-[44px] w-full flex-row items-center gap-3 overflow-hidden px-4 py-3.5 active:opacity-90"
+                        >
+                          {/* White ring keeps every face readable on the color. */}
+                          <View className="rounded-full bg-white/90 p-[2px]">
+                            <Avatar
+                              name={t.name}
+                              emoji={t.emoji}
+                              accent={t.accent}
+                              photo={getProfilePhoto(t.personId)}
                             />
-                          ) : null}
-                        </View>
-                      </Pressable>
+                          </View>
+                          <View className="min-w-0 flex-1">
+                            <Text
+                              numberOfLines={1}
+                              style={{ color: textColor }}
+                              className="font-sans-b text-[15px]"
+                            >
+                              {t.name}
+                            </Text>
+                            <Text
+                              numberOfLines={1}
+                              style={{ color: textColor }}
+                              className="font-sans-sb text-[13px] opacity-80"
+                            >
+                              {t.preview}
+                            </Text>
+                          </View>
+                          <View className="shrink-0 items-end gap-1.5">
+                            <Text
+                              style={{ color: textColor }}
+                              className="font-sans-b text-[11px] opacity-70"
+                            >
+                              {t.time}
+                            </Text>
+                            {t.unread ? (
+                              <View
+                                accessible
+                                accessibilityLabel="Unread"
+                                style={{ backgroundColor: textColor }}
+                                className="h-2.5 w-2.5 rounded-full"
+                              />
+                            ) : null}
+                          </View>
+                        </Pressable>
+                      </Reveal>
                     );
                   })}
                 </View>
@@ -227,10 +225,11 @@ export default function MessagesScreen() {
           className="mt-7 rounded-2xl bg-[#DFF3E4] px-5 py-5"
           accessibilityLabel={`${DAILY_CAP} messages a day per friend. Bridger is not another inbox.`}
         >
-          <Text className="text-center font-pixel text-[16px] text-success">
+          {/* Light mint card — keep both lines near-black so dark mode stays readable. */}
+          <Text className="text-center font-pixel text-[16px] text-[#1C1B16]">
             {DAILY_CAP} messages a day per friend
           </Text>
-          <Text className="mt-1.5 text-center font-sans-sb text-[13px] text-ink-soft">
+          <Text className="mt-1.5 text-center font-sans-sb text-[13px] text-[#1C1B16]/75">
             Bridger isn't another inbox. Swap numbers and go live your life.
           </Text>
         </AnalyticsRegion>

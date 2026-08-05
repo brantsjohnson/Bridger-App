@@ -3,14 +3,20 @@
 // The Friend Pod entry on Friends: "Your friends' week" play card, plus
 // "Add your recap" and "Submit a question". Play opens a stub for now; the
 // full weekly podcast player ships with RECAP-PODCAST.md.
+// The play card stays near-black with white type in every theme (bg-ink flips
+// cream in dark mode and white text would vanish). The mic wiggles so people
+// notice "Add your recap".
 // Analytics: play / record / submit_question use FRIENDS.pod.* ids.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRightIcon, MicIcon, PlayIcon, PlusIcon } from 'lucide-react-native';
 import { FRIENDS } from '@bridger/shared';
-import { Avatar, ORGANIC, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { Avatar, Glow, ORGANIC, Wiggle, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { useFriendPod } from '../../hooks/useFriendPod';
+
+/** Fixed near-black so the play card never becomes cream in dark mode. */
+const POD_INK = '#1C1B16';
 
 export function FriendPodWidget({
   size = 'full',
@@ -35,16 +41,18 @@ export function FriendPodWidget({
         onPress={withAnalyticsPress(FRIENDS.pod.play, onPlay)}
         accessibilityRole="button"
         accessibilityLabel={`Play your friends' week. ${voices.length} recaps, ${minutes} minutes`}
-        style={ORGANIC.soft}
-        className="w-full flex-row items-center gap-4 bg-ink px-5 py-5 active:opacity-95"
+        style={[ORGANIC.soft, { backgroundColor: POD_INK }]}
+        className="w-full flex-row items-center gap-4 px-5 py-5 active:opacity-95"
       >
-        {/* true white play disc on the dark ink panel — do not use bg-surface here */}
-        <View
-          className="h-12 w-12 shrink-0 items-center justify-center rounded-full"
-          style={{ backgroundColor: '#FFFFFF' }}
-        >
-          <PlayIcon size={24} color="#1C1B16" strokeWidth={2.4} style={{ marginLeft: 2 }} />
-        </View>
+        {/* true white play disc — Glow so the eye lands on "press me" first. */}
+        <Glow periodMs={2000} intensity={0.3}>
+          <View
+            className="h-12 w-12 shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#FFFFFF' }}
+          >
+            <PlayIcon size={24} color={POD_INK} strokeWidth={2.4} style={{ marginLeft: 2 }} />
+          </View>
+        </Glow>
         <View className="min-w-0 flex-1">
           <Text numberOfLines={1} className="font-pixel text-[17px] leading-[21px] text-white">
             Your friends' week
@@ -57,7 +65,8 @@ export function FriendPodWidget({
           {voices.slice(0, 3).map((p, i) => (
             <View
               key={p.id}
-              className={cn('rounded-full border-2 border-ink', i > 0 && '-ml-2')}
+              className={cn('rounded-full border-2', i > 0 && '-ml-2')}
+              style={{ borderColor: POD_INK }}
             >
               <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
             </View>
@@ -71,14 +80,17 @@ export function FriendPodWidget({
             onPress={withAnalyticsPress(FRIENDS.pod.record, onRecord)}
             accessibilityRole="button"
             accessibilityLabel="Add your recap"
-            className="w-full min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3.5 active:bg-[#F1ECFF]"
+            className="min-h-[44px] w-full flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3.5 active:bg-[#F1ECFF]"
           >
-            <MicIcon size={20} color="#6B2FEA" strokeWidth={2.4} />
+            {/* Wiggle draws the eye to the mic so people notice they can record. */}
+            <Wiggle everyMs={4500}>
+              <MicIcon size={20} color="#6B2FEA" strokeWidth={2.4} />
+            </Wiggle>
             <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-b text-[14px] text-ink">
               Add your recap
             </Text>
             <Text className="shrink-0 font-sans-sb text-[12px] text-ink-mute">
-              {questionCount} questions · 45s
+              {questionCount} questions · 20s
             </Text>
             <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.6} />
           </Pressable>
@@ -87,7 +99,7 @@ export function FriendPodWidget({
             onPress={withAnalyticsPress(FRIENDS.pod.submit_question, onSubmitQuestion)}
             accessibilityRole="button"
             accessibilityLabel="Submit a question"
-            className="w-full min-h-[44px] flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3 active:bg-[#F1ECFF]"
+            className="min-h-[44px] w-full flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3 active:bg-[#F1ECFF]"
           >
             <PlusIcon size={16} color="#6B2FEA" strokeWidth={3} />
             <Text className="font-sans-b text-[13px] text-ink">Submit a question</Text>

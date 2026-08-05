@@ -52,6 +52,8 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `create_event` | `events` | the 4-step create-event wizard — where in Details → Invite → Extras → Preview do hosts drop off? |
 | `event_share_sheet` | `events.detail` | native share invoked? |
 | `section_info_tooltip` | any screen with section headers | do they open section help then bail? which sections? (`dwell_ms`, `section`) |
+| `recap_recorder` | `friends` (Friend Pod) | record the week's 5 answers by voice — do they start and give up? which question do they quit on? (`dwell_ms`) |
+| `recap_player` | `friends` / `home` (Friend Pod) | full-page weekly podcast — play, speed, filter, jump voices, react; do they bail? (`dwell_ms`) |
 
 **Rule:** opening a sheet emits `surface_opened`; closing without acting emits `surface_dismissed` with `dwell_ms`. That single pair answers "do people open this and give up?"
 
@@ -69,9 +71,10 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `customize_profile` | open → each change → save (with total `dwell_ms`) |
 | `touch_grass_send` | open sheet → who → when → why → send |
 | `discover_me` | each question in order → finish |
-| `reveal` | how-you-met → venn → also-got → see profile |
+| `reveal` | how-you-met → orbs (strongest) → also-got (quiz scores + commonalities) → see profile |
 | `create_event` | details → invite → extras → preview (then `event_created`) |
 | `take_quiz` | each question (+ explanation, order tracked) → result → pairs with the `quiz_*` product events (§3b) |
+| `take_recap` | open recorder → preview (all questions) → each question (q1…q5, order tracked) → pick audience → post (then `recap_posted`) |
 
 ---
 
@@ -98,20 +101,33 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `touch_grass_sent` | a signal is sent | `audience`, `when`, `has_why` (bool), `parent_screen` |
 | `touch_grass_answered` | someone says I'm in | `—` |
 | `touch_grass_declined` | someone quietly declines a signal | `parent_screen` |
+| `recap_posted` | a weekly recap is posted | `answers` (count), `audience` — **never the audio** |
+| `recap_played` | the weekly podcast is played | `voices` (count), `questions` (count) |
+| `recap_reaction_sent` | sticker/emoji reaction on a recap | `method` (sticker) — **never the emoji** |
+| `recap_question_submitted` | a question is suggested for a future week | `—` (never the question text) |
+| `recap_question_voted` | a submitted question is upvoted | `—` |
 | `poll_created` / `poll_answered` | poll actions | `—` |
 | `event_created` | an event is created | `has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count` (booleans + counts only — never title/bio/address text) |
-| `event_assignment_added` | host adds a bring-item | `—` (no item text) |
-| `event_assignment_taken` | a guest is assigned / claims a bring-item | `—` (no item text or names) |
+| `event_assignment_added` | host adds an assignment item | `—` (no item text) |
+| `event_assignment_taken` | a guest claims / is assigned an item | `—` (no item text or names) |
+| `event_assignment_released` | assignee removes themselves from an item | `—` |
+| `event_assignment_done` | assignee checks off (or unchecks) their item | `—` |
 | `event_shared` | event shared from its detail page | `method` (share_sheet / copy_link) |
 | `rsvp_going` / `rsvp_cant` | RSVP actions | `—` |
 | `inside_joke_posted` | a note is posted | `tagged_people`, `tagged_event` (bool) |
 | `bucket_item_checked` | an item is completed | `—` |
 | `profile_customized` | customize is saved | `changes_count`, `dwell_ms` |
-| `connection_revealed` | a reveal completes | `recorded_where` (bool) |
+| `connection_revealed` | a reveal completes | `recorded_where` (bool), `added_note` (bool), `meet_context` (`just-met` \| `already-know`), `to_tier` — NEVER place/note text or names |
 | `message_sent` | a chat message posts | `counts_against_cap` (bool) — NEVER include message text |
 | `contact_shared` | contact card shared into a thread | `counts_against_cap` (always false) — NEVER include field values |
 | `auth_signed_in` | sign-in succeeds | `method` (google/apple/email) |
 | `auth_signed_up` | account create succeeds | `method` (google/apple/email) |
+| `screen_not_found` | unmatched route or broken connection path shows the 404 dialog | `missing_path`, `path_trail` (joined routes, no PII), `reason` (`unmatched_route`\|`connection_error`\|`runtime_error`) |
+| `delight_gifted` | someone sends a gift delight | `delight_slug` (never names) |
+| `delight_played` | a gift delight finishes playing for the recipient | `delight_slug` |
+| `activity_posted` | someone posts into the weekly activity | `—` |
+| `activity_hearted` | someone hearts an activity post | `—` |
+| `home_layout_saved` | user finishes editing their Home layout | `widget_count` |
 
 **The rule:** if a click changes data or advances the user toward a real goal, emit a **named product event** alongside the UI event — never rely on the click alone. The click lives in the taxonomy below; the outcome lives here.
 
@@ -181,9 +197,9 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `ask_the_group` | `create_poll`, `ask_question`, `see_previous_polls`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `coming_up` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `activity` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `coop` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `activity` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open`, `heart`, `post` |
+| `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `take`, `open_result`, `share` |
+| `coop` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open_portal`, `join`, `use_free` |
 | `cold_start` | **`body` (dead)**, `cta` (method=link/qr/scan) |
 
 ### `section_info_tooltip` *(surface)*
@@ -218,10 +234,11 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | section | elements |
 |---|---|
 | `top_nav` | `settings_icon`, `messages_icon`, **`page_title` (dead)**, `profile_icon` |
-| `wants_to_connect` | `card`, `approve`, `decline` |
+| `wants_to_connect` | `card`, `approve`, `decline`, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `people_to_meet` | `suggestion_card`, `add`, `dismiss`, `spotlight_card`, **`shared_thread_headline` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `discover_me` | `answer`, `image_option`, `continue` |
 | `connect_over` | **`section_header` (dead)**, `module_tile` (opens a private module; `module` id), `see_more` (opens `connect_over` screen), `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) — connection detail overlaps before Accept/Add |
 | `maps` | `node`, `map_toggle` (swipe/dropdown) |
 | `gate` | **`body` (dead)**, `get_started` |
 | `settings_sheet` | `discoverable_toggle`, `source_toggle`, `dismiss` (surface=`discover_settings_sheet`) |
@@ -238,7 +255,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `roster` | `row`, `drag_handle`, **`tier_header` (dead)**, `birthday_row`, `info` (opens `section_info_tooltip`, method=hover\|tap; `tier` prop) |
 | `add_sheet` | `invite_link` (method=link), `qr` (method=qr), `scan` (method=scan) |
 | `inside_jokes` | `note` (tap → meta), `add`, **`note_body` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `pod` | `play`, `record`, `submit_question`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `pod` | `play` (opens `recap_player`), `record` (opens `recap_recorder`), `submit_question`, `vote_question`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 
 ### `profile` (own)
 | section | elements |
@@ -250,6 +267,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `stories_calendar` | `day` (opens story), `month_nav`, `storage_bar` |
 | `inside_jokes` | `note` (tap → meta), `add`, `filter`, **`note_body` (dead)** |
 | `bucket_list` | `item`, `add`, `check_off` |
+| `quizzes` | `untaken_row`, **`section_header` (dead)** |
 | `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `notifications`, `account`, `delete_account`, `analytics_toggle`, `log_out`, `appearance`, `blocked_people` |
 | `top_nav` | **`page_title` (dead)**, `edit`, `back` |
 
@@ -258,6 +276,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 |---|---|
 | `tabs` | `about_them`, `in_common`, `inside_jokes`, `bucket_list` (their list, read-only — rows reuse `profile.bucket_list.item` as a **dead** target) |
 | `about_them` | `about_me` (**dead** — do they tap it expecting more?), `this_or_that_row` (**dead**), `hobbies_widget` |
+| `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `actions` | `message` (the "Message <name>" pill in the header — there is no separate button any more), `how_you_met`, `private_note`, `overflow` (opens `friend_options_sheet`) |
 
 ### `events`
@@ -276,16 +295,16 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | section | elements |
 |---|---|
 | `chrome` | `back`, `next`, `close`, **`step_title` (dead)** |
-| `details` | `title`, `bio`, `date`, `time`, `place`, `address`, `address_result`, `cohost`, `bring`, `chip_in_amount`, `chip_in_method`, `chip_in_handle`, `friends_invite_toggle` |
-| `invite` | `search`, `invite_row` (method on/off) |
-| `extras` | `add_cover`, `cover_emoji`, `add_assignment`, `assignment_row`, `assign_name`, `chip_in` |
+| `details` | `title`, `bio`, `date`, `time`, `date_picker`, `time_picker`, `address`, `address_result`, `cohost_toggle`, `cohost_search`, `cohost_row`, `chip_in_toggle`, `chip_in_amount`, `chip_in_method`, `chip_in_handle`, `friends_invite_toggle`, `guest_cap` |
+| `invite` | `search`, `invite_row` (method on/off), `suggest_row` (method on/off) |
+| `extras` | `add_cover`, `cover_mode`, `cover_emoji`, `cover_color`, `cover_text`, `add_assignment`, `assignment_row`, `assign_name` |
 | `preview` | **`summary` (dead)**, `create` |
 
 ### `story` (viewer)
 | section | elements |
 |---|---|
-| `viewer` | `tap_next`, `tap_prev`, `progress_bar` (**dead**), `author` (opens overflow), `overflow`, `close`, `caption_body` (**dead**) |
-| `reaction_rail` | `record` (method=video, opens `circle_recorder`), `comment` (method=comment), `sticker` (method=sticker, opens `sticker_tray`), `reaction` (method=reaction) |
+| `viewer` | `tap_next`, `tap_prev`, `tap_pause` (center of media), `progress_bar` (**dead**), `author` (opens overflow), `overflow`, `close`, `caption_body` (**dead**) |
+| `reaction_rail` | `sticker` (method=sticker, opens `sticker_tray`), `comment` (method=comment), `record` (method=video, opens `circle_recorder`), `reaction` (method=reaction). Order on screen: emoji → comment → record (red dot), bottom-right beside the caption. |
 
 ### `sticker_tray` *(surface — parent `story`)*
 The emoji strip that unrolls sideways from the reaction rail.
@@ -307,6 +326,29 @@ The 10-second round video reply.
 | section | elements |
 |---|---|
 | `capture` | `record` (method=video), `stop`, `retake`, `send`, `switch_camera`, `permission_prompt`, `dismiss` |
+
+### `recap_recorder` *(surface — parent `friends`)*
+Record the week's 5 recap answers by voice, then pick who hears it. Pairs with the `take_recap` flow (§3) and the `recap_posted` product event (§3b). Never put audio in analytics.
+
+| section | elements |
+|---|---|
+| `question` | **`body` (dead)**, **`list` (dead — full preview before recording)** |
+| `record` | `start` (method=voice), `stop`, `rerecord`, `next` |
+| `audience` | `close`, `friends`, `everyone` |
+| `actions` | `start` (preview → Q1), `post`, `dismiss` |
+
+### `recap_player` *(surface — parent `friends` / `home`; full page, not a sheet)*
+Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_sent` (§3b).
+
+| section | elements |
+|---|---|
+| `transport` | `play`, `pause`, `back`, `skip`, `scrub`, `speed` (method=`1`\|`1.3`\|`1.5`\|`2`) |
+| `filter` | `chip` (method=`close`\|`friend`\|`acquaintance`; default Close) |
+| `speaker` | **`body` (dead)** |
+| `expiry` | **`label` (dead)** — days left until that person's clips expire |
+| `in_this_week` | **`body` (dead)**, `voice` (tap to jump / relisten) |
+| `react` | `open`, `emoji` (method=`sticker`) |
+| `actions` | `dismiss` |
 
 ### `catch_up` *(surface)*
 | section | elements |
@@ -334,13 +376,39 @@ The 10-second round video reply.
 ### `reveal` *(surface/flow)*
 | section | elements |
 |---|---|
-| `flow` | `how_you_met_choice`, `record_place_toggle`, `continue`, `see_profile`, **`progress` (dead)**, **`venn` (dead)** |
+| `flow` | `how_you_met_choice`, `record_place_toggle`, `tier_choice`, `meet_note`, `continue`, `see_profile`, `tap_next` (story forward), `tap_prev` (story back), `close` (X → new connection's profile), **`progress` (dead)**, **`orbs` (dead)**, **`venn` (dead, legacy)** |
 
 ### `coop` (portal)
 | section | elements |
 |---|---|
 | `ideas` | `idea_card`, `support`, `comment`, `submit` |
 | `vote` | `beta_vote`, `dues_vote`, `mission_support` |
+
+### `quiz` (take / result surface)
+| section | elements |
+|---|---|
+| `take` | `option`, `explain`, `next`, `back`, **`progress` (dead)** |
+| `result` | **`label` (dead)**, `share`, `who_got_who`, `see_more`, `done` |
+
+Pairs with product events `quiz_started` / `quiz_question_answered` / `quiz_adapted` / `quiz_abandoned` / `quiz_completed` (§3b). Never put explanation text in analytics.
+
+### `delight`
+| section | elements |
+|---|---|
+| `gift` | **`attribution` (dead)**, `dismiss` |
+
+### `not_found` *(surface — Magic Patterns Windows 404 dialog)*
+| section | elements |
+|---|---|
+| `chrome` | `dismiss` (title-bar X) |
+| `dialog` | **`body` (dead)**, `ok` |
+
+### `admin` (operator console)
+| section | elements |
+|---|---|
+| `login` | `password`, `submit` |
+| `nav` | `live_quiz`, `registry`, `activity`, `coop`, `members`, `home_defaults`, `prompts`, `delights`, `not_found_hits`, `logout` |
+| `actions` | `set_live_quiz`, `new_quiz`, `save_quiz_design`, `save_activity`, `toggle_activity`, `publish_announcement`, `save_home_defaults`, `save_prompts`, `toggle_delight`, `new_delight` |
 
 ---
 

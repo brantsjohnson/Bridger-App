@@ -4,14 +4,17 @@
 // quiz, co-op. Half-width and full-width layouts match Magic Patterns widgets.tsx.
 // PRIVACY: event cards never show invited totals (vanity metric rule).
 // Analytics: HOME.this_week.* and HOME.notifications_preview.* only — no PII.
+//
+// Next-event (half): countdown sits under the date; bottom row is friends who
+// are coming (left) · a dot · people Bridger suggests you meet (right).
+// Faces use dropped-in profile photos whenever we have one.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowUpRightIcon, ChevronRightIcon, Share2Icon } from 'lucide-react-native';
-import { HOME, type EventItem } from '@bridger/shared';
+import { HOME, type Cover, type EventItem } from '@bridger/shared';
 import {
   ACCENTS,
-  Avatar,
   AvatarStack,
   ButtonSecondary,
   Card,
@@ -22,8 +25,34 @@ import {
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
+import { PersonAvatar } from '../PersonAvatar';
+import { meetSuggestionsForEvent } from '../../data/events';
+import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { personById } from '../../data/people';
 import type { WidgetSize } from './HomeWidget';
+
+/** AvatarStack row with real photos when a demo pic exists for that person. */
+function faceStack(
+  ids: string[],
+  limit = 3
+): Array<{
+  name: string;
+  emoji?: string;
+  accent?: EventItem['accent'];
+  personId: string;
+  photo: ReturnType<typeof getProfilePhoto>;
+}> {
+  return ids.slice(0, limit).map((id) => {
+    const p = personById(id);
+    return {
+      name: p.name,
+      emoji: p.emoji,
+      accent: p.accent,
+      personId: p.id,
+      photo: getProfilePhoto(p.id)
+    };
+  });
+}
 
 type NotifRow = { id: string; personId: string; text: string; time: string };
 type WeeklyActivity = {
@@ -32,12 +61,19 @@ type WeeklyActivity = {
   prompt: string;
   closesIn: string;
   accent: EventItem['accent'];
+  /** Accent glyph when there is no photo cover. */
+  emoji?: string;
+  /** Same cover model as events: photo fills the frame. */
+  cover?: Cover;
   posts: Array<{ id: string; personId: string; emoji: string; caption: string }>;
 };
 type QuizData = {
   id: string;
   title: string;
+  /** Short line under the title on the Home card. */
+  description?: string;
   comparable: boolean;
+  cover?: Cover;
   results: Array<{
     id: string;
     label: string;
@@ -49,103 +85,140 @@ type QuizData = {
 export function NextEventWidget({
   event,
   size,
-  onOpen,
-  onSeeAll
+  onOpen
 }: {
   event: EventItem;
   size: WidgetSize;
+  /** Opens this event's detail page — the whole card is the tap target. */
   onOpen?: () => void;
-  onSeeAll?: () => void;
 }) {
-  const c = useThemeColors();
+  const open = withAnalyticsPress(HOME.this_week.next_event, onOpen);
+
+  // Friends you know who are coming (skip yourself — not a "mutual").
+  const friendsGoingIds = event.goingIds.filter((id) => id !== 'me');
+  const meetIds = meetSuggestionsForEvent(event).map((m) => m.personId);
 
   if (size === 'full') {
-    const going = event.goingIds.map(personById);
     return (
-      <View className="gap-2">
-        <Card className="overflow-hidden p-0">
-          {/* Analytics: open the next-event card. */}
-          <Pressable
-            onPress={withAnalyticsPress(HOME.this_week.next_event, onOpen)}
-            accessibilityRole="button"
-            accessibilityLabel={event.title}
-          >
-            <View className="h-24">
-              <CoverArt cover={event.cover ?? { kind: 'emoji', value: event.emoji }} accent={event.accent} />
+      <Card className="overflow-hidden p-0">
+        {/* Analytics: open the next-event card → event detail. */}
+        <Pressable
+          onPress={open}
+          accessibilityRole="button"
+          accessibilityLabel={event.title}
+        >
+          <View className="h-24">
+            <CoverArt
+              cover={event.cover ?? { kind: 'emoji', value: event.emoji }}
+              accent={event.accent}
+            />
+          </View>
+          <View className="flex-row items-start gap-3 p-4">
+            <View className="items-center rounded-card bg-canvas-raised px-2.5 py-2">
+              <Text className="font-sans-b text-[11px] uppercase text-ink-mute">
+                {event.day.split(' ')[0]}
+              </Text>
+              <Text className="font-sans-b text-[18px] text-ink">{event.day.split(' ')[1]}</Text>
             </View>
-            <View className="flex-row items-start gap-3 p-4">
-              <View className="items-center rounded-card bg-canvas-raised px-2.5 py-2">
-                <Text className="font-sans-b text-[11px] uppercase text-ink-mute">
-                  {event.day.split(' ')[0]}
+            <View className="min-w-0 flex-1">
+              <Text className="font-sans-b text-[17px] leading-tight tracking-tight text-ink">
+                {event.title}
+              </Text>
+              <Text className="mt-0.5 font-sans-md text-[13px] text-ink-mute">
+                {event.time} · {event.place}
+              </Text>
+              <View className="mt-3 flex-row items-center gap-2">
+                <AvatarStack people={faceStack(friendsGoingIds)} />
+                {/* PRIVACY: host headcount vs cap is allowed; no invited totals */}
+                <Text className="font-sans-sb text-[12px] text-ink-mute">
+                  {friendsGoingIds.length}
+                  {event.cap ? ` / ${event.cap}` : ''} going
                 </Text>
-                <Text className="font-sans-b text-[18px] text-ink">{event.day.split(' ')[1]}</Text>
               </View>
-              <View className="min-w-0 flex-1">
-                <Text className="font-sans-b text-[17px] leading-tight tracking-tight text-ink">
-                  {event.title}
-                </Text>
-                <Text className="mt-0.5 font-sans-md text-[13px] text-ink-mute">
-                  {event.time} · {event.place}
-                </Text>
-                <View className="mt-3 flex-row items-center gap-2">
-                  <AvatarStack
-                    people={going.slice(0, 3).map((p) => ({
-                      name: p.name,
-                      emoji: p.emoji,
-                      accent: p.accent,
-                      personId: p.id
-                    }))}
-                  />
-                  {/* PRIVACY: host headcount vs cap is allowed; no invited totals */}
-                  <Text className="font-sans-sb text-[12px] text-ink-mute">
-                    {going.length}
-                    {event.cap ? ` / ${event.cap}` : ''} going
-                  </Text>
-                </View>
-              </View>
-              {event.countdown ? <CountdownChip label={event.countdown} /> : null}
             </View>
-          </Pressable>
-        </Card>
-        <Pressable onPress={onSeeAll} accessibilityRole="button" accessibilityLabel="See all events">
-          <Text className="font-sans-b text-[12px] text-purple">See all</Text>
+            <View className="w-[132px] shrink-0">
+              <CountdownChip label={event.countdown} startsAt={event.startsAt} />
+            </View>
+          </View>
         </Pressable>
-      </View>
+      </Card>
     );
   }
 
+  // Half-size: countdown under the date; faces at the bottom (friends | · | meet).
+  const meetLabel =
+    meetIds.length > 0
+      ? `${meetIds.length} ${meetIds.length === 1 ? 'person' : 'people'} to meet`
+      : undefined;
   return (
-    <View
+    <Pressable
+      onPress={open}
+      accessibilityRole="button"
+      accessibilityLabel={
+        meetLabel ? `${event.title}. ${meetLabel}` : event.title
+      }
       className={cn(
         // fill the HomeWidget shell so half-width pairs match height
-        'min-h-[140px] flex-1 overflow-hidden rounded-card',
+        'min-h-[140px] flex-1 overflow-hidden rounded-card active:opacity-90',
         ACCENTS[event.accent].tintSolid
       )}
     >
       <View className="h-14 shrink-0">
-        <CoverArt cover={event.cover ?? { kind: 'emoji', value: event.emoji }} accent={event.accent} />
+        <CoverArt
+          cover={event.cover ?? { kind: 'emoji', value: event.emoji }}
+          accent={event.accent}
+        />
       </View>
-      <Pressable
-        onPress={withAnalyticsPress(HOME.this_week.next_event, onOpen)}
-        className="flex-1 px-4 pt-3 active:opacity-90"
-      >
-        {/* onaccent = always-dark type, readable on the pale tint in light and dark */}
-        <Text className="font-sans-b text-[15px] tracking-tight text-onaccent" numberOfLines={1}>
-          {event.title}
-        </Text>
-        <Text className="font-sans-sb text-[12px] text-onaccent/75" numberOfLines={1}>
-          {event.day} · {event.time}
-        </Text>
-        {event.countdown ? (
-          <View className="mt-3 self-start rounded-full bg-surface px-2.5 py-1">
-            <Text className="font-sans-b text-[11px] text-ink">{event.countdown}</Text>
+      <View className="flex-1 justify-between px-3.5 pb-3 pt-2.5">
+        <View>
+          {/* onaccent = always-dark type, readable on the pale tint in light and dark */}
+          <Text className="font-sans-b text-[15px] tracking-tight text-onaccent" numberOfLines={1}>
+            {event.title}
+          </Text>
+          <Text className="font-sans-sb text-[12px] text-onaccent/75" numberOfLines={1}>
+            {event.day} · {event.time}
+          </Text>
+          {/* Countdown tucked under the date, not pinned to the card footer */}
+          {event.countdown || event.startsAt ? (
+            <View className="mt-1.5 w-[128px] max-w-full">
+              <CountdownChip label={event.countdown} startsAt={event.startsAt} />
+            </View>
+          ) : null}
+        </View>
+
+        {/* Left = friends coming · center dot · right = people to meet (no chip behind) */}
+        {friendsGoingIds.length > 0 || meetIds.length > 0 ? (
+          <View
+            className="mt-2.5 flex-row items-center"
+            accessible
+            accessibilityLabel={[
+              friendsGoingIds.length
+                ? `${friendsGoingIds.length} friends going`
+                : null,
+              meetLabel
+            ]
+              .filter(Boolean)
+              .join('. ')}
+          >
+            {friendsGoingIds.length > 0 ? (
+              <AvatarStack people={faceStack(friendsGoingIds)} />
+            ) : null}
+            {friendsGoingIds.length > 0 && meetIds.length > 0 ? (
+              <View
+                accessible={false}
+                className="mx-2 h-1.5 w-1.5 rounded-full bg-onaccent/45"
+              />
+            ) : null}
+            {meetIds.length > 0 ? (
+              // Transparent side: just faces, no fill behind the stack
+              <View className="bg-transparent">
+                <AvatarStack people={faceStack(meetIds)} />
+              </View>
+            ) : null}
           </View>
         ) : null}
-      </Pressable>
-      <Pressable onPress={onSeeAll} className="mb-3 ml-4 mt-2">
-        <Text className="font-sans-b text-[11px] text-onaccent/75 underline">See all</Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -189,7 +262,8 @@ export function AlertsWidget({
                 accessibilityLabel="Notification"
                 className="flex-row items-center gap-2 active:opacity-90"
               >
-                <Avatar name={person.name} emoji={person.emoji} accent={person.accent} personId={person.id} size="xs" />
+                {/* Real profile photo when dropped in for this person */}
+                <PersonAvatar id={person.id} size="xs" />
                 <Text className="min-w-0 flex-1 text-[12px] leading-snug" numberOfLines={1}>
                   <Text className="font-sans-b text-ink">{person.name.split(' ')[0]} </Text>
                   <Text className="font-sans-md text-ink-soft">{n.text}</Text>
@@ -225,43 +299,57 @@ export function ActivityWidget({
   activity: WeeklyActivity;
   onOpen?: () => void;
 }) {
-  const token = ACCENTS[activity.accent];
-  const faces = activity.posts.slice(0, 4).map((p) => personById(p.personId));
+  const posterIds = activity.posts.slice(0, 4).map((p) => p.personId);
   const c = useThemeColors();
+  // Cover fills the frame like events; emoji is the fallback glyph.
+  const cover: Cover =
+    activity.cover ??
+    ({
+      kind: 'emoji',
+      value: activity.emoji || '👕',
+      bg: '#FFB515'
+    } as Cover);
 
   if (size === 'full') {
     return (
       // Analytics: open / play the weekly recap collage.
-      <Pressable
-        onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
-        accessibilityRole="button"
-        accessibilityLabel={activity.title}
-        style={ORGANIC.banner}
-        className={cn(
-          'relative w-full flex-row items-center gap-4 overflow-hidden px-5 py-5 active:opacity-90',
-          token.tintSolid
-        )}
-      >
-        <Text accessible={false} className="absolute -right-3 -top-4 text-[74px] opacity-25">
-          👕
-        </Text>
-        <View className="min-w-0 flex-1">
-          <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
-            This week · {activity.closesIn}
-          </Text>
-          <Text className="mt-1 font-pixel text-[19px] leading-tight text-ink" numberOfLines={1}>
-            {activity.title}
-          </Text>
-          <Text className="mt-0.5 font-sans-sb text-[13px] text-ink-soft" numberOfLines={1}>
-            {activity.prompt}
-          </Text>
-          <View className="mt-3 flex-row items-center gap-2">
-            <AvatarStack people={faces.map((p) => ({ name: p.name, emoji: p.emoji, accent: p.accent, personId: p.id }))} />
-            <Text className="font-sans-b text-[12px] text-ink-soft">{activity.posts.length} posted</Text>
+      <Card className="overflow-hidden p-0">
+        <Pressable
+          onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
+          accessibilityRole="button"
+          accessibilityLabel={activity.title}
+        >
+          <View className="h-24">
+            <CoverArt cover={cover} accent={activity.accent} />
           </View>
-        </View>
-        <ChevronRightIcon size={20} color={c.inkSoft} strokeWidth={2.6} />
-      </Pressable>
+          <View className="flex-row items-start gap-3 p-4">
+            <View className="min-w-0 flex-1">
+              <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
+                This week · {activity.closesIn}
+              </Text>
+              <Text
+                className="mt-1 font-pixel text-[19px] leading-tight text-ink"
+                numberOfLines={1}
+              >
+                {activity.title}
+              </Text>
+              <Text
+                className="mt-0.5 font-sans-sb text-[13px] text-ink-soft"
+                numberOfLines={2}
+              >
+                {activity.prompt}
+              </Text>
+              <View className="mt-3 flex-row items-center gap-2">
+                <AvatarStack people={faceStack(posterIds, 4)} />
+                <Text className="font-sans-b text-[12px] text-ink-soft">
+                  {activity.posts.length} posted
+                </Text>
+              </View>
+            </View>
+            <ChevronRightIcon size={20} color={c.inkSoft} strokeWidth={2.6} />
+          </View>
+        </Pressable>
+      </Card>
     );
   }
 
@@ -270,18 +358,22 @@ export function ActivityWidget({
       onPress={withAnalyticsPress(HOME.this_week.play_recap, onOpen)}
       accessibilityRole="button"
       accessibilityLabel={activity.title}
-      style={ORGANIC.bold}
-      className="min-h-[140px] w-full justify-between bg-[#FFDE99] p-4 active:opacity-90"
+      className="min-h-[140px] w-full overflow-hidden rounded-card active:opacity-90"
     >
-      <Text accessible={false} className="text-[26px]">
-        👕
-      </Text>
-      <Text className="mt-1.5 font-pixel text-[15px] text-onaccent" numberOfLines={1}>
-        {activity.title}
-      </Text>
-      <Text className="mt-1 font-sans-sb text-[12px] text-onaccent/75">
-        {activity.posts.length} posted
-      </Text>
+      <View className="h-14 shrink-0">
+        <CoverArt cover={cover} accent={activity.accent} />
+      </View>
+      <View className="flex-1 justify-between bg-amber p-4">
+        <Text className="font-pixel text-[15px] text-onaccent" numberOfLines={1}>
+          {activity.title}
+        </Text>
+        <View className="mt-1 flex-row items-center gap-2">
+          <AvatarStack people={faceStack(posterIds)} />
+          <Text className="font-sans-sb text-[12px] text-onaccent/75">
+            {activity.posts.length} posted
+          </Text>
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -302,25 +394,43 @@ export function QuizWidget({
   const mine = quiz.results.find((r) => r.id === resultId);
   const c = useThemeColors();
 
+  // Cover fills the top of the card like events.
+  const cover: Cover =
+    quiz.cover ?? ({ kind: 'emoji', value: '🧭', bg: '#4D96FF' } as Cover);
+
   if (size === 'full') {
     if (!mine) {
       return (
-        <View className="rounded-card border border-ink-line bg-surface p-5">
-          <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">This week</Text>
-          <Text className="mt-1 font-pixel text-[19px] leading-tight text-ink">{quiz.title}</Text>
-          <View className="mt-4">
-            {/* Analytics: start this week's quiz. */}
-            <ButtonSecondary
-              full
-              size="md"
-              tone="solid"
-              onPress={onTake}
-              analyticsId={HOME.this_week.take_quiz}
-            >
-              Take the quiz
-            </ButtonSecondary>
+        <Card className="overflow-hidden p-0">
+          <View className="h-24">
+            <CoverArt cover={cover} accent="blue" />
           </View>
-        </View>
+          <View className="p-5">
+            <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
+              Quiz
+            </Text>
+            <Text className="mt-1 font-pixel text-[19px] leading-tight text-ink">
+              {quiz.title}
+            </Text>
+            {quiz.description ? (
+              <Text className="mt-0.5 font-sans-sb text-[13px] text-ink-soft" numberOfLines={2}>
+                {quiz.description}
+              </Text>
+            ) : null}
+            <View className="mt-4">
+              {/* Analytics: start this week's quiz. */}
+              <ButtonSecondary
+                full
+                size="md"
+                tone="solid"
+                onPress={onTake}
+                analyticsId={HOME.this_week.take_quiz}
+              >
+                Take the quiz
+              </ButtonSecondary>
+            </View>
+          </View>
+        </Card>
       );
     }
 
@@ -360,12 +470,7 @@ export function QuizWidget({
                   <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink" numberOfLines={1}>
                     {r.label} · {r.friendIds.length}
                   </Text>
-                  <AvatarStack
-                    people={r.friendIds.slice(0, 3).map((id) => {
-                      const p = personById(id);
-                      return { name: p.name, emoji: p.emoji, accent: p.accent };
-                    })}
-                  />
+                  <AvatarStack people={faceStack(r.friendIds)} />
                 </Pressable>
               ))}
             </View>
@@ -382,18 +487,19 @@ export function QuizWidget({
         resultId ? () => onOpenResult(resultId) : onTake
       )}
       accessibilityRole="button"
-      style={ORGANIC.flip}
-      className="min-h-[140px] w-full justify-between bg-[#D5C2FF] p-4 active:opacity-90"
+      className="min-h-[140px] w-full overflow-hidden rounded-card active:opacity-90"
     >
-      <Text accessible={false} className="text-[26px]">
-        🗺
-      </Text>
-      <Text className="mt-1.5 font-sans-b text-[13px] leading-snug text-onaccent">
-        {resultId ? mine?.label ?? quiz.title : quiz.title}
-      </Text>
-      <Text className="mt-1 font-sans-b text-[11px] text-onaccent/75">
-        {resultId ? 'Who got who' : 'Take the quiz'}
-      </Text>
+      <View className="h-14 shrink-0">
+        <CoverArt cover={cover} accent="purple" />
+      </View>
+      <View className="flex-1 justify-between bg-[#D5C2FF] p-4">
+        <Text className="font-sans-b text-[13px] leading-snug text-onaccent">
+          {resultId ? mine?.label ?? quiz.title : quiz.title}
+        </Text>
+        <Text className="mt-1 font-sans-b text-[11px] text-onaccent/75">
+          {resultId ? 'Who got who' : 'Take the quiz'}
+        </Text>
+      </View>
     </Pressable>
   );
 }

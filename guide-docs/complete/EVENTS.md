@@ -33,25 +33,30 @@ Create is a **full-screen, four-step wizard** (its own analytics surface, `creat
 
 | Field | Notes |
 |---|---|
-| Title | required |
-| Bio | short description |
-| Date / time | tap-to-pick (no keyboard) — feeds calendar + reminders |
-| Place | short spot name |
-| Address | **live address lookup** via OpenStreetMap Nominatim (free, no key); tap a match to fill address + place. PRIVACY: the typed text goes to OSM only to geocode the host's own venue, with no name/account attached; falls back to manual entry if offline. Address is visible only to people going or invited. |
-| Co-host | pick one friend — they can edit the event **and their acquaintances join the invite pool** on step 2 |
-| Bring | optional "bring a drink to share" |
-| Chip in | optional payment **handle** (Venmo / Cash App) — a stored link, we don't process it |
-| Let friends invite friends | toggle — opens the guest list to second-degree invites |
+| Event title\* | required (red asterisk) |
+| Details | short description (was "Bio") |
+| Day / time | Google-Calendar style: tap date → month grid; tap time → 15-min list |
+| Address | **live address lookup** via Photon (Komoot / OpenStreetMap) for fuzzy autocomplete; Nominatim fallback. Tap a match to fill address + short place name. No separate Place field. PRIVACY: typed text goes only to geocode the host's own venue, with no name/account attached; falls back to manual entry if offline. Address is visible only to people going or invited. |
+| Add co-hosts? | toggle; when on, search and multi-select friends (close + friend). Co-hosts can edit; their acquaintances may appear in invite suggestions |
+| Chip in | **toggle**; when on: amount (auto `$`, no `$$`), method, and **username/handle** (auto `@` or Cash App `$`) — stored link only; we never process payment and there is no wallet OAuth |
+| Let friends invite friends | toggle — when on, show helper "Guests can bring someone you don't know yet" and a **guest cap** (default 35, clamp 2–100) |
 
-**Step 2 — Invite (de-identified).** Search a single merged pool of **your acquaintances plus your co-host's acquaintances**. PRIVACY: the list is de-identified and sorted A-Z by first name, so you can **never tell whose acquaintance someone is** — you just see people you could invite. Tap to add or remove; the 35-guest cap applies. (Live: the merge + de-identification happen server-side over the `matching` invite graph.)
+There is **no** global "Bring" field — use Assignments on step 3 instead.
 
-**Step 3 — Photo + sign-ups.**
-- **Cover photo.** Add a cover photo (recommended **1200 x 675, 16:9**, shown as helper text so hosts can design one) or pick an **emoji**. If skipped, a random emoji cover is chosen at create time so the event still has a face. **MEDIA EXCEPTION:** Bridger is capture-only everywhere except **two** spots — the profile photo and this **event cover** — which may be uploaded from the library. That is intentional.
-- **Who's bringing what.** A sign-up list modeled on the Bucket List: the host adds bring-items, and each row has a **name dropdown** (avatar + first name + last initial, e.g. "Maya O."). Claiming an item **crosses it off**; it can be re-opened or re-assigned from the same dropdown. Each item also has an optional **per-item chip-in handle** so a guest can send money instead of bringing the thing. Being assigned schedules a **1-day and 2-hour** "bring your thing" reminder (via `notifications`; stubbed in the front-end demo).
+**Step 2 — Invite.**
+
+- **Your connections:** all of your connections (close + friend + acquaintance), searchable, A–Z. Selected rows turn **green** with a check.
+- **Might be a good fit:** friends-of-friends suggestions. Subcopy: "People your friends know who would vibe here." Each row shows `Mutual: {FirstName}` — **never** tier words (close / friends / acquaintance).
+- Guest cap applies (`guestCap` / event `cap`).
+
+**Step 3 — Cover + Assignments.**
+
+- **Cover modes:** Photo · Emoji. Photo can include **banner text** over the image. Emoji uses the system keyboard (clearable) plus a **vibrant** background color. Tap the cover preview anytime to change it. If skipped, a random emoji cover is chosen at create time. **MEDIA EXCEPTION:** Bridger is capture-only everywhere except the profile photo and this event cover.
+- **Assignments** (renamed from "Who's bringing what"): host adds items. List is public on the event. Assigning someone does **not** check the item off. No per-item chip-in. Checking off happens on the event page and **only the assignee** can do it. Open items can be snagged; assignees can remove themselves (host is notified).
 
 **Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it, then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`) — never the title, bio, or address text — and route to the new event page.
 
-After creating, the host lands on the **event page** where they can **Share** (native share sheet) or **Copy link**.
+After creating, the host lands on the **event page** where they can **Share** (native share sheet) or **Copy link**. If friends-invite-friends is on, share is emphasized so guests can invite within the cap.
 
 ### Guest cap (free vs co-op)
 
@@ -65,7 +70,7 @@ The create flow doesn't just list your friends — it surfaces friends-of-friend
 
 ## 3 · Invitee view (RSVP)
 
-The detail page leads with **clear, complete event info** (see mockup): title, **host (+ any co-host)**, **date & time**, the **full address** (tap → map), a **bio / description**, what to bring, and the chip-in line. Then:
+The detail page leads with **clear, complete event info** (see mockup): title, **host (+ any co-host)**, **date & time**, the **full address** (tap → map), a **bio / description**, Assignments, and the chip-in line. Then:
 
 - **Meaningful, tappable counts — never a raw invited/going total.** An event isn't a popularity readout. A guest sees two numbers that matter *to them*, and **each is tappable**:
   - **"{N} going"** — people **you know** going → tap to see **who's coming** (the ones you know).
@@ -122,7 +127,6 @@ interface EventDetail extends EventSummary {
   coHostIds: string[];          // co-hosts can edit/manage
   bio: string;                  // description
   address: string;              // full address (maps link)
-  bring?: string;
   chipIn?: {                    // optional; app never processes it
     amount?: string;            // "$8 suggested"
     note?: string;              // "for tacos"
@@ -167,10 +171,11 @@ interface RsvpInput {
 ## Acceptance criteria
 
 - [ ] List groups events into Hosting / Going / Invited; Community is a dormant "coming soon" placeholder.
-- [ ] Create supports inviting a handful or a whole group/tier, plus a "let friends invite friends" toggle.
+- [ ] Create supports inviting all connections plus FoF suggestions with mutual names (no tier labels), plus a "let friends invite friends" toggle with a guest cap.
 - [ ] Create surfaces friend-of-friend suggested invites from `matching`.
 - [ ] Hosting is free (never gated); the guest cap is 35 for free members and 100 for co-op members (see `COOP.md`).
-- [ ] The chip-in handle is a stored link only — never processed by the app.
+- [ ] The chip-in handle is a stored link only — never processed by the app (no Venmo/Cash App OAuth).
+- [ ] Assignments are public; assign ≠ done; only the assignee can check off; open items can be snagged; releasing notifies the host.
 - [ ] Invitee view offers Going / Can't, add-to-calendar (Google/Apple, prefilled), and who-you-should-meet cards that route to Discover.
 - [ ] Food-allergy sharing is opt-in per event, visible only to the host, and never used for matching.
 - [ ] Guests see only "{N} going" (people they know) and "{N} to meet" — never a raw invited/going total — and both counts are tappable.

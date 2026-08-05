@@ -24,19 +24,31 @@ export function PreviewStep({
 }) {
   const c = useThemeColors();
   // Mirror what createEvent does: no cover picked = a friendly emoji stand-in.
-  const cover: Cover = draft.cover ?? { kind: 'emoji', value: '🎉' };
-  const coHost = draft.coHostId ? personById(draft.coHostId) : null;
+  const cover: Cover = draft.cover ?? { kind: 'emoji', value: '🎉', bg: '#9B5DE5' };
+  const coHosts = draft.coHostIds.map((id) => personById(id)).filter(Boolean);
+  const coverBg =
+    cover.kind === 'color' || cover.kind === 'text'
+      ? cover.bg
+      : cover.kind === 'emoji'
+        ? cover.bg
+        : undefined;
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
-      {/* dead-click: the preview body is not interactive by design */}
       <AnalyticsRegion analyticsId={CREATE_EVENT.preview.summary} interactive={false}>
         <View className="gap-4 pb-6">
-          <View className="overflow-hidden rounded-card border border-ink-line" style={{ aspectRatio: 16 / 9 }}>
+          <View
+            className="overflow-hidden rounded-card border border-ink-line"
+            style={{ aspectRatio: 16 / 9 }}
+          >
             <CoverArt cover={cover} rounded />
           </View>
 
-          <View>
+          {/* Color band under the title so the page feels lively */}
+          <View
+            className="rounded-card border border-ink-line p-4"
+            style={coverBg ? { backgroundColor: `${coverBg}22` } : undefined}
+          >
             <Text className="font-pixel text-[20px] text-ink">{draft.title || 'Untitled'}</Text>
             {draft.bio ? (
               <Text className="mt-1 font-sans-sb text-[14px] leading-snug text-ink-soft">
@@ -49,22 +61,21 @@ export function PreviewStep({
             <Row icon={<CalendarIcon size={16} color={c.inkMute} strokeWidth={2.4} />}>
               {draft.day} · {draft.time}
             </Row>
-            {draft.place ? (
+            {draft.place || draft.address ? (
               <Row icon={<MapPinIcon size={16} color={c.inkMute} strokeWidth={2.4} />}>
-                {draft.place}
+                {draft.place || draft.address}
               </Row>
             ) : null}
             <Row icon={<UsersIcon size={16} color={c.inkMute} strokeWidth={2.4} />}>
               {draft.invitedIds.length} invited
-              {coHost ? ` · co-hosted with ${coHost.name.split(' ')[0]}` : ''}
+              {coHosts.length
+                ? ` · co-hosted with ${coHosts.map((p) => p.name.split(' ')[0]).join(', ')}`
+                : ''}
+              {draft.allowFriendsToInvite ? ` · cap ${draft.guestCap}` : ''}
             </Row>
           </View>
 
-          {draft.bring ? (
-            <Line label="Bring" value={draft.bring} />
-          ) : null}
-
-          {draft.chipInAmount || draft.chipInHandle ? (
+          {draft.chipInEnabled && (draft.chipInAmount || draft.chipInHandle) ? (
             <Line
               label="Chip in"
               value={[draft.chipInAmount, draft.chipInMethod, draft.chipInHandle]
@@ -75,7 +86,7 @@ export function PreviewStep({
 
           {draft.assignments.length > 0 ? (
             <View className="gap-2 rounded-card border border-ink-line bg-surface p-4">
-              <Text className="font-sans-b text-[13px] text-ink">Who's bringing what</Text>
+              <Text className="font-sans-b text-[13px] text-ink">Assignments</Text>
               {draft.assignments.map((a) => {
                 const who = a.assigneeId ? personById(a.assigneeId) : null;
                 return (
@@ -118,8 +129,8 @@ function Row({ icon, children }: { icon: React.ReactNode; children: React.ReactN
 function Line({ label, value }: { label: string; value: string }) {
   return (
     <View className="rounded-card border border-ink-line bg-surface p-4">
-      <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">{label}</Text>
-      <Text className="mt-1 font-sans-sb text-[14px] text-ink">{value}</Text>
+      <Text className="font-sans-b text-[12px] text-ink-mute">{label}</Text>
+      <Text className="mt-0.5 font-sans-sb text-[14px] text-ink">{value}</Text>
     </View>
   );
 }

@@ -29,9 +29,13 @@ export function CollapsibleSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    // Profile sections stay plain white on purpose — they are long reading
-    // blocks, so they keep the calmest background in the app.
-    <View className="rounded-card border border-ink-line bg-white dark:bg-canvas-raised">
+    /*
+      Use bg-surface (not bg-white). Theme ink flips light in dark mode via
+      CSS variables, but Tailwind's dark: classes do not run on web here
+      (darkMode is 'class'). A hard-coded white card + light ink = invisible
+      titles. Surface is white in light mode and a raised dark panel in dark.
+    */
+    <View className="rounded-card border border-ink-line bg-surface">
       <View className="flex-row items-center gap-2 px-4 py-3">
         <Pressable
           onPress={() => setOpen((v) => !v)}

@@ -1,9 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // React hook for the Home tab body (stories, replies, widgets). Touch Grass
-// stays in useTouchGrass so Home and Events share one signal list.
+// stays in useTouchGrass so Home and Events share one signal list. Reloads
+// when the tab is focused again (e.g. after finishing a quiz).
 // ============================================
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import type { Reaction, Story, UpcomingItem } from '@bridger/shared';
 import {
   getHomeFlags,
@@ -37,54 +39,56 @@ export function useHomeFeed() {
   const [quiz, setQuiz] = useState<Awaited<ReturnType<typeof getQuiz>>>(null);
   const [polls, setPolls] = useState<HomePoll[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const [
-          flags,
-          storyList,
-          mine,
-          replyList,
-          notes,
-          up,
-          coop,
-          activity,
-          quizData,
-          myPolls
-        ] = await Promise.all([
-          getHomeFlags(),
-          listStories(),
-          getMyStory(),
-          listStoryReplies(),
-          listNotificationsPreview(),
-          listComingUp(),
-          listCoopAnnouncements(),
-          getWeeklyActivity(),
-          getQuiz(),
-          listMyPolls()
-        ]);
-        if (cancelled) return;
-        setEmpty(flags.empty);
-        setMember(flags.member);
-        setStories(storyList);
-        setMyStory(mine);
-        setReplies(replyList);
-        setNotifications(notes);
-        setComingUp(up);
-        setCoopAnnouncements(coop);
-        setWeeklyActivity(activity);
-        setQuiz(quizData);
-        setPolls(myPolls);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        setLoading(true);
+        try {
+          const [
+            flags,
+            storyList,
+            mine,
+            replyList,
+            notes,
+            up,
+            coop,
+            activity,
+            quizData,
+            myPolls
+          ] = await Promise.all([
+            getHomeFlags(),
+            listStories(),
+            getMyStory(),
+            listStoryReplies(),
+            listNotificationsPreview(),
+            listComingUp(),
+            listCoopAnnouncements(),
+            getWeeklyActivity(),
+            getQuiz(),
+            listMyPolls()
+          ]);
+          if (cancelled) return;
+          setEmpty(flags.empty);
+          setMember(flags.member);
+          setStories(storyList);
+          setMyStory(mine);
+          setReplies(replyList);
+          setNotifications(notes);
+          setComingUp(up);
+          setCoopAnnouncements(coop);
+          setWeeklyActivity(activity);
+          setQuiz(quizData);
+          setPolls(myPolls);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   return {
     loading,

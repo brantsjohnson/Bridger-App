@@ -4,12 +4,16 @@
 // video replies to your update. Tap opens the thread. Hidden when empty.
 // Analytics: header is dead-click; each chip is a response tap.
 // PRIVACY: never log reply text or names in analytics.
+//
+// Dark mode: video chips keep a pale lavender fill, so their labels use
+// text-onaccent (always near-black). text-ink would flip light and vanish.
 // ============================================
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRightIcon, PlayIcon } from 'lucide-react-native';
 import { HOME, type Reaction } from '@bridger/shared';
-import { AnalyticsRegion, Avatar, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { AnalyticsRegion, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { PersonAvatar } from '../PersonAvatar';
 import { personById } from '../../data/people';
 
 export function StoryRepliesRow({
@@ -46,10 +50,13 @@ export function StoryRepliesRow({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 10 }}
+        style={{ marginHorizontal: -20 }}
+        contentContainerStyle={{ gap: 10, paddingLeft: 20, paddingRight: 20 }}
       >
         {replies.map((r) => {
           const p = personById(r.authorId);
+          // Pale lavender video chip needs always-dark type in both themes.
+          const onPale = r.kind === 'circleVideo';
           return (
             <Pressable
               key={r.id}
@@ -58,22 +65,35 @@ export function StoryRepliesRow({
               accessibilityLabel={`Reply from ${p.name}`}
               className={cn(
                 'w-[152px] flex-row items-center gap-2.5 rounded-card border border-ink-line bg-surface p-2.5 active:opacity-90',
-                r.kind === 'circleVideo' && 'border-purple/40 bg-[#F7F3FF]'
+                onPale && 'border-purple/40 bg-[#F7F3FF]'
               )}
             >
               <View className="relative shrink-0">
-                <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="sm" />
-                {r.kind === 'circleVideo' ? (
+                {/* Real profile photo when one is dropped in for this person */}
+                <PersonAvatar id={p.id} size="sm" />
+                {onPale ? (
                   <View className="absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-purple">
                     <PlayIcon size={8} color="#FFFFFF" fill="#FFFFFF" strokeWidth={3} />
                   </View>
                 ) : null}
               </View>
               <View className="min-w-0 flex-1">
-                <Text className="font-sans-b text-[12px] text-ink" numberOfLines={1}>
+                <Text
+                  className={cn(
+                    'font-sans-b text-[12px]',
+                    onPale ? 'text-onaccent' : 'text-ink'
+                  )}
+                  numberOfLines={1}
+                >
                   {p.name.split(' ')[0]}
                 </Text>
-                <Text className="font-sans-sb text-[11px] text-ink-mute" numberOfLines={1}>
+                <Text
+                  className={cn(
+                    'font-sans-sb text-[11px]',
+                    onPale ? 'text-onaccent/70' : 'text-ink-mute'
+                  )}
+                  numberOfLines={1}
+                >
                   {r.kind === 'circleVideo'
                     ? 'Sent a video'
                     : r.kind === 'sticker'

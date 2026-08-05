@@ -48,7 +48,17 @@ export function StoryTile({
         update, green for a close friend, blue for a friend, orange for an
         acquaintance. The name underneath still says it in words.
       */}
-      <GradientRing tone={ringTone} radius={RADIUS.card} width={3} fill style={{ flex: 1 }}>
+      {/* On an unseen update the gradient travels around the outline, the way an
+          Instagram story ring does. Once you've seen it, the ring goes still. */}
+      <GradientRing
+        tone={ringTone}
+        radius={RADIUS.card}
+        width={3}
+        fill
+        spin={!story.seen}
+        shadow
+        style={{ flex: 1 }}
+      >
       <Pressable
         onPress={withAnalyticsPress(tileId, () => onOpen?.(story.id))}
         accessibilityRole="button"

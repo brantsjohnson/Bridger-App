@@ -9,7 +9,7 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { FilterIcon } from 'lucide-react-native';
 import type { InsideJoke } from '@bridger/shared';
-import { cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { Peel, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import type { InsideJokeFilter } from '../../data/insideJokes';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 import { AddInsideJokeSheet } from './AddInsideJokeSheet';
@@ -41,14 +41,15 @@ export function InsideJokesWidget({
   return (
     <View className="flex-row flex-wrap gap-3.5">
       {notes.map((j, i) => (
-        <View key={j.id} className={size === 'full' ? 'w-[47%]' : 'w-full'}>
+        // Each note presses onto the wall instead of just appearing.
+        <Peel key={j.id} index={i} style={{ width: size === 'full' ? '47%' : '100%' }}>
           <InsideJokeNote
             joke={j}
             index={i}
             analyticsId={analyticsIds?.note}
             noteBodyAnalyticsId={analyticsIds?.noteBody}
           />
-        </View>
+        </Peel>
       ))}
       {onAdd && notes.length === 0 ? (
         <AddNoteTile tall onPress={onAdd} analyticsId={analyticsIds?.add} />
@@ -85,14 +86,14 @@ export function InsideJokesWall({
       {notes.length > 0 ? (
         <View className="flex-row flex-wrap gap-3.5">
           {notes.map((joke, i) => (
-            <View key={joke.id} className="w-[47%]">
+            <Peel key={joke.id} index={i} style={{ width: '47%' }}>
               <InsideJokeNote
                 joke={joke}
                 index={i}
                 analyticsId={analyticsIds?.note}
                 noteBodyAnalyticsId={analyticsIds?.noteBody}
               />
-            </View>
+            </Peel>
           ))}
           <View className="w-[47%]">
             <AddNoteTile onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
@@ -154,10 +155,16 @@ function FilterRow({
               on ? 'border-transparent bg-ink' : 'border-ink-line bg-surface active:bg-[#F1ECFF]'
             )}
           >
-            <Text className={cn('font-sans-b text-[12px]', on ? 'text-white' : 'text-ink-soft')}>
+            {/*
+              Selected chip is bg-ink. Ink flips light in dark mode, so
+              text-white would vanish on a near-white pill. text-canvas is
+              the opposite of ink in both themes (eggshell on dark / near-black
+              on light), so the label stays readable either way.
+            */}
+            <Text className={cn('font-sans-b text-[12px]', on ? 'text-canvas' : 'text-ink-soft')}>
               {label}
             </Text>
-            <Text className={cn('ml-1.5 font-sans-b text-[12px]', on ? 'text-white/60' : 'text-ink-mute')}>
+            <Text className={cn('ml-1.5 font-sans-b text-[12px]', on ? 'text-canvas/60' : 'text-ink-mute')}>
               {counts[key]}
             </Text>
           </Pressable>

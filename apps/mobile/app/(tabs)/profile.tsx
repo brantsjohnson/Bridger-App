@@ -11,7 +11,7 @@
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import type { Tier } from '@bridger/shared';
 import { openSurface, PROFILE } from '@bridger/shared';
 import {
@@ -19,12 +19,14 @@ import {
   ScreenBody,
   ScreenHeader,
   SegmentedTabs,
-  cn
+  cn,
+  withAnalyticsPress
 } from '@bridger/ui';
 import { useAuth } from '../../providers/auth-provider';
 import { useProfile } from '../../hooks/useProfile';
 import { useBucketList } from '../../hooks/useBucketList';
 import { useStoryArchive } from '../../hooks/useStoryArchive';
+import { listArchivedQuizzes } from '../../data/quiz';
 import { ProfileCard } from '../../components/profile/ProfileCard';
 import { StoryCalendar } from '../../components/profile/StoryCalendar';
 import { BucketList } from '../../components/profile/BucketList';
@@ -69,10 +71,29 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   /** which circle you're previewing the card as (edit mode only) */
   const [asTier, setAsTier] = useState<Tier>('close');
+  /** Quizzes friends took that you have not finished yet. */
+  const [untakenQuizzes, setUntakenQuizzes] = useState<
+    Array<{ slug: string; title: string; friendsTakenCount: number }>
+  >([]);
 
   // Mark Profile as the active analytics surface when this tab is shown.
   useEffect(() => {
     openSurface('profile');
+  }, []);
+
+  // Load archived / untaken quizzes for the small Profile list.
+  useEffect(() => {
+    let cancelled = false;
+    listArchivedQuizzes()
+      .then((rows) => {
+        if (!cancelled) setUntakenQuizzes(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setUntakenQuizzes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -153,6 +174,41 @@ export default function ProfileScreen() {
                 onAnswered={() => void profile.refresh()}
               />
             </View>
+
+            {/* Untaken quizzes friends already finished. Short list, not a vanity count. */}
+            {untakenQuizzes.length > 0 ? (
+              <View className="mt-6">
+                <Text
+                  accessibilityRole="header"
+                  className="mb-2 font-sans-b text-[11px] uppercase tracking-wide text-ink-mute"
+                >
+                  Quizzes to catch up on
+                </Text>
+                <View className="gap-2">
+                  {untakenQuizzes.map((q) => (
+                    <Pressable
+                      key={q.slug}
+                      onPress={withAnalyticsPress('profile.quizzes.untaken_row', () =>
+                        router.push(`/quiz/${q.slug}` as Href)
+                      )}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${q.title}. ${q.friendsTakenCount} friends took this`}
+                      className="min-h-[52px] flex-row items-center justify-between rounded-card border border-ink-line bg-surface px-4 py-3 active:opacity-90"
+                    >
+                      <Text
+                        className="min-w-0 flex-1 font-sans-b text-[14px] text-ink"
+                        numberOfLines={1}
+                      >
+                        {q.title}
+                      </Text>
+                      <Text className="ml-3 font-sans-sb text-[12px] text-ink-mute">
+                        {q.friendsTakenCount} friends
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </>
         ) : null}
 
@@ -161,7 +217,7 @@ export default function ProfileScreen() {
             <StoryCalendar
               days={archive.days}
               storage={archive.storage}
-              onOpenStory={() => router.push('/story/me?catchup=1')}
+              onOpenStory={() => router.push('/story/me?catchup=1&from=profile')}
             />
           </View>
         ) : null}

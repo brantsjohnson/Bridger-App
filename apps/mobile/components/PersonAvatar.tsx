@@ -6,7 +6,7 @@
 // ============================================
 import React from 'react';
 import type { Accent } from '@bridger/shared';
-import { Avatar } from '@bridger/ui';
+import { Avatar, type WashStoryRing } from '@bridger/ui';
 import { getProfilePhoto } from '../data/fixtures/demo-media';
 import { personById } from '../data/people';
 
@@ -15,6 +15,7 @@ export function PersonAvatar({
   size = 'md',
   story,
   onStory,
+  ringWash,
   className,
   /** Override the looked-up person (rarely needed) */
   name,
@@ -25,12 +26,17 @@ export function PersonAvatar({
   size?: 'xs' | 'sm' | 'header' | 'md' | 'lg' | 'xl';
   story?: 'unseen' | 'seen';
   onStory?: () => void;
+  ringWash?: WashStoryRing;
   className?: string;
   name?: string;
   emoji?: string;
   accent?: Accent;
 }) {
   const p = personById(id);
+  // Match the Friends roster wash when the caller didn't pick one.
+  const wash: WashStoryRing =
+    ringWash ??
+    (p.tier === 'close' ? 'close' : p.tier === 'acquaintance' ? 'acquaintance' : 'friend');
   return (
     <Avatar
       name={name ?? p.name}
@@ -39,6 +45,7 @@ export function PersonAvatar({
       photo={getProfilePhoto(id)}
       size={size}
       story={story ?? p.story}
+      ringWash={wash}
       onStory={onStory}
       className={className}
     />

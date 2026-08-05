@@ -9,12 +9,13 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MessageSquareIcon } from 'lucide-react-native';
+import { SendIcon } from 'lucide-react-native';
 import { openSurface, PROFILE, type BucketItem } from '@bridger/shared';
 import {
   Screen,
   ScreenBody,
   ScreenHeader,
+  SectionTitle,
   SegmentedTabs,
   withAnalyticsPress
 } from '@bridger/ui';
@@ -150,7 +151,7 @@ export default function PersonScreen() {
             className="h-10 flex-row items-center gap-1.5 rounded-full bg-coral px-3.5 active:opacity-90"
           >
             <Text className="font-sans-b text-[13px] text-white">Message {first}</Text>
-            <MessageSquareIcon size={16} color="#FFFFFF" strokeWidth={2.6} />
+            <SendIcon size={16} color="#FFFFFF" strokeWidth={2.6} />
           </Pressable>
         }
       />
@@ -198,12 +199,20 @@ export default function PersonScreen() {
 
         {tab === 'In common' ? (
           <View className="mt-5 gap-7">
+            <SectionTitle
+              title="In common"
+              description="What you and they share — hobbies, places, quiz results, and matching answers. Tap a dashed title anytime for a short reminder like this."
+              infoAnalyticsId={PROFILE.in_common.info}
+              parentScreen="profile"
+              section="in_common"
+              className="mb-1"
+            />
             {commonalities.length > 0 ? (
               <CommonalityList items={commonalities} theirName={first} />
             ) : (
               <View className="rounded-2xl border border-dashed border-ink-line bg-surface px-4 py-8">
                 <Text className="text-center font-sans-sb text-[14px] leading-snug text-ink-mute">
-                  What you share with {first} shows up here after you connect —
+                  What you share with {first} shows up here after you connect -
                   the same commonalities from the reveal.
                 </Text>
               </View>

@@ -11,7 +11,7 @@ import {
   BarChart3Icon,
   ChevronRightIcon,
   HistoryIcon,
-  MessageSquareIcon
+  MessageCircleIcon
 } from 'lucide-react-native';
 import { HOME } from '@bridger/shared';
 import { Avatar, ORGANIC, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
@@ -83,7 +83,7 @@ export function AskWidget({
           style={ORGANIC.flip}
           className="flex-1 items-center gap-2 bg-[#9FE7CE] px-4 py-5 active:opacity-90"
         >
-          <MessageSquareIcon size={24} color="#1C1B16" strokeWidth={2.4} />
+          <MessageCircleIcon size={24} color="#1C1B16" strokeWidth={2.4} />
           <Text className="font-sans-b text-[14px] text-onaccent">Ask a question</Text>
         </Pressable>
       </View>

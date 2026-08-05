@@ -12,6 +12,7 @@ import {
   DefaultTheme,
   Stack,
   ThemeProvider,
+  usePathname,
   useRouter,
   useSegments
 } from 'expo-router';
@@ -28,8 +29,10 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { WELCOME_SEEN_KEY } from '../content/welcome';
 import { getProfilePhoto } from '../data/fixtures/demo-media';
 import { getOnboardingComplete, isOnboardingCompleteCached } from '../data/onboarding';
+import { DelightHost } from '../delight/_host/DelightHost';
 import { bootstrapAnalytics } from '../lib/analytics-bootstrap';
 import { isDemoMode } from '../lib/demo';
+import { recordRoutePath } from '../lib/route-trail';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
 
 // Analytics: wire context + (dev) sink once. Capture stays opted-out until Settings.
@@ -39,10 +42,9 @@ bootstrapAnalytics();
 // so real faces appear everywhere (Friend Pod, Inside Jokes, rows, etc.).
 registerAvatarPhotoResolver(getProfilePhoto);
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary
-} from 'expo-router';
+// Crashes show the Magic Patterns Windows 404 ("Fucks not found."), not Expo's
+// black "Something went wrong" page. Missing routes still use +not-found.tsx.
+export { AppErrorBoundary as ErrorBoundary } from '../components/AppErrorBoundary';
 
 export const unstable_settings = {
   initialRouteName: '(tabs)'
@@ -161,9 +163,12 @@ function useProtectedRoute() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   useProtectedRoute();
+  useRouteTrail();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {/* Delight gifts mount above navigation so they can play on any screen. */}
+      <DelightHost />
       <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -189,8 +194,21 @@ function RootLayoutNav() {
           name="story/capture"
           options={{ headerShown: false, presentation: 'fullScreenModal' }}
         />
+        <Stack.Screen
+          name="quiz/[slug]"
+          options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen name="recap/index" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
   );
+}
+
+/** Keep a short list of screens visited so a 404 can report the path. */
+function useRouteTrail() {
+  const pathname = usePathname();
+  useEffect(() => {
+    if (pathname) recordRoutePath(pathname);
+  }, [pathname]);
 }

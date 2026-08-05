@@ -13,11 +13,11 @@ import type { Suggestion } from '@bridger/shared';
 import { DISCOVER, trackDeadClick } from '@bridger/shared';
 import {
   ACCENTS,
-  Avatar,
   ButtonSecondary,
   cn,
   withAnalyticsPress
 } from '@bridger/ui';
+import { PersonAvatar } from '../PersonAvatar';
 import { personById } from '../../data/people';
 
 /** Dead-click on the shared-thread line without nesting a Pressable. */
@@ -70,7 +70,8 @@ export function SuggestionCard({
           accessibilityLabel={`${suggestion.sharedThread}. ${p.name}. You both know ${viaFirst}`}
         >
           <View className="flex-row items-center gap-3">
-            <Avatar name={p.name} emoji={p.emoji} accent={suggestion.accent} personId={p.id} size="lg" />
+            {/* Real profile photo when one is dropped in for this person id */}
+            <PersonAvatar id={p.id} accent={suggestion.accent} size="lg" />
             <View className="min-w-0 flex-1">
               <Text className="font-sans-b text-[12px] uppercase tracking-wide text-onaccent/70">
                 Top match
@@ -123,7 +124,7 @@ export function SuggestionCard({
         accessibilityLabel={`${suggestion.sharedThread}. ${p.name}. You both know ${viaFirst}`}
         className="min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90"
       >
-        <Avatar name={p.name} emoji={p.emoji} accent={suggestion.accent} personId={p.id} size="lg" />
+        <PersonAvatar id={p.id} accent={suggestion.accent} size="lg" />
         <View className="min-w-0 flex-1">
           <SharedThreadLine
             text={suggestion.sharedThread}

@@ -16,6 +16,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Tier } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
+import { apiFetch } from '../lib/api';
 
 /** Device-local flag: this account already finished onboarding. */
 export const ONBOARDING_COMPLETE_KEY = 'bridger.onboardingComplete';
@@ -145,11 +146,14 @@ export async function saveVisibility(rows: VisibilityRow[]): Promise<void> {
   // TODO: PATCH /me/attributes visibility per row
 }
 
-/** 8 · Co-op pitch outcome. "Use free" is first-class — never a paywall. */
+/** 8 · Co-op pitch outcome. "Use free" is first-class; never a paywall. */
 export async function joinCoop(join: boolean): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.coop = join;
     return;
   }
-  // TODO: POST /coop/membership (or record "not now")
+  await apiFetch('/coop/membership', {
+    method: 'POST',
+    body: JSON.stringify({ join })
+  });
 }

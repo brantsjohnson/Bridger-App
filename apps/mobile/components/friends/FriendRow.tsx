@@ -1,25 +1,35 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // One person on the Friends roster: avatar, name, mutuals (or "Birthday today"),
-// and a chevron. On their birthday the row goes pink with a cake + sparkle.
-// In Edit mode the chevron becomes a move handle and the tap opens TierPicker.
+// and a chevron. Rows are color-coded by circle — Close = green, Friends = blue,
+// Acquaintances = orange — all vibrant. Birthdays (and other "notice this" dates)
+// override to vibrant pink with cake + sparkle. Text stays near-black so it
+// reads on every wash. In Edit mode the chevron becomes a move handle.
 // Analytics: normal tap = roster.row, birthday = birthday_row, edit = drag_handle.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Pressable, Text, View } from 'react-native';
-import { CakeIcon, ChevronRightIcon, SparklesIcon } from 'lucide-react-native';
-import type { Person } from '@bridger/shared';
+import { CakeIcon, ChevronRightIcon, PartyPopperIcon } from 'lucide-react-native';
+import type { Person, Tier } from '@bridger/shared';
 import { FRIENDS } from '@bridger/shared';
-import { Avatar, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { Avatar, Sparkles, cn, withAnalyticsPress, type WashStoryRing } from '@bridger/ui';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 
-/** Soft pastel washes on press — never a transparent grey (Magic Patterns). */
-const ROW_WASH = [
-  'border-purple/40 bg-[#EFE7FF]',
-  'border-pink/40 bg-[#FFE4EE]',
-  'border-amber/50 bg-[#FFF1D6]',
-  'border-teal/40 bg-[#DCF3EA]'
-];
+/** Near-black — always readable on the vibrant tier washes (even in dark mode). */
+const ON_WASH = '#1C1B16';
+
+/**
+ * Vibrant fills by friendship circle. Birthday / special-date rows use pink
+ * instead so they jump out of the list.
+ */
+const TIER_ROW: Record<Tier, string> = {
+  close: 'border-green/50 bg-[#5FBF3A]',
+  friend: 'border-blue/50 bg-[#1D6FE8]',
+  acquaintance: 'border-coral/50 bg-[#FF8C42]',
+  none: 'border-ink-line bg-surface'
+};
+
+const BIRTHDAY_ROW = 'border-pink/50 bg-[#FF3E8A]';
 
 export type FriendRowPerson = Person & { birthdayToday?: boolean };
 
@@ -38,9 +48,15 @@ export function FriendRow({
   onStory?: () => void;
   onLongPress?: () => void;
 }) {
-  const c = useThemeColors();
+  void index; // kept for call-site compatibility; wash is tier-based now
   const birthday = !!person.birthdayToday;
-  const [pressed, setPressed] = useState(false);
+  const tier = person.tier ?? 'friend';
+  const onWash = birthday || tier !== 'none';
+  // Story ring always uses the person's CIRCLE color (green / blue / orange),
+  // even on a birthday (pink) card — the ring means "they posted an update", so
+  // it should read as their group, not the birthday pink. No story → no ring.
+  const ringWash: WashStoryRing =
+    tier === 'close' ? 'close' : tier === 'acquaintance' ? 'acquaintance' : 'friend';
 
   // Birthday rows, edit-mode handles, and normal rows each have their own id.
   const rowId = editing
@@ -49,24 +65,19 @@ export function FriendRow({
       ? FRIENDS.roster.birthday_row
       : FRIENDS.roster.row;
 
+  const nameColor = onWash ? ON_WASH : undefined;
+  const chevronColor = onWash ? ON_WASH : '#9A9688';
+
   return (
-    <Pressable
-      onPress={withAnalyticsPress(rowId, onPress)}
-      onLongPress={onLongPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      accessibilityRole="button"
-      accessibilityLabel={
-        birthday
-          ? `${person.name}, birthday today`
-          : `${person.name}, ${person.mutuals} mutual friends`
-      }
-      accessibilityHint={editing ? 'Opens move to circle' : 'Opens profile'}
+    /*
+      Avatar sits outside the row press target so tapping a story ring opens
+      their update, not their profile. The rest of the card still opens profile
+      (or the edit handle).
+    */
+    <View
       className={cn(
         'min-h-[44px] flex-row items-center gap-3 rounded-2xl border px-3.5 py-3',
-        birthday ? 'border-pink/40 bg-[#FFC0D7]' : 'border-ink-line bg-surface',
-        !birthday && pressed && !editing && ROW_WASH[index % ROW_WASH.length],
-        editing && 'active:opacity-80'
+        birthday ? BIRTHDAY_ROW : TIER_ROW[tier]
       )}
     >
       <Avatar
@@ -75,41 +86,64 @@ export function FriendRow({
         accent={person.accent}
         photo={getProfilePhoto(person.id)}
         story={person.story}
+        ringWash={ringWash}
         onStory={!editing && person.story ? onStory : undefined}
       />
 
-      <View className="min-w-0 flex-1">
-        <Text
-          numberOfLines={1}
-          className={cn(
-            'font-sans-b text-[15px] tracking-tight',
-            birthday ? 'text-onaccent' : 'text-ink'
-          )}
-        >
-          {person.name}
-        </Text>
-        <Text
-          numberOfLines={1}
-          className={cn('font-sans-sb text-[12px]', birthday ? 'text-onaccent/70' : 'text-ink-mute')}
-        >
-          {birthday ? 'Birthday today' : `${person.mutuals} mutual friends`}
-        </Text>
-      </View>
+      <Pressable
+        onPress={withAnalyticsPress(rowId, onPress)}
+        onLongPress={onLongPress}
+        accessibilityRole="button"
+        accessibilityLabel={
+          birthday
+            ? `${person.name}, birthday today`
+            : `${person.name}, ${person.mutuals} mutual friends`
+        }
+        accessibilityHint={editing ? 'Opens move to circle' : 'Opens profile'}
+        className={cn(
+          'min-h-[44px] min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90',
+          editing && 'active:opacity-80'
+        )}
+      >
+        <View className="min-w-0 flex-1">
+          <Text
+            numberOfLines={1}
+            className={cn('font-sans-b text-[15px] tracking-tight', !onWash && 'text-ink')}
+            style={nameColor ? { color: nameColor } : undefined}
+          >
+            {person.name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            className={cn('font-sans-sb text-[12px]', !onWash && 'text-ink-mute')}
+            style={nameColor ? { color: nameColor, opacity: 0.75 } : undefined}
+          >
+            {birthday ? 'Birthday today' : `${person.mutuals} mutual friends`}
+          </Text>
+        </View>
 
-      {birthday && !editing ? <BirthdayDecor /> : null}
+        {/* Confetti popping off the row, because it is their birthday. The row
+            also says "Birthday today" in words, so nothing depends on the party. */}
+        {birthday && !editing ? <Sparkles /> : null}
+        {birthday && !editing ? <BirthdayDecor /> : null}
 
-      {editing ? (
-        <Text accessible={false} className="px-1 text-[16px] leading-none text-ink-mute">
-          ⠿
-        </Text>
-      ) : (
-        <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.5} />
-      )}
-    </Pressable>
+        {editing ? (
+          <Text
+            accessible={false}
+            className={cn('px-1 text-[16px] leading-none', !onWash && 'text-ink-mute')}
+            style={nameColor ? { color: nameColor } : undefined}
+          >
+            ⠿
+          </Text>
+        ) : (
+          <ChevronRightIcon size={16} color={chevronColor} strokeWidth={2.5} />
+        )}
+      </Pressable>
+    </View>
   );
 }
 
-/** Cake + sparkle for birthday rows. Skips the pulse when Reduce Motion is on. */
+/** Cake + party popper for birthday rows. Skips the pulse when Reduce Motion is on. */
 function BirthdayDecor() {
   const scale = useRef(new Animated.Value(1)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -141,9 +175,10 @@ function BirthdayDecor() {
       className="shrink-0 flex-row items-center gap-1"
       accessibilityElementsHidden
     >
-      <SparklesIcon size={16} color="#FF3E8A" strokeWidth={2.4} />
+      {/* White party + cake on the pink wash so they still pop */}
+      <PartyPopperIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
       <Animated.View style={{ transform: [{ scale }] }}>
-        <CakeIcon size={20} color="#FF3E8A" strokeWidth={2.4} />
+        <CakeIcon size={20} color="#FFFFFF" strokeWidth={2.4} />
       </Animated.View>
     </View>
   );

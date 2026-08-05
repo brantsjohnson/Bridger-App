@@ -1,48 +1,43 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 1 of Create event: the basics. Title, a short bio, the date and time
-// (tap-to-pick, no keyboard needed), the place + address (with live address
-// lookup), an optional co-host, what to bring, and an optional chip-in handle.
-// Adding a co-host also opens their acquaintances to the invite list on step 2.
+// Step 1 of Create event: title (required), details, day/time (calendar +
+// time list), one address field with live lookup, optional co-hosts, chip-in
+// handle, and "let friends invite friends" with a guest cap.
 //
 // PAYMENT: chip-in is a plain handle only (Venmo / Cash App). Bridger never
 // touches the money — guests pay the host directly.
 // ============================================
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { CheckIcon } from 'lucide-react-native';
 import { CREATE_EVENT } from '@bridger/shared';
-import { Avatar, Chip, TextField, Toggle, cn } from '@bridger/ui';
+import { Avatar, Chip, SearchField, TextField, Toggle, cn, withAnalyticsPress } from '@bridger/ui';
 import { listPeople } from '../../../data/people';
 import { AddressField } from './AddressField';
+import { DatePickerChip, TimePickerChip } from './DateTimePickers';
 import type { CreateEventDraft } from './types';
 
 const CHIP_METHODS = ['Venmo', 'Cash App', 'PayPal', 'Zelle', 'Cash in person'] as const;
 
-// Build the next two weeks of dates so the host taps instead of typing.
-function upcomingDays(): { key: string; label: string }[] {
-  const out: { key: string; label: string }[] = [];
-  const fmt = new Intl.DateTimeFormat('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
-  for (let i = 0; i < 14; i += 1) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    out.push({ key: d.toISOString().slice(0, 10), label: fmt.format(d) });
-  }
-  return out;
+function clampCap(n: number): number {
+  if (!Number.isFinite(n)) return 35;
+  return Math.min(100, Math.max(2, Math.round(n)));
 }
 
-// Times every 30 minutes, shown 07:00 through 23:30 (typical event window).
-function timeSlots(): string[] {
-  const out: string[] = [];
-  for (let h = 7; h <= 23; h += 1) {
-    for (const m of [0, 30]) {
-      out.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-    }
-  }
-  return out;
+/** Keep one leading $ on the amount — never $$ if they already typed it. */
+function formatChipAmount(raw: string): string {
+  const cleaned = raw.replace(/\$/g, '').replace(/[^\d.]/g, '');
+  if (!cleaned) return '';
+  return `$${cleaned}`;
 }
 
-const DAYS = upcomingDays();
-const TIMES = timeSlots();
+/** Prefix @ for Venmo/PayPal/Zelle, $ for Cash App — never double the prefix. */
+function formatChipHandle(raw: string, method: string): string {
+  const body = raw.replace(/^[@$]+/, '').trim();
+  if (!body) return '';
+  if (method === 'Cash App') return `$${body}`;
+  return `@${body}`;
+}
 
 export function DetailsStep({
   draft,
@@ -51,21 +46,47 @@ export function DetailsStep({
   draft: CreateEventDraft;
   onChange: (patch: Partial<CreateEventDraft>) => void;
 }) {
+  const [coHostQuery, setCoHostQuery] = useState('');
+
   // Only friends / close friends can be a co-host (not acquaintances).
-  const coHostOptions = listPeople().filter((p) => p.tier === 'friend' || p.tier === 'close');
+  const coHostOptions = useMemo(() => {
+    const base = listPeople().filter((p) => p.tier === 'friend' || p.tier === 'close');
+    const q = coHostQuery.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((p) => p.name.toLowerCase().includes(q));
+  }, [coHostQuery]);
+
+  const needsHandle =
+    draft.chipInEnabled && !!draft.chipInMethod && draft.chipInMethod !== 'Cash in person';
+  const handlePlaceholder =
+    draft.chipInMethod === 'Cash App' ? '$cashtag' : '@username';
+
+  function toggleCoHost(id: string) {
+    const has = draft.coHostIds.includes(id);
+    onChange({
+      coHostIds: has ? draft.coHostIds.filter((x) => x !== id) : [...draft.coHostIds, id]
+    });
+  }
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View className="gap-4 pb-8">
+        {/* --- TITLE: required (red asterisk on the label) --- */}
+        <View>
+          <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">
+            Event title<Text style={{ color: '#E24B4A' }}>*</Text>
+          </Text>
+          <TextField
+            value={draft.title}
+            onChange={(v) => onChange({ title: v })}
+            placeholder="Sketch night"
+            analyticsId={CREATE_EVENT.details.title}
+            accessibilityLabel="Event title, required"
+          />
+        </View>
+
         <TextField
-          label="Title"
-          value={draft.title}
-          onChange={(v) => onChange({ title: v })}
-          placeholder="Sketch night"
-          analyticsId={CREATE_EVENT.details.title}
-        />
-        <TextField
-          label="Bio"
+          label="Details"
           value={draft.bio}
           onChange={(v) => onChange({ bio: v })}
           placeholder="Pens, paper, no pressure."
@@ -73,173 +94,200 @@ export function DetailsStep({
           analyticsId={CREATE_EVENT.details.bio}
         />
 
-        {/* --- DATE: tap a day from the next two weeks --- */}
+        {/* --- DAY + TIME: Google-Calendar style chips --- */}
         <View>
-          <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">Date</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-          >
-            {DAYS.map((d) => {
-              const on = draft.day === d.label;
-              return (
-                <Pressable
-                  key={d.key}
-                  onPress={() => onChange({ day: d.label })}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={d.label}
-                  className={cn(
-                    'min-h-[44px] justify-center rounded-full border px-4',
-                    on ? 'border-ink bg-ink' : 'border-ink-line bg-surface'
-                  )}
-                >
-                  <Text className={cn('font-sans-b text-[13px]', on ? 'text-white' : 'text-ink')}>
-                    {d.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">Day and time</Text>
+          <View className="flex-row gap-2">
+            <DatePickerChip
+              dayIso={draft.dayIso}
+              dayLabel={draft.day}
+              onChange={(iso, label) => onChange({ dayIso: iso, day: label })}
+            />
+            <TimePickerChip time={draft.time} onChange={(t) => onChange({ time: t })} />
+          </View>
         </View>
 
-        {/* --- TIME: tap a 30-minute slot --- */}
-        <View>
-          <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">Time</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-          >
-            {TIMES.map((t) => {
-              const on = draft.time === t;
-              return (
-                <Pressable
-                  key={t}
-                  onPress={() => onChange({ time: t })}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={t}
-                  className={cn(
-                    'min-h-[44px] justify-center rounded-full border px-4',
-                    on ? 'border-success bg-success' : 'border-ink-line bg-surface'
-                  )}
-                >
-                  <Text className={cn('font-sans-b text-[13px]', on ? 'text-white' : 'text-ink')}>
-                    {t}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <TextField
-          label="Place"
-          value={draft.place}
-          onChange={(v) => onChange({ place: v })}
-          placeholder="Rowan Park"
-          analyticsId={CREATE_EVENT.details.place}
-        />
-
+        {/* --- ADDRESS: one field; place name fills from a suggestion --- */}
         <AddressField
           address={draft.address}
           onChangeAddress={(v) => onChange({ address: v })}
-          onPickPlace={(place) => onChange({ place: draft.place || place })}
+          onPickPlace={(place) => onChange({ place })}
         />
 
-        {/* --- CO-HOST: pick one friend who can also edit the event --- */}
-        <View>
-          <Text className="mb-2 font-sans-b text-[12px] text-ink-soft">Co-host (optional)</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {coHostOptions.map((p) => {
-              const on = draft.coHostId === p.id;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => onChange({ coHostId: on ? undefined : p.id })}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={`Co-host ${p.name}`}
-                  className={cn(
-                    'min-h-[44px] flex-row items-center gap-2 rounded-full border py-1 pl-1 pr-3.5',
-                    on ? 'border-purple bg-purple' : 'border-ink-line bg-surface'
-                  )}
-                >
-                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="sm" />
-                  <Text className={cn('font-sans-b text-[13px]', on ? 'text-white' : 'text-ink')}>
-                    {p.name.split(' ')[0]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text className="mt-1.5 font-sans-md text-[11px] text-ink-mute">
-            A co-host can edit the event, and their acquaintances join your invite list.
-          </Text>
-        </View>
-
-        <TextField
-          label="Bring (optional)"
-          value={draft.bring}
-          onChange={(v) => onChange({ bring: v })}
-          placeholder="A drink to share"
-          analyticsId={CREATE_EVENT.details.bring}
-        />
-
-        {/* PAYMENT: handle only — Bridger never processes chip-in money */}
-        <View className="rounded-card border border-ink-line bg-surface p-3.5">
-          <Text className="font-sans-b text-[13px] text-ink">Chipping in (optional)</Text>
-          <Text className="mt-0.5 font-sans-sb text-[12px] leading-snug text-ink-mute">
-            Guests pay you directly. We never touch it.
-          </Text>
-          <View className="mt-3 gap-3">
-            <TextField
-              label="Amount per person"
-              value={draft.chipInAmount}
-              onChange={(v) => onChange({ chipInAmount: v })}
-              placeholder="$5"
-              analyticsId={CREATE_EVENT.details.chip_in_amount}
+        {/* --- CO-HOSTS: toggle on, then search + multi-select friends --- */}
+        <View className="rounded-card border border-ink-line bg-surface px-4 py-3">
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink">Add co-hosts?</Text>
+            <Toggle
+              checked={draft.addCoHosts}
+              onChange={(v) =>
+                onChange({ addCoHosts: v, coHostIds: v ? draft.coHostIds : [] })
+              }
+              label="Add co-hosts"
+              analyticsId={CREATE_EVENT.details.cohost_toggle}
             />
-            <View>
-              <Text className="mb-2 font-sans-b text-[12px] text-ink-soft">How to send it</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {CHIP_METHODS.map((m) => (
-                  <Chip
-                    key={m}
-                    label={m}
-                    accent="teal"
-                    size="sm"
-                    selected={draft.chipInMethod === m}
-                    onPress={() => onChange({ chipInMethod: draft.chipInMethod === m ? '' : m })}
-                  />
-                ))}
+          </View>
+          {draft.addCoHosts ? (
+            <View className="mt-3 gap-2">
+              <Text className="font-sans-md text-[11px] text-ink-mute">
+                Co-hosts can edit the event, and people they know may show up as invite suggestions.
+              </Text>
+              <SearchField
+                value={coHostQuery}
+                onChange={setCoHostQuery}
+                placeholder="Search friends"
+                analyticsId={CREATE_EVENT.details.cohost_search}
+              />
+              <View className="gap-2">
+                {coHostOptions.map((p) => {
+                  const on = draft.coHostIds.includes(p.id);
+                  return (
+                    <Pressable
+                      key={p.id}
+                      onPress={withAnalyticsPress(CREATE_EVENT.details.cohost_row, () =>
+                        toggleCoHost(p.id)
+                      )}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={`Co-host ${p.name}`}
+                      className={cn(
+                        'min-h-[48px] flex-row items-center gap-3 rounded-card border px-3 py-2',
+                        on ? 'border-purple bg-purple/15' : 'border-ink-line bg-canvas'
+                      )}
+                    >
+                      <Avatar
+                        name={p.name}
+                        emoji={p.emoji}
+                        accent={p.accent}
+                        personId={p.id}
+                        size="sm"
+                      />
+                      <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink">{p.name}</Text>
+                      <View
+                        className={cn(
+                          'h-6 w-6 items-center justify-center rounded-full border',
+                          on ? 'border-purple bg-purple' : 'border-ink-line'
+                        )}
+                      >
+                        {on ? <CheckIcon size={14} color="#fff" strokeWidth={3} /> : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
-            {draft.chipInMethod && draft.chipInMethod !== 'Cash in person' ? (
-              <TextField
-                label="Your handle"
-                value={draft.chipInHandle}
-                onChange={(v) => onChange({ chipInHandle: v })}
-                placeholder="@you"
-                analyticsId={CREATE_EVENT.details.chip_in_handle}
-              />
-            ) : null}
-          </View>
+          ) : null}
         </View>
 
-        {/* Let friends invite friends — opens the guest list to second-degree invites */}
-        <View className="flex-row items-center justify-between rounded-card border border-ink-line bg-surface px-4 py-3">
-          <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink">
-            Let friends invite friends
-          </Text>
-          <Toggle
-            checked={draft.allowFriendsToInvite}
-            onChange={(v) => onChange({ allowFriendsToInvite: v })}
-            label="Let friends invite friends"
-            analyticsId={CREATE_EVENT.details.friends_invite_toggle}
-          />
+        {/* PAYMENT: turn on chip-in, then amount + method + username. Never process money. */}
+        <View className="rounded-card border border-ink-line bg-surface px-4 py-3">
+          <View className="flex-row items-center justify-between gap-3">
+            <View className="min-w-0 flex-1">
+              <Text className="font-sans-b text-[13px] text-ink">Chipping in?</Text>
+              <Text className="mt-0.5 font-sans-sb text-[12px] leading-snug text-ink-mute">
+                Guests pay you directly. We never touch it.
+              </Text>
+            </View>
+            <Toggle
+              checked={draft.chipInEnabled}
+              onChange={(v) =>
+                onChange(
+                  v
+                    ? { chipInEnabled: true }
+                    : {
+                        chipInEnabled: false,
+                        chipInAmount: '',
+                        chipInMethod: '',
+                        chipInHandle: ''
+                      }
+                )
+              }
+              label="Chipping in"
+              analyticsId={CREATE_EVENT.details.chip_in_toggle}
+            />
+          </View>
+          {draft.chipInEnabled ? (
+            <View className="mt-3 gap-3">
+              <TextField
+                label="Amount per person"
+                value={draft.chipInAmount}
+                onChange={(v) => onChange({ chipInAmount: formatChipAmount(v) })}
+                placeholder="$5"
+                analyticsId={CREATE_EVENT.details.chip_in_amount}
+              />
+              <View>
+                <Text className="mb-2 font-sans-b text-[12px] text-ink-soft">How to send it</Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {CHIP_METHODS.map((m) => (
+                    <Chip
+                      key={m}
+                      label={m}
+                      accent="teal"
+                      size="sm"
+                      selected={draft.chipInMethod === m}
+                      onPress={() => {
+                        const next = draft.chipInMethod === m ? '' : m;
+                        onChange({
+                          chipInMethod: next,
+                          chipInHandle: next
+                            ? formatChipHandle(draft.chipInHandle, next)
+                            : ''
+                        });
+                      }}
+                    />
+                  ))}
+                </View>
+              </View>
+              {needsHandle ? (
+                <TextField
+                  label="Your username"
+                  value={draft.chipInHandle}
+                  onChange={(v) =>
+                    onChange({ chipInHandle: formatChipHandle(v, draft.chipInMethod) })
+                  }
+                  placeholder={handlePlaceholder}
+                  analyticsId={CREATE_EVENT.details.chip_in_handle}
+                />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+
+        {/* Let friends invite friends — opens second-degree invites + guest cap */}
+        <View className="rounded-card border border-ink-line bg-surface px-4 py-3">
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink">
+              Let friends invite friends
+            </Text>
+            <Toggle
+              checked={draft.allowFriendsToInvite}
+              onChange={(v) => onChange({ allowFriendsToInvite: v })}
+              label="Let friends invite friends"
+              analyticsId={CREATE_EVENT.details.friends_invite_toggle}
+            />
+          </View>
+          {draft.allowFriendsToInvite ? (
+            <View className="mt-3 gap-2">
+              <Text className="font-sans-sb text-[12px] leading-snug text-ink-mute">
+                Guests can bring someone you don't know yet.
+              </Text>
+              <TextField
+                label="Guest cap"
+                value={String(draft.guestCap)}
+                onChange={(v) => {
+                  const digits = v.replace(/[^0-9]/g, '');
+                  if (!digits) {
+                    onChange({ guestCap: 35 });
+                    return;
+                  }
+                  onChange({ guestCap: clampCap(Number(digits)) });
+                }}
+                placeholder="35"
+                analyticsId={CREATE_EVENT.details.guest_cap}
+              />
+              <Text className="font-sans-md text-[11px] text-ink-mute">Between 2 and 100 people.</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </ScrollView>

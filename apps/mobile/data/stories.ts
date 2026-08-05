@@ -13,6 +13,7 @@ import type {
   ThemedPrompt
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
+import { apiFetch } from '../lib/api';
 import { STORY_REPLIES as CATALOG_REPLIES } from './fixtures/catalog';
 import { getStoryMedia } from './fixtures/demo-media';
 import {
@@ -192,8 +193,11 @@ export async function answerCatchUpItem(
 /** Themed capture squares. */
 export async function listThemedPrompts(): Promise<ThemedPrompt[]> {
   if (isDemoMode()) return THEMED_PROMPTS;
-  // TODO: GET /stories/themed-prompts
-  return [];
+  try {
+    return await apiFetch<ThemedPrompt[]>('/content/themed-prompts');
+  } catch {
+    return [];
+  }
 }
 
 /** How many posts you still have today (cap 3). */

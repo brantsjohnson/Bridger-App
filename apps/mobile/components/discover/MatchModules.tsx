@@ -16,8 +16,11 @@ import { DISCOVER, trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
   ModuleFlow,
+  Reveal,
   SectionTitle,
+  Wiggle,
   cn,
+  funShape,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
@@ -98,14 +101,15 @@ export function MatchModules({
       ) : null}
 
       <View className="gap-3">
-        {visible.map((m) => (
-          <ModuleCard
-            key={m.id}
-            module={m}
-            done={completedIds.includes(m.id)}
-            analyticsId={tileId}
-            onOpen={() => openModule(m.id)}
-          />
+        {visible.map((m, i) => (
+          <Reveal key={m.id} index={i}>
+            <ModuleCard
+              module={m}
+              done={completedIds.includes(m.id)}
+              analyticsId={tileId}
+              onOpen={() => openModule(m.id)}
+            />
+          </Reveal>
         ))}
       </View>
 
@@ -143,9 +147,13 @@ export function MatchModules({
 }
 
 /**
- * One module as a big, colored, rectangular card: the module's accent fills the
- * background, the emoji sits inline with the title, a short description sits
- * under it, and a small tag reads "To do" (or "Done" once finished).
+ * One module, built like the Touch Grass button: a VIVID full-color block with
+ * a hand-cut shape, a big emoji you can see across the room, the title, a short
+ * line about it, and a tag that reads "To do" (or "Done"). An unfinished card
+ * gives its tag a little wiggle every few seconds to keep asking for you.
+ *
+ * The shape is picked from the module's own id, so a card always looks the same
+ * but the stack down the page leans different ways.
  */
 function ModuleCard({
   module: m,
@@ -165,41 +173,48 @@ function ModuleCard({
       onPress={withAnalyticsPress(analyticsId, onOpen, { analyticsProps: { module: m.id } })}
       accessibilityRole="button"
       accessibilityLabel={`${m.title}, ${done ? 'done' : 'to do'}. ${m.blurb}`}
+      style={funShape(m.id)}
       className={cn(
-        'w-full rounded-2xl border border-ink/10 px-4 py-4 active:opacity-90',
-        token.tintSolid,
-        done && 'opacity-75'
+        'w-full flex-row items-center gap-4 px-5 py-5 active:opacity-90',
+        token.bg,
+        done && 'opacity-60'
       )}
     >
-      {/* Top row: emoji + title on the left, the little status tag on the right */}
-      <View className="flex-row items-center justify-between gap-3">
-        <View className="min-w-0 flex-1 flex-row items-center gap-2.5">
-          <Text accessible={false} className="text-[22px]">
-            {m.emoji}
-          </Text>
-          <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-b text-[16px] tracking-tight text-ink">
-            {m.title}
-          </Text>
-        </View>
+      {/* The emoji is the loudest thing on the card, on purpose. */}
+      <Text accessible={false} className="text-[42px] leading-none">
+        {m.emoji}
+      </Text>
 
+      <View className="min-w-0 flex-1">
+        <Text
+          numberOfLines={1}
+          className={cn('font-sans-b text-[18px] tracking-tight', token.text)}
+        >
+          {m.title}
+        </Text>
+        <Text numberOfLines={2} className={cn('mt-1 font-sans-sb text-[13px] leading-snug opacity-85', token.text)}>
+          {m.blurb}
+        </Text>
+      </View>
+
+      <Wiggle active={!done} everyMs={5000}>
         <View
           className={cn(
-            'shrink-0 rounded-md border px-2 py-1',
-            done ? 'border-success bg-success/20' : 'border-ink/40'
+            'shrink-0 rounded-full px-2.5 py-1',
+            done ? 'bg-white/25' : 'bg-white'
           )}
         >
           <Text
             className={cn(
               'font-sans-b text-[10px] uppercase tracking-wide',
-              done ? 'text-success' : 'text-ink/70'
+              // Always near-black on the white pill — text-ink goes light in dark mode and disappears.
+              done ? token.text : 'text-[#1C1B16]'
             )}
           >
             {done ? 'Done' : 'To do'}
           </Text>
         </View>
-      </View>
-
-      <Text className="mt-2 font-sans-sb text-[13px] leading-snug text-ink/80">{m.blurb}</Text>
+      </Wiggle>
     </Pressable>
   );
 }

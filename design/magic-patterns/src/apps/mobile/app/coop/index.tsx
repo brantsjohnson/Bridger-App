@@ -5,7 +5,6 @@ import {
   CalendarIcon,
   CheckIcon,
   PaletteIcon,
-  SparklesIcon,
   UsersIcon,
   VideoIcon } from
 'lucide-react';
@@ -77,7 +76,7 @@ const UNLOCKS: {
   key: 'recaps',
   title: 'Daily recaps',
   line: 'Every day, not just the week.',
-  icon: <SparklesIcon className="h-5 w-5" strokeWidth={2.4} />,
+  icon: <CalendarIcon className="h-5 w-5" strokeWidth={2.4} />,
   accent: 'amber'
 },
 {

@@ -4,8 +4,9 @@
 // else's. Demo mode mutates a local list so Home and Events stay in sync for
 // the session. Live mode will hit the touchgrass API module.
 // ============================================
-import type { GrassSignal } from '@bridger/shared';
+import type { GrassSignal, GrassWhen } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
+import { apiFetch } from '../lib/api';
 import { FREE_SIGNALS as FIXTURE_SIGNALS } from './fixtures/catalog';
 
 let demoSignals: GrassSignal[] = FIXTURE_SIGNALS.map((s) => ({
@@ -20,12 +21,27 @@ function cloneSignals(): GrassSignal[] {
   return demoSignals.map((s) => ({ ...s, inIds: s.inIds ? [...s.inIds] : [] }));
 }
 
+/** Turn the sheet's "who" label into the audience the API expects. */
+function whoToAudience(who: string): string {
+  const key = who.toLowerCase();
+  if (key.startsWith('close')) return 'close';
+  if (key.startsWith('friend')) return 'friends';
+  return 'everyone';
+}
+
+/** Turn the sheet's "when" label into the API window value. */
+function whenToWindow(when: string): GrassWhen {
+  const key = when.toLowerCase();
+  if (key.includes('tonight')) return 'tonight';
+  if (key.includes('weekend')) return 'weekend';
+  return 'now';
+}
+
 export async function listSignals(): Promise<GrassSignal[]> {
   if (isDemoMode()) {
     return cloneSignals();
   }
-  // TODO: GET /touchgrass
-  return [];
+  return apiFetch<GrassSignal[]>('/touchgrass');
 }
 
 export type SendSignalInput = {
@@ -46,12 +62,20 @@ export async function sendSignal(input: SendSignalInput): Promise<void> {
       what: input.note,
       audience: input.who,
       inIds: [],
-      postedAt: 'just now'
+      postedAt: 'just now',
+      mine: true
     };
     demoSignals = [mine, ...demoSignals];
     return;
   }
-  // TODO: POST /touchgrass
+  await apiFetch('/touchgrass', {
+    method: 'POST',
+    body: JSON.stringify({
+      who: whoToAudience(input.who),
+      when: whenToWindow(input.when),
+      note: input.note
+    })
+  });
 }
 
 export async function joinSignal(id: string): Promise<void> {
@@ -64,7 +88,10 @@ export async function joinSignal(id: string): Promise<void> {
     });
     return;
   }
-  // TODO: POST /touchgrass/:id/join
+  await apiFetch(`/touchgrass/${encodeURIComponent(id)}/join`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
 }
 
 export async function dismissSignal(id: string): Promise<void> {
@@ -72,7 +99,10 @@ export async function dismissSignal(id: string): Promise<void> {
     demoSignals = demoSignals.filter((s) => s.id !== id);
     return;
   }
-  // TODO: POST /touchgrass/:id/dismiss
+  await apiFetch(`/touchgrass/${encodeURIComponent(id)}/dismiss`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  });
 }
 
 export async function endMySignal(): Promise<void> {
@@ -81,13 +111,14 @@ export async function endMySignal(): Promise<void> {
     demoSignals = demoSignals.filter((s) => s.personId !== 'me');
     return;
   }
-  // TODO: DELETE /touchgrass/me
+  await apiFetch('/touchgrass/me', { method: 'DELETE' });
 }
 
 export async function getMyLiveSignal(): Promise<{ when: string; inIds: string[] } | null> {
   if (isDemoMode()) {
     return demoMyLive ? { ...demoMyLive, inIds: [...demoMyLive.inIds] } : null;
   }
-  // TODO: GET /touchgrass/me
-  return null;
+  const mine = await apiFetch<GrassSignal | null>('/touchgrass/me');
+  if (!mine) return null;
+  return { when: mine.when, inIds: mine.inIds ?? [] };
 }

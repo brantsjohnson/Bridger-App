@@ -8,6 +8,7 @@ import type {
   EventItem,
   GrassSignal,
   InsideJoke,
+  MeetSuggestion,
   Person,
   Reaction,
   Story,
@@ -216,6 +217,14 @@ export const EVENTS: EventItem[] = [
   }
 ];
 
+// --- WHO YOU SHOULD MEET at events (demo) ---
+// Friends-of-friends at an event you are hosting or going to. Shown on the
+// Home "This week" event tile next to friends who are already coming.
+export const MEET_SUGGESTIONS: MeetSuggestion[] = [
+  { personId: 'nour', thread: 'You both shoot film', status: 'going' },
+  { personId: 'kit', thread: 'Same morning loop', status: 'invited' }
+];
+
 export const FREE_SIGNALS: GrassSignal[] = [
   {
     id: 'fs1',
@@ -256,6 +265,8 @@ export const NOTIFICATIONS: Array<{ id: string; personId: string; text: string; 
 ];
 
 export const COMING_UP: UpcomingItem[] = [
+  // Birthdays paint pink regardless of tier. Notes (graduation) use the friend's circle.
+  // personIds still match the catalog ids (maya = Jade, devon = Kelton).
   { id: 'u1', kind: 'birthday', label: "Kelton's birthday", when: 'Today', personId: 'devon' },
   { id: 'u2', kind: 'birthday', label: "Jade's birthday", when: 'Friday', personId: 'maya' },
   { id: 'u3', kind: 'note', label: "Jade's graduation", when: 'in 1 week', personId: 'maya' }
@@ -282,6 +293,9 @@ export const WEEKLY_ACTIVITY = {
   prompt: 'Your favorite band tee',
   closesIn: 'ends Sunday',
   accent: 'amber' as const,
+  emoji: '👕',
+  // Cover fills the Home card the same way event covers do.
+  cover: { kind: 'emoji' as const, value: '👕', bg: '#FFB515' },
   posts: [
     { id: 'ap1', personId: 'maya', emoji: '👕', caption: 'Thrifted in 2016' },
     { id: 'ap2', personId: 'kit', emoji: '🎸', caption: 'Still fits' },
@@ -294,7 +308,9 @@ export const WEEKLY_ACTIVITY = {
 export const QUIZ = {
   id: 'road-trip',
   title: 'Which road trip are you?',
+  description: 'Pick your vibe and see who matches.',
   comparable: true,
+  cover: { kind: 'emoji' as const, value: '🧭', bg: '#4D96FF' },
   results: [
     {
       id: 'coastal',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SparklesIcon } from 'lucide-react';
+import { MapPinIcon } from 'lucide-react';
 import { ACCENTS, cn } from '../../../../packages/ui';
 import { SHARED_PLACES } from '../../state/mock-data';
 
@@ -13,7 +13,7 @@ export function SharedPlacePhotos({ theirName = 'Them' }: {theirName?: string;})
   return (
     <section>
       <div className="mb-2.5 flex items-center gap-1.5">
-        <SparklesIcon aria-hidden="true" className="h-3.5 w-3.5 text-purple" strokeWidth={2.8} />
+        <MapPinIcon aria-hidden="true" className="h-3.5 w-3.5 text-purple" strokeWidth={2.8} />
         <h3 className="text-[12px] font-bold uppercase tracking-wide text-ink-mute">
           You have both been here
         </h3>

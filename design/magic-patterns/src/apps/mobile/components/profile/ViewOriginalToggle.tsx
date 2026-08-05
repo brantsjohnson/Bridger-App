@@ -1,5 +1,5 @@
 import React from 'react';
-import { SparklesIcon } from 'lucide-react';
+import { PaletteIcon } from 'lucide-react';
 import { cn } from '../../../../packages/ui';
 
 /**
@@ -39,7 +39,7 @@ export function ViewOriginalToggle({
       )}
       style={original ? undefined : { backgroundColor: accent }}>
       
-      <SparklesIcon className="h-[18px] w-[18px]" strokeWidth={2.3} />
+      <PaletteIcon className="h-[18px] w-[18px]" strokeWidth={2.3} />
       {original &&
       <span
         aria-hidden="true"

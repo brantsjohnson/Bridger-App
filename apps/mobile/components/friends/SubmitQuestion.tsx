@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowBigUpIcon } from 'lucide-react-native';
+import { FRIENDS, trackProduct } from '@bridger/shared';
 import { ButtonPrimary, Sheet, TextField, cn } from '@bridger/ui';
 import { personById } from '../../data/people';
 import { useFriendPod } from '../../hooks/useFriendPod';
@@ -17,7 +18,7 @@ export function SubmitQuestion({
   open: boolean;
   onClose: () => void;
 }) {
-  const { questions, onSubmitQuestion } = useFriendPod();
+  const { questions, onSubmitQuestion, onVoteQuestion } = useFriendPod();
   const [text, setText] = useState('');
   const [voted, setVoted] = useState<string[]>([]);
 
@@ -28,8 +29,19 @@ export function SubmitQuestion({
   const submit = () => {
     if (!text.trim()) return;
     void onSubmitQuestion(text.trim());
+    // Product outcome: a question was suggested for a future week.
+    trackProduct('recap_question_submitted', {});
     setText('');
     onClose();
+  };
+
+  const vote = (id: string) => {
+    const already = voted.includes(id);
+    setVoted((p) => (already ? p.filter((x) => x !== id) : [...p, id]));
+    if (!already) {
+      void onVoteQuestion(id);
+      trackProduct('recap_question_voted', {});
+    }
   };
 
   return (
@@ -71,9 +83,7 @@ export function SubmitQuestion({
                     </Text>
                   </View>
                   <Pressable
-                    onPress={() =>
-                      setVoted((p) => (up ? p.filter((x) => x !== q.id) : [...p, q.id]))
-                    }
+                    onPress={() => vote(q.id)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: up }}
                     accessibilityLabel={up ? 'Remove upvote' : 'Upvote question'}

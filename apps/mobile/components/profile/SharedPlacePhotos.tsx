@@ -6,7 +6,7 @@
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import { SparklesIcon } from 'lucide-react-native';
+import { MapPinIcon } from 'lucide-react-native';
 import { ACCENTS, cn } from '@bridger/ui';
 import { getSharedPlaces, type SharedPlace } from '../../data/reveal';
 
@@ -28,7 +28,7 @@ export function SharedPlacePhotos({
   return (
     <View>
       <View className="mb-2.5 flex-row items-center gap-1.5">
-        <SparklesIcon size={14} color="#7C5CFF" strokeWidth={2.8} />
+        <MapPinIcon size={14} color="#7C5CFF" strokeWidth={2.8} />
         <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
           You have both been here
         </Text>

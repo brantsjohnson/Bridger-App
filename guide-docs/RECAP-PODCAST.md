@@ -20,7 +20,7 @@ A **weekly audio check-in** with your friends. Everyone answers the **same 5 sho
 ## Recording your recap
 
 1. On Home ("This week"), tap **Add your recap**.
-2. Answer each of the 5 questions by **recording audio** in-app (short — about **45s each**). Re-record if you flub one.
+2. First **see all 5 questions** (and that each answer is **20 seconds**), then record audio in-app for each. Re-record if you flub one.
 3. Pick **who to share with** — Close friends / Friends / Everyone (or a group).
 4. **Post.**
 
@@ -30,12 +30,14 @@ A **weekly audio check-in** with your friends. Everyone answers the **same 5 sho
 
 ## Listening (the podcast)
 
-- On Home, hit **Play** on the weekly recap.
-- It plays as **one continuous audio** — all your friends' answers stitched together.
-- As each answer plays, the **speaker's photo + name pop up**, along with the **current question**.
-- It's a **roundtable**: everyone's answer to Q1, then everyone's Q2, and so on — so you hear the whole group on each prompt.
-- Controls: play/pause, skip forward/back, scrub. Progress dots show which question you're on.
-- **"In this week"** shows the friends included.
+- On Friends (or Home), hit **Play** — opens a **full page** (not a popup).
+- Filter by circle: **Close** (default) → **Friends** → **Acquaintances**.
+- It plays as **one continuous audio** within the chosen circle.
+- As each answer plays, the **speaker's photo + name** show, plus the **current question** and **how many days until that person's clips expire** (rolling 7 days).
+- It's a **roundtable**: everyone's answer to Q1, then everyone's Q2, and so on.
+- Controls: play/pause, skip forward/back, scrub, and **playback speed** (1× / 1.3× / 1.5× / 2×) that **stays on for every speaker**.
+- **"In this week"** is a scrollable row of faces — tap someone to listen or relisten.
+- **Send a sticker** (emoji) in response; that reaction lands in the **Notifications** strip.
 - You only hear answers people **shared with your tier**.
 
 ---
@@ -49,7 +51,7 @@ A **weekly audio check-in** with your friends. Everyone answers the **same 5 sho
 ## Screens / components
 
 - **RecapRecorder** — the 5 questions, record audio per question, pick audience, post.
-- **RecapPlayer** — play/pause/skip/scrub, speaker photo + name pop-up, current question, progress dots, "in this week" avatars.
+- **RecapPlayer** — full-page player: filter, speed, expiry, play/pause/skip/scrub, speaker photo + name, question, progress dots, scrollable "in this week" avatars, sticker reactions.
 - **SubmitQuestion** — suggest a question for the group.
 
 ---
@@ -66,7 +68,7 @@ interface RecapAnswer {
   weekId: string;
   authorId: string;
   questionIndex: number;             // 0–4
-  audioUrl: string;                  // recorded in-app; ~45s
+  audioUrl: string;                  // recorded in-app; ~20s
   visibleToTier: 'close' | 'friend' | 'acquaintance';
 }
 ```

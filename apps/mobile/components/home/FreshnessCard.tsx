@@ -17,8 +17,10 @@ export function FreshnessCard({ question = 'Still into beatboxing?' }: { questio
 
   if (state !== 'ask') {
     return (
-      <View style={ORGANIC.soft} className="min-h-[124px] justify-center bg-[#DFF3E4] px-5 py-4">
-        <Text className="font-sans-b text-[14px] text-ink">
+      <View style={ORGANIC.soft} className="min-h-[124px] justify-center bg-green px-5 py-4">
+        {/* onaccent = always-dark type. On a colored card we never use `text-ink`,
+            because that flips to white in dark mode and vanishes. */}
+        <Text className="font-sans-b text-[14px] text-onaccent">
           {state === 'kept' ? 'Kept it.' : 'Removed. Thanks for the update.'}
         </Text>
       </View>
@@ -26,18 +28,22 @@ export function FreshnessCard({ question = 'Still into beatboxing?' }: { questio
   }
 
   return (
-    <View style={ORGANIC.soft} className="relative min-h-[124px] bg-[#FDEFD3] px-5 py-4">
+    <View style={ORGANIC.soft} className="relative min-h-[124px] bg-amber px-5 py-4">
       <Pressable
         onPress={() => setState('kept')}
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
-        className="absolute right-3 top-3 z-10 h-7 w-7 items-center justify-center rounded-full active:bg-surface"
+        className="absolute right-3 top-3 z-10 h-7 w-7 items-center justify-center rounded-full active:bg-white/25"
       >
-        <XIcon size={16} color={c.inkMute} strokeWidth={2.6} />
+        {/* onaccent = always-dark type, which is what stays readable on the
+            bright amber in both light and dark mode. */}
+        <XIcon size={16} color="#1C1B16" strokeWidth={2.6} />
       </Pressable>
 
-      <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">Quick check</Text>
-      <Text className="mt-1 pr-8 font-sans-b text-[16px] leading-snug tracking-tight text-ink">
+      <Text className="font-sans-b text-[11px] uppercase tracking-wide text-onaccent/70">
+        Quick check
+      </Text>
+      <Text className="mt-1 pr-8 font-sans-b text-[16px] leading-snug tracking-tight text-onaccent">
         {question}
       </Text>
 

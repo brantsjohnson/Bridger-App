@@ -59,13 +59,21 @@ export function useStoryViewer(authorId: string) {
     if (post) void refreshReplies(post.id);
   }, [post?.id, refreshReplies]);
 
-  const goNext = useCallback(() => {
-    setIndex((i) => (posts.length ? (i + 1) % posts.length : 0));
-  }, [posts.length]);
+  /**
+   * Advance one post. Returns 'advanced' when there is another post for this
+   * author, or 'exhausted' when this was the last one (caller decides whether
+   * to open the next friend in the tray sequence or close back to profile).
+   */
+  const goNext = useCallback((): 'advanced' | 'exhausted' => {
+    if (!posts.length || index + 1 >= posts.length) return 'exhausted';
+    setIndex(index + 1);
+    return 'advanced';
+  }, [posts.length, index]);
 
+  /** Go back one post. Stays on the first post (no wrap, no previous author). */
   const goPrev = useCallback(() => {
-    setIndex((i) => (posts.length ? (i - 1 + posts.length) % posts.length : 0));
-  }, [posts.length]);
+    setIndex((i) => Math.max(0, i - 1));
+  }, []);
 
   const onAnswerCatchUp = useCallback(
     async (itemId: string, choice: string) => {

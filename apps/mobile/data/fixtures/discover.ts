@@ -62,7 +62,6 @@ export type Commonality = {
 
 export const COMMONALITIES: Commonality[] = [
   { key: 'c1', label: 'Both at the Kettle open mic', strongest: true },
-  { key: 'c2', label: 'Same quiz result: Lighthouse' },
   {
     key: 'c3',
     label: 'You both run',
@@ -77,6 +76,30 @@ export const COMMONALITIES: Commonality[] = [
     yours: 'Black and white, mostly portraits',
     theirs: 'Cheap point-and-shoot, no rules'
   }
+];
+
+/**
+ * A compatibility score from a matching-only quiz — e.g. "95% in Humor".
+ * These come from quizzes whose kind is 'quiz'; the number is how closely two
+ * people line up on that dimension, not a shared result to display verbatim.
+ * PRIVACY: only the dimension + score cross a connection, never the answers.
+ */
+export type QuizMatch = {
+  key: string;
+  /** The quiz this score is for (matches a MatchModule id where kind==='quiz') */
+  quizId: string;
+  /** Short human dimension, e.g. "Humor", "Values" */
+  dimension: string;
+  /** 0–100 compatibility */
+  score: number;
+  emoji: string;
+  accent: Accent;
+};
+
+/** Demo compatibility scores shown in the reveal's "how you line up" section. */
+export const QUIZ_MATCHES: QuizMatch[] = [
+  { key: 'q-humor', quizId: 'humor', dimension: 'Humor', score: 95, emoji: '😂', accent: 'coral' },
+  { key: 'q-values', quizId: 'values', dimension: 'Values', score: 72, emoji: '🧭', accent: 'purple' }
 ];
 
 /** One question inside a private matching module. */

@@ -1,20 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Reveal Screen 3 — the close. Confetti, "You two should click.", a primary
-// button to see their profile, and the promise that this content lives under
-// "In common" forever. Copy is exact from REVEAL.md.
+// Reveal Screen 3 — the close. Confetti, "You two should click.", and the
+// promise that this content lives under "In common" forever. The "See their
+// profile" button lives in the fixed bottom bar of the reveal screen now, so
+// it always sits at the very bottom. Copy is exact from REVEAL.md.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Text, View } from 'react-native';
-import { REVEAL } from '@bridger/shared';
-import { ButtonPrimary } from '@bridger/ui';
 
-type Props = {
-  firstName: string;
-  onSeeProfile: () => void;
-};
-
-export function RevealClose({ firstName, onSeeProfile }: Props) {
+export function RevealClose() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const bob = useRef(new Animated.Value(0)).current;
 
@@ -60,24 +54,20 @@ export function RevealClose({ firstName, onSeeProfile }: Props) {
         🎉
       </Animated.Text>
 
-      <Text className="text-center font-pixel text-[28px] leading-[32px] text-canvas">
+      {/* Fixed cream on dark — theme text-canvas flips in dark mode */}
+      <Text
+        className="text-center font-pixel text-[28px] leading-[32px]"
+        style={{ color: '#F5F0E6' }}
+      >
         You two should click.
       </Text>
 
-      <View className="w-full gap-2">
-        <ButtonPrimary
-          full
-          size="lg"
-          analyticsId={REVEAL.flow.see_profile}
-          onPress={onSeeProfile}
-          accessibilityLabel={`See ${firstName}'s profile`}
-        >
-          {`See ${firstName}'s profile`}
-        </ButtonPrimary>
-        <Text className="text-center font-sans-md text-[13px] text-white/55">
-          Revisit anytime under &quot;In common&quot;
-        </Text>
-      </View>
+      <Text
+        className="text-center font-sans-md text-[13px]"
+        style={{ color: 'rgba(245, 240, 230, 0.55)' }}
+      >
+        Revisit anytime under &quot;In common&quot;
+      </Text>
     </View>
   );
 }

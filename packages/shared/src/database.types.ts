@@ -271,6 +271,39 @@ export type Database = {
           },
         ]
       }
+      client_not_found_hits: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          id: string
+          missing_path: string
+          path_trail: string[]
+          platform: string | null
+          reason: string
+          session_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          missing_path: string
+          path_trail?: string[]
+          platform?: string | null
+          reason?: string
+          session_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          missing_path?: string
+          path_trail?: string[]
+          platform?: string | null
+          reason?: string
+          session_id?: string | null
+        }
+        Relationships: []
+      }
       connections: {
         Row: {
           created_at: string
@@ -351,18 +384,27 @@ export type Database = {
       coop_announcements: {
         Row: {
           body: string
+          cta_label: string | null
+          cta_url: string | null
           id: string
           published_at: string | null
+          title: string | null
         }
         Insert: {
           body: string
+          cta_label?: string | null
+          cta_url?: string | null
           id?: string
           published_at?: string | null
+          title?: string | null
         }
         Update: {
           body?: string
+          cta_label?: string | null
+          cta_url?: string | null
           id?: string
           published_at?: string | null
+          title?: string | null
         }
         Relationships: []
       }
@@ -443,22 +485,77 @@ export type Database = {
         Row: {
           enabled: boolean
           id: string
+          name: string
           schedule: Json
           scope: Database["public"]["Enums"]["delight_scope"]
+          slug: string | null
         }
         Insert: {
           enabled?: boolean
           id?: string
+          name?: string
           schedule?: Json
           scope?: Database["public"]["Enums"]["delight_scope"]
+          slug?: string | null
         }
         Update: {
           enabled?: boolean
           id?: string
+          name?: string
           schedule?: Json
           scope?: Database["public"]["Enums"]["delight_scope"]
+          slug?: string | null
         }
         Relationships: []
+      }
+      delight_triggers: {
+        Row: {
+          created_at: string
+          delight_id: string
+          from_user_id: string
+          id: string
+          played: boolean
+          to_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delight_id: string
+          from_user_id: string
+          id?: string
+          played?: boolean
+          to_user_id: string
+        }
+        Update: {
+          created_at?: string
+          delight_id?: string
+          from_user_id?: string
+          id?: string
+          played?: boolean
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delight_triggers_delight_id_fkey"
+            columns: ["delight_id"]
+            isOneToOne: false
+            referencedRelation: "delights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delight_triggers_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delight_triggers_to_user_id_fkey"
+            columns: ["to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_intros: {
         Row: {
@@ -1158,30 +1255,53 @@ export type Database = {
       }
       quiz_registry: {
         Row: {
+          comparable: boolean
+          cover: Json | null
           created_at: string
+          description: string | null
           friends_taken_count: number
           live_week: string | null
+          quiz_id: string | null
           slug: string
           status: Database["public"]["Enums"]["quiz_status"]
           title: string
+          web_takeable: boolean
         }
         Insert: {
+          comparable?: boolean
+          cover?: Json | null
           created_at?: string
+          description?: string | null
           friends_taken_count?: number
           live_week?: string | null
+          quiz_id?: string | null
           slug: string
           status?: Database["public"]["Enums"]["quiz_status"]
-          title: string
+          title?: string
+          web_takeable?: boolean
         }
         Update: {
+          comparable?: boolean
+          cover?: Json | null
           created_at?: string
+          description?: string | null
           friends_taken_count?: number
           live_week?: string | null
+          quiz_id?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["quiz_status"]
           title?: string
+          web_takeable?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_registry_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_responses: {
         Row: {
@@ -1503,6 +1623,7 @@ export type Database = {
           audience_tier: Database["public"]["Enums"]["tier"]
           author_id: string
           created_at: string
+          expires_at: string | null
           id: string
           when_window: Database["public"]["Enums"]["touch_grass_when"]
           why: string | null
@@ -1511,6 +1632,7 @@ export type Database = {
           audience_tier?: Database["public"]["Enums"]["tier"]
           author_id: string
           created_at?: string
+          expires_at?: string | null
           id?: string
           when_window: Database["public"]["Enums"]["touch_grass_when"]
           why?: string | null
@@ -1519,6 +1641,7 @@ export type Database = {
           audience_tier?: Database["public"]["Enums"]["tier"]
           author_id?: string
           created_at?: string
+          expires_at?: string | null
           id?: string
           when_window?: Database["public"]["Enums"]["touch_grass_when"]
           why?: string | null
@@ -1526,6 +1649,227 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "touch_grass_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      touch_grass_responses: {
+        Row: {
+          created_at: string
+          signal_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          signal_id: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          signal_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "touch_grass_responses_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "touch_grass"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "touch_grass_responses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recap_weeks: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          week_of: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          week_of: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          week_of?: string
+        }
+        Relationships: []
+      }
+      recap_questions: {
+        Row: {
+          author_id: string | null
+          created_at: string
+          id: string
+          idx: number
+          source: string
+          text: string
+          week_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          idx: number
+          source?: string
+          text: string
+          week_id: string
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          idx?: number
+          source?: string
+          text?: string
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recap_questions_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "recap_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recap_submitted_questions: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          text: string
+          used: boolean
+          votes: number
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          text: string
+          used?: boolean
+          votes?: number
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          text?: string
+          used?: boolean
+          votes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recap_submitted_questions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recap_question_votes: {
+        Row: {
+          created_at: string
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recap_question_votes_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "recap_submitted_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recap_question_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recap_answers: {
+        Row: {
+          author_id: string
+          created_at: string
+          duration_seconds: number
+          expires_at: string | null
+          id: string
+          media_id: string | null
+          question_index: number
+          visible_to_tier: Database["public"]["Enums"]["tier"]
+          week_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          duration_seconds?: number
+          expires_at?: string | null
+          id?: string
+          media_id?: string | null
+          question_index: number
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+          week_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          duration_seconds?: number
+          expires_at?: string | null
+          id?: string
+          media_id?: string | null
+          question_index?: number
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recap_answers_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "recap_weeks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recap_answers_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recap_answers_author_id_fkey"
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -1605,6 +1949,7 @@ export type Database = {
         Row: {
           discoverable: boolean
           home_city: string | null
+          home_layout: Json | null
           locale: string | null
           meet_scope: string
           notif_prefs: Json
@@ -1615,6 +1960,7 @@ export type Database = {
         Insert: {
           discoverable?: boolean
           home_city?: string | null
+          home_layout?: Json | null
           locale?: string | null
           meet_scope?: string
           notif_prefs?: Json
@@ -1625,6 +1971,7 @@ export type Database = {
         Update: {
           discoverable?: boolean
           home_city?: string | null
+          home_layout?: Json | null
           locale?: string | null
           meet_scope?: string
           notif_prefs?: Json
@@ -1666,7 +2013,10 @@ export type Database = {
       weekly_activities: {
         Row: {
           active: boolean
+          closes_in: string | null
+          cover: Json | null
           created_at: string
+          emoji: string | null
           ends_at: string | null
           id: string
           prompt: string | null
@@ -1675,7 +2025,10 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          closes_in?: string | null
+          cover?: Json | null
           created_at?: string
+          emoji?: string | null
           ends_at?: string | null
           id?: string
           prompt?: string | null
@@ -1684,7 +2037,10 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          closes_in?: string | null
+          cover?: Json | null
           created_at?: string
+          emoji?: string | null
           ends_at?: string | null
           id?: string
           prompt?: string | null
@@ -1721,7 +2077,7 @@ export type Database = {
       quiz_status: "live" | "draft" | "archived"
       reaction_kind: "circleVideo" | "text" | "sticker"
       storage_plan: "rolling30" | "unlimited"
-      story_type: "photo" | "video"
+      story_type: "photo" | "video" | "audio"
       summary_cadence: "weekly" | "daily"
       tier: "none" | "acquaintance" | "friend" | "close"
       touch_grass_when: "now" | "tonight" | "weekend"
@@ -1866,7 +2222,7 @@ export const Constants = {
       quiz_status: ["live", "draft", "archived"],
       reaction_kind: ["circleVideo", "text", "sticker"],
       storage_plan: ["rolling30", "unlimited"],
-      story_type: ["photo", "video"],
+      story_type: ["photo", "video", "audio"],
       summary_cadence: ["weekly", "daily"],
       tier: ["none", "acquaintance", "friend", "close"],
       touch_grass_when: ["now", "tonight", "weekend"],

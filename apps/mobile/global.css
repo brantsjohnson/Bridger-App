@@ -19,13 +19,14 @@
 @tailwind utilities;
 
 @layer base {
-  /* --- LIGHT THEME (default): warm eggshell canvas, tinted containers ---
-     `surface` is deliberately NOT white: cards should read as colored blocks
-     on the canvas, matching the purple synth grid behind them. The profile
-     section widgets are the one exception and ask for plain white directly. */
+  /* --- LIGHT THEME (default): warm eggshell canvas, white containers ---
+     `surface` is plain white on purpose. Color in Bridger comes from VIVID
+     accent fills on the things that matter (Touch Grass, Connect Over, the
+     event header, message rows) — not from tinting every container a pale
+     shade. A washed-out lavender everywhere reads as muted, not playful. */
   :root {
     --canvas: 250 248 242;
-    --surface: 242 238 255;
+    --surface: 255 255 255;
     --ink: 28 27 22;
     --ink-soft: 74 72 63;
     --ink-mute: 138 135 123;

@@ -13,7 +13,8 @@ import { cn } from '../lib/cn';
 import type { AnalyticsProps } from '../lib/analytics';
 
 type TextFieldProps = {
-  label: string;
+  /** leave empty when the parent draws its own label (e.g. required asterisk) */
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -23,6 +24,8 @@ type TextFieldProps = {
   multiline?: boolean;
   autoComplete?: 'email' | 'password' | 'new-password' | 'off';
   accessibilityLabel?: string;
+  /** called when the user presses Enter / Done on the keyboard */
+  onSubmitEditing?: () => void;
 } & Pick<AnalyticsProps, 'analyticsId'>;
 
 export function TextField({
@@ -35,13 +38,14 @@ export function TextField({
   multiline = false,
   autoComplete,
   accessibilityLabel,
-  analyticsId
+  analyticsId,
+  onSubmitEditing
 }: TextFieldProps) {
   const c = useThemeColors();
 
   return (
     <View className="w-full">
-      <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">{label}</Text>
+      {label ? <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">{label}</Text> : null}
       <View
         className={cn(
           'rounded-2xl border bg-canvas-raised px-4',
@@ -60,6 +64,9 @@ export function TextField({
           keyboardType={type === 'email' ? 'email-address' : 'default'}
           autoComplete={autoComplete}
           multiline={multiline}
+          returnKeyType={onSubmitEditing ? 'done' : undefined}
+          onSubmitEditing={onSubmitEditing}
+          blurOnSubmit={!!onSubmitEditing}
           accessibilityLabel={accessibilityLabel ?? label}
           className="font-sans-sb text-[14px] text-ink"
           style={{ padding: 0 }}

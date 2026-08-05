@@ -36,6 +36,11 @@ type Props = {
   onCreateSticker: () => void;
   /** bumped by the parent after a new sticker is saved, so the strip refreshes */
   refreshKey?: number;
+  /**
+   * Distance from the bottom of the screen to park the strip (just above the
+   * emoji button in the bottom reaction row).
+   */
+  anchorBottom?: number;
 };
 
 export function StickerTray({
@@ -44,7 +49,8 @@ export function StickerTray({
   onPickEmoji,
   onPickCustom,
   onCreateSticker,
-  refreshKey = 0
+  refreshKey = 0,
+  anchorBottom = 240
 }: Props) {
   const [mine, setMine] = useState<CustomSticker[]>([]);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -87,19 +93,22 @@ export function StickerTray({
         className="absolute inset-0"
       />
 
+      {/*
+        Strip sits above the bottom-right emoji button and unrolls leftward
+        so it stays on screen.
+      */}
       <Animated.View
         style={{
           position: 'absolute',
-          right: 62,
-          top: '50%',
-          marginTop: -26,
-          maxWidth: '76%',
+          right: 12,
+          bottom: anchorBottom,
+          maxWidth: '88%',
           opacity: reveal,
           transform: [
             {
-              translateX: reveal.interpolate({
+              translateY: reveal.interpolate({
                 inputRange: [0, 1],
-                outputRange: [28, 0]
+                outputRange: [16, 0]
               })
             }
           ]
@@ -108,7 +117,7 @@ export function StickerTray({
         <AnalyticsRegion
           analyticsId={STICKER_TRAY.picker.strip}
           interactive={false}
-          className="overflow-hidden rounded-full border-2 border-ink bg-white"
+          className="overflow-hidden rounded-full border-2 border-[#1C1B16] bg-white"
         >
           <ScrollView
             horizontal

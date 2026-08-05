@@ -91,7 +91,12 @@ export function EventCard({
               {event.time} · {event.place}
             </Text>
           </View>
-          {event.countdown ? <CountdownChip label={event.countdown} /> : null}
+          {/* Ticks down to the second when we know the real start time. */}
+          {event.countdown || event.startsAt ? (
+            <View className="w-[132px] shrink-0">
+              <CountdownChip label={event.countdown} startsAt={event.startsAt} />
+            </View>
+          ) : null}
         </View>
 
         <View className="mt-4 flex-row items-center justify-between gap-3">

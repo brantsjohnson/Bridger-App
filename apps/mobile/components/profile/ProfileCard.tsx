@@ -516,7 +516,7 @@ export function ProfileHeader({
                 <Text
                   className={cn(
                     'font-sans-b text-[12px]',
-                    editing ? 'text-white' : 'text-ink-soft'
+                    editing ? 'text-white' : 'text-ink'
                   )}
                 >
                   {editing ? 'Done' : 'Edit'}

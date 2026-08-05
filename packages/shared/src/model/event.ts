@@ -4,17 +4,17 @@ import { Cover } from './cover';
 export type EventRole = 'host' | 'going' | 'invited';
 
 /**
- * One "who's bringing what" line on an event. The host adds the label (e.g.
- * "chips"); a guest can claim it (`assigneeId`) or, instead of bringing it,
- * chip in money via a plain handle. PAYMENT: `chipInHandle` is never processed
- * by us — it is a copy-paste Venmo / Cash App handle only.
+ * One Assignments line on an event. The host adds the label (e.g. "chips");
+ * someone claims it (`assigneeId`). Checking it off (`done`) is separate from
+ * claiming — only the assignee can mark done on the event page.
  */
 export interface EventAssignment {
   id: string;
   label: string;
-  /** person who claimed this item; unset = still open */
+  /** person who claimed this item; unset = still open for anyone to snag */
   assigneeId?: string;
-  chipInHandle?: string;
+  /** checked off by the assignee only — not set just because someone claimed it */
+  done?: boolean;
 }
 
 export interface EventItem {
@@ -36,10 +36,14 @@ export interface EventItem {
   coHostIds?: string[];
   role: EventRole;
   going?: boolean;
-  /** "in 2 days" */
+  /** "in 2 days" — the rough version, for screen readers and fallbacks */
   countdown?: string;
+  /**
+   * When it actually starts, as epoch milliseconds. With this the event shows a
+   * live clock counting down to the second instead of a rounded-off label.
+   */
+  startsAt?: number;
   bio?: string;
-  bring?: string;
   /** plain Venmo / Cash App handle — never processed by us */
   chipInHandle?: string;
   /** what the host is asking for, per person */
@@ -49,9 +53,9 @@ export interface EventItem {
   /** why the host is asking, in their words */
   chipInNote?: string;
   allowFriendsToInvite?: boolean;
-  /** default 35; beyond this is a paid expansion */
+  /** default 35; beyond this is a paid expansion / co-op benefit */
   cap?: number;
-  /** "who's bringing what" sign-up list (optional) */
+  /** Assignments sign-up list (optional) */
   assignments?: EventAssignment[];
 }
 

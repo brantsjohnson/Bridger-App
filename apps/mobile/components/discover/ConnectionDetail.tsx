@@ -5,19 +5,21 @@
 // Full connection reveal ships later (REVEAL.md); this is the decision surface.
 // Analytics: approve/decline use DISCOVER.wants_to_connect.*; Add uses people_to_meet.add.
 // ============================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { DISCOVER } from '@bridger/shared';
 import {
-  Avatar,
   ButtonSecondary,
-  PixelHeading,
+  NotFoundScreen,
   Screen,
   ScreenBody,
-  ScreenHeader
+  ScreenHeader,
+  SectionTitle
 } from '@bridger/ui';
 import type { Commonality } from '../../data/discover';
-import { personById } from '../../data/people';
+import { PersonAvatar } from '../PersonAvatar';
+import { personById, personExists } from '../../data/people';
+import { reportNotFoundHit } from '../../lib/route-trail';
 import { CommonalityList } from './CommonalityList';
 import { ConnectionMap } from './ConnectionMap';
 
@@ -41,10 +43,30 @@ export function ConnectionDetail({
   const person = personById(personId);
   const via = personById(viaId);
   const [decision, setDecision] = useState<'accepted' | 'declined' | null>(null);
+  const reportedMissing = useRef(false);
 
   useEffect(() => {
     setDecision(null);
   }, [personId, kind]);
+
+  // Broken connection path → Magic Patterns 404 + trail for admin.
+  useEffect(() => {
+    if (personExists(personId) || reportedMissing.current) return;
+    reportedMissing.current = true;
+    void reportNotFoundHit({
+      missingPath: `/discover/connect/${personId}`,
+      reason: 'connection_error'
+    });
+  }, [personId]);
+
+  if (!personExists(personId)) {
+    return (
+      <NotFoundScreen
+        title="Error 404"
+        onDismiss={onBack}
+      />
+    );
+  }
 
   // Requests use approve/decline; suggestions reuse add / dismiss ids.
   const acceptId =
@@ -57,7 +79,7 @@ export function ConnectionDetail({
       <ScreenHeader title="Connect" onBack={onBack} hideProfile analyticsSurface="discover" />
       <ScreenBody>
         <View className="items-center">
-          <Avatar name={person.name} emoji={person.emoji} accent={person.accent} personId={person.id} size="xl" />
+          <PersonAvatar id={person.id} size="xl" />
           <Text className="mt-3 font-sans-b text-[20px] tracking-tight text-ink">
             {person.name}
           </Text>
@@ -110,12 +132,19 @@ export function ConnectionDetail({
         </View>
 
         <View className="mt-6">
-          <PixelHeading size="md" className="mb-2">
-            In common
-          </PixelHeading>
+          <SectionTitle
+            title="In common"
+            description="What you and they already share — the reason Bridger thinks you'd click. The same list lives on their profile under In common."
+            infoAnalyticsId={DISCOVER.in_common.info}
+            parentScreen="discover"
+            section="in_common"
+            className="mb-2"
+          />
+          {/* Discover shows the shared hobbies only — the answers live in the reveal / In common. */}
           <CommonalityList
             items={commonalities}
             theirName={person.name.split(' ')[0]}
+            showAnswers={false}
           />
         </View>
       </ScreenBody>

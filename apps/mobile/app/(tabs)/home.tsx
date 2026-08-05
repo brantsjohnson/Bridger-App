@@ -7,7 +7,7 @@
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import {
   ButtonSecondary,
   Screen,
@@ -15,7 +15,14 @@ import {
   ScreenHeader,
   SectionTitle
 } from '@bridger/ui';
-import { HOME, openSurface, trackProduct, type GrassSignal } from '@bridger/shared';
+import {
+  DEFAULT_HOME_LAYOUT,
+  HOME,
+  openSurface,
+  trackProduct,
+  type GrassSignal,
+  type HomeWidgetDefault
+} from '@bridger/shared';
 import { AddStoryTile, StoryTile } from '../../components/StoryTile';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { ColdStart } from '../../components/ColdStart';
@@ -38,7 +45,9 @@ import { AskSheet } from '../../components/home/AskSheet';
 import { ComingUpWidget } from '../../components/home/ComingUpWidget';
 import { FreshnessCard } from '../../components/home/FreshnessCard';
 import { StoryRepliesRow } from '../../components/home/StoryRepliesRow';
+import { getHomeLayout, saveHomeLayout } from '../../data/feed';
 import { startThreadWith } from '../../data/messages';
+import { isDemoMode } from '../../lib/demo';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
@@ -46,15 +55,23 @@ import { useTouchGrass } from '../../hooks/useTouchGrass';
 type WidgetKey = 'event' | 'alerts' | 'ask' | 'comingup' | 'activity' | 'quiz' | 'coop';
 type WidgetState = { key: WidgetKey; size: WidgetSize };
 
-const DEFAULT_LAYOUT: WidgetState[] = [
-  { key: 'event', size: 'half' },
-  { key: 'alerts', size: 'half' },
-  { key: 'comingup', size: 'full' },
-  { key: 'ask', size: 'full' },
-  { key: 'activity', size: 'full' },
-  { key: 'quiz', size: 'full' },
-  { key: 'coop', size: 'full' }
-];
+const WIDGET_KEYS = new Set<WidgetKey>([
+  'event',
+  'alerts',
+  'ask',
+  'comingup',
+  'activity',
+  'quiz',
+  'coop'
+]);
+
+function toWidgetState(rows: HomeWidgetDefault[]): WidgetState[] {
+  return rows
+    .filter((w): w is HomeWidgetDefault & { key: WidgetKey } => WIDGET_KEYS.has(w.key as WidgetKey))
+    .map((w) => ({ key: w.key as WidgetKey, size: w.size }));
+}
+
+const DEFAULT_LAYOUT: WidgetState[] = toWidgetState(DEFAULT_HOME_LAYOUT);
 
 const EMPTY_LAYOUT: WidgetState[] = [
   { key: 'quiz', size: 'full' },
@@ -111,15 +128,39 @@ export default function HomeScreen() {
   const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
   const nextEvent = events[0] ?? null;
-  const [quizResultId] = useState<string | null>(null);
+  // Prefer a result already saved on the quiz payload (live complete).
+  const quizResultId = feed.quiz?.resultId ?? null;
 
   // Mark Home as the active analytics surface when this tab opens.
   useEffect(() => {
     openSurface('home');
   }, []);
 
+  // Load saved / admin Home layout (demo stays on the seeded DEFAULT_LAYOUT).
   useEffect(() => {
-    setLayout(empty ? EMPTY_LAYOUT : DEFAULT_LAYOUT);
+    let cancelled = false;
+    (async () => {
+      if (empty) {
+        setLayout(EMPTY_LAYOUT);
+        return;
+      }
+      if (isDemoMode()) {
+        setLayout(DEFAULT_LAYOUT);
+        return;
+      }
+      try {
+        const rows = await getHomeLayout();
+        if (!cancelled) {
+          const mapped = toWidgetState(rows);
+          setLayout(mapped.length ? mapped : DEFAULT_LAYOUT);
+        }
+      } catch {
+        if (!cancelled) setLayout(DEFAULT_LAYOUT);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [empty]);
 
   const visibleLayout = member ? layout : layout.filter((w) => w.key !== 'ask');
@@ -219,8 +260,9 @@ export default function HomeScreen() {
           <NextEventWidget
             event={nextEvent}
             size={widget.size}
-            onOpen={() => router.push('/(tabs)/events')}
-            onSeeAll={() => router.push('/(tabs)/events')}
+            onOpen={() =>
+              router.push({ pathname: '/event/[id]', params: { id: nextEvent.id } })
+            }
           />
         ) : (
           <Text className="font-sans-sb text-[13px] text-ink-mute">Nothing this week yet.</Text>
@@ -265,8 +307,8 @@ export default function HomeScreen() {
             size={widget.size}
             quiz={feed.quiz}
             resultId={quizResultId}
-            onTake={() => Alert.alert('Quiz', 'Quiz take flow ships next.')}
-            onOpenResult={() => Alert.alert('Quiz', 'Results dashboard ships next.')}
+            onTake={() => router.push(`/quiz/${feed.quiz!.id}` as Href)}
+            onOpenResult={() => router.push(`/quiz/${feed.quiz!.id}` as Href)}
           />
         ) : null;
       case 'coop':
@@ -292,8 +334,14 @@ export default function HomeScreen() {
           <ButtonSecondary
             size="sm"
             className="h-10"
-            tone={editing ? 'solid' : 'outline'}
-            onPress={() => setEditing((v) => !v)}
+            tone={editing ? 'solid' : 'light'}
+            onPress={() => {
+              if (editing) {
+                // Done editing: persist layout (demo keeps it session-only).
+                void saveHomeLayout(layout.map((w) => ({ key: w.key, size: w.size })));
+              }
+              setEditing((v) => !v);
+            }}
             accessibilityLabel={editing ? 'Done editing Home' : 'Edit Home layout'}
             analyticsId={HOME.top_nav.edit_layout}
           >
@@ -315,11 +363,21 @@ export default function HomeScreen() {
             section="stories_row"
             className="mb-2"
           />
-          {/* Stay inside ScreenBody padding — same left edge as Announcements */}
+          {/*
+            Bleed past ScreenBody's side padding so story tiles can scroll off
+            the right edge of the screen. paddingLeft keeps the first tile lined
+            up with the "Stories" heading; paddingRight lets the last one peek out.
+          */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingBottom: 10 }}
+            style={{ marginHorizontal: -20 }}
+            contentContainerStyle={{
+              gap: 10,
+              paddingLeft: 20,
+              paddingRight: 20,
+              paddingBottom: 10
+            }}
           >
             {empty || !feed.myStory ? (
               <AddStoryTile onPress={() => router.push('/story/capture')} />
@@ -327,7 +385,14 @@ export default function HomeScreen() {
               <StoryTile
                 story={feed.myStory}
                 mine
-                onOpen={() => router.push('/story/me')}
+                onOpen={() => {
+                  // Tray order so finishing one story opens the next friend.
+                  const seq = [
+                    'me',
+                    ...(empty ? [] : feed.stories).map((s) => s.authorId)
+                  ].join(',');
+                  router.push(`/story/me?sequence=${seq}`);
+                }}
                 onAdd={() => router.push('/story/capture')}
               />
             )}
@@ -335,7 +400,13 @@ export default function HomeScreen() {
               <StoryTile
                 key={s.id}
                 story={s}
-                onOpen={() => router.push(`/story/${s.authorId}`)}
+                onOpen={() => {
+                  const seq = [
+                    ...(feed.myStory ? ['me'] : []),
+                    ...feed.stories.map((x) => x.authorId)
+                  ].join(',');
+                  router.push(`/story/${s.authorId}?sequence=${seq}`);
+                }}
               />
             ))}
           </ScrollView>
@@ -373,6 +444,7 @@ export default function HomeScreen() {
               section={INFO[widget.key].section}
               size={widget.size}
               editing={editing}
+              index={i}
               canMoveUp={i > 0}
               canMoveDown={i < visibleLayout.length - 1}
               onMoveUp={() => moveWidget(layout.indexOf(widget), -1)}

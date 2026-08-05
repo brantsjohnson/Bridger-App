@@ -5,30 +5,40 @@
 // then three story screens: strongest link (Venn), "you've also got", and
 // "You two should click." Same content lives forever under their In common tab.
 //
+// Stays dark even when the app is in dark mode (theme tokens flip otherwise).
 // Copy is exact from REVEAL.md. Analytics surface = reveal.
 // PRIVACY: place is coarse only; analytics never gets place text or names.
 // ============================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { XIcon } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { REVEAL, openSurface, trackFlowCompleted, trackFlowStarted, trackFlowStep } from '@bridger/shared';
 import {
   Avatar,
   ButtonPrimary,
-  PixelHeading,
+  NotFoundScreen,
   Screen,
-  ScreenBody
+  ScreenBody,
+  withAnalyticsPress
 } from '@bridger/ui';
 import { CommonalityList } from '../../components/discover/CommonalityList';
 import { HowYouMetStep } from '../../components/reveal/HowYouMetStep';
+import { QuizMatchList } from '../../components/reveal/QuizMatchList';
 import { RevealClose } from '../../components/reveal/RevealClose';
+import { RevealOrbs } from '../../components/reveal/RevealOrbs';
 import { RevealProgressBars } from '../../components/reveal/RevealProgressBars';
-import { VennDiagram } from '../../components/reveal/VennDiagram';
 import { useReveal } from '../../hooks/useReveal';
+import { personExists } from '../../data/people';
+import { reportNotFoundHit } from '../../lib/route-trail';
 
 type Frame = 'met' | 'strongest' | 'others' | 'close';
 const STORY_FRAMES: Frame[] = ['strongest', 'others', 'close'];
+
+/** Fixed cream-on-dark labels — REVEAL.md exception; theme tokens flip in dark mode. */
+const REVEAL_FG = '#F5F0E6';
+const REVEAL_MUTE = 'rgba(245, 240, 230, 0.55)';
 
 export default function RevealRoute() {
   const router = useRouter();
@@ -42,19 +52,33 @@ export default function RevealRoute() {
     loading,
     context,
     setContext,
+    tier,
+    setTier,
     recordPlace,
     setRecordPlace,
+    meetNote,
+    setMeetNote,
     commit,
     canContinue
   } = useReveal(personId, viaId);
 
   const [frame, setFrame] = useState<Frame>('met');
   const [startedAt] = useState(() => Date.now());
+  const reportedMissing = useRef(false);
 
   useEffect(() => {
     openSurface('reveal');
     trackFlowStarted('reveal');
   }, []);
+
+  useEffect(() => {
+    if (personExists(personId) || reportedMissing.current) return;
+    reportedMissing.current = true;
+    void reportNotFoundHit({
+      missingPath: `/reveal/${personId}`,
+      reason: 'connection_error'
+    });
+  }, [personId]);
 
   const first = payload?.person.name.split(' ')[0] ?? 'them';
   const viaName = payload?.via?.name.split(' ')[0];
@@ -88,37 +112,86 @@ export default function RevealRoute() {
       trackFlowStep('reveal', 'close');
       setFrame('close');
     }
+    // On 'close' a right-tap does nothing — it holds until "See profile".
   };
+
+  // Tap the left half to step back through the story. You can never tap back
+  // past the first story card (that would feel like closing) — use the X.
+  const goBack = () => {
+    if (frame === 'close') {
+      if ((payload?.others.length ?? 0) === 0) {
+        setFrame('strongest');
+      } else {
+        setFrame('others');
+      }
+      return;
+    }
+    if (frame === 'others') {
+      setFrame('strongest');
+    }
+    // On 'strongest' a left-tap does nothing.
+  };
+
+  if (!personExists(personId)) {
+    return (
+      <NotFoundScreen
+        title="Error 404"
+        onDismiss={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/discover');
+        }}
+      />
+    );
+  }
 
   if (loading || !payload) {
     return (
-      <Screen tone="plain" className="bg-ink">
+      <Screen tone="plain" className="bg-[#0E0E0E]">
         <View
           className="flex-1 items-center justify-center"
           style={{ paddingTop: insets.top }}
         >
-          <Text className="font-sans-sb text-[14px] text-white/60">Loading…</Text>
+          <Text className="font-sans-sb text-[14px]" style={{ color: REVEAL_MUTE }}>
+            Loading…
+          </Text>
         </View>
       </Screen>
     );
   }
 
+  const isStory = frame !== 'met';
+  // Progress: full-and-held on the closing card, otherwise the current step.
+  const progressActive = frame === 'close' ? 3 : storyIndex < 0 ? 0 : storyIndex;
+
   return (
-    <Screen tone="plain" className="bg-ink">
+    <Screen tone="plain" className="bg-[#0E0E0E]">
       <View className="flex-1" style={{ paddingTop: insets.top + 8 }}>
-        {/* Screens 1–3 get the 3 segmented progress bars; Screen 0 does not */}
-        {frame !== 'met' ? (
-          <View className="px-5">
-            <RevealProgressBars
-              active={storyIndex < 0 ? 0 : storyIndex}
-            />
+        {/* Screens 1–3 get the 3 segmented progress bars + an X to leave early */}
+        {isStory ? (
+          <View className="flex-row items-center gap-3 px-5">
+            <View className="flex-1">
+              <RevealProgressBars active={progressActive} />
+            </View>
+            <Pressable
+              onPress={withAnalyticsPress(REVEAL.flow.close, goSeeProfile)}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={`Close and open ${first}'s profile`}
+              className="h-8 w-8 items-center justify-center rounded-full"
+              style={{ backgroundColor: 'rgba(245, 240, 230, 0.1)' }}
+            >
+              <XIcon size={18} color={REVEAL_FG} strokeWidth={2.4} />
+            </Pressable>
           </View>
         ) : null}
 
         <ScreenBody className="pb-4 pt-6">
           {/* via chip — who connects you */}
           {viaName ? (
-            <Text className="mb-3 text-center font-sans-md text-[13px] text-white/50">
+            <Text
+              className="mb-3 text-center font-sans-md text-[13px]"
+              style={{ color: REVEAL_MUTE }}
+            >
               via {viaName}
             </Text>
           ) : null}
@@ -131,85 +204,144 @@ export default function RevealRoute() {
               personId={payload.person.id}
               size="xl"
             />
-            <PixelHeading size="md" className="mt-4 text-canvas">
+            <Text
+              className="mt-4 text-center font-pixel text-[21px] leading-[25px]"
+              style={{ color: REVEAL_FG }}
+            >
               {payload.person.name}
-            </PixelHeading>
+            </Text>
           </View>
 
           {frame === 'met' ? (
             <View className="mt-8">
-              <PixelHeading size="md" className="mb-4 text-center text-canvas">
+              <Text
+                className="mb-4 text-center font-pixel text-[21px] leading-[25px]"
+                style={{ color: REVEAL_FG }}
+              >
                 How did you two meet?
-              </PixelHeading>
+              </Text>
               <HowYouMetStep
                 context={context}
                 onContext={setContext}
+                tier={tier}
+                onTier={setTier}
                 recordPlace={recordPlace}
                 onRecordPlace={setRecordPlace}
+                meetNote={meetNote}
+                onMeetNote={setMeetNote}
+                viaDiscover={Boolean(payload.via)}
               />
             </View>
           ) : null}
 
           {frame === 'strongest' && payload.strongest ? (
-            <Pressable
-              onPress={() => void advance()}
-              accessibilityRole="button"
-              accessibilityLabel="Tap to continue"
-              className="mt-8 items-center"
-            >
-              <VennDiagram
-                yourAccent={payload.me.accent}
-                theirAccent={payload.person.accent}
+            <View className="mt-8 items-center">
+              <RevealOrbs
+                me={payload.me}
+                them={payload.person}
                 label={payload.strongest.label}
               />
-              <Text className="mt-5 font-sans-b text-[12px] uppercase tracking-wide text-white/50">
+              <Text
+                className="mt-5 font-sans-b text-[12px] uppercase tracking-wide"
+                style={{ color: REVEAL_MUTE }}
+              >
                 What connects you most
               </Text>
-              <Text className="mt-2 px-2 text-center font-sans-b text-[22px] leading-snug text-canvas">
+              <Text
+                className="mt-2 px-2 text-center font-sans-b text-[22px] leading-snug"
+                style={{ color: REVEAL_FG }}
+              >
                 {payload.strongest.label}
               </Text>
-            </Pressable>
+            </View>
           ) : null}
 
           {frame === 'others' ? (
-            <Pressable
-              onPress={() => void advance()}
-              accessibilityRole="button"
-              accessibilityLabel="Tap to continue"
-              className="mt-8"
-            >
-              <Text className="mb-4 text-center font-sans-b text-[18px] text-canvas">
-                You&apos;ve also got…
-              </Text>
-              <CommonalityList items={payload.others} theirName={first} />
-            </Pressable>
+            <View className="mt-8 gap-6">
+              {payload.quizMatches.length > 0 ? (
+                <View>
+                  <Text
+                    className="mb-3 text-center font-sans-b text-[18px]"
+                    style={{ color: REVEAL_FG }}
+                  >
+                    How you line up
+                  </Text>
+                  <QuizMatchList items={payload.quizMatches} />
+                </View>
+              ) : null}
+              <View>
+                <Text
+                  className="mb-4 text-center font-sans-b text-[18px]"
+                  style={{ color: REVEAL_FG }}
+                >
+                  You&apos;ve also got…
+                </Text>
+                <CommonalityList items={payload.others} theirName={first} />
+              </View>
+            </View>
           ) : null}
 
-          {frame === 'close' ? (
-            <RevealClose firstName={first} onSeeProfile={goSeeProfile} />
-          ) : null}
+          {frame === 'close' ? <RevealClose /> : null}
         </ScreenBody>
 
-        {frame !== 'close' ? (
-          <View className="px-5" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
-            <ButtonPrimary
-              full
-              disabled={frame === 'met' && !canContinue}
-              analyticsId={REVEAL.flow.continue}
-              onPress={() => void advance()}
-              accessibilityLabel="Continue"
-            >
-              Continue
-            </ButtonPrimary>
-            {frame === 'met' ? (
-              <Text className="mt-2 text-center font-sans-md text-[12px] text-white/50">
+        {/* Story tap zones: left half = back, right half = forward. They sit on
+            the side edges so the middle stays scrollable for long lists. */}
+        {isStory ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={withAnalyticsPress(REVEAL.flow.tap_prev, () => void goBack())}
+              style={{ position: 'absolute', left: 0, top: insets.top + 52, bottom: 96, width: '28%' }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Next"
+              onPress={withAnalyticsPress(REVEAL.flow.tap_next, () => void advance())}
+              style={{ position: 'absolute', right: 0, top: insets.top + 52, bottom: 96, width: '28%' }}
+            />
+          </>
+        ) : null}
+
+        <View className="px-5" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+          {frame === 'met' ? (
+            <>
+              <ButtonPrimary
+                full
+                disabled={!canContinue}
+                analyticsId={REVEAL.flow.continue}
+                onPress={() => void advance()}
+                accessibilityLabel="Continue"
+              >
+                Continue
+              </ButtonPrimary>
+              <Text
+                className="mt-2 text-center font-sans-md text-[12px]"
+                style={{ color: REVEAL_MUTE }}
+              >
                 next · what you have in common
               </Text>
-            ) : null}
-          </View>
-        ) : (
-          <View style={{ paddingBottom: Math.max(insets.bottom, 16) }} />
-        )}
+            </>
+          ) : frame === 'close' ? (
+            <ButtonPrimary
+              full
+              size="lg"
+              analyticsId={REVEAL.flow.see_profile}
+              onPress={goSeeProfile}
+              accessibilityLabel={`See ${first}'s profile`}
+            >
+              {`See ${first}'s profile`}
+            </ButtonPrimary>
+          ) : (
+            // Story cards move on tap — no button, just a gentle hint.
+            <Text
+              className="text-center font-sans-md text-[12px]"
+              style={{ color: REVEAL_MUTE }}
+            >
+              Tap right to keep going · tap left to go back
+            </Text>
+          )}
+        </View>
       </View>
     </Screen>
   );
