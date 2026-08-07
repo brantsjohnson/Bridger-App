@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // One Assignments row on the event detail page. Same colorful name dropdown as
-// create (assign / reassign / leave open). The assignee (or host viewing) can
-// see the check-off; only the assignee can toggle done. No "Snag" label.
+// create (assign / reassign / leave open). The assignee or the host can check
+// an item off; guests who are not the assignee only see the done state.
+// No "Snag" label.
 // ============================================
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -28,7 +29,7 @@ export function DetailAssignmentRow({
 }: {
   item: EventAssignment;
   candidates: Person[];
-  /** Only the assignee may check it off */
+  /** Assignee or host/co-host may check it off */
   canToggleDone: boolean;
   /** Host (and assignee) see the done mark even when they cannot toggle */
   showDoneState: boolean;

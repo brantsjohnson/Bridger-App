@@ -4,7 +4,11 @@
 // quiz is live, and the three themed capture prompts. One row in admin_config.
 // ============================================
 
+import type { AssistantAdminConfig } from './assistant';
 import type { ThemedPrompt } from './story';
+
+export type { AssistantAdminConfig, AssistantAccess, AssistantToolName } from './assistant';
+export { DEFAULT_ASSISTANT_ADMIN } from './assistant';
 
 /** Keys for the Home widgets people can rearrange. */
 export type HomeWidgetKey =
@@ -30,6 +34,8 @@ export interface AdminConfig {
   homeDefaults: HomeDefaults;
   liveQuizSlug: string | null;
   themedPrompts: ThemedPrompt[];
+  /** Opt-in Assistant access + tool kills (AGENT.md). */
+  assistant?: AssistantAdminConfig;
 }
 
 /** Seeded / fallback Home layout when admin_config is empty. */

@@ -70,6 +70,35 @@ The line between "this app gets me" and "this app is watching me" is **provenanc
 - **Freshness** learns per-category staleness priors (hobbies churn; hometowns don't).
 - **Weights/thresholds** drift toward what produces Close friendships in *this* community, not a generic one.
 
+
+## 7 · How learning actually happens (one pair, end to end)
+
+1. **Decision time.** Discover considers suggesting Ana to Ben. The scorer computes named features — quiz_alignment 0.71 (confidence-weighted), embedding_similarity 0.63, shared_attributes 0.82 (two high-specificity overlaps: bouldering + ceramics), mutual_warmth 0.5, context_fit 0.6 — combines them with `matching_config` weights → 0.71, above threshold, evidence gate passed. The suggestion renders; the **feature snapshot is frozen** into `matching_feedback` at that moment.
+2. **Outcome arrives.** Ben adds Ana (weak positive, weight 0.3). Three weeks later he promotes her to Close — the **gold label** (1.0) lands on the same snapshot. Had he tapped "don't suggest again": −0.5; blocked: −1.0 retroactive on the pair.
+3. **Training (v2+).** Monthly, the logistic regression refits over all snapshots→outcomes. Suppose shared_attributes at high specificity keeps predicting Close while raw embedding similarity adds little for this community: its weight rises, embedding's falls. Nothing about the *features* changes — only how much each is trusted.
+4. **Gate & ship.** Offline eval on a held-out month: candidate beats incumbent on top-k precision for became-Close (not clicks). Ship behind the config flag to a cohort; watch dismiss/block rates fall; roll on or roll back by flipping the row.
+5. **Deletion.** Ana deletes her account → her rows AND every pair-row she appears in purge; the next refit never sees her.
+
+## 8 · The feature dictionary & labels (the contract)
+
+Features are **named, bounded [0–1], and human-readable** — the same names in code, config, snapshots, and this doc: `quiz_alignment` (computed over the **intersection of quizzes both people completed** at compatible versions — 0 when none shared; each shared quiz is its own evidence item) · `embedding_similarity` · `shared_attributes` (inverse-frequency weighted) · `moderator_notes_affinity` · `mutual_warmth` · `context_fit` (+ per-user taste vector, v3). Labels: promoted-to-Close **+1.0** · added/approved **+0.3** · reveal→message/plan **+0.4** · event-attended-after-suggestion **+0.4** · dismissed **−0.3** · don't-suggest-again **−0.5** · removed **−0.7** · blocked **−1.0**. Adding a feature or label = a PR to this table first — the dictionary is the contract that keeps every suggestion explainable.
+
+## 9 · Cold start (a new community, day one)
+
+- **v1 weights work with zero history** — hand-set, transparent; learning starts as logging, not behavior.
+- **A new user** leans on onboarding basics + Discover-Me modules; embeddings mature as they fill modules (each answer visibly improves their matches — the incentive is honest).
+- **Small-n rules:** no v2 fit below a few thousand labeled pairs (v1 stays); exploration ε starts higher (~15%) when data is thin and anneals down; the evidence gate never relaxes — early Discover being sparse is correct, not a bug to paper over.
+
+## 10 · The learning dashboard (what "is it working" looks like)
+
+One admin view: **north star** = add→Close rate on suggested pairs (trend, by cohort) · suggestion→add rate · reveal→message/plan rate · dismiss + block rates on suggestions (**should fall** as learning works) · exploration yield (do ε-slots convert?) · **exposure distribution** (no one hogging suggestion slots; quiet profiles surfacing) · feature-weight history over versions (the story of what this community actually bonds over) · drift alarms. Every number computes from `matching_feedback` + domain tables — never the UX-analytics store.
+
+## 11 · How it can grow (and what it never becomes)
+
+In order, each gated on beating the incumbent at connection outcomes: **v2** logistic (same features) → **v3** boosted ranker + learned embedding re-weighting + per-user taste vectors → **community priors** (per-community weight sets — what predicts friendship in a climbing town ≠ a college co-op) → **temporal features** (seasonality of touch-grass conversion; never time-in-app) → **quiz self-improvement loop** (chronic low-confidence questions auto-flagged for rewrite in admin).
+
+Never on the roadmap, by design: engagement objectives in any form · deep end-to-end models over raw behavior · content-based features (message/note text) · emotion or vulnerability inference · cross-community data pooling that would leak one community's patterns into another. If a future idea needs one of these, the answer is already written down: no.
+
 ## Acceptance criteria
 
 - [ ] No model anywhere optimizes engagement/time-in-app; offline + online evals score connection outcomes only.
@@ -79,3 +108,7 @@ The line between "this app gets me" and "this app is watching me" is **provenanc
 - [ ] Snapshot-at-decision training, holdout cohorts, config-flag rollback, drift alarms, scheduled retrains.
 - [ ] Feedback TTL + deletion purge (including pair-rows) implemented and tested.
 - [ ] Every user-visible "aware" moment cites only tier-visible shared facts; no behavioral references; no emotion inference; user edits override learned state immediately.
+- [ ] The feature dictionary + label weights (§8) exist as one source of truth shared by code, config, and snapshots; changes land there first.
+- [ ] Cold-start rules hold: v1-only below the data floor, higher annealed ε early, evidence gate never relaxed.
+- [ ] The learning dashboard (§10) computes exclusively from matching_feedback + domain tables.
+- [ ] Deletion purges a person's rows and all pair-rows before the next refit.

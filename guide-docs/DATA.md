@@ -60,7 +60,7 @@ The attribute pool (hobbies, traits, values, quiz results) keyed by **opaque use
 
 1. Each person's **matchable facts** (Zone B) are embedded → `person_embeddings` (pgvector).
 2. An AI pass writes a **de-identified summary** → `person_summaries`.
-3. To find who someone should meet, retrieve **near neighbors within their circle** (1st/2nd-degree, both opted-in) via vector similarity, then an AI step compares de-identified facts to produce the **"why"** (the shared thread shown in `DISCOVER.md` / `EVENTS.md`).
+3. To find who someone should meet, Nest matching pre-filters FoF candidates (optional pgvector ANN), scores the six named features with transparent weights, and builds the **"why"** from top specificity-weighted **Everyone+matchable** overlap titles (and the quiz evidence gate). **No LLM on the matching hot path** (`MATCHING-ALGORITHMS.md`).
 4. Results are **opaque IDs + reasons**; the app joins Zone A locally to show faces and names.
 
 Embeddings/summaries refresh when matchable facts change, and are deleted on opt-out or account deletion.
@@ -139,9 +139,33 @@ activity_hearts  post_id⟶activity_posts · user_id⟶users
 
 ### AI / RAG (Zone C — de-identified, deletable)
 ```
+ai_config          job · lane(deidentified|personal_agent) · model_id · temperature · max_tokens · timeout_ms · schema_id · monthly_budget_usd · enabled
+ai_job_cost_log    job · prompt_version · latency_ms · tokens · estimated_usd · subject_ref · created_at   [NO CONTENT]
+ai_jobs            job · subject_ref · content_hash · payload_json · status · attempts · run_after · last_error   [queue]
+week_summaries     author_id⟶users · week_start · days_json · built_at
+module_moderator_notes  user_id⟶users · module_key · notes(jsonb) · updated_at   [NO PII]
+freshness_prompts  user_id⟶users · attribute_id · question · created_at · answered_at
 person_embeddings  user_id⟶users · embedding(vector) · model · updated_at    [NO PII]
 person_summaries   user_id⟶users · summary_text · updated_at · maybe_stale(bool)  [NO PII; refreshes on new answers; maybe_stale drives the "still into X?" nudge]
+matching_config    version · active · weights · thresholds/knobs · v2_enabled · holdout_pct
+matching_suggestions  viewer_id · candidate_id · surface · score · evidence · feature_snapshot · is_exploration
+matching_feedback  opaque_a · opaque_b · pair_features_snapshot · outcome · weight · superseded_at
+                   [NO CONTENT / names; TTL ~18 months; purge on delete / discoverable=false]
 ```
+
+Mode 1 evidence / `shared_attributes` = attributes with `visible_to_tier=acquaintance` AND `matchable`. Silent `none`+matchable (quiz dims) may feed embeddings + `quiz_alignment` only, never evidence titles.
+
+### Assistant (personal-agent lane — single-user, not Zone C matching)
+```
+user_settings.assistant_enabled  bool default false
+admin_config.assistant           jsonb { access, tools, allowlist }
+assistant_sessions               user_id · status(open|closed) · created_at · closed_at
+assistant_turns                  session_id · role · content · tool_name   [deleted on close/disable]
+assistant_activity_log           user_id · tool · summary · undo_payload · undone_at
+assistant_memory_chunks          user_id · kind · ref_id · text · embedding   [private RAG; NOT person_embeddings]
+assistant_proposals              user_id · session_id · tool · preview · args · status
+```
+Reconnect ranking today uses connection `created_at` + overdue check-ins (messages last-activity timestamps not yet in schema). Document when messaging timestamps land.
 
 ### Membership & payments
 ```
@@ -168,7 +192,7 @@ notifications      id · user_id⟶users · kind · payload(jsonb) · read · cr
 ```
 
 ### Deletion cascade
-Deleting a `users` row cascades to **every** table above keyed by that user — identity, attributes, relationships, content, embeddings, summaries, media (and the storage objects) — so account deletion leaves nothing behind. Opt-out (Discoverable off) deletes only `person_embeddings` + `person_summaries`.
+Deleting a `users` row cascades to **every** table above keyed by that user — identity, attributes, relationships, content, embeddings, summaries, media (and the storage objects) — so account deletion leaves nothing behind. Opt-out (Discoverable off) deletes Zone C derived rows: `person_embeddings`, `person_summaries`, `module_moderator_notes`, `freshness_prompts` (and related week/day summary rows stay with the author's content cascade on full account delete).
 
 ---
 

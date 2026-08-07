@@ -4,11 +4,13 @@
 // quizzes through the public API.
 // ============================================
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
 import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 
 @Module({
+  imports: [AiModule],
   controllers: [QuizController],
   providers: [QuizService, SupabaseAuthGuard],
   exports: [QuizService]

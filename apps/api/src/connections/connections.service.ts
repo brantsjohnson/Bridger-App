@@ -25,6 +25,7 @@ import type {
   Person,
   Tier
 } from '@bridger/shared';
+import { MatchingFeedbackService } from '../matching/matching-feedback.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TiersService } from '../tiers/tiers.service';
 
@@ -41,7 +42,8 @@ export type ConnectionPersonDto = {
 export class ConnectionsService {
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly tiers: TiersService
+    private readonly tiers: TiersService,
+    private readonly matchingFeedback: MatchingFeedbackService
   ) {}
 
   // --- helpers ---
@@ -259,6 +261,15 @@ export class ConnectionsService {
     });
     if (nErr) throw nErr;
 
+    await this.matchingFeedback
+      .recordOutcome({
+        userA: userId,
+        userB: data.user_a,
+        outcome: 'added',
+        surface: 'discover'
+      })
+      .catch(() => undefined);
+
     return { personId: data.user_a };
   }
 
@@ -291,7 +302,7 @@ export class ConnectionsService {
     return { token, url };
   }
 
-  async createQrToken(userId: string): Promise<{ token: string }> {
+  async createQrToken(userId: string): Promise<{ token: string; url: string }> {
     const token = randomUUID();
     const expires = new Date();
     expires.setMinutes(expires.getMinutes() + 15);
@@ -301,7 +312,10 @@ export class ConnectionsService {
       expires_at: expires.toISOString()
     });
     if (error) throw error;
-    return { token };
+    const base = (process.env.APP_LINK_BASE ?? '').replace(/\/$/, '');
+    const path = base ? `${base}/invite/${token}` : `bridger://invite/${token}`;
+    const url = `${path}?via=qr`;
+    return { token, url };
   }
 
   async redeem(
@@ -496,6 +510,14 @@ export class ConnectionsService {
 
   async remove(userId: string, personId: string): Promise<{ ok: true }> {
     await this.wipeConnectionAndTiers(userId, personId);
+    // Learning: removed friendship is a strong negative (domain table, not analytics).
+    await this.matchingFeedback
+      .recordOutcome({
+        userA: userId,
+        userB: personId,
+        outcome: 'removed'
+      })
+      .catch(() => undefined);
     return { ok: true };
   }
 
@@ -559,6 +581,15 @@ export class ConnectionsService {
       { onConflict: 'blocker_id,skipped_id' }
     );
     if (s2) throw s2;
+
+    // Learning: block is the strongest negative; retroactively supersedes prior rows.
+    await this.matchingFeedback
+      .recordOutcome({
+        userA: userId,
+        userB: personId,
+        outcome: 'blocked'
+      })
+      .catch(() => undefined);
 
     return { ok: true };
   }

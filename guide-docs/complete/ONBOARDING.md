@@ -1,9 +1,5 @@
 # Bridger — Onboarding Flow
 
-> **Shipped.** Implemented in `apps/mobile/app/onboarding/`, `apps/mobile/components/onboarding/`, `apps/mobile/hooks/useOnboarding.ts`, and `apps/mobile/data/onboarding.ts`, gated by the root router in `apps/mobile/app/_layout.tsx`.
->
-> **Deviations from this doc (founder feedback, kept on purpose):** name is the FIRST ask (first + last, no "friends will know it's you" copy); one progress bar only (no inner basics run); the 10 basics were cut down to just birthday (from/interests/pets/school/nickname/morning-or-night/allergies removed for now); city is only asked inside "meet people" and is required if you pick same-city; "People in the same city" is a Coming soon tile; a new "three circles + invite a friend" step explains tiers BEFORE any questions; the visibility review at the end only covers birthday + city; the co-op screen was rebuilt as a salesy layout with Apple Pay / Google Pay / Card and a "Use Free Limited Version" option. A Back button lets people fix earlier answers.
-
 Build doc for the very first run. Maps to `apps/mobile/app/(auth)/welcome.tsx` and the `apps/mobile/app/(onboarding)/` route group in `ARCHITECTURE.md`. Read that file first — this doc only details the onboarding slice and assumes the data model (`ProfileAttribute`, `Tier`, `Layer`) and module names from it.
 
 ---
@@ -116,7 +112,7 @@ Each answer writes an `attribute` (visibility set in step 7) and feeds the back-
 
 ## Module flow (Typeform — used by onboarding, profile modules, and quizzes)
 
-Every fill experience — onboarding, the profile modules (`PROFILE-QUESTIONS.md`), and quizzes — uses the **same one-question-at-a-time pattern**:
+Every fill experience — onboarding, the profile modules (`PROFILE-MODULES.md`), and quizzes — uses the **same one-question-at-a-time pattern**:
 
 - **One question per screen**, a **progress bar**, and a **smooth transition** between questions (slide/fade; respects reduced-motion).
 - **Question types:** single-select, **multi-select**, **image-choice** (pick from picture tiles), short text, date, this-or-that, ranking. Prefer tappable types over typing; make it fun and visual.

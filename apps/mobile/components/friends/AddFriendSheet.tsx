@@ -3,8 +3,15 @@
 // The Add-friend sheet from the Friends header "+". Both doors are instant
 // (no request, no accept). Your QR shows the moment the sheet opens; share-link
 // and scan sit under it. Live mode will wire invite-links / qr-tokens.
-// Analytics: own surface (add_friend_sheet), add_friend flow start/step/
-// complete, and friend_added on share/scan success. No names or other PII.
+//
+// Analytics timing (important): taps here only record flow *steps*
+// (method chosen). `friend_added` + `flow_completed` fire later, when the
+// connection actually succeeds (ScanFriendSheet redeem / deep-link callback).
+// Opening the share sheet or Scan is a start, not an outcome.
+//
+// QR note: showing your own code is a step on *this* device. The friendship
+// completes on the *other* person's device when they redeem. Do not fire
+// flow_completed on the QR tap.
 // ============================================
 import React, { useEffect, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -12,10 +19,8 @@ import { LinkIcon, ScanLineIcon } from 'lucide-react-native';
 import {
   FRIENDS,
   trackFlowAbandoned,
-  trackFlowCompleted,
   trackFlowStarted,
-  trackFlowStep,
-  trackProduct
+  trackFlowStep
 } from '@bridger/shared';
 import {
   ButtonSecondary,
@@ -37,23 +42,25 @@ export function AddFriendSheet({
   onShare?: () => void;
   onScan?: () => void;
 }) {
-  // Flow clock lives here so open/close of the sheet can start / abandon it.
+  // Flow clock: open starts it; dismiss without a method hand-off abandons it.
+  // Choosing link/scan hands off (camera / share / redeem) — do not abandon
+  // just because this sheet closed. friend_added still waits for real connect.
   const startedAt = useRef(0);
   const lastStep = useRef('open');
-  const completed = useRef(false);
+  const handedOff = useRef(false);
 
   // Start the add_friend flow every time this sheet opens.
   useEffect(() => {
     if (!open) return;
     startedAt.current = Date.now();
     lastStep.current = 'open';
-    completed.current = false;
+    handedOff.current = false;
     trackFlowStarted('add_friend');
   }, [open]);
 
-  // Closing without finishing counts as abandon (how far they got).
+  // Closing with no method chosen = abandon. Hand-off to share/scan is not.
   const handleClose = () => {
-    if (open && !completed.current && startedAt.current > 0) {
+    if (open && !handedOff.current && startedAt.current > 0) {
       trackFlowAbandoned(
         'add_friend',
         Date.now() - startedAt.current,
@@ -72,18 +79,16 @@ export function AddFriendSheet({
       parentScreen="friends"
       footer={
         <AddFriendFooter
-          startedAt={startedAt}
           lastStep={lastStep}
-          completed={completed}
+          handedOff={handedOff}
           onShare={onShare}
           onClose={handleClose}
         />
       }
     >
       <AddFriendBody
-        startedAt={startedAt}
         lastStep={lastStep}
-        completed={completed}
+        handedOff={handedOff}
         onScan={onScan}
       />
     </Sheet>
@@ -92,15 +97,13 @@ export function AddFriendSheet({
 
 /** Share-invite footer. Must sit under SurfaceHost so markActed works. */
 function AddFriendFooter({
-  startedAt,
   lastStep,
-  completed,
+  handedOff,
   onShare,
   onClose
 }: {
-  startedAt: React.MutableRefObject<number>;
   lastStep: React.MutableRefObject<string>;
-  completed: React.MutableRefObject<boolean>;
+  handedOff: React.MutableRefObject<boolean>;
   onShare?: () => void;
   onClose: () => void;
 }) {
@@ -113,13 +116,11 @@ function AddFriendFooter({
       tone="solid"
       icon={<LinkIcon size={16} color="#FFFFFF" strokeWidth={2.5} />}
       onPress={() => {
+        // Step only: they chose "link". friend_added waits for a real connect
+        // (recipient redeems the invite — that fires on *their* device).
         lastStep.current = 'link';
+        handedOff.current = true;
         trackFlowStep('add_friend', 'link', { method: 'link' });
-        trackProduct('friend_added', { method: 'link' });
-        trackFlowCompleted('add_friend', Date.now() - startedAt.current, {
-          method: 'link'
-        });
-        completed.current = true;
         markActed();
         (onShare ?? onClose)();
       }}
@@ -134,14 +135,12 @@ function AddFriendFooter({
 
 /** QR + scan body. Must sit under SurfaceHost so markActed works. */
 function AddFriendBody({
-  startedAt,
   lastStep,
-  completed,
+  handedOff,
   onScan
 }: {
-  startedAt: React.MutableRefObject<number>;
   lastStep: React.MutableRefObject<string>;
-  completed: React.MutableRefObject<boolean>;
+  handedOff: React.MutableRefObject<boolean>;
   onScan?: () => void;
 }) {
   const c = useThemeColors();
@@ -149,7 +148,11 @@ function AddFriendBody({
 
   return (
     <View className="gap-4">
-      {/* Tapping the QR chooses the qr method; connection confirms later live */}
+      {/*
+        Showing your QR is a method step on this device only.
+        The other person scanning completes the friendship on *their* device —
+        never fire flow_completed / friend_added here.
+      */}
       <Pressable
         onPress={withAnalyticsPress(
           FRIENDS.add_sheet.qr,
@@ -172,13 +175,10 @@ function AddFriendBody({
         size="md"
         icon={<ScanLineIcon size={16} color={c.ink} strokeWidth={2.4} />}
         onPress={() => {
+          // Step only: redeem sheet opens next. friend_added waits for success.
           lastStep.current = 'scan';
+          handedOff.current = true;
           trackFlowStep('add_friend', 'scan', { method: 'scan' });
-          trackProduct('friend_added', { method: 'scan' });
-          trackFlowCompleted('add_friend', Date.now() - startedAt.current, {
-            method: 'scan'
-          });
-          completed.current = true;
           markActed();
           onScan?.();
         }}

@@ -9,6 +9,8 @@ import { ConfigModule } from '@nestjs/config';
 import { ActivityModule } from './activity/activity.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AdminModule } from './admin/admin.module';
+import { AiModule } from './ai/ai.module';
+import { AssistantModule } from './assistant/assistant.module';
 import { ConnectionsModule } from './connections/connections.module';
 import { ContentModule } from './content/content.module';
 import { CoopModule } from './coop/coop.module';
@@ -16,7 +18,9 @@ import { DelightModule } from './delight/delight.module';
 import { EventsModule } from './events/events.module';
 import { FeedModule } from './feed/feed.module';
 import { HealthModule } from './health/health.module';
+import { MatchingModule } from './matching/matching.module';
 import { MeModule } from './me/me.module';
+import { NotesModule } from './notes/notes.module';
 import { PollsModule } from './polls/polls.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { QuizModule } from './quiz/quiz.module';
@@ -33,8 +37,14 @@ import { TouchGrassModule } from './touchgrass/touchgrass.module';
     ConfigModule.forRoot({ isGlobal: true }),
     // The server's admin connection to Supabase (global).
     SupabaseModule,
+    // AI gateway enqueue + worker helpers (keys stay server-side).
+    AiModule,
+    // Opt-in relationship Assistant (personal_agent lane).
+    AssistantModule,
     HealthModule,
     MeModule,
+    NotesModule,
+    MatchingModule,
     ProfilesModule,
     TiersModule,
     ConnectionsModule,

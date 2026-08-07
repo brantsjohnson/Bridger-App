@@ -6,6 +6,8 @@
 // go live.
 // ============================================
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
+import { AssistantModule } from '../assistant/assistant.module';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
 import { CoopModule } from '../coop/coop.module';
 import { RequireCoopMemberGuard } from '../coop/require-coop-member.guard';
@@ -13,7 +15,7 @@ import { AttributesController } from './attributes.controller';
 import { ProfilesController } from './profiles.controller';
 
 @Module({
-  imports: [CoopModule],
+  imports: [CoopModule, AiModule, AssistantModule],
   controllers: [ProfilesController, AttributesController],
   providers: [SupabaseAuthGuard, RequireCoopMemberGuard]
 })

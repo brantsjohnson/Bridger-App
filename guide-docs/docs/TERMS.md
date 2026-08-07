@@ -113,6 +113,19 @@
 - Intentionally limited (e.g. 5 messages per person per day) to encourage real-world contact exchange.
 - Share-contact / make-a-plan style actions may be uncounted per `MESSAGES.md`.
 
+### 7.6b Adding friends (invite link / QR)
+
+- Invite links and QR codes are **instant** connections (no request/accept) when redeemed by a signed-in Bridger user.
+- Do not spam, sell, or publicly post invite links for abuse. QR invites expire quickly; treat them like handing someone your phone number in person.
+- You cannot redeem your own invite. Report / block still apply after connect.
+
+### 7.6c Profile and customization
+
+- You control who sees each profile fact (Close / Friends / Everyone) and, separately, whether Discover may use it for matching.
+- You may delete any field; deletion removes it from Bridger's store.
+- Co-op profile customization is a **skin** only: it cannot invent, hide, or delete your facts. Custom CSS/HTML must not include scripts, tracking pixels, or off-Bridger assets. Customized profiles are UGC and may be reverted to the native layout after a report.
+- Viewers may always choose "View original" or a standing "always show plain pages" preference.
+
 ### 7.7 Events and chip-in
 
 - Hosts may show chip-in amount + method (Venmo / Cash App etc.) as **peer-to-peer text links**. Bridger does **not** process those payments.
@@ -120,9 +133,12 @@
 
 ### 7.8 AI-generated text (when enabled)
 
-- Summaries and similar output are model-assisted but must not show "AI" chrome in the product voice.
-- Harmful or objectionable model output can be reported like other content.
-- AI is deferred for several jobs; the app must work with AI off.
+- Day/week summaries and similar ambient text are model-assisted. Bridger does **not** label them as "AI" in the product voice; they must read as Bridger being attentive.
+- Summaries are grounded in your own words/transcripts. Thin days may show no summary. You can delete Updates (and their derived summaries) at any time.
+- Bridger does **not** guarantee that model-assisted text is complete or free of error. Harmful or objectionable model output can be reported like other content.
+- Discover suggestions use what you marked matchable; you can turn Discoverable off anytime. We do not use time-in-app or click analytics to rank people. Turning Discover off or deleting your account removes matching data about you.
+- The optional relationship **Assistant** is off by default, admin-gated, and never acts without your confirm. It drafts messages and events; you send or create. Voice questions are optional and transcribed only to answer you. People who have not opted in should not see it. You are responsible for messages you send and events you publish after an Assistant draft.
+- The app must remain fully usable with every AI job disabled.
 
 ---
 
@@ -181,4 +197,9 @@
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-06 | AI System: ambient summaries/moderation/embeddings via server gateway; fail silent; optional assistant still off by default when that ships |
+| 2026-08-06 | Assistant: opt-in, confirm-before-act; drafts only (you send/create); voice optional |
+| 2026-08-06 | Discover matching: matchable consent; opt-out/delete purges; no engagement ranking |
+| 2026-08-06 | Profile: per-field visibility + separate matchable consent; co-op customize is presentation-only UGC with View original; no scripts or off-Bridger assets in custom skins |
+| 2026-08-06 | Invite link / QR: instant connect when redeemed; no self-redeem; no spam/abuse of invite links |
 | 2026-08-05 | Initial scaffolding: UGC zero-tolerance clause, report/block, co-op $24 + period-end cancel + soft join, skippable membership, Touch Grass Events-only, Friend Pod on Friends, portal no names/tallies, chip-in peer links, PostHog not ads, AI deferred but reportable when live. |

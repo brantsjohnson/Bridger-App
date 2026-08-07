@@ -55,6 +55,8 @@ export type ModuleQuestion =
       b: string;
       /** when true, a third "Both" choice is offered (Profile this-or-that) */
       allowBoth?: boolean;
+      /** when true, "Neither" and Skip are offered (PROFILE-MODULES.md Module 8) */
+      allowNeither?: boolean;
       emoji?: string;
     }
   | { id: string; ask: string; type: 'yesNo'; emoji?: string }
@@ -72,6 +74,9 @@ export type ModuleAnswer = string | string[];
 
 /** Who can see each answered question. Only filled in share mode. */
 export type ModuleVisibility = Record<string, Tier>;
+
+/** Whether Discover matching may use each answer. Independent from visibility. */
+export type ModuleMatchable = Record<string, boolean>;
 
 const TIER_CHIPS: { id: Tier; short: string; accent: Accent }[] = [
   { id: 'close', short: 'Close', accent: 'pink' },
@@ -97,10 +102,14 @@ export function ModuleFlow({
   mode = 'share',
   intro,
   defaultTier = 'friend',
+  /** Keys that must never be bulk-matchable (Module 2 identity/beliefs). */
+  sensitiveKeys = [],
   onClose,
   onDone,
   audienceSetAllAnalyticsId,
   audienceRowAnalyticsId,
+  matchableToggleAnalyticsId,
+  matchableRowAnalyticsId,
   searchPlaces,
   placeSearchAnalyticsId,
   placeResultAnalyticsId
@@ -108,15 +117,22 @@ export function ModuleFlow({
   open: boolean;
   title: string;
   questions: ModuleQuestion[];
-  /** 'private' = matching only; 'share' = profile with audience picker */
+  /** 'private' = matching only; 'share' = profile with audience + matchable ask */
   mode?: 'share' | 'private';
   intro?: string;
   /** default visibility for every answered item in share mode */
   defaultTier?: Tier;
+  sensitiveKeys?: string[];
   onClose: () => void;
-  onDone?: (answers: Record<string, ModuleAnswer>, visibility?: ModuleVisibility) => void;
+  onDone?: (
+    answers: Record<string, ModuleAnswer>,
+    visibility?: ModuleVisibility,
+    matchable?: ModuleMatchable
+  ) => void;
   audienceSetAllAnalyticsId?: string;
   audienceRowAnalyticsId?: string;
+  matchableToggleAnalyticsId?: string;
+  matchableRowAnalyticsId?: string;
   /** Injected geocoder for placeSearch questions (app supplies Photon). */
   searchPlaces?: (query: string, signal?: AbortSignal) => Promise<GeocodeHit[]>;
   placeSearchAnalyticsId?: string;
@@ -129,6 +145,7 @@ export function ModuleFlow({
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, ModuleAnswer>>({});
   const [visibility, setVisibility] = useState<ModuleVisibility>({});
+  const [matchable, setMatchable] = useState<ModuleMatchable>({});
 
   useEffect(() => {
     if (!open) {
@@ -136,6 +153,7 @@ export function ModuleFlow({
       setStarted(!isPrivate);
       setAnswers({});
       setVisibility({});
+      setMatchable({});
     }
   }, [open, isPrivate]);
 
@@ -173,17 +191,24 @@ export function ModuleFlow({
     return out;
   }, [questions, followups]);
 
-  const total = flowQuestions.length + 1; // +1 for the review step
+  // Share mode: questions → who-sees review → matchable ask. Private: questions → privacy review.
+  const closingSteps = isPrivate ? 1 : 2;
+  const lastStep = flowQuestions.length + closingSteps - 1;
+  const total = flowQuestions.length + closingSteps;
   const q = flowQuestions[step];
   const reviewing = step === flowQuestions.length;
+  const matching = !isPrivate && step === flowQuestions.length + 1;
 
-  const next = () => setStep((s) => Math.min(flowQuestions.length, s + 1));
+  const next = () => setStep((s) => Math.min(lastStep, s + 1));
   const set = (id: string, v: ModuleAnswer) => setAnswers((a) => ({ ...a, [id]: v }));
 
   const answered = (id: string) => {
     const v = answers[id];
+    if (v === 'skip') return false;
     return Array.isArray(v) ? v.length > 0 : Boolean(v);
   };
+
+  const sensitiveSet = useMemo(() => new Set(sensitiveKeys), [sensitiveKeys]);
 
   // Seed visibility for every answered item the first time we hit review.
   useEffect(() => {
@@ -200,6 +225,21 @@ export function ModuleFlow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewing, isPrivate, defaultTier, flowQuestions.length]);
 
+  // Seed matchable defaults when entering the Discover consent step.
+  useEffect(() => {
+    if (!matching) return;
+    setMatchable((prev) => {
+      const nextM: ModuleMatchable = { ...prev };
+      for (const item of flowQuestions) {
+        if (!answered(item.id) || nextM[item.id] != null) continue;
+        // Sensitive fields default off and are never bulk-included.
+        nextM[item.id] = !sensitiveSet.has(item.id);
+      }
+      return nextM;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matching, flowQuestions.length, sensitiveSet]);
+
   const setAllVisibility = (tier: Tier) => {
     setVisibility((prev) => {
       const nextVis: ModuleVisibility = { ...prev };
@@ -210,13 +250,38 @@ export function ModuleFlow({
     });
   };
 
+  const setAllMatchable = (value: boolean) => {
+    setMatchable((prev) => {
+      const nextM: ModuleMatchable = { ...prev };
+      for (const item of flowQuestions) {
+        if (!answered(item.id)) continue;
+        if (sensitiveSet.has(item.id)) {
+          // Sensitive keys stay individual; bulk Yes never turns them on.
+          if (value === false) nextM[item.id] = false;
+          continue;
+        }
+        nextM[item.id] = value;
+      }
+      return nextM;
+    });
+  };
+
   const finish = () => {
     if (isPrivate) {
       onDone?.(answers);
     } else {
-      onDone?.(answers, visibility);
+      onDone?.(answers, visibility, matchable);
     }
     onClose();
+  };
+
+  /** From who-sees, Continue goes to matchable; from matchable, Done saves. */
+  const onClosingPrimary = () => {
+    if (reviewing && !isPrivate) {
+      next();
+      return;
+    }
+    finish();
   };
 
   return (
@@ -260,7 +325,20 @@ export function ModuleFlow({
             </View>
 
             <ScrollView className="flex-1 px-5 pt-7" contentContainerStyle={{ paddingBottom: 24 }}>
-              {reviewing ? (
+              {matching ? (
+                <MatchableStep
+                  title={title}
+                  questions={flowQuestions}
+                  answers={answers}
+                  matchable={matchable}
+                  sensitiveKeys={sensitiveSet}
+                  answered={answered}
+                  onSet={(id, value) => setMatchable((m) => ({ ...m, [id]: value }))}
+                  onSetAll={setAllMatchable}
+                  matchableToggleAnalyticsId={matchableToggleAnalyticsId}
+                  matchableRowAnalyticsId={matchableRowAnalyticsId}
+                />
+              ) : reviewing ? (
                 <ReviewStep
                   title={title}
                   isPrivate={isPrivate}
@@ -289,9 +367,9 @@ export function ModuleFlow({
             </ScrollView>
 
             <View className="gap-2 px-5 pb-2">
-              {reviewing ? (
-                <ButtonPrimary full size="lg" onPress={finish}>
-                  Done
+              {reviewing || matching ? (
+                <ButtonPrimary full size="lg" onPress={onClosingPrimary}>
+                  {matching || isPrivate ? 'Done' : 'Continue'}
                 </ButtonPrimary>
               ) : q &&
                 (q.type === 'multi' ||
@@ -540,6 +618,39 @@ function QuestionBody({
                 <Text className="font-sans-b text-[14px] text-ink">Honestly, both</Text>
               </Pressable>
             ) : null}
+            {q.allowNeither ? (
+              <Pressable
+                onPress={() => {
+                  set(q.id, 'Neither');
+                  setTimeout(next, 180);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: answers[q.id] === 'Neither' }}
+                accessibilityLabel="Neither"
+                className={cn(
+                  'min-h-[44px] items-center justify-center rounded-2xl border px-3 py-3',
+                  answers[q.id] === 'Neither'
+                    ? 'border-ink bg-amber'
+                    : 'border-ink-line bg-surface'
+                )}
+              >
+                <Text className="font-sans-b text-[14px] text-ink">Neither</Text>
+              </Pressable>
+            ) : null}
+            {q.allowNeither ? (
+              <Pressable
+                onPress={() => {
+                  set(q.id, 'skip');
+                  setTimeout(next, 180);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Skip this one"
+              >
+                <Text className="py-2 text-center font-sans-sb text-[13px] text-ink-mute">
+                  Skip
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -661,6 +772,131 @@ function ReviewStep({
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+/**
+ * THIS SECTION DOES: ask whether Discover may use these answers to connect
+ * you with friends of friends. Separate from who can see them on your profile.
+ */
+function MatchableStep({
+  title,
+  questions,
+  answers,
+  matchable,
+  sensitiveKeys,
+  answered,
+  onSet,
+  onSetAll,
+  matchableToggleAnalyticsId,
+  matchableRowAnalyticsId
+}: {
+  title: string;
+  questions: Array<ModuleQuestion | FollowupQuestion>;
+  answers: Record<string, ModuleAnswer>;
+  matchable: ModuleMatchable;
+  sensitiveKeys: Set<string>;
+  answered: (id: string) => boolean;
+  onSet: (id: string, value: boolean) => void;
+  onSetAll: (value: boolean) => void;
+  matchableToggleAnalyticsId?: string;
+  matchableRowAnalyticsId?: string;
+}) {
+  const answeredQs = questions.filter((x) => answered(x.id));
+  const bulkQs = answeredQs.filter((x) => !sensitiveKeys.has(x.id));
+  const sensitiveQs = answeredQs.filter((x) => sensitiveKeys.has(x.id));
+
+  return (
+    <View>
+      <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
+        {title}
+      </Text>
+      <Text className="mt-1 font-sans-b text-[24px] leading-tight tracking-tight text-ink">
+        Use this to connect me?
+      </Text>
+      <Text className="mt-2 font-sans-sb text-[14px] leading-snug text-ink-soft">
+        Can these answers help connect you with friends of friends in Discover? This is
+        separate from who can see them on your profile.
+      </Text>
+
+      <View className="mt-4 flex-row gap-2">
+        <Pressable
+          onPress={withAnalyticsPress(matchableToggleAnalyticsId, () => onSetAll(true))}
+          accessibilityRole="button"
+          accessibilityLabel="Yes, use for Discover"
+          className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-ink bg-green px-3 py-3"
+        >
+          <Text className="font-sans-b text-[14px] text-ink">Yes</Text>
+        </Pressable>
+        <Pressable
+          onPress={withAnalyticsPress(matchableToggleAnalyticsId, () => onSetAll(false))}
+          accessibilityRole="button"
+          accessibilityLabel="No, do not use for Discover"
+          className="min-h-[44px] flex-1 items-center justify-center rounded-2xl border border-ink-line bg-surface px-3 py-3"
+        >
+          <Text className="font-sans-b text-[14px] text-ink">No</Text>
+        </Pressable>
+      </View>
+
+      {bulkQs.length > 0 ? (
+        <View className="mt-5 gap-1.5">
+          {bulkQs.map((x) => {
+            const on = matchable[x.id] !== false;
+            return (
+              <Pressable
+                key={x.id}
+                onPress={withAnalyticsPress(matchableRowAnalyticsId, () => onSet(x.id, !on))}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={`${x.ask}: ${on ? 'matchable' : 'not matchable'}`}
+                className="flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-3.5 py-2.5"
+              >
+                <View className="min-w-0 flex-1">
+                  <Text numberOfLines={1} className="font-sans-sb text-[11px] text-ink-mute">
+                    {x.ask}
+                  </Text>
+                  <Text numberOfLines={1} className="font-sans-b text-[14px] text-ink">
+                    {formatAnswerPreview(answers[x.id])}
+                  </Text>
+                </View>
+                <Text className="font-sans-b text-[12px] text-ink-mute">{on ? 'Yes' : 'No'}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {sensitiveQs.length > 0 ? (
+        <View className="mt-5 gap-1.5">
+          <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
+            Sensitive (choose one by one)
+          </Text>
+          {sensitiveQs.map((x) => {
+            const on = matchable[x.id] === true;
+            return (
+              <Pressable
+                key={x.id}
+                onPress={withAnalyticsPress(matchableRowAnalyticsId, () => onSet(x.id, !on))}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={`${x.ask}: ${on ? 'matchable' : 'not matchable'}`}
+                className="flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-3.5 py-2.5"
+              >
+                <View className="min-w-0 flex-1">
+                  <Text numberOfLines={1} className="font-sans-sb text-[11px] text-ink-mute">
+                    {x.ask}
+                  </Text>
+                  <Text numberOfLines={1} className="font-sans-b text-[14px] text-ink">
+                    {formatAnswerPreview(answers[x.id])}
+                  </Text>
+                </View>
+                <Text className="font-sans-b text-[12px] text-ink-mute">{on ? 'Yes' : 'No'}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }

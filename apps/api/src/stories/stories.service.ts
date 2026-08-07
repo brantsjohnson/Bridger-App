@@ -20,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Reaction, ReactionKind, Tier } from '@bridger/shared';
+import { AiJobsService } from '../ai/ai-jobs.service';
 import { canViewTier, isBlocked } from '../common/visibility';
 import { CoopService } from '../coop/coop.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -67,7 +68,8 @@ export class StoriesService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly config: ConfigService,
-    private readonly coop: CoopService
+    private readonly coop: CoopService,
+    private readonly aiJobs: AiJobsService
   ) {
     this.mediaBucket =
       this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
@@ -212,7 +214,7 @@ export class StoriesService {
         expires_at: expires
       })
       .select(
-        'id, author_id, type, update_text, theme_slug, created_at, media_id'
+        'id, author_id, type, update_text, theme_slug, created_at, media_id, transcript'
       )
       .single();
     if (insErr) throw insErr;
@@ -226,38 +228,23 @@ export class StoriesService {
         .eq('owner_id', userId);
     }
 
-    // PRIVACY / AI stub: day summary from words only — never photos.
+    // PRIVACY / AI: enqueue day summary from words only — never photos.
+    // The post returns immediately; the worker writes the summary later.
     if (caption) {
-      await this.appendDaySummary(userId, caption);
+      const date = new Date().toISOString().slice(0, 10);
+      const transcript =
+        typeof (row as { transcript?: string | null }).transcript === 'string'
+          ? (row as { transcript: string }).transcript
+          : '';
+      await this.aiJobs.enqueueDaySummary({
+        authorId: userId,
+        date,
+        caption,
+        transcript
+      });
     }
 
     return this.toPostDto(row);
-  }
-
-  /** Append today's update text onto the author's day_summaries row. */
-  private async appendDaySummary(authorId: string, caption: string): Promise<void> {
-    const date = new Date().toISOString().slice(0, 10);
-    const { data: existing } = await this.supabase.admin
-      .from('day_summaries')
-      .select('id, text')
-      .eq('author_id', authorId)
-      .eq('date', date)
-      .maybeSingle();
-
-    if (existing) {
-      const next = [existing.text, caption].filter(Boolean).join('\n');
-      await this.supabase.admin
-        .from('day_summaries')
-        .update({ text: next, built_at: new Date().toISOString() })
-        .eq('id', existing.id);
-    } else {
-      await this.supabase.admin.from('day_summaries').insert({
-        author_id: authorId,
-        date,
-        text: caption,
-        visible_to_tier: 'friend'
-      });
-    }
   }
 
   // --- List posts ---

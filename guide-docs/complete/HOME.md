@@ -53,7 +53,7 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 |---|---|---|---|---|
 | 1 | Header | Search (people; events later) + **messages icon** (opens Messages — see `MESSAGES.md`) | `MessagesButton` | always shown |
 | 2 | **Announcements carousel** | One **swipeable** strip holding whatever's live — **touch-grass signals** (I'm in / ✕), the **quick check-in**, **co-op** announcements, and **coming up** (birthdays ≤1wk + day-of, custom date reminders, check-in nudges). Page dots; each card tappable | `AnnouncementsCarousel` | **hidden entirely when there are no announcements** |
-| 4 | Stories | Tier filter (Close / Friends / Everyone) + tiles; **first tile = "Your story"** — post *and* **tap to view your own** posted update | `StoryTile` | see state matrix |
+| 4 | Stories | Tier filter (Close / Friends / Everyone) + tiles; **first tile = "Your story"** — post *and* **tap to view your own** posted update. When Assistant is opted in, a **compact chat box** (same size as an Announcements card) sits **directly under** this row (and under "what people said" when present) | `StoryTile` + `AssistantHomeCard` | see state matrix |
 | 4a | What people said | Under the stories row: **reactions & video responses** to your update ("this is what people said") — **tap to watch/read and reply** | `ResponseStrip` | hidden when no responses |
 | 5 | Notifications preview | ~2–3 unread + **See all → Notifications page**; no unread → **"All caught up!"** | `NotificationRow` | shows unread; empty → All caught up |
 | 5b | Inside jokes | A few **new sticky-note inside jokes** from the week (from the Inside Jokes wall); when none are new, falls back to older ones as **"moments"** | — | always shows something (new or moments) |
@@ -101,6 +101,10 @@ The top of Home is a single **swipeable carousel** that consolidates what used t
 - **Coming up** — **birthdays** (within ~a week, and again on the day — cake icon; only friends who shared their birthday with your tier), **custom date reminders** (dates you saved on a friend, firing 1 week before + on the day — "Priya's graduation · in 1 week"), and optional **check-in nudges** ("Check in with Jade?") from private friend notes with no calendar date. **Row color = their circle** (green Close / blue Friends / orange Acquaintances). **Order is soonest first** (now → Today → weekday → in N days). Tapping opens that friend's profile. Check-ins also push as `friend_check_in` when due.
 
 **When there are no announcements, the whole carousel is hidden** — the top of Home is simply empty, and Stories become the first thing. Cards are aggregated from existing sources (`touchgrass`, `coop`, `notifications` for birthdays/reminders, the freshness signal); the carousel is a presentation layer, not a new data store.
+
+### Assistant on Home (opt-in)
+
+When the person has turned Assistant on in Settings, a **compact chat box** appears **under Stories** (after the story tiles and the replies row). It matches Announcements card height: short transcript + Ask / Send. Confirmed acts still hand off to messages, events, or calendar the same way as the full Assistant screen. Settings → Open Assistant remains for longer sessions. People who never opted in never see this box.
 
 ### Messages (header icon)
 
@@ -250,6 +254,7 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 - [ ] `friendCount === 0` renders the cold-start invitation, not empty zones.
 - [ ] There is no generic `+`; the header's right control is the messages icon, and the only post entry is the "Your story" tile. **Home has no Touch Grass send button** (send lives on the Events page).
 - [ ] The top of Home is a single swipeable announcements carousel (touch-grass signals, quick check-in, co-op announcements, coming-up birthdays/reminders/check-ins) with page dots; it hides entirely when there are nothing live.
+- [ ] When Assistant is opted in, a compact chat box appears under Stories (same size as an Announcements card); when off, it is absent.
 - [ ] The announcements carousel hides entirely when empty; updates, your poll, and This week each hide independently (no header, no gap) when empty.
 - [ ] Posting shows the multi-select audience picker: choosing Friends also checks Close friends (both lit); Everyone checks all three.
 - [ ] Each tier row has a caret that expands its members for per-person deselection; deselections apply only to that post.

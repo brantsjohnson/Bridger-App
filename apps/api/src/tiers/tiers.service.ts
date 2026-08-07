@@ -9,6 +9,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Tier } from '@bridger/shared';
 import { CoopService } from '../coop/coop.service';
+import { MatchingFeedbackService } from '../matching/matching-feedback.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
 /** Free-plan caps from FRIENDS.md. Acquaintances are never capped. */
@@ -27,7 +28,8 @@ export type MoveTierResult = {
 export class TiersService {
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly coop: CoopService
+    private readonly coop: CoopService,
+    private readonly matchingFeedback: MatchingFeedbackService
   ) {}
 
   /**
@@ -80,11 +82,41 @@ export class TiersService {
       }
     }
 
+    const { data: previous } = await this.supabase.admin
+      .from('tiers')
+      .select('tier')
+      .eq('user_id', userId)
+      .eq('other_id', personId)
+      .maybeSingle();
+    const fromTier = previous?.tier as Tier | undefined;
+
     const { error } = await this.supabase.admin.from('tiers').upsert(
       { user_id: userId, other_id: personId, tier: landedIn },
       { onConflict: 'user_id,other_id' }
     );
     if (error) throw error;
+
+    // Learning labels: Close is gold; demote from Close is negative.
+    if (landedIn === 'close' && fromTier !== 'close') {
+      await this.matchingFeedback
+        .recordOutcome({
+          userA: userId,
+          userB: personId,
+          outcome: 'close'
+        })
+        .catch(() => undefined);
+    } else if (
+      fromTier === 'close' &&
+      landedIn !== 'close'
+    ) {
+      await this.matchingFeedback
+        .recordOutcome({
+          userA: userId,
+          userB: personId,
+          outcome: 'demoted'
+        })
+        .catch(() => undefined);
+    }
 
     return { landedIn, upsell };
   }

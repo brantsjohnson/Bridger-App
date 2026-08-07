@@ -10,6 +10,11 @@ import {
   NotFoundException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  runJob,
+  quizModerator,
+  type AiConfigStore
+} from '@bridger/ai';
 import type {
   LiveQuiz,
   QuizDimension,
@@ -17,6 +22,7 @@ import type {
   QuizQuestionPublic,
   QuizResult
 } from '@bridger/shared';
+import { NestAiConfigStore } from '../ai/ai-config.store';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   scoreFromWeights,
@@ -30,7 +36,8 @@ type ModeratorFlag = 'selected_all' | 'contradiction' | 'low_info';
 export class QuizService {
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly aiConfigStore: NestAiConfigStore
   ) {}
 
   // --- PRIVACY: strip rubric weights before anything leaves the server ---
@@ -385,25 +392,66 @@ export class QuizService {
   }
 
   /**
-   * Optional AI path. SECURITY: key stays server-side. If missing, we skip
-   * and return heuristics. The LLM must never set dimension scores.
+   * Optional AI path through the shared gateway. SECURITY: key stays
+   * server-side. If the job is disabled, the key is missing, or the call
+   * fails, we fall back to heuristics. The LLM must never set dimension scores.
    */
   private async runModerator(input: {
+    userId: string;
     optionCount: number;
     selectedCount: number;
     explainText?: string;
     dimensions: QuizDimension[];
     moderatorInstructions?: string | null;
+    adaptationPolicy?: unknown;
   }) {
+    const fallback = this.heuristicModerator(input);
     const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
-      return this.heuristicModerator(input);
+    if (!apiKey) return fallback;
+
+    const userPrompt = quizModerator.buildUser({
+      moderatorInstructions: input.moderatorInstructions,
+      adaptationPolicy: input.adaptationPolicy,
+      dimensions: input.dimensions.map((d) => ({ key: d.key })),
+      answers: {
+        optionCount: input.optionCount,
+        selectedCount: input.selectedCount,
+        // Explanations stay server-side only; never logged to analytics.
+        explainPresent: Boolean(input.explainText?.trim())
+      }
+    });
+
+    const result = await runJob(
+      {
+        job: 'quiz_moderator',
+        subjectRef: input.userId,
+        payload: {
+          subject_ref: input.userId,
+          user_prompt: userPrompt
+        }
+      },
+      {
+        configStore: this.aiConfigStore as AiConfigStore,
+        secrets: { anthropicApiKey: apiKey }
+      }
+    );
+
+    if (result.status !== 'ok' || result.value == null) {
+      return fallback;
     }
 
-    // Key is present but a full Claude call is out of scope for this scaffold.
-    // Fall through to the same heuristics so scores stay deterministic and
-    // the route stays available without depending on network AI.
-    return this.heuristicModerator(input);
+    const value = result.value as {
+      confidence?: Record<string, number>;
+      flags?: ModeratorFlag[];
+      adaptations?: unknown[];
+    };
+
+    // SECURITY: ignore any score-like fields if a bad model sneaks them in.
+    return {
+      confidence: value.confidence ?? fallback.confidence,
+      flags: Array.isArray(value.flags) ? value.flags : fallback.flags,
+      adapted: Array.isArray(value.adaptations) && value.adaptations.length > 0
+    };
   }
 
   // --- POST /quizzes/:slug/responses ---
@@ -462,18 +510,21 @@ export class QuizService {
 
     const { data: design } = await this.supabase.admin
       .from('quizzes')
-      .select('dimensions, moderator_instructions')
+      .select('dimensions, moderator_instructions, adaptation_policy')
       .eq('id', quizId)
       .single();
 
     const dimensions =
       (design?.dimensions as unknown as QuizDimension[]) ?? [];
     const mod = await this.runModerator({
+      userId,
       optionCount: options.length,
       selectedCount: body.selectedOptionIds.length,
       explainText: body.explainText,
       dimensions,
-      moderatorInstructions: design?.moderator_instructions
+      moderatorInstructions: design?.moderator_instructions,
+      adaptationPolicy: (design as { adaptation_policy?: unknown } | null)
+        ?.adaptation_policy
     });
 
     // Next unanswered question (simple linear order).

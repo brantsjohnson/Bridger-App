@@ -1,12 +1,13 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The big green "TOUCH GRASS" button on Home and Events. One tap opens the
-// sheet where you pick who to tell and when. Matches Magic Patterns (organic
-// banner shape). Pass analyticsId so Home and Events each get their own tap id.
+// The big green "TOUCH GRASS" button on Events. One tap opens the sheet where
+// you pick who to tell and when. Stays the big button even while your signal
+// is live (subtext flips to "you're free" + who's in). Optional X ends it.
+// Matches Magic Patterns (organic banner shape).
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { SproutIcon } from 'lucide-react-native';
+import { SproutIcon, XIcon } from 'lucide-react-native';
 import { EVENTS } from '@bridger/shared';
 import { Avatar, ORGANIC, cn, withAnalyticsPress } from '@bridger/ui';
 import { personById } from '../data/people';
@@ -17,12 +18,15 @@ export function TouchGrassButton({
   live,
   inIds,
   onOpen,
+  onEnd,
   analyticsId = EVENTS.touch_grass.send
 }: {
   live: boolean;
   inIds: string[];
   onOpen: () => void;
-  /** Taxonomy id for the open tap (Home vs Events). */
+  /** When live, show a small X under the button to end your signal. */
+  onEnd?: () => void;
+  /** Taxonomy id for the open tap. */
   analyticsId?: string;
 }) {
   return (
@@ -70,8 +74,20 @@ export function TouchGrassButton({
               <Text className="font-sans-b text-[12px] text-ink-soft">{inIds.length} in</Text>
             </>
           ) : (
-            <Text className="font-sans-sb text-[12px] text-ink-mute">No one yet</Text>
+            <Text className="min-w-0 flex-1 font-sans-sb text-[12px] text-ink-mute">
+              No one yet
+            </Text>
           )}
+          {onEnd ? (
+            <Pressable
+              onPress={withAnalyticsPress(EVENTS.touch_grass.end, onEnd)}
+              accessibilityRole="button"
+              accessibilityLabel="End your Touch Grass signal"
+              className="ml-auto h-7 w-7 items-center justify-center rounded-full bg-ink/10 active:opacity-80"
+            >
+              <XIcon size={14} color="#1C1B16" strokeWidth={2.6} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </View>

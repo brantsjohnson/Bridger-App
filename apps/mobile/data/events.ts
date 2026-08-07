@@ -235,7 +235,8 @@ export async function assignItem(
 }
 
 /**
- * Mark an assignment done or not. Only the assignee should call this from the UI.
+ * Mark an assignment done or not. Call from the UI when the current user is
+ * the assignee or the host/co-host (hosts can check anyone's item off).
  */
 export async function setAssignmentDone(
   eventId: string,
@@ -324,13 +325,11 @@ export async function rsvpEvent(
 
 /**
  * People at this event that Bridger thinks you should meet.
- * Includes invited and going. Matching deferred — live returns [].
+ * Demo uses fixtures; live prefers the async Nest path below.
+ * Sync helper stays for Home widgets (live → empty until they await).
  */
 export function meetSuggestionsForEvent(event: EventItem): MeetSuggestion[] {
-  if (!isDemoMode()) {
-    // TODO: GET /events/:id/meet-suggestions when matching ships
-    return [];
-  }
+  if (!isDemoMode()) return [];
   const atEvent = new Set([
     ...event.goingIds,
     ...(event.invitedIds ?? [])
@@ -342,6 +341,16 @@ export function meetSuggestionsForEvent(event: EventItem): MeetSuggestion[] {
     ...m,
     status: event.goingIds.includes(m.personId) ? ('going' as const) : ('invited' as const)
   }));
+}
+
+/** Live Nest matching: FoF scored for this event. */
+export async function fetchMeetSuggestionsForEvent(
+  eventId: string
+): Promise<MeetSuggestion[]> {
+  if (isDemoMode()) return [];
+  return apiFetch<MeetSuggestion[]>(
+    `/events/${encodeURIComponent(eventId)}/meet-suggestions`
+  );
 }
 
 /** Host Introductions: A & B · why, among invited + going. */

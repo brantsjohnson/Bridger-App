@@ -13,11 +13,14 @@ export * from './model/coop';
 export * from './coop/cost-model';
 export * from './coop/format-number';
 export * from './model/profile-theme';
+export * from './model/profile-page';
 export * from './model/message';
 export * from './model/quiz';
 export * from './model/weekly-activity';
 export * from './model/delight';
 export * from './model/admin-config';
+export * from './model/assistant';
+export * from './model/matching';
 export * from './model/recap';
 export * from './model/not-found-hit';
 export * from './model/notification';
@@ -62,6 +65,7 @@ export {
   NOT_FOUND,
   COOP,
   DELIGHT,
+  ASSISTANT,
   ADMIN,
   aid,
   parseAnalyticsId

@@ -13,7 +13,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeftIcon, XIcon } from 'lucide-react-native';
 import {
   CREATE_EVENT,
@@ -41,8 +41,20 @@ export default function CreateEventScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
+  const params = useLocalSearchParams<{ prefill?: string }>();
 
-  const [draft, setDraft] = useState<CreateEventDraft>(emptyDraft);
+  const [draft, setDraft] = useState<CreateEventDraft>(() => {
+    // Assistant draft_event: hydrate known CreateEventDraft fields once.
+    if (typeof params.prefill === 'string' && params.prefill) {
+      try {
+        const parsed = JSON.parse(params.prefill) as Partial<CreateEventDraft>;
+        return { ...emptyDraft(), ...parsed };
+      } catch {
+        return emptyDraft();
+      }
+    }
+    return emptyDraft();
+  });
   const [step, setStep] = useState(0);
   const [creating, setCreating] = useState(false);
 

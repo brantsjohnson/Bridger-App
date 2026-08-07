@@ -51,7 +51,11 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 
 ### 3.2 Profile attributes and quizzes (Zone B)
 
-- Hobbies, favorites, places, this-or-that, bucket list, deeper questions, and quiz results tagged with visibility and `matchable` flags.
+- Hobbies, favorites, places, this-or-that, bucket list, deeper questions, Top 5, Current Obsession, life timeline, recommendations, goals, and quiz results tagged with **visibility** (`visibleToTier`) and a separate **`matchable`** flag.
+- Every fill module ends with (1) who can see the answers and (2) an explicit "use this to connect me in Discover?" ask. Visibility and matching are independent consents.
+- Sensitive About Me Deeper fields (identity / beliefs) default Close and are never bulk-matchable; each is listed individually in the matchable step.
+- A mandatory one-time profile intro explains group-based sharing and that deleting a field removes it from Bridger's database.
+- Profile search only indexes fields the viewer may already see; search query text is never logged.
 - Quiz completion can write attributes such as `quiz.<slug>.<dimension>` with `visible_to_tier = none` until the user chooses otherwise (generic quiz path shipped).
 - Discover / matching use only **matchable, consented** facts; names rejoin on-device from opaque IDs.
 
@@ -65,19 +69,21 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 
 - Connections, tiers, blocks, how-you-met context (optional; place is coarse and opt-in when used).
 - Blocks cut the graph locally for the blocker (suggestions and mutual bridges).
+- **Invite links and QR codes:** opaque tokens only (UUID). Share links live in `invite_links`; QR codes use short-lived `qr_tokens` (about 15 minutes), deleted when redeemed. The QR encodes a Bridger deep link (`bridger://invite/…` or your configured `APP_LINK_BASE`), not a name or photo. Redeeming creates a connection; you cannot redeem your own invite. Tokens are not used for matching or ads.
 
 ### 3.5 Co-op / membership
 
 - Membership status, `dues_paid_through`, cancel-at-period-end / cancelled timestamps.
 - Soft-join stub today (no live StoreKit / Play / Stripe yet). Future: platform IAP and/or in-app card processor; joining remains skippable.
 - Portal participation (ideas, votes). **Member portal never shows vote tallies or person names**; admin may see aggregates.
+- **Profile customization (co-op):** theme (accent, background, font, light/dark) and layout order are presentation-only skins. They never change, hide, or delete canonical attributes or tier visibility. Custom CSS/HTML (later, admin-gated) is sanitized; no user JavaScript; no off-Bridger asset URLs (so a profile cannot leak viewer IPs). Assets are Bridger-hosted. "View original" and a viewer "always show plain pages" preference always reach the native accessible layout. Customized profiles are UGC (report / operator revert). Storage meter shows used vs included; overage is opt-in with price shown before any charge.
 
 ### 3.6 Device permissions (requested in context, never at cold launch)
 
 | Permission | Why we ask | If denied |
 |---|---|---|
 | Camera | Post Updates, video replies | Feature degrades; app still works |
-| Microphone | Video replies, recap voice answers | Same |
+| Microphone | Video replies, recap voice answers, Assistant voice questions (opt-in) | Same |
 | Photo library | Profile photo only (upload exception) | User can skip / use capture |
 | Notifications | Alerts for friends, Touch Grass, events, etc. | In-app activity still works |
 | Contacts | Optional friend-finding / invite (desired in onboarding; not required) | Skip; app works |
@@ -99,11 +105,20 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - Server logs and infra metrics as needed to run the API (no intentional PII in analytics properties).
 - **TODO (product):** document any error-reporting SDK if one is added.
 
-### 3.9 AI / matching (mostly deferred)
+### 3.9 AI / matching
 
-- When AI jobs ship: summaries from **user words / transcripts only**, never photos or likeness; embeddings from de-identified Zone B; gateway scrubs PII (`AI-SYSTEM.md`).
-- Matching v1 planned as friends-of-friends + attribute overlap; embeddings optional later.
-- Opting out of Discover drops Zone C so the person is not suggested.
+- All model calls go through one server-side **gateway** (`packages/ai`, `AI-SYSTEM.md`). Clients never hold AI keys.
+- **Deidentified lane** (summaries, quiz moderator, embeddings, freshness): opaque IDs only; scrubber rejects names, emails, phones, handles, and all media. Summaries are built from the person's **own words / transcripts only**, never photos or likeness.
+- **Matching / learning:** Nest scores FoF suggestions on opaque IDs using de-identified Zone B/C facts. Suggestion card “why” titles only cite Everyone+matchable shared facts. Private (`none`+matchable) quiz/personality signals may affect scores silently and never appear as evidence titles. Outcomes land in `matching_feedback` (features + label weights only; no message content, names, or UX-analytics). Opting out of Discoverable or deleting an account purges suggestions, feedback pair-rows, and Zone C embeddings. Feedback snapshots age out (~18 months).
+- **Personal-agent lane** (Assistant): may see the requester's own visible data only (notes, tier-visible friend facts, upcoming, events). Off by default; admin-gated (`founder_only` ships first); confirmed acts only (`AGENT.md`). Never feeds matching.
+- Assistant sessions store turn text server-side for the open conversation only; turns are deleted on close or when the user disables Assistant. Private `assistant_memory_chunks` are per-user only (not Zone C matching embeddings) and cascade on account delete.
+- Voice transcripts for Assistant are used in-request only; never written to analytics or used for training.
+- Calendar: OS permission requested in context the first time the user confirms an Assistant calendar act. Purpose: add dates and reminders the user confirms. Denial degrades to a calendar handoff.
+- Foundation models: API-only under **no-training / zero-retention** terms. We do **not** fine-tune on user content. RAG + our own ranking (later) supply knowledge; content is discarded per request.
+- Fail silent: if a job is disabled, over budget, or fails quality/grounding checks, the surface hides. The app stays fully usable with AI off.
+- Cost metadata (job, tokens, latency) may be logged for ops; **never** prompt or answer content.
+- Matching v1 is friends-of-friends + attribute overlap; embeddings (Zone C) feed matching v2 when enabled.
+- Opting out of Discover / account deletion drops Zone C (embeddings, summaries, module notes, freshness prompts) in the same cascade.
 
 ---
 
@@ -181,4 +196,9 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-06 | AI System gateway: deidentified lane jobs, cost log, fail silent, Zone C cascade; personal_agent lane reserved for opt-in assistant |
+| 2026-08-06 | Assistant (opt-in): sessions/turns/private memory; calendar + mic in context; voice transcripts in-request only; no analytics content |
+| 2026-08-06 | Matching v1: Nest FoF scorer + matching_feedback; Everyone+matchable evidence; silent none+matchable for quiz/embeddings; Discoverable off purges |
+| 2026-08-06 | Spotify-style profile: Top 5 / Current Obsession / Favorites; per-module who-sees + matchable consent; profile intro; co-op Theme + Layout customize; View original / always-plain preference; storage meter honesty |
+| 2026-08-06 | Invite links / QR: opaque UUID tokens; QR short-lived (~15m) and deleted on redeem; deep link encodes token only (no name/photo) |
 | 2026-08-05 | Initial scaffolding seeded from shipped co-op portal, soft join, PostHog analytics rules, Touch Grass Events-only send, Friend Pod on Friends, quiz-without-AI, polls, profile customize MVP, hard-delete / zones promises. |

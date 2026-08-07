@@ -43,11 +43,17 @@
         "expo-camera",
         {
           "cameraPermission": "Bridger uses your camera so you can post an update and send a 10 second video reply to a friend.",
-          "microphonePermission": "Bridger uses your microphone so your video replies have sound.",
+          "microphonePermission": "Bridger uses your microphone so your video replies have sound, and so you can ask the Assistant by voice.",
           "recordAudioAndroid": true
         }
       ],
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Bridger adds dates and reminders you confirm so you don't forget a friend's birthday or check-in."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

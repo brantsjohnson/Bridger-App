@@ -7,7 +7,7 @@
 // reachable here, which the app stores require.
 // Analytics: each row uses PROFILE.settings.* so taps land in PostHog by name.
 // ============================================
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Person } from '@bridger/shared';
@@ -15,6 +15,14 @@ import { PROFILE } from '@bridger/shared';
 import { ButtonSecondary, Card, ListRow, Toggle } from '@bridger/ui';
 import { useColorScheme } from '../useColorScheme';
 import type { StorageState } from '../../data/profile';
+import {
+  getAlwaysViewOriginal,
+  setAlwaysViewOriginal
+} from '../../data/profile-presentation';
+import {
+  fetchAssistantSettings,
+  setAssistantEnabled
+} from '../../data/assistant';
 import { getMembership } from '../../data/coop';
 import { BlockedPeopleSheet } from './BlockedPeopleSheet';
 
@@ -33,6 +41,28 @@ export function ProfileSettings({
   const scheme = useColorScheme();
   /** a standing preference for other people's pages — never your own */
   const [preferOriginal, setPreferOriginal] = useState(false);
+  const [assistantVisible, setAssistantVisible] = useState(false);
+  const [assistantOn, setAssistantOn] = useState(false);
+  // THIS SECTION DOES: stop a slow Settings load from flipping the toggle back off
+  // after you already switched it (Settings unmounts when you leave the tab).
+  const assistantTouched = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getAlwaysViewOriginal().then((v) => {
+      if (!cancelled) setPreferOriginal(v);
+    });
+    void fetchAssistantSettings().then((s) => {
+      if (cancelled) return;
+      setAssistantVisible(s.assistantVisible);
+      if (!assistantTouched.current) {
+        setAssistantOn(s.assistantEnabled);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   /** blocking is reversible, and undoing it lives here */
   const [blockedOpen, setBlockedOpen] = useState(false);
 
@@ -76,9 +106,14 @@ export function ProfileSettings({
       {/* No dedicated taxonomy id for Storage yet — leave uninstrumented (gap). */}
       <ListRow
         label="Storage & plan"
-        sublabel={`Free month · ${storage.usedPct}% used`}
+        sublabel={
+          storage.plan === 'coop'
+            ? `Co-op allotment · ${storage.usedPct}% used`
+            : `Free month · ${storage.usedPct}% used`
+        }
         trailing="chevron"
         onPress={notYet('Storage & plan')}
+        analyticsId={PROFILE.settings.storage_plan}
       />
       <ListRow
         label="Discover"
@@ -100,8 +135,12 @@ export function ProfileSettings({
         action={
           <Toggle
             checked={preferOriginal}
-            onChange={setPreferOriginal}
+            onChange={(v) => {
+              setPreferOriginal(v);
+              void setAlwaysViewOriginal(v);
+            }}
             label="Always show plain pages"
+            analyticsId={PROFILE.settings.always_original}
           />
         }
       />
@@ -119,6 +158,43 @@ export function ProfileSettings({
         onPress={() => router.push('/settings/notifications')}
         analyticsId={PROFILE.settings.notifications}
       />
+      {assistantVisible ? (
+        <>
+          <ListRow
+            label="Assistant"
+            sublabel="Help manage friendships from what you've saved. Off by default."
+            action={
+              <Toggle
+                checked={assistantOn}
+                onChange={(v) => {
+                  assistantTouched.current = true;
+                  setAssistantOn(v);
+                  void setAssistantEnabled(v).catch(() => {
+                    setAssistantOn(!v);
+                    Alert.alert(
+                      'Could not update Assistant',
+                      'Please try again in a moment.'
+                    );
+                  });
+                }}
+                label="Assistant"
+                analyticsId={PROFILE.settings.assistant_toggle}
+              />
+            }
+          />
+          {assistantOn ? (
+            <ListRow
+              label="Open Assistant"
+              sublabel="Ask about notes, dates, and reconnects"
+              trailing="chevron"
+              onPress={() =>
+                router.push({ pathname: '/assistant', params: { entry: 'settings' } })
+              }
+              analyticsId={PROFILE.settings.assistant_open}
+            />
+          ) : null}
+        </>
+      ) : null}
       <ListRow
         label="Blocked people"
         sublabel={

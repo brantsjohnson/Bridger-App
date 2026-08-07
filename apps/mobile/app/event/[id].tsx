@@ -16,7 +16,13 @@ import {
   ShareIcon,
   UsersIcon
 } from 'lucide-react-native';
-import type { EventAssignment, EventItem, Introduction, Person } from '@bridger/shared';
+import type {
+  EventAssignment,
+  EventItem,
+  Introduction,
+  MeetSuggestion,
+  Person
+} from '@bridger/shared';
 import { EVENTS, openSurface, trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
@@ -43,6 +49,7 @@ import {
   assignItem,
   getEvent,
   introductionsForEvent,
+  fetchMeetSuggestionsForEvent,
   meetSuggestionsForEvent,
   notifyEventIntroductions,
   notifyHostAssignmentChange,
@@ -87,6 +94,7 @@ export default function EventDetailScreen() {
   const [draft, setDraft] = useState<Partial<EventItem>>({});
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [peopleTab, setPeopleTab] = useState<'going' | 'invited'>('going');
+  const [liveMeet, setLiveMeet] = useState<MeetSuggestion[]>([]);
 
   useEffect(() => {
     openSurface('events.detail', 'events');
@@ -120,15 +128,19 @@ export default function EventDetailScreen() {
     setEvent(e);
   }
 
+  // THIS SECTION DOES: open the native share sheet. Only count a real share.
   async function onShare() {
     if (!event) return;
     const url = shareLink(event.id);
     try {
-      await Share.share({
+      const result = await Share.share({
         message: `${event.title} · ${event.day} ${event.time}\n${url}`,
         url
       });
-      trackProduct('event_shared', { method: 'share_sheet' });
+      // OUTCOME: only fire when the OS says they shared (not dismiss/cancel).
+      if (result.action === Share.sharedAction) {
+        trackProduct('event_shared', { method: 'share_sheet' });
+      }
     } catch {
       // User cancelled
     }
@@ -164,8 +176,11 @@ export default function EventDetailScreen() {
     await refresh();
   }
 
+  // THIS SECTION DOES: mark an assignment done (or undo). Assignee or host.
   async function onToggleDone(item: EventAssignment) {
-    if (!event || item.assigneeId !== ME_ID) return;
+    if (!event) return;
+    const hostOrEditor = event.role === 'host' || event.hostId === ME_ID;
+    if (item.assigneeId !== ME_ID && !hostOrEditor) return;
     await setAssignmentDone(event.id, item.id, !item.done);
     trackProduct('event_assignment_done');
     await refresh();
@@ -231,12 +246,26 @@ export default function EventDetailScreen() {
     [event?.coHostIds]
   );
   const knownGoing = useMemo(() => (event ? friendsGoing(event) : []), [event]);
+
+  useEffect(() => {
+    if (!event) return;
+    let alive = true;
+    void fetchMeetSuggestionsForEvent(event.id).then((rows) => {
+      if (alive) setLiveMeet(rows ?? []);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [event?.id]);
+
   const meet = useMemo(() => {
     if (!event) return [];
     const book = new Set(listPeople().map((p) => p.id));
     // Guests: people at the event who are not already in your book
-    return meetSuggestionsForEvent(event).filter((m) => !book.has(m.personId));
-  }, [event]);
+    const demo = meetSuggestionsForEvent(event);
+    const source = demo.length ? demo : liveMeet;
+    return source.filter((m) => !book.has(m.personId));
+  }, [event, liveMeet]);
   const intros = useMemo(
     () => (event && isHost ? introductionsForEvent(event) : []),
     [event, isHost]
@@ -613,7 +642,8 @@ export default function EventDetailScreen() {
                   Assignments
                 </PixelHeading>
                 <Text className="mb-2.5 font-sans-sb text-[12px] text-ink-mute">
-                  Tap Open to assign someone. Only the assignee can check it off.
+                  Tap Open to assign someone. The assignee or host can check it
+                  off.
                 </Text>
                 <View className="gap-2.5">
                   {(display.assignments ?? []).map((a) => (
@@ -621,7 +651,7 @@ export default function EventDetailScreen() {
                       key={a.id}
                       item={a}
                       candidates={assignmentCandidates}
-                      canToggleDone={a.assigneeId === ME_ID}
+                      canToggleDone={isHost || a.assigneeId === ME_ID}
                       showDoneState={isHost || a.assigneeId === ME_ID}
                       onAssign={(personId) => void onAssign(a, personId)}
                       onToggleDone={() => void onToggleDone(a)}

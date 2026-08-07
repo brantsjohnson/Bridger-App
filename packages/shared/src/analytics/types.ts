@@ -126,7 +126,17 @@ export type AnalyticsProductEvent =
   | 'message_sent'
   | 'contact_shared'
   /** unmatched route or broken connection path — path trail goes to admin */
-  | 'screen_not_found';
+  | 'screen_not_found'
+  /** Assistant opt-in (never logs query/note/transcript text) */
+  | 'assistant_enabled'
+  | 'assistant_disabled'
+  | 'assistant_opened'
+  | 'assistant_query'
+  | 'assistant_tool_proposed'
+  | 'assistant_action_confirmed'
+  | 'assistant_action_cancelled'
+  | 'assistant_action_undone'
+  | 'permission_result';
 
 /** Shared properties stamped on every event. */
 export type AnalyticsBaseProps = {

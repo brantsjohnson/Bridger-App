@@ -1,16 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Profile tab — your own page. Five content tabs across the top:
-// Profile (the shared card friends see), Stories (the monthly calendar
-// archive), Inside jokes (the sticky-note wall), Bucket list, and Settings.
-// A small Edit / Done next to your name (Profile tab only) turns on in-place
-// editing plus a "View as" row so you can check exactly what each circle sees.
-// The floating pill nav is hidden here (opened from the header avatar, not a
-// tab) — use Back to leave. Data flows through useProfile / useBucketList /
-// useStoryArchive.
-// Analytics: surface=profile; every tab and settings row uses PROFILE.* IDs.
+// Your own Profile tab — Spotify-artist layout. Square header + Edit / View as
+// sit above the tabs; the composed Profile shell sits under them. Stories /
+// Inside jokes / Bucket / Settings stay as sibling tabs. Pill nav is hidden.
+// Analytics: surface=profile.
 // ============================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { type Href, useRouter } from 'expo-router';
 import type { Tier } from '@bridger/shared';
@@ -18,9 +13,7 @@ import { openSurface, PROFILE } from '@bridger/shared';
 import {
   Screen,
   ScreenBody,
-  ScreenHeader,
   SegmentedTabs,
-  cn,
   withAnalyticsPress
 } from '@bridger/ui';
 import { useAuth } from '../../providers/auth-provider';
@@ -29,14 +22,23 @@ import { useBucketList } from '../../hooks/useBucketList';
 import { useStoryArchive } from '../../hooks/useStoryArchive';
 import { listArchivedQuizzes } from '../../data/quiz';
 import { ProfileCard } from '../../components/profile/ProfileCard';
+import { ProfileHeaderBlock } from '../../components/profile/ProfileHeaderBlock';
+import { ProfileIntro } from '../../components/profile/ProfileIntro';
+import {
+  ProfileSearchSheet,
+  type ProfileSearchHit
+} from '../../components/profile/ProfileSearchSheet';
 import { StoryCalendar } from '../../components/profile/StoryCalendar';
 import { BucketList } from '../../components/profile/BucketList';
 import { ProfileSettings } from '../../components/profile/ProfileSettings';
 import { InsideJokesWall } from '../../components/friends/InsideJokesWall';
+import {
+  PROFILE_HEADER_TO_TABS,
+  PROFILE_TABS_TO_CONTENT
+} from '../../components/profile/profileSpacing';
 
 const TABS = ['Profile', 'Stories', 'Inside jokes', 'Bucket list', 'Settings'];
 
-/** Map each visible tab label to its taxonomy analytics id. */
 function profileTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
     case 'Profile':
@@ -54,13 +56,6 @@ function profileTabAnalyticsId(tab: string): string | undefined {
   }
 }
 
-/** The circles you can preview your card as while editing. */
-const VIEW_AS: Array<{ label: string; tier: Tier }> = [
-  { label: 'Close', tier: 'close' },
-  { label: 'Friends', tier: 'friend' },
-  { label: 'Everyone', tier: 'acquaintance' }
-];
-
 export default function ProfileScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
@@ -70,19 +65,16 @@ export default function ProfileScreen() {
 
   const [tab, setTab] = useState('Profile');
   const [editing, setEditing] = useState(false);
-  /** which circle you're previewing the card as (edit mode only) */
   const [asTier, setAsTier] = useState<Tier>('close');
-  /** Quizzes friends took that you have not finished yet. */
+  const [searchOpen, setSearchOpen] = useState(false);
   const [untakenQuizzes, setUntakenQuizzes] = useState<
     Array<{ slug: string; title: string; friendsTakenCount: number }>
   >([]);
 
-  // Mark Profile as the active analytics surface when this tab is shown.
   useEffect(() => {
     openSurface('profile');
   }, []);
 
-  // Load archived / untaken quizzes for the small Profile list.
   useEffect(() => {
     let cancelled = false;
     listArchivedQuizzes()
@@ -97,100 +89,134 @@ export default function ProfileScreen() {
     };
   }, []);
 
+  const searchHits: ProfileSearchHit[] = useMemo(() => {
+    const hits: ProfileSearchHit[] = [];
+    if (profile.header?.city) {
+      hits.push({
+        id: 'city',
+        label: 'City',
+        value: profile.header.city,
+        section: 'Header'
+      });
+    }
+    if (profile.header?.bio) {
+      hits.push({
+        id: 'bio',
+        label: 'Bio',
+        value: profile.header.bio,
+        section: 'About me'
+      });
+    }
+    for (const f of profile.about) {
+      hits.push({ id: f.id, label: f.key, value: f.value, section: 'About me' });
+    }
+    for (const t of profile.top5) {
+      hits.push({
+        id: t.id,
+        label: `Top 5 #${t.order + 1}`,
+        value: t.text,
+        section: 'Top 5'
+      });
+    }
+    for (const o of profile.obsession) {
+      hits.push({
+        id: o.id,
+        label: String(o.prompt),
+        value: o.text ?? '',
+        section: 'Current Obsession'
+      });
+    }
+    for (const h of profile.hobbies) {
+      hits.push({
+        id: h.id,
+        label: h.label,
+        value: profile.hobbyFollowUps[h.id]?.answer ?? h.label,
+        section: 'Hobbies'
+      });
+    }
+    for (const g of profile.favs) {
+      for (const item of g.items) {
+        hits.push({
+          id: `${g.group}-${item}`,
+          label: g.group,
+          value: item,
+          section: 'Favorites'
+        });
+      }
+    }
+    for (const p of profile.places) {
+      hits.push({ id: p.id, label: p.label, value: p.note, section: 'Places' });
+    }
+    return hits;
+  }, [profile]);
+
   return (
     <Screen tone="canvas">
-      <ScreenHeader
-        title="Profile"
-        hideProfile
-        analyticsSurface="profile"
-        // Profile is opened by tapping the header avatar (a push), so give it a
-        // way back. Fall back to Home if there's nowhere to go back to.
-        onBack={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/home');
-        }}
-      />
-      <ScreenBody tabBarInset={false}>
-        <SegmentedTabs
-          tabs={TABS}
-          value={tab}
-          onChange={setTab}
-          variant="underline"
-          analyticsIdForTab={profileTabAnalyticsId}
+      <ScreenBody tabBarInset={false} padded={false}>
+        {/* THIS SECTION DOES: Spotify header (back/name/city ON the photo). */}
+        <ProfileHeaderBlock
+          person={profile.me}
+          header={profile.header}
+          own
+          editing={editing}
+          empty={false}
+          asTier={asTier}
+          onBack={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/home');
+          }}
+          onToggleEdit={() => {
+            setEditing((v) => !v);
+            setAsTier('close');
+          }}
+          onViewAs={setAsTier}
+          onOpenStory={() => router.push('/story/me?from=profile')}
+          onSearch={() => setSearchOpen(true)}
         />
 
+        <View style={{ marginTop: PROFILE_HEADER_TO_TABS, paddingHorizontal: 16 }}>
+          <SegmentedTabs
+            tabs={TABS}
+            value={tab}
+            onChange={setTab}
+            variant="underline"
+            analyticsIdForTab={profileTabAnalyticsId}
+          />
+        </View>
+
         {tab === 'Profile' ? (
-          <>
-            {editing ? (
-              <View className="mt-5 rounded-card border border-ink-line bg-surface p-3">
-                <Text className="mb-2 font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
-                  View as
-                </Text>
-                <View className="flex-row gap-2">
-                  {VIEW_AS.map((v) => (
-                    <Pressable
-                      key={v.tier}
-                      onPress={() => setAsTier(v.tier)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: asTier === v.tier }}
-                      accessibilityLabel={`View as ${v.label}`}
-                      className={cn(
-                        'min-h-[40px] flex-1 items-center justify-center rounded-full px-3 py-2',
-                        asTier === v.tier ? 'bg-green' : 'border border-ink-line bg-surface'
-                      )}
-                    >
-                      <Text
-                        className={cn(
-                          'font-sans-b text-[12px]',
-                          asTier === v.tier ? 'text-ink' : 'text-ink-soft'
-                        )}
-                      >
-                        {v.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            ) : null}
+          <View style={{ marginTop: PROFILE_TABS_TO_CONTENT }}>
+            <ProfileCard
+              person={profile.me}
+              header={profile.header}
+              about={profile.about}
+              hobbies={profile.hobbies}
+              favs={profile.favs}
+              thisOrThat={profile.thisOrThat}
+              places={profile.places}
+              top5={profile.top5}
+              obsession={profile.obsession}
+              favorites={profile.favorites}
+              hobbyFollowUps={profile.hobbyFollowUps}
+              editable={editing}
+              own
+              showHeader={false}
+              asTier={asTier}
+              onAnswered={() => void profile.refresh()}
+              onOpenStory={() => router.push('/story/me?from=profile')}
+              onOpenEvent={(id) => router.push(`/event/${id}` as Href)}
+            />
 
-            <View className="mt-5">
-              <ProfileCard
-                person={profile.me}
-                header={profile.header}
-                currently={profile.currently}
-                about={profile.about}
-                hobbies={profile.hobbies}
-                favs={profile.favs}
-                thisOrThat={profile.thisOrThat}
-                places={profile.places}
-                editable={editing}
-                own
-                asTier={asTier}
-                onToggleEdit={() => {
-                  setEditing((v) => !v);
-                  setAsTier('close');
-                }}
-                onCheckIn={(on) => void profile.onCheckIn(on)}
-                onEditHeader={(patch) => void profile.onEditHeader(patch)}
-                onAnswered={() => void profile.refresh()}
-                onOpenStory={() => router.push('/story/me?from=profile')}
-              />
-            </View>
-
-            {/* Untaken quizzes friends already finished. Short list, not a vanity count. */}
             {untakenQuizzes.length > 0 ? (
-              <View className="mt-6">
-                <Text
-                  accessibilityRole="header"
-                  className="mb-2 font-sans-b text-[11px] uppercase tracking-wide text-ink-mute"
-                >
+              <View className="mt-6 px-4">
+                <Text className="mb-2 font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
                   Quizzes to catch up on
                 </Text>
                 <View className="gap-2">
                   {untakenQuizzes.map((q) => (
                     <Pressable
                       key={q.slug}
-                      onPress={withAnalyticsPress('profile.quizzes.untaken_row', () =>
+                      onPress={withAnalyticsPress(PROFILE.quizzes.untaken_row, () =>
                         router.push(`/quiz/${q.slug}` as Href)
                       )}
                       accessibilityRole="button"
@@ -211,11 +237,11 @@ export default function ProfileScreen() {
                 </View>
               </View>
             ) : null}
-          </>
+          </View>
         ) : null}
 
         {tab === 'Stories' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <StoryCalendar
               days={archive.days}
               storage={archive.storage}
@@ -225,7 +251,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {tab === 'Inside jokes' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <InsideJokesWall
               analyticsIds={{
                 note: PROFILE.inside_jokes.note,
@@ -238,7 +264,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {tab === 'Bucket list' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <BucketList
               items={bucket.items}
               loading={bucket.loading}
@@ -252,7 +278,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {tab === 'Settings' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <ProfileSettings
               blocked={profile.blocked}
               storage={archive.storage}
@@ -262,6 +288,17 @@ export default function ProfileScreen() {
           </View>
         ) : null}
       </ScreenBody>
+
+      <ProfileIntro
+        open={!profile.introSeen && !profile.loading}
+        onContinue={() => void profile.onIntroContinue()}
+      />
+      <ProfileSearchSheet
+        open={searchOpen}
+        hits={searchHits}
+        onClose={() => setSearchOpen(false)}
+        onJump={() => setTab('Profile')}
+      />
     </Screen>
   );
 }

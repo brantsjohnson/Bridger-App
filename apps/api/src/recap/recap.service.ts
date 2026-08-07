@@ -13,6 +13,7 @@
 // - LAZY PURGE: each playlist fetch deletes recap_answers rows whose
 //   expires_at is in the past (co-op null expires_at is never deleted).
 // PRIVACY: audio is returned as a short-lived signed URL, never a storage path.
+// AI: Job 10 (recap_podcast) is an audio stitch pipeline only — no LLM call.
 // ============================================
 import {
   BadRequestException,

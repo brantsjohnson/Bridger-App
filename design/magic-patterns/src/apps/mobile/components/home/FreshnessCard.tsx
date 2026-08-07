@@ -7,7 +7,10 @@ import { ButtonSecondary, cn } from '../../../../packages/ui';
  * style, never a chore. Answering refreshes the match signals behind the scenes.
  */
 export function FreshnessCard({ question = 'Still into beatboxing?' }: {question?: string;}) {
-  const [state, setState] = React.useState<'ask' | 'kept' | 'gone'>('ask');
+  const [state, setState] = React.useState<'ask' | 'kept' | 'gone' | 'dismissed'>('ask');
+
+  // X: just close — do not show "Kept it."
+  if (state === 'dismissed') return null;
 
   if (state !== 'ask') {
     return (
@@ -23,7 +26,7 @@ export function FreshnessCard({ question = 'Still into beatboxing?' }: {question
     <div className="relative rounded-[26px_10px_26px_10px] bg-[#FDEFD3] px-5 py-4">
       <button
         type="button"
-        onClick={() => setState('kept')}
+        onClick={() => setState('dismissed')}
         aria-label="Dismiss"
         className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-mute hover:bg-white">
         

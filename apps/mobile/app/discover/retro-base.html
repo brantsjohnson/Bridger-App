@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro Base Layer</title>
+<style>
+  :root{
+    --accent:#5cc0d8; --ink:#06121a;
+    --serif:"Didot","Bodoni MT","Hoefler Text",Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;width:100%;background:#000;overflow:hidden;}
+  body{display:flex;align-items:center;justify-content:center;font-family:var(--serif);}
+  /* transparent so this layer can also be stacked; give it a black backer if used alone */
+  .screen{position:relative;width:100vw;height:100vh;max-width:430px;max-height:932px;
+    background:#000;overflow:hidden;}
+
+  .tunnel{position:absolute;inset:0;z-index:1;
+    background:repeating-conic-gradient(from 0deg at 50% 46%,
+      rgba(255,255,255,.07) 0deg .3deg, transparent .3deg 12deg);}
+
+  .rings{position:absolute;inset:0;z-index:1;}
+  .rings rect{fill:none;stroke:rgba(255,255,255,.28);stroke-width:1;
+    vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;
+    animation:fly 16s linear infinite;}
+  .rings rect:nth-of-type(1){animation-delay:0s;}
+  .rings rect:nth-of-type(2){animation-delay:-1.6s;}
+  .rings rect:nth-of-type(3){animation-delay:-3.2s;}
+  .rings rect:nth-of-type(4){animation-delay:-4.8s;}
+  .rings rect:nth-of-type(5){animation-delay:-6.4s;}
+  .rings rect:nth-of-type(6){animation-delay:-8s;}
+  .rings rect:nth-of-type(7){animation-delay:-9.6s;}
+  .rings rect:nth-of-type(8){animation-delay:-11.2s;}
+  .rings rect:nth-of-type(9){animation-delay:-12.8s;}
+  .rings rect:nth-of-type(10){animation-delay:-14.4s;}
+  @keyframes fly{0%{opacity:0;transform:scale(.03);}12%{opacity:.4;}
+    100%{opacity:0;transform:scale(1.8);}}
+
+  .title{position:absolute;top:18%;left:50%;transform:translateX(-50%);width:88%;height:auto;z-index:5;overflow:visible;}
+  .arch{fill:#fff;font-family:var(--serif);font-weight:600;font-size:30px;letter-spacing:.5px;}
+
+  .cta-wrap{position:absolute;left:0;right:0;bottom:9%;z-index:6;display:flex;justify-content:center;}
+  .cta{appearance:none;border:none;cursor:pointer;font-family:var(--serif);font-weight:600;
+    font-size:23px;color:var(--ink);letter-spacing:.4px;background:var(--accent);
+    padding:20px 74px;border-radius:40px;transition:transform .18s ease;}
+  .cta:hover{transform:translateY(-2px) scale(1.02);}
+  .cta:active{transform:translateY(0) scale(.99);}
+
+  @media (prefers-reduced-motion:reduce){
+    .rings rect{animation:none;}
+    .rings rect:nth-of-type(4){opacity:.35;transform:scale(.9);}
+    .rings rect:nth-of-type(6){opacity:.2;transform:scale(1.35);}
+  }
+</style>
+</head>
+<body>
+  <div class="screen">
+    <div class="tunnel"></div>
+    <svg class="rings" viewBox="0 0 430 932" preserveAspectRatio="xMidYMid slice">
+      <rect x="65" y="124" width="300" height="610"/><rect x="65" y="124" width="300" height="610"/>
+      <rect x="65" y="124" width="300" height="610"/><rect x="65" y="124" width="300" height="610"/>
+      <rect x="65" y="124" width="300" height="610"/><rect x="65" y="124" width="300" height="610"/>
+      <rect x="65" y="124" width="300" height="610"/><rect x="65" y="124" width="300" height="610"/>
+      <rect x="65" y="124" width="300" height="610"/><rect x="65" y="124" width="300" height="610"/>
+    </svg>
+
+    <svg class="title" viewBox="0 0 400 160" aria-label="Making Friends As An Adult Is Hard">
+      <defs>
+        <path id="arcTop" d="M 20 150 Q 200 8 380 150" fill="none"/>
+        <path id="arcBot" d="M 42 172 Q 200 58 358 172" fill="none"/>
+      </defs>
+      <text class="arch"><textPath href="#arcTop" startOffset="50%" text-anchor="middle">Making Friends As</textPath></text>
+      <text class="arch"><textPath href="#arcBot" startOffset="50%" text-anchor="middle">An Adult Is Hard</textPath></text>
+    </svg>
+
+    <div class="cta-wrap"><button class="cta">Get Started</button></div>
+  </div>
+</body>
+</html>

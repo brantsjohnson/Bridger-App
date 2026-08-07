@@ -9,7 +9,15 @@
 // PRIVACY: every written field carries its own visibleToTier. Friend profiles
 // read through getPersonProfile and the card filters by the viewer's tier.
 // ============================================
-import type { Accent, BucketItem, Person, Tier } from '@bridger/shared';
+import type {
+  Accent,
+  BucketItem,
+  FavoriteModule,
+  ObsessionSquare,
+  Person,
+  Tier,
+  Top5Item
+} from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import { PEOPLE } from './fixtures/catalog';
@@ -17,6 +25,7 @@ import {
   ABOUT_ME_FIELDS,
   BLOCKED_IDS,
   BUCKET_LIST as FIXTURE_BUCKET,
+  CURRENT_OBSESSION,
   FAVS,
   HOBBY_FOLLOW_UPS as FIXTURE_FOLLOW_UPS,
   INTERESTS,
@@ -24,6 +33,7 @@ import {
   PROFILE_CURRENTLY,
   STORY_CALENDAR,
   THIS_OR_THAT,
+  TOP_5,
   TRAVEL_PLACES,
   type AboutField,
   type FavGroup,
@@ -96,6 +106,23 @@ let demoFavs: FavGroup[] = FAVS.map((g) => ({ ...g, items: [...g.items] }));
 let demoThisOrThat: ThisOrThatRow[] = THIS_OR_THAT.map((t) => ({ ...t }));
 let demoPlaces: TravelPlace[] = TRAVEL_PLACES.map((p) => ({ ...p }));
 let demoCustomNotes: string | null = null;
+let demoTop5: Top5Item[] = TOP_5.map((t) => ({
+  id: t.id,
+  text: t.text,
+  emoji: t.emoji,
+  order: t.order,
+  visibleToTier: t.tier
+}));
+let demoObsession: ObsessionSquare[] = CURRENT_OBSESSION.map((o) => ({
+  id: o.id,
+  prompt: o.prompt,
+  text: o.text,
+  emoji: o.emoji,
+  order: o.order,
+  visibleToTier: o.tier
+}));
+/** One-time profile intro seen (demo session). */
+let demoProfileIntroSeen = false;
 
 // --- LIVE WIRING HELPERS ---
 // Every "fact" comes back from the API as this shape. We store the exact
@@ -122,7 +149,7 @@ async function fetchAttributes<T>(kind: string): Promise<ApiAttribute<T>[]> {
  */
 async function replaceAttributes(
   prefix: string,
-  items: { key: string; value: unknown; visibleToTier?: Tier }[]
+  items: { key: string; value: unknown; visibleToTier?: Tier; matchable?: boolean }[]
 ): Promise<void> {
   await apiFetch('/me/attributes', {
     method: 'POST',
@@ -132,7 +159,8 @@ async function replaceAttributes(
         key: it.key,
         value: it.value,
         layer: 'profile',
-        visibleToTier: it.visibleToTier ?? 'friend'
+        visibleToTier: it.visibleToTier ?? 'friend',
+        matchable: it.matchable ?? true
       }))
     })
   });
@@ -211,6 +239,33 @@ export async function listAboutFields(): Promise<AboutField[]> {
   return rows.map((r) => r.value);
 }
 
+/**
+ * Save a new display order for About me fields (own profile Edit mode).
+ * Demo keeps the order in memory; live rewrites the about: batch in order.
+ */
+export async function reorderAboutFields(ordered: AboutField[]): Promise<AboutField[]> {
+  if (isDemoMode()) {
+    // Keep custom notes out of the reorder list if it was appended for display.
+    const note = demoCustomNotes;
+    demoAbout = ordered
+      .filter((f) => f.id !== 'about-notes')
+      .map((f) => ({ ...f }));
+    if (note) {
+      // notes stay at the end unless they were in the ordered list intentionally
+    }
+    return listAboutFields();
+  }
+  await replaceAttributes(
+    'about:',
+    ordered.map((f, i) => ({
+      key: `about:${f.id}`,
+      value: { ...f, order: i },
+      visibleToTier: f.tier
+    }))
+  );
+  return listAboutFields();
+}
+
 export async function listHobbies(): Promise<Interest[]> {
   if (isDemoMode()) return demoHobbies.map((h) => ({ ...h }));
   const rows = await fetchAttributes<Interest>('hobby');
@@ -260,6 +315,114 @@ export async function listTravelPlaces(): Promise<TravelPlace[]> {
   return rows.map((r) => r.value);
 }
 
+/** Top 5 ordered identity lines. */
+export async function listTop5(): Promise<Top5Item[]> {
+  if (isDemoMode()) return demoTop5.map((t) => ({ ...t }));
+  const rows = await fetchAttributes<Top5Item>('top5');
+  return rows.map((r) => r.value).sort((a, b) => a.order - b.order);
+}
+
+/** Current Obsession squares (who you are today). */
+export async function listObsession(): Promise<ObsessionSquare[]> {
+  if (isDemoMode()) {
+    // Migrate legacy Currently song/book into Listening/Reading if empty.
+    if (demoObsession.length === 0 && demoCurrently.checkedIn) {
+      return [
+        {
+          id: 'legacy-listening',
+          prompt: 'Listening…',
+          text: `${demoCurrently.listening.title} · ${demoCurrently.listening.artist}`,
+          emoji: demoCurrently.listening.emoji,
+          order: 0,
+          visibleToTier: 'friend'
+        },
+        {
+          id: 'legacy-reading',
+          prompt: 'Reading…',
+          text: `${demoCurrently.reading.title} · ${demoCurrently.reading.author}`,
+          emoji: demoCurrently.reading.emoji,
+          order: 1,
+          visibleToTier: 'friend'
+        }
+      ];
+    }
+    return demoObsession.map((o) => ({ ...o }));
+  }
+  const rows = await fetchAttributes<ObsessionSquare>('obsession');
+  return rows.map((r) => r.value).sort((a, b) => a.order - b.order);
+}
+
+/**
+ * Album-style Favorites modules for the grid (filled + to-start on own).
+ * Built from which fav groups / modules have answers.
+ */
+export async function listFavoriteModules(own: boolean): Promise<FavoriteModule[]> {
+  const favs = await listFavs();
+  const tot = await listThisOrThat();
+  const catalog: Array<{ id: string; label: string; emoji: string; count: number }> = [
+    {
+      id: 'food_drinks',
+      label: 'Food & drinks',
+      emoji: '🍜',
+      count: favs.find((g) => g.group === 'Food')?.total ?? 0
+    },
+    {
+      id: 'entertainment',
+      label: 'Entertainment',
+      emoji: '🎬',
+      count: favs.find((g) => g.group === 'Entertainment')?.total ?? 0
+    },
+    {
+      id: 'everyday',
+      label: 'Everyday',
+      emoji: '🧺',
+      count: favs.find((g) => g.group === 'Everyday')?.total ?? 0
+    },
+    {
+      id: 'sports',
+      label: 'Sports',
+      emoji: '🚲',
+      count: favs.find((g) => g.group === 'Sports')?.total ?? 0
+    },
+    {
+      id: 'this_or_that',
+      label: 'This or that',
+      emoji: '⚖️',
+      count: tot.length
+    }
+  ];
+  return catalog
+    .map((m) => ({
+      id: m.id,
+      label: m.label,
+      emoji: m.emoji,
+      answeredCount: m.count,
+      empty: m.count === 0
+    }))
+    .filter((m) => own || !m.empty);
+}
+
+export async function getProfileIntroSeen(): Promise<boolean> {
+  if (isDemoMode()) return demoProfileIntroSeen;
+  try {
+    const s = await apiFetch<{ profileIntroSeen?: boolean }>('/me/settings');
+    return Boolean(s.profileIntroSeen);
+  } catch {
+    return false;
+  }
+}
+
+export async function setProfileIntroSeen(): Promise<void> {
+  if (isDemoMode()) {
+    demoProfileIntroSeen = true;
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ profileIntroSeen: true })
+  });
+}
+
 // --- ModuleFlow writers (demo session + live TODOs) ---
 
 /**
@@ -267,6 +430,79 @@ export async function listTravelPlaces(): Promise<TravelPlace[]> {
  * answers['hobbies'] = selected hobby ids; answers['followup:id'] = text.
  * PRIVACY: each hobby inherits the visibility of its select step (or follow-up).
  */
+export async function saveTop5(
+  answers: Record<string, string | string[]>,
+  visibility: Record<string, Tier> = {},
+  matchable: Record<string, boolean> = {}
+): Promise<Top5Item[]> {
+  const items: Top5Item[] = [];
+  for (let i = 1; i <= 5; i++) {
+    const text = String(answers[`top5_${i}`] ?? '').trim();
+    if (!text) continue;
+    const key = `top5_${i}`;
+    items.push({
+      id: key,
+      text,
+      emoji: (answers[`top5_${i}_emoji`] as string) || '✨',
+      order: items.length,
+      visibleToTier: visibility[key] ?? 'friend',
+      matchable: matchable[key] !== false
+    });
+  }
+  if (isDemoMode()) {
+    demoTop5 = items;
+    return listTop5();
+  }
+  await replaceAttributes(
+    'top5:',
+    items.map((t) => ({
+      key: `top5:${t.id}`,
+      value: t,
+      visibleToTier: t.visibleToTier,
+      matchable: t.matchable
+    }))
+  );
+  return listTop5();
+}
+
+export async function saveObsession(
+  answers: Record<string, string | string[]>,
+  visibility: Record<string, Tier> = {},
+  matchable: Record<string, boolean> = {}
+): Promise<ObsessionSquare[]> {
+  const prompts = Object.keys(answers).filter((k) => k.startsWith('obsession:'));
+  const items: ObsessionSquare[] = [];
+  for (const key of prompts) {
+    const text = String(answers[key] ?? '').trim();
+    if (!text) continue;
+    const prompt = key.replace(/^obsession:/, '');
+    items.push({
+      id: key,
+      prompt,
+      text,
+      emoji: '✨',
+      order: items.length,
+      visibleToTier: visibility[key] ?? 'friend',
+      matchable: matchable[key] !== false
+    });
+  }
+
+  if (isDemoMode()) {
+    demoObsession = items;
+    return listObsession();
+  }
+  await replaceAttributes(
+    'obsession:',
+    items.map((o) => ({
+      key: `obsession:${o.id}`,
+      value: o,
+      visibleToTier: o.visibleToTier,
+      matchable: o.matchable
+    }))
+  );
+  return listObsession();
+}
+
 export async function saveHobbies(
   answers: Record<string, string | string[]>,
   visibility: Record<string, Tier> = {}

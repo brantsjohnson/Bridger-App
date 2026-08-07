@@ -29,28 +29,15 @@ All calls run **server-side** through one gateway (§5). Model IDs live in confi
 | 8 | **Freshness detector** ("still into X?") | `profiles` | fast | 0 | 200 | strict JSON {attribute_id, question} | weekly batch |
 | 9 | Voice-to-text captions | `stories` | speech-to-text | — | — | text | on use |
 | 10 | Recap podcast stitching | `recap` | audio pipeline (no LLM) | — | — | audio | weekly |
+| 11 | **Agent reasoning + tools** (`personal_agent` lane) | `assistant` | standard | 0.3 | 2000 | text + tool calls | per user request |
+| 12 | Agent query understanding | `assistant` | fast | 0.2 | 300 | strict JSON | per request |
+| 13 | Agent speech-to-text / reply phrasing | `assistant` | STT / fast | — / 0.4 | — / 400 | text | voice sessions |
+
+*Jobs 11–13 run on the separate `personal_agent` lane (see §5a and `AGENT.md`) — single-user, may see the requester's own names/notes, confirmation-gated tools.*
 
 **Temperature logic:** judgment/extraction tasks (4, 5, 8) run near-0 for consistency; user-visible prose (2, 3, 6) runs ~0.3–0.4 — enough warmth to not sound robotic, low enough to never get creative with facts. Nothing runs above 0.5: creativity is a liability when the source of truth is someone's life.
 
 **No LLM in any hot path.** Matching, feeds, and reveals are pgvector + arithmetic at request time (`MATCHING-ALGORITHMS.md`); LLM work happens at write time or in batches, async via a job queue with retries.
-
-## 2b · Deferred until quizzes + modules land (build order)
-
-Do not implement the AI gateway or the jobs below until (1) generic quiz take ships, (2) match/profile modules write attributes, and (3) the Cursor plan `discover_matching_live_f325db93` has been executed or explicitly reopened.
-
-| Job # | Name | Why deferred |
-|---|---|---|
-| 2–3 | Day / week summaries | Stories caption concat is enough for now; co-op daily-vs-weekly gate depends on real summaries |
-| 4 | Quiz moderator | QUIZ-ENGINE AI centerpiece; heuristic pass-through stays until this lands |
-| 5 | Discover-module moderator notes | Needs modules + gateway |
-| 6–7 | Person summary + embeddings | Matching v2; v1 is FoF + attribute overlap first (`MATCHING-ALGORITHMS.md`) |
-| 8 | Freshness detector | Needs gateway |
-
-**Co-op note:** Portal, membership, polls, and profile customization do **not** require AI. Come back here for: (a) co-op daily summary perk, (b) AI spend line in open books / cost simulator once gateway cost logs exist (§7).
-
-Job 10 (recap audio stitch) is not an LLM job — finishing Recap in the product wave is allowed.
-
-Product waves may ship with every AI job disabled (fail-silent surfaces) — that is required, not optional.
 
 ## 3 · Prompt engineering standards
 
@@ -117,6 +104,64 @@ The gateway, in order:
 - Foundation models: API-only, no-training terms, no fine-tuning on user data. Deletion/opt-out cascades to embeddings, summaries, notes.
 - Analytics store stays walled off from all AI/matching (per `analytics-rules.mdc`).
 
+
+## 5a · The two lanes through one gateway
+
+Every call still passes through the single gateway, but on one of two labeled lanes with different scrub rules:
+
+| | `deidentified` lane | `personal_agent` lane |
+|---|---|---|
+| Used by | jobs 1–10 (matching, summaries, moderation) | jobs 11–13 (the assistant, `AGENT.md`) |
+| Sees names/PII | **never** — opaque IDs, scrubber rejects | **requester's own visible data only** |
+| Direction | reasons about *others* → must be identity-blind | reflects *your own* data back to *you* |
+| Context source | RAG over Zone B/C (opaque) | the app's own permission layer, as user U |
+| Scrub step | strip/reject names, emails, phones, handles, media | verify auth = U; verify every context item is U-visible; reject media |
+| Shared invariants | keys server-side · no-training/zero-retention API terms · content discarded per request · only de-identified metadata logged |
+
+The lane is part of the per-job config — a job cannot switch lanes at runtime, and a `deidentified` job that receives a payload containing PII still hard-fails even if a bug upstream let it through. Two lanes, one chokepoint, no third path.
+
+## 9 · How it works end-to-end (two walkthroughs)
+
+**A story post becomes a week summary (jobs 1–3):**
+1. Maya posts Tuesday's update (video + caption). The post itself completes instantly — nothing waits on AI.
+2. A queue job transcribes the video (job 1) and writes the transcript to the story row.
+3. A second job builds the *day summary* (job 2): gateway → scrub (opaque author ref, caption + transcript text only, media rejected) → fast model at temp 0.4 → 1–2 sentences → grounding check (every claim maps to her words) → stored on the day. Too thin? Returns null; the day shows just the photo.
+4. The *week summary* (job 3) re-rolls from the accumulated day texts each post, so the Catch-Up's week-hero is always pre-generated — nobody ever waits on a spinner at read time.
+5. Maya deletes Tuesday's post → the transcript, day summary, and its contribution to the week summary drop in the same cascade.
+
+**A quiz response is moderated (job 4):**
+1. Sam finishes the values quiz. The deterministic scorer computes dimension scores — pure arithmetic, no model.
+2. The moderator call goes gateway → scrub (answers + optional explanations, opaque ref) → standard model at temp 0.2 with the quiz's authored `moderator_instructions` → strict JSON: per-dimension confidence, quality flags, and (within `adaptation_policy`) at most N inserted clarifier questions.
+3. Invalid JSON → one retry → fail silent: scores stand at default confidence, no adaptation. The moderator can *never* alter a score — the schema has no score field to return.
+4. Confidence rides along to matching, where low-confidence dimensions are discounted (`MATCHING-ALGORITHMS.md`).
+
+## 10 · Operational machinery
+
+- **Queue & workers:** all LLM work runs as queue jobs (per `INFRASTRUCTURE.md`) with per-job concurrency caps, exponential backoff (×2), and a dead-letter queue reviewed in admin. Idempotency key = `(job, subject, content_hash)` so a redelivered job can't double-write or double-spend.
+- **Config table (`ai_config`):** one row per job — `{job, lane, model_id, temperature, max_tokens, timeout_ms, schema_id, monthly_budget_usd, enabled}`. Model swaps, temp tuning, and kill-switching are row updates, not deploys. `enabled=false` = that surface fails silent app-wide.
+- **Failure modes, decided in advance:**
+
+| Failure | Behavior the user sees |
+|---|---|
+| Model/provider down | Surface hides (no summary, no adaptation); app fully usable |
+| Invalid JSON twice | Same as down — fail silent, log for spot-check |
+| Grounding check fails | Summary suppressed (never "best effort" prose about someone's life) |
+| Budget exceeded | Job auto-disables + admin alert; nothing degrades loudly |
+| Scrubber rejects payload | Call never leaves the building; bug ticket, not a user error |
+
+- **Cost model:** the gateway's per-call log (tokens × price, by job) rolls into a monthly per-job dashboard in admin and the co-op economics view. Rule of thumb: embeddings and fast-tier jobs are pennies; watch jobs 3, 4, and 11 — they're the spend.
+
+## 11 · How it can grow (adding touchpoint #14 safely)
+
+The registry is designed to absorb new AI jobs without re-litigating privacy each time. A new touchpoint ships only by:
+1. Adding a **registry row** here (model tier, temp, tokens, output, trigger) + an `ai_config` row.
+2. Declaring its **lane** — and if `personal_agent`, pointing at the `AGENT.md` rules it obeys.
+3. Writing the **prompt as v1 in the repo** with a golden eval set; CI green before enable.
+4. Passing the **invisible-AI test**: no new sparkle icons, no "AI" labels; the output must read as Bridger being attentive, and fail silent.
+5. **Budget + kill switch** set before `enabled=true`.
+
+Candidate future touchpoints that fit this mold: event-description polish (author-side, their words only), inside-joke context suggestions (author-side), smarter freshness priors per category, agent tools per `AGENT.md` §14. Anything requiring content the scrubber would reject is not a candidate — the firewall doesn't grow exceptions.
+
 ## Acceptance criteria
 
 - [ ] Every AI call routes through the gateway; no other file imports an AI SDK; keys server-side only.
@@ -126,3 +171,8 @@ The gateway, in order:
 - [ ] RAG corpus is Zone B/C, opaque-ID keyed, re-embedded on change, dropped on delete/opt-out.
 - [ ] PII scrub rejects names/emails/phones/handles and all media; idempotency + circuit breakers in place.
 - [ ] The app functions fully with every AI job disabled (fail-silent surfaces).
+- [ ] The `personal_agent` lane exists as labeled per-job config; lanes cannot switch at runtime; the deidentified lane hard-fails on PII even from internal bugs.
+- [ ] `ai_config` drives model/temp/tokens/timeout/budget/enabled per job; kill-switching is a row update.
+- [ ] Queue jobs are idempotent by (job, subject, content-hash); dead-letter queue is surfaced in admin.
+- [ ] The failure-mode table's behaviors are implemented (fail silent, suppress on grounding failure, auto-disable on budget).
+- [ ] New touchpoints follow the §11 checklist (registry row, lane, v1 prompt + goldens, invisible-AI test, budget) before enable.

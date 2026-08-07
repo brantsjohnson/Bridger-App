@@ -7,8 +7,9 @@
 // Analytics: page changes record method swipe|dropdown + page_index on the
 // hobbies_widget id (own card or friend about_them, passed in).
 // ============================================
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronDownIcon } from 'lucide-react-native';
 import { trackUi } from '@bridger/shared';
 import { ACCENTS, BLOB_SHAPES, cn, withAnalyticsPress } from '@bridger/ui';
@@ -16,6 +17,7 @@ import type { Interest } from '../../data/profile';
 import { HOBBY_FOLLOW_UPS } from '../../data/profile';
 
 const PAGES = ['Hobbies', 'Answers'];
+const HOBBIES_PAGE_KEY = 'bridger.hobbies_widget_page';
 
 export function HobbiesWidget({
   hobbies,
@@ -34,11 +36,26 @@ export function HobbiesWidget({
   const [width, setWidth] = useState(0);
   const scroller = useRef<ScrollView>(null);
 
+  // Remember last chips vs answers view for the next profile open.
+  useEffect(() => {
+    void AsyncStorage.getItem(HOBBIES_PAGE_KEY).then((v) => {
+      const n = v === '1' ? 1 : 0;
+      setPage(n);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (width > 0) {
+      scroller.current?.scrollTo({ x: page * width, animated: false });
+    }
+  }, [width, page]);
+
   /** Record a page change — dots = dropdown, swipe = swipe. */
   const recordPage = (i: number, method: 'swipe' | 'dropdown') => {
     if (analyticsId) {
       trackUi('page_viewed', analyticsId, { method, page_index: i });
     }
+    void AsyncStorage.setItem(HOBBIES_PAGE_KEY, String(i));
   };
 
   const goTo = (i: number) => {
