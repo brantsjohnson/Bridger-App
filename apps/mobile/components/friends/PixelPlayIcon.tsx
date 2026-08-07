@@ -317,13 +317,15 @@ export function PixelPlayIcon({
   );
 
   return (
+    // ACCESSIBILITY: decorative only; parent RecapTeaser carries the label.
+    // shapeRendering is a web SVG hint and is not typed on react-native-svg.
     <Svg
       width={width}
       height={height}
       viewBox={`0 0 ${GRID_W} ${GRID_H}`}
-      shapeRendering="crispEdges"
       accessible={false}
       importantForAccessibility="no-hide-descendants"
+      {...({ shapeRendering: 'crispEdges' } as Record<string, string>)}
     >
       {shapes}
     </Svg>
