@@ -15,6 +15,7 @@ The space where the co-op is **run in the open**: anyone can see how Bridger wor
 | No tallies on portal | Support counts and beta yes/no/extend counts **never** appear in the app. Admin console shows aggregates. |
 | No names on portal | Ideas/comments use **"A member"** or omit authors. Opaque `user_id` only in admin. |
 | Dues display | **$24/year**. No dues preference vote in the app. Full cost **simulator** is public. |
+| AI compute | Ambient AI spend (summaries, moderation, embeddings) and, when shipped, `personal_agent` lane cost are transparent member-funded lines reviewed via admin cost log (`AI-SYSTEM.md` / `AGENT.md`). |
 | Cancel | Period-end: keep perks until `dues_paid_through`, then free rolling ~30-day storage |
 
 ---

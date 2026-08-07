@@ -6,11 +6,12 @@
 import { Module } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
 import { CoopModule } from '../coop/coop.module';
+import { MatchingModule } from '../matching/matching.module';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
 
 @Module({
-  imports: [CoopModule],
+  imports: [CoopModule, MatchingModule],
   controllers: [EventsController],
   providers: [EventsService, SupabaseAuthGuard],
   exports: [EventsService]

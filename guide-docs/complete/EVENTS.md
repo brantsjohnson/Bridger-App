@@ -52,7 +52,7 @@ There is **no** global "Bring" field — use Assignments on step 3 instead.
 **Step 3 — Cover + Assignments.**
 
 - **Cover modes:** Photo · Emoji. Photo can include **banner text** over the image. Emoji uses the system keyboard (clearable) plus a **vibrant** background color. Tap the cover preview anytime to change it. If skipped, a random emoji cover is chosen at create time. **MEDIA EXCEPTION:** Bridger is capture-only everywhere except the profile photo and this event cover.
-- **Assignments** (renamed from "Who's bringing what"): host adds items. List is public on the event. Assigning someone does **not** check the item off. No per-item chip-in. Checking off happens on the event page and **only the assignee** can do it. Open items can be snagged; assignees can remove themselves (host is notified).
+- **Assignments** (renamed from "Who's bringing what"): host adds items. List is public on the event. Assigning someone does **not** check the item off. No per-item chip-in. Checking off happens on the event page — the **assignee or the host/co-host** can do it (hosts can check off anyone's item). Open items can be snagged; assignees can remove themselves (host is notified).
 
 **Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it, then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`) — never the title, bio, or address text — and route to the new event page.
 
@@ -80,7 +80,7 @@ The detail page leads with **clear, complete event info** (see mockup): title, *
 - **Allergy share (opt-in).** "Share any food allergies with [host]?" Food allergies are **sensitive**: collected only if the guest chooses, visible **only to the host**, never to other guests, never used for matching. Opt-in every time — not a stored default.
 - **Add to calendar** — one tap opens Google Calendar (prefilled) or shares an `.ics` for Apple Calendar.
 - **Who you should meet** — people at the event (invited or going) Bridger suggests you'd click with; each card shows the shared thread; tapping routes to **Discover**.
-- **Assignments** — public list. Tap **Open** (or a name) for a colorful dropdown to assign / reassign / leave open. No "Snag" label. Only the assignee checks an item off; hosts can see done state.
+- **Assignments** — public list. Tap **Open** (or a name) for a colorful dropdown to assign / reassign / leave open. No "Snag" label. The assignee or the host/co-host can check an item off; other guests only see the done state.
 
 ---
 
@@ -176,7 +176,7 @@ interface RsvpInput {
 - [ ] Create surfaces friend-of-friend suggested invites from `matching`.
 - [ ] Hosting is free (never gated); the guest cap is 35 for free members and 100 for co-op members (see `COOP.md`).
 - [ ] The chip-in handle is a stored link only — never processed by the app (no Venmo/Cash App OAuth).
-- [ ] Assignments are public; assign ≠ done; only the assignee can check off; open items use an assign dropdown (no "Snag" label); leave-open / reassign notifies the host.
+- [ ] Assignments are public; assign ≠ done; the assignee or host/co-host can check off (hosts can check anyone's); open items use an assign dropdown (no "Snag" label); leave-open / reassign notifies the host.
 - [ ] Invitee view offers Going / Can't, add-to-calendar (Google/Apple, prefilled), and who-you-should-meet cards that route to Discover.
 - [ ] Food-allergy sharing is opt-in per event, visible only to the host, and never used for matching.
 - [ ] Guests see only "{N} going" (people they know) and "{N} to meet" — never a raw invited/going total — and both counts are tappable.

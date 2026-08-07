@@ -106,6 +106,27 @@ interface QuizRegistryEntry {
 
 ---
 
+## Matching learning dashboard
+
+Admin section for connection-outcome learning (`MACHINE-LEARNING.md` §10):
+
+- **Metrics:** `GET /admin/matching/metrics` — add→Close (north star), suggestion→add, dismiss/block rates, reveal_plan / event_attended counts. Computed from `matching_feedback` + domain only (never PostHog).
+- **Config / rollback:** `GET/PUT /admin/matching/config`, `POST /admin/matching/config/activate/:version`.
+- **Nightly refresh:** `POST /admin/matching/nightly` (Discover batch + feedback TTL purge).
+
+## Assistant (opt-in relationship helper)
+
+Admin section `assistant` (AGENT.md):
+
+- **Access flag:** `off` · `founder_only` (default) · `allowlist` · `coop` · `everyone`. Stored on `admin_config.assistant`.
+- **Per-tool kill switches:** read tools may ship on; act tools (`draft_message`, `draft_event`, `add_calendar_entry`, `save_note`, etc.) default off until ready.
+- **Founder ids:** `ASSISTANT_FOUNDER_USER_IDS` (comma-separated) and/or `COOP_ADMIN_EMAILS` for `founder_only`.
+- **Model jobs:** reuse `ai_config` rows `agent_query` / `agent_reasoning` / `agent_voice` (enable only after gating ships).
+- **Cost:** de-identified spend for the `personal_agent` lane via `/admin/ai/cost`.
+- API: `GET/PUT /admin/assistant`.
+
+---
+
 ## Repository topology (isolation for safety)
 
 Some surfaces are deliberately kept **out of the main app's blast radius** so edits (including AI edits) can't break the live consumer app:

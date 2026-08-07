@@ -111,6 +111,7 @@ export type Database = {
           id: string
           live_quiz_slug: string | null
           themed_prompts: Json
+          assistant: Json
           updated_at: string
         }
         Insert: {
@@ -118,6 +119,7 @@ export type Database = {
           id?: string
           live_quiz_slug?: string | null
           themed_prompts?: Json
+          assistant?: Json
           updated_at?: string
         }
         Update: {
@@ -125,7 +127,276 @@ export type Database = {
           id?: string
           live_quiz_slug?: string | null
           themed_prompts?: Json
+          assistant?: Json
           updated_at?: string
+        }
+        Relationships: []
+      }
+      assistant_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          status: string
+          created_at: string
+          closed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          status?: string
+          created_at?: string
+          closed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          status?: string
+          created_at?: string
+          closed_at?: string | null
+        }
+        Relationships: []
+      }
+      assistant_turns: {
+        Row: {
+          id: string
+          session_id: string
+          role: string
+          content: string
+          tool_name: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          role: string
+          content: string
+          tool_name?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          role?: string
+          content?: string
+          tool_name?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      assistant_activity_log: {
+        Row: {
+          id: string
+          user_id: string
+          tool: string
+          summary: string
+          undo_payload: Json | null
+          created_at: string
+          undone_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          tool: string
+          summary: string
+          undo_payload?: Json | null
+          created_at?: string
+          undone_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          tool?: string
+          summary?: string
+          undo_payload?: Json | null
+          created_at?: string
+          undone_at?: string | null
+        }
+        Relationships: []
+      }
+      assistant_memory_chunks: {
+        Row: {
+          id: string
+          user_id: string
+          kind: string
+          ref_id: string | null
+          text: string
+          embedding: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind: string
+          ref_id?: string | null
+          text: string
+          embedding?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          kind?: string
+          ref_id?: string | null
+          text?: string
+          embedding?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      assistant_proposals: {
+        Row: {
+          id: string
+          user_id: string
+          session_id: string | null
+          tool: string
+          preview: string
+          args: Json
+          status: string
+          created_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          session_id?: string | null
+          tool: string
+          preview: string
+          args?: Json
+          status?: string
+          created_at?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          session_id?: string | null
+          tool?: string
+          preview?: string
+          args?: Json
+          status?: string
+          created_at?: string
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
+      // --- AI System tables (migration 0028_ai_system.sql) ---
+      ai_config: {
+        Row: {
+          job: string
+          lane: string
+          model_id: string
+          temperature: number
+          max_tokens: number
+          timeout_ms: number
+          schema_id: string | null
+          monthly_budget_usd: number
+          enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          job: string
+          lane: string
+          model_id: string
+          temperature?: number
+          max_tokens?: number
+          timeout_ms?: number
+          schema_id?: string | null
+          monthly_budget_usd?: number
+          enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          job?: string
+          lane?: string
+          model_id?: string
+          temperature?: number
+          max_tokens?: number
+          timeout_ms?: number
+          schema_id?: string | null
+          monthly_budget_usd?: number
+          enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_job_cost_log: {
+        Row: {
+          id: string
+          job: string
+          prompt_version: string | null
+          latency_ms: number
+          input_tokens: number
+          output_tokens: number
+          estimated_usd: number
+          subject_ref: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job: string
+          prompt_version?: string | null
+          latency_ms?: number
+          input_tokens?: number
+          output_tokens?: number
+          estimated_usd?: number
+          subject_ref: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job?: string
+          prompt_version?: string | null
+          latency_ms?: number
+          input_tokens?: number
+          output_tokens?: number
+          estimated_usd?: number
+          subject_ref?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      ai_jobs: {
+        Row: {
+          id: string
+          job: string
+          subject_ref: string
+          content_hash: string
+          payload_json: Json
+          status: string
+          attempts: number
+          run_after: string
+          last_error: string | null
+          result_json: Json | null
+          created_at: string
+          finished_at: string | null
+        }
+        Insert: {
+          id?: string
+          job: string
+          subject_ref: string
+          content_hash: string
+          payload_json?: Json
+          status?: string
+          attempts?: number
+          run_after?: string
+          last_error?: string | null
+          result_json?: Json | null
+          created_at?: string
+          finished_at?: string | null
+        }
+        Update: {
+          id?: string
+          job?: string
+          subject_ref?: string
+          content_hash?: string
+          payload_json?: Json
+          status?: string
+          attempts?: number
+          run_after?: string
+          last_error?: string | null
+          result_json?: Json | null
+          created_at?: string
+          finished_at?: string | null
         }
         Relationships: []
       }
@@ -315,6 +586,7 @@ export type Database = {
           met_event_id: string | null
           met_note: string | null
           met_place_label: string | null
+          met_via_user_id: string | null
           mutual_friend_id: string | null
           status: Database["public"]["Enums"]["connection_status"]
           updated_at: string
@@ -331,6 +603,7 @@ export type Database = {
           met_event_id?: string | null
           met_note?: string | null
           met_place_label?: string | null
+          met_via_user_id?: string | null
           mutual_friend_id?: string | null
           status?: Database["public"]["Enums"]["connection_status"]
           updated_at?: string
@@ -347,6 +620,7 @@ export type Database = {
           met_event_id?: string | null
           met_note?: string | null
           met_place_label?: string | null
+          met_via_user_id?: string | null
           mutual_friend_id?: string | null
           status?: Database["public"]["Enums"]["connection_status"]
           updated_at?: string
@@ -910,6 +1184,38 @@ export type Database = {
           },
         ]
       }
+      freshness_prompts: {
+        Row: {
+          user_id: string
+          attribute_id: string | null
+          question: string | null
+          created_at: string
+          answered_at: string | null
+        }
+        Insert: {
+          user_id: string
+          attribute_id?: string | null
+          question?: string | null
+          created_at?: string
+          answered_at?: string | null
+        }
+        Update: {
+          user_id?: string
+          attribute_id?: string | null
+          question?: string | null
+          created_at?: string
+          answered_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freshness_prompts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delights: {
         Row: {
           enabled: boolean
@@ -1187,6 +1493,206 @@ export type Database = {
           {
             foreignKeyName: "events_host_id_fkey"
             columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matching_config: {
+        Row: {
+          id: string
+          version: number
+          active: boolean
+          weights: Json
+          suggest_threshold: number
+          spotlight_threshold: number
+          min_shared_signals: number
+          confidence_floor: number
+          reveal_extras_max: number
+          refresh_cap: number
+          exploration_epsilon: number
+          exploration_epsilon_cold: number
+          bridge_cooldown_days: number
+          ann_candidate_cap: number
+          exposure_cap_pct: number
+          exposure_hard_cap: number
+          v2_enabled: boolean
+          holdout_pct: number
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          version: number
+          active?: boolean
+          weights: Json
+          suggest_threshold?: number
+          spotlight_threshold?: number
+          min_shared_signals?: number
+          confidence_floor?: number
+          reveal_extras_max?: number
+          refresh_cap?: number
+          exploration_epsilon?: number
+          exploration_epsilon_cold?: number
+          bridge_cooldown_days?: number
+          ann_candidate_cap?: number
+          exposure_cap_pct?: number
+          exposure_hard_cap?: number
+          v2_enabled?: boolean
+          holdout_pct?: number
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          version?: number
+          active?: boolean
+          weights?: Json
+          suggest_threshold?: number
+          spotlight_threshold?: number
+          min_shared_signals?: number
+          confidence_floor?: number
+          reveal_extras_max?: number
+          refresh_cap?: number
+          exploration_epsilon?: number
+          exploration_epsilon_cold?: number
+          bridge_cooldown_days?: number
+          ann_candidate_cap?: number
+          exposure_cap_pct?: number
+          exposure_hard_cap?: number
+          v2_enabled?: boolean
+          holdout_pct?: number
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      matching_feedback: {
+        Row: {
+          id: string
+          opaque_a: string
+          opaque_b: string
+          surface: string | null
+          suggestion_id: string | null
+          pair_features_snapshot: Json
+          outcome: string
+          weight: number
+          created_at: string
+          superseded_at: string | null
+        }
+        Insert: {
+          id?: string
+          opaque_a: string
+          opaque_b: string
+          surface?: string | null
+          suggestion_id?: string | null
+          pair_features_snapshot: Json
+          outcome: string
+          weight: number
+          created_at?: string
+          superseded_at?: string | null
+        }
+        Update: {
+          id?: string
+          opaque_a?: string
+          opaque_b?: string
+          surface?: string | null
+          suggestion_id?: string | null
+          pair_features_snapshot?: Json
+          outcome?: string
+          weight?: number
+          created_at?: string
+          superseded_at?: string | null
+        }
+        Relationships: []
+      }
+      matching_suggestions: {
+        Row: {
+          id: string
+          viewer_id: string
+          candidate_id: string
+          surface: string
+          event_id: string | null
+          connection_id: string | null
+          via_friend_id: string | null
+          score: number
+          breakdown: Json
+          evidence: Json
+          is_exploration: boolean
+          is_spotlight: boolean
+          feature_snapshot: Json
+          created_at: string
+          expires_at: string | null
+          dismissed_at: string | null
+          converted_connection_id: string | null
+        }
+        Insert: {
+          id?: string
+          viewer_id: string
+          candidate_id: string
+          surface: string
+          event_id?: string | null
+          connection_id?: string | null
+          via_friend_id?: string | null
+          score: number
+          breakdown?: Json
+          evidence?: Json
+          is_exploration?: boolean
+          is_spotlight?: boolean
+          feature_snapshot: Json
+          created_at?: string
+          expires_at?: string | null
+          dismissed_at?: string | null
+          converted_connection_id?: string | null
+        }
+        Update: {
+          id?: string
+          viewer_id?: string
+          candidate_id?: string
+          surface?: string
+          event_id?: string | null
+          connection_id?: string | null
+          via_friend_id?: string | null
+          score?: number
+          breakdown?: Json
+          evidence?: Json
+          is_exploration?: boolean
+          is_spotlight?: boolean
+          feature_snapshot?: Json
+          created_at?: string
+          expires_at?: string | null
+          dismissed_at?: string | null
+          converted_connection_id?: string | null
+        }
+        Relationships: []
+      }
+      module_moderator_notes: {
+        Row: {
+          id: string
+          user_id: string
+          module_key: string
+          notes: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          module_key: string
+          notes?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          module_key?: string
+          notes?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_moderator_notes_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -2439,6 +2945,7 @@ export type Database = {
       user_settings: {
         Row: {
           discoverable: boolean
+          assistant_enabled: boolean
           home_city: string | null
           home_layout: Json | null
           locale: string | null
@@ -2452,6 +2959,7 @@ export type Database = {
         }
         Insert: {
           discoverable?: boolean
+          assistant_enabled?: boolean
           home_city?: string | null
           home_layout?: Json | null
           locale?: string | null
@@ -2465,6 +2973,7 @@ export type Database = {
         }
         Update: {
           discoverable?: boolean
+          assistant_enabled?: boolean
           home_city?: string | null
           home_layout?: Json | null
           locale?: string | null
@@ -2506,6 +3015,38 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      week_summaries: {
+        Row: {
+          id: string
+          author_id: string
+          week_start: string
+          days_json: Json
+          built_at: string
+        }
+        Insert: {
+          id?: string
+          author_id: string
+          week_start: string
+          days_json?: Json
+          built_at?: string
+        }
+        Update: {
+          id?: string
+          author_id?: string
+          week_start?: string
+          days_json?: Json
+          built_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "week_summaries_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       weekly_activities: {
         Row: {

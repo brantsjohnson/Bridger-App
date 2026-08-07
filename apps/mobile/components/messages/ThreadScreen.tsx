@@ -40,14 +40,20 @@ import { useTouchGrass } from '../../hooks/useTouchGrass';
 type Props = {
   threadId: string;
   onBack?: () => void;
-  /** Optional pre-sent message (e.g. touch-grass "I'm in") */
+  /** Optional pre-sent message (e.g. touch-grass "I'm in") — auto-sends. */
   seedMessage?: string;
+  /**
+   * Prefill the composer only (Assistant draft_message). NEVER auto-sends.
+   * The person must tap send themselves.
+   */
+  draftMessage?: string;
 };
 
 export function ThreadScreen({
   threadId,
   onBack,
-  seedMessage
+  seedMessage,
+  draftMessage
 }: Props) {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
@@ -58,6 +64,7 @@ export function ThreadScreen({
   const [sending, setSending] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [seeded, setSeeded] = useState(false);
+  const [draftFilled, setDraftFilled] = useState(false);
 
   // Seed once if we arrived from touch-grass "I'm in"
   useEffect(() => {
@@ -65,6 +72,13 @@ export function ThreadScreen({
     setSeeded(true);
     void onSend(seedMessage);
   }, [seedMessage, seeded, thread, loading, onSend]);
+
+  // Assistant draft: put text in the box only — never send for them.
+  useEffect(() => {
+    if (!draftMessage || draftFilled || !thread || loading) return;
+    setDraftFilled(true);
+    setDraft(draftMessage);
+  }, [draftMessage, draftFilled, thread, loading]);
 
   if (loading || !thread) {
     return (

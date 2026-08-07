@@ -1,15 +1,13 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The "Move to…" sheet that replaces web drag-and-drop on native. Pick Close,
-// Friends, or Acquaintances for the friend you tapped in Edit mode (or long-
-// pressed). Writes through the friends data layer.
-// Analytics: when the circle changes, emit friend_retiered with from/to only
-// (never the friend's name).
+// The "Move to…" sheet — accessibility fallback when you tap or long-press a
+// friend in Edit mode instead of dragging them into a group. Pick Close,
+// Friends, or Acquaintances. The parent fires friend_retiered on a real change.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { Tier } from '@bridger/shared';
-import { TIER_LABEL, trackProduct } from '@bridger/shared';
+import { TIER_LABEL } from '@bridger/shared';
 import { Sheet, cn } from '@bridger/ui';
 import { ROSTER_TIERS } from '../../data/friends';
 
@@ -38,13 +36,6 @@ export function TierPicker({
             <Pressable
               key={tier}
               onPress={() => {
-                // Outcome event only when the circle actually changes. No names.
-                if (tier !== currentTier) {
-                  trackProduct('friend_retiered', {
-                    from_tier: currentTier,
-                    to_tier: tier
-                  });
-                }
                 onPick(tier);
                 onClose();
               }}

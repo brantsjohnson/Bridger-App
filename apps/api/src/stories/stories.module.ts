@@ -4,13 +4,14 @@
 // to a real API. Added to app.module.ts.
 // ============================================
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
 import { CoopModule } from '../coop/coop.module';
 import { StoriesController } from './stories.controller';
 import { StoriesService } from './stories.service';
 
 @Module({
-  imports: [CoopModule],
+  imports: [CoopModule, AiModule],
   controllers: [StoriesController],
   providers: [StoriesService, SupabaseAuthGuard],
   exports: [StoriesService]

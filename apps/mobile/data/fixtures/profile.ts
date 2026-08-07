@@ -221,3 +221,40 @@ export const STORY_CALENDAR: Record<number, string> = {
 
 /** Ids of people you've blocked (demo default matches Magic Patterns). */
 export const BLOCKED_IDS = ['theo'];
+
+/** Top 5 — "things anyone who knows you well needs to know." */
+export const TOP_5: Array<{
+  id: string;
+  text: string;
+  emoji?: string;
+  order: number;
+  tier: Tier;
+}> = [
+  { id: 't5-1', text: 'Twin sister, we finish sentences', emoji: '👯', order: 0, tier: 'friend' },
+  { id: 't5-2', text: 'Recovering perfectionist', emoji: '🎯', order: 1, tier: 'friend' },
+  { id: 't5-3', text: 'Will drive 3 hrs for good tacos', emoji: '🌮', order: 2, tier: 'friend' },
+  { id: 't5-4', text: 'Grew up on a dairy farm', emoji: '🐄', order: 3, tier: 'friend' },
+  {
+    id: 't5-5',
+    text: 'Terrified of, and obsessed with, AI',
+    emoji: '🤖',
+    order: 4,
+    tier: 'friend'
+  }
+];
+
+/** Current Obsession squares (who you are today). */
+export const CURRENT_OBSESSION: Array<{
+  id: string;
+  prompt: string;
+  text: string;
+  emoji: string;
+  order: number;
+  tier: Tier;
+}> = [
+  { id: 'ob1', prompt: 'Reading…', text: 'Tomorrow, and Tomorrow', emoji: '📖', order: 0, tier: 'friend' },
+  { id: 'ob2', prompt: 'Building:', text: 'a kiln in the garage', emoji: '🛠', order: 1, tier: 'friend' },
+  { id: 'ob3', prompt: 'Training for…', text: 'a 10k', emoji: '🏃', order: 2, tier: 'friend' },
+  { id: 'ob4', prompt: 'Listening…', text: 'boygenius', emoji: '🎧', order: 3, tier: 'friend' },
+  { id: 'ob5', prompt: 'Obsessed with…', text: 'custard tarts', emoji: '🥮', order: 4, tier: 'friend' }
+];

@@ -6,14 +6,14 @@ export type EventRole = 'host' | 'going' | 'invited';
 /**
  * One Assignments line on an event. The host adds the label (e.g. "chips");
  * someone claims it (`assigneeId`). Checking it off (`done`) is separate from
- * claiming — only the assignee can mark done on the event page.
+ * claiming — the assignee or the host/co-host can mark done on the event page.
  */
 export interface EventAssignment {
   id: string;
   label: string;
   /** person who claimed this item; unset = still open for anyone to snag */
   assigneeId?: string;
-  /** checked off by the assignee only — not set just because someone claimed it */
+  /** checked off by the assignee or host — not set just because someone claimed it */
   done?: boolean;
 }
 

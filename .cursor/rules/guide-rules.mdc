@@ -73,7 +73,7 @@ Accessibility (addition — build in per feature, not a later pass)
 
 4 · Every section of code gets a plain-language comment and every line break gets one sentence introducing the next portion of the code
 
-The founder is non-technical and will read the code. Every file starts with a header comment, and every meaningful section gets a one-liner, in plain English — what it is, not how clever it is.
+The founder is non-technical and will read the code. Every file starts with a header comment, and every meaningful section gets a one-liner, in plain English that a kindergartener could understand, put more technical jargon in parenthesis— what it is, not how clever it is.
 
 ts
 // ============================================
@@ -97,6 +97,7 @@ In addition! Every line break should have one sentence that says what the next s
 RLS on every table; tier visibility enforced at the row level (DATA.md). New table → new policy, same migration.
 Deletion is real: hard-delete cascades; removing an account/field/connection erases it and its derived AI rows.
 AI never sees PII or photos: summaries from user words only; embeddings from de-identified Zone B; matching returns opaque IDs, names rejoin on-device. Never send likeness to a model; never train on user content.
+The Assistant is single-user (personal_agent lane) and never acts without an explicit confirm; it must not bleed into Home/Discover for people who have not opted in.
 No vanity metrics, anywhere: no follower counts, view counts, invited totals, streaks, or leaderboards. If a feature needs a number, it must be a number that serves the user (host headcount vs cap is the canonical allowed example).
 Capture-only media except the profile photo (the one upload exception).
 

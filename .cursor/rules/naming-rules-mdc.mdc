@@ -46,6 +46,8 @@ Recording a **tap** is not recording an **outcome.** Whenever a click changes da
 - **Re-tiering a friend** (Acquaintance → Close) → `friend_retiered` with `from_tier`/`to_tier` — a *different* event from clicking the friend row.
 - Posting a story, sending touch grass, RSVPing, creating a poll, customizing a profile → their named product events.
 
+**Product events fire on confirmed outcomes, never on the tap that begins them.** Opening a share sheet ≠ `friend_added` / `event_shared`. Opening the camera ≠ a successful scan. Choosing a method is a `flow_step`; the §3b event + `flow_completed` wait until the server (or OS) confirms the result. If you only wire the click, the instrumentation is incomplete *and* your funnels will inflate.
+
 If a developer only wired the click and not the outcome, the instrumentation is incomplete. The click answers "is this confusing?"; the product event answers "did it work?"
 
 ## 6 · The source of truth
@@ -58,6 +60,6 @@ If a developer only wired the click and not the outcome, the instrumentation is 
 - [ ] Every header, title, sticky note, About-Me/This-or-That block, card body, and empty state is tagged `interactive:false` for dead-click capture.
 - [ ] Every sheet/overlay is its own `surface` with `parent_screen` + open/dismiss + `dwell_ms`.
 - [ ] Every multi-step flow emits start/step/complete-or-abandon with `time_to_complete_ms`.
-- [ ] Every meaningful outcome (quiz/module completed, friend re-tiered, story posted, RSVP, etc.) emits a named **product event** (§3b) with the changed state — not just the UI click.
+- [ ] Every meaningful outcome (quiz/module completed, friend re-tiered, story posted, RSVP, etc.) emits a named **product event** (§3b) with the changed state — not just the UI click. **Confirmed outcome only** — never fire the product event / `flow_completed` on the tap that merely starts the action.
 - [ ] Order (`interaction_index`, `first_interaction`), gesture (`method: swipe|dropdown`, `page_index`, `carousel_depth`), and choice `method` are recorded where relevant.
 - [ ] All new IDs, surfaces, and flows are registered in `ANALYTICS-TAXONOMY.md` in the same PR.

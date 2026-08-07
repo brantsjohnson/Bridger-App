@@ -6,12 +6,14 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
+    "worker": "node dist/worker.js",
     "dev": "nest start --watch",
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "node ../../scripts/check-ai-sdk-imports.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npx --yes tsx src/quiz/score.spec.ts"
+    "test": "npx --yes tsx src/quiz/score.spec.ts && npx --yes tsx src/matching/__tests__/matching-scorer.spec.ts"
   },
   "dependencies": {
+    "@bridger/ai": "workspace:*",
     "@bridger/permissions": "workspace:*",
     "@bridger/shared": "workspace:*",
     "@nestjs/common": "^11.0.0",

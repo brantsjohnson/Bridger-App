@@ -239,10 +239,11 @@ function HeaderChrome({
 export function ScreenHeader(props: ScreenHeaderProps) {
   const { setHeaderChrome } = React.useContext(ScreenContext);
 
+  // THIS SECTION DOES: keep the header painted while props update. Clearing it
+  // to null on every change left a one-frame hole where a tap could fall
+  // through onto content underneath (e.g. Friends + opening the wrong sheet).
   useLayoutEffect(() => {
     setHeaderChrome(<HeaderChrome {...props} />);
-    return () => setHeaderChrome(null);
-    // Re-register when any header prop changes (title, trailing Edit, etc.).
   }, [
     setHeaderChrome,
     props.title,
@@ -257,6 +258,11 @@ export function ScreenHeader(props: ScreenHeaderProps) {
     props.backAnalyticsId
   ]);
 
+  // Only clear when this screen's header unmounts for real.
+  useLayoutEffect(() => {
+    return () => setHeaderChrome(null);
+  }, [setHeaderChrome]);
+
   // Chrome lives inside ScreenBody's ScrollView — nothing to paint here.
   return null;
 }
@@ -266,11 +272,14 @@ export function ScreenBody({
   padded = true,
   /** leave room for the floating tab bar (turn off on auth / full-screen flows) */
   tabBarInset = true,
+  /** Set false while dragging roster rows so the page doesn't fight the finger. */
+  scrollEnabled = true,
   className
 }: {
   children: React.ReactNode;
   padded?: boolean;
   tabBarInset?: boolean;
+  scrollEnabled?: boolean;
   className?: string;
 }) {
   const { headerChrome, hasHeader } = React.useContext(ScreenContext);
@@ -278,6 +287,7 @@ export function ScreenBody({
   return (
     <ScrollView
       className={cn('flex-1', className)}
+      scrollEnabled={scrollEnabled}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
         // Header is full-bleed (own horizontal pad). Body content is padded below.

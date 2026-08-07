@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import {
   useFonts,
   PlusJakartaSans_400Regular,
@@ -18,6 +19,7 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 // --- STYLING: loads Tailwind/NativeWind styles for the whole app (must be here, once) ---
@@ -82,10 +84,13 @@ export default function RootLayout() {
   }
 
   // --- Everything below can now ask "who is logged in?" via useAuth() ---
+  // Gesture root: needed so Friends edit-mode drag-and-drop (and other pans) work.
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 

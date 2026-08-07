@@ -8,7 +8,7 @@ Discover is where existing friends become a wider circle: it surfaces the friend
 
 ## 1 · The intro gate (opt-in)
 
-Before any matching, a stylized **black-and-white retro** screen (wireframe globe on a perspective grid): "Making friends as an adult is hard." One simple sentence beneath it — "Bridger introduces you to the friends of friends worth knowing." — a **Get started** button, and a short line: "You choose what you share." No em dashes, no stacked clauses.
+Before any matching, a stylized **black retro** intro (tunnel rings, pixel spinning globe, arched pixel title): "Making Friends As / An Adult Is Hard." In the space under the globe (above **Get started**): "Let Bridger suggest friends of friends, not strangers, for you to meet based on what you have in common." Under the button: "You choose what you share." No em dashes, no stacked clauses. Brand fonts (pixel title, sans body) and brand CTA (metallic primary).
 
 Tapping Get started flips the **Discoverable** master switch on **and launches the Discover Me questionnaire right there** (not tucked in settings). Completing it is optional but it's offered at the moment of opting in, when intent is highest. Bridger can already match on the about-me data and existing quiz results, so matching works even if the questionnaire is skipped.
 

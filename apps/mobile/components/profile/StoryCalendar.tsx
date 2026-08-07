@@ -7,7 +7,7 @@
 // Analytics: day / month_nav / storage_bar use PROFILE.stories_calendar.*.
 // ============================================
 import React, { useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react-native';
 import { PROFILE } from '@bridger/shared';
@@ -57,10 +57,14 @@ export function StoryCalendar({
     );
   }
 
+  // THIS SECTION DOES: open that day's archived story in the player.
   const openStory = (day: number) => {
-    if (onOpenStory) onOpenStory(day);
-    // TODO: replace with the story player when STORIES.md ships
-    else Alert.alert('Story', `The story from ${month.split(' ')[0]} ${day} opens here.`);
+    if (onOpenStory) {
+      onOpenStory(day);
+      return;
+    }
+    // Fallback: open the catch-up story player for this archive day.
+    router.push(`/story/me?catchup=1&from=profile&day=${day}`);
   };
 
   return (

@@ -6,11 +6,12 @@
 // clears presentation settings so the accessible default is always available.
 // ============================================
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import type { Accent } from "@bridger/shared";
+import type { Accent, MovableModule, ProfileFont } from "@bridger/shared";
 import {
   CUSTOMIZE,
+  MOVABLE_MODULE_ORDER,
   trackFlowAbandoned,
   trackFlowCompleted,
   trackFlowStarted,
@@ -27,14 +28,44 @@ import {
   ScreenHeader,
   Toggle,
   cn,
+  withAnalyticsPress,
 } from "@bridger/ui";
 import { getMembership } from "../../data/coop";
 import {
+  defaultLayoutOrder,
   getProfilePresentation,
   saveProfilePresentation,
   type ProfileBackground,
   type ProfilePresentation,
 } from "../../data/profile-presentation";
+
+const FONTS: Array<{ id: ProfileFont; label: string }> = [
+  { id: "clean", label: "Clean" },
+  { id: "serif", label: "Serif" },
+  { id: "pixel", label: "Pixel" },
+  { id: "mono", label: "Mono" },
+  { id: "round", label: "Round" },
+];
+
+const MODES: Array<{ id: "light" | "dark"; label: string }> = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+];
+
+const LAYOUT_LABELS: Record<MovableModule, string> = {
+  mutuals: "Mutuals",
+  top5: "Top 5",
+  aboutMe: "About me",
+  upcoming: "Upcoming",
+  obsession: "Current Obsession",
+  favorites: "Favorites",
+  hobbies: "Hobbies",
+  places: "Places",
+  whereMet: "Where you met",
+  recommendations: "Recommendations",
+  timeline: "Life timeline",
+  greatestHits: "Greatest hits",
+};
 
 const ACCENTS: Array<{ id: Accent; label: string }> = [
   { id: "purple", label: "Purple" },
@@ -65,6 +96,9 @@ export default function CustomizeProfileScreen() {
   const [presentation, setPresentation] = useState<ProfilePresentation>({
     accent: "purple",
     background: "default",
+    font: "clean",
+    mode: "light",
+    layoutOrder: defaultLayoutOrder(),
   });
   const [viewOriginal, setViewOriginal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -137,6 +171,36 @@ export default function CustomizeProfileScreen() {
     setViewOriginal(false);
     lastStep.current = "background";
     trackFlowStep("customize_profile", "background", { surface: "customize" });
+  }
+
+  function chooseFont(font: ProfileFont) {
+    setPresentation((current) => ({ ...current, font }));
+    setViewOriginal(false);
+    lastStep.current = "font";
+    trackFlowStep("customize_profile", "font", { surface: "customize" });
+  }
+
+  function chooseMode(mode: "light" | "dark") {
+    setPresentation((current) => ({ ...current, mode }));
+    setViewOriginal(false);
+    lastStep.current = "mode";
+    trackFlowStep("customize_profile", "mode", { surface: "customize" });
+  }
+
+  /** Move a layout module up one slot (header + tabs stay anchored off-list). */
+  function moveModule(index: number, dir: -1 | 1) {
+    setPresentation((current) => {
+      const order = [...(current.layoutOrder ?? defaultLayoutOrder())];
+      const next = index + dir;
+      if (next < 0 || next >= order.length) return current;
+      const tmp = order[index];
+      order[index] = order[next];
+      order[next] = tmp;
+      return { ...current, layoutOrder: order };
+    });
+    setViewOriginal(false);
+    lastStep.current = "layout";
+    trackFlowStep("customize_profile", "layout", { surface: "customize" });
   }
 
   // --- SAVE: null means the fixed, accessible original presentation. ---
@@ -218,6 +282,84 @@ export default function CustomizeProfileScreen() {
               analyticsId={CUSTOMIZE.style.background_option}
               analyticsProps={{ background: option.id }}
             />
+          ))}
+        </View>
+
+        {/* FONT: allowlisted Bridger-hosted display fonts only. */}
+        <Text className="mb-2 font-pixel text-[18px] text-ink">Font</Text>
+        <View className="mb-6 flex-row flex-wrap gap-2">
+          {FONTS.map((option) => (
+            <Chip
+              key={option.id}
+              label={option.label}
+              accent={presentation.accent}
+              selected={!viewOriginal && (presentation.font ?? "clean") === option.id}
+              onPress={() => chooseFont(option.id)}
+              analyticsId={CUSTOMIZE.style.font_option}
+              analyticsProps={{ font: option.id }}
+            />
+          ))}
+        </View>
+
+        {/* MODE: light / dark for the themed page. */}
+        <Text className="mb-2 font-pixel text-[18px] text-ink">Mode</Text>
+        <View className="mb-6 flex-row flex-wrap gap-2">
+          {MODES.map((option) => (
+            <Chip
+              key={option.id}
+              label={option.label}
+              accent={presentation.accent}
+              selected={!viewOriginal && (presentation.mode ?? "light") === option.id}
+              onPress={() => chooseMode(option.id)}
+              analyticsId={CUSTOMIZE.style.mode_option}
+              analyticsProps={{ mode: option.id }}
+            />
+          ))}
+        </View>
+
+        {/* LAYOUT: reorder movable modules only (header + tabs stay anchored). */}
+        <Text className="mb-2 font-pixel text-[18px] text-ink">Layout order</Text>
+        <Text className="mb-3 font-sans-sb text-[12px] text-ink-mute">
+          Header and tabs stay at the top. Modules with data can move but cannot be removed here.
+        </Text>
+        <View className="mb-6 gap-2">
+          {(presentation.layoutOrder ?? [...MOVABLE_MODULE_ORDER]).map((mod, index) => (
+            <View
+              key={mod}
+              className="min-h-[48px] flex-row items-center justify-between rounded-card border border-ink-line bg-surface px-3"
+            >
+              <Pressable
+                onPress={withAnalyticsPress(CUSTOMIZE.layout.module_row, () => undefined)}
+                accessibilityRole="text"
+                accessibilityLabel={LAYOUT_LABELS[mod]}
+                className="min-w-0 flex-1"
+              >
+                <Text className="font-sans-b text-[14px] text-ink">{LAYOUT_LABELS[mod]}</Text>
+              </Pressable>
+              <View className="flex-row gap-2">
+                <Pressable
+                  onPress={withAnalyticsPress(CUSTOMIZE.layout.reorder, () =>
+                    moveModule(index, -1),
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Move ${LAYOUT_LABELS[mod]} up`}
+                  disabled={index === 0}
+                  className="h-10 w-10 items-center justify-center rounded-full border border-ink-line"
+                >
+                  <Text className="font-sans-b text-[14px] text-ink">↑</Text>
+                </Pressable>
+                <Pressable
+                  onPress={withAnalyticsPress(CUSTOMIZE.layout.reorder, () =>
+                    moveModule(index, 1),
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Move ${LAYOUT_LABELS[mod]} down`}
+                  className="h-10 w-10 items-center justify-center rounded-full border border-ink-line"
+                >
+                  <Text className="font-sans-b text-[14px] text-ink">↓</Text>
+                </Pressable>
+              </View>
+            </View>
           ))}
         </View>
 

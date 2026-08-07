@@ -1,0 +1,32 @@
+{
+  "name": "@bridger/ai",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Bridger AI gateway: the only place that talks to Anthropic/OpenAI. Scrubs PII, runs versioned prompts, and fails silent.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ../../scripts/check-ai-sdk-imports.mjs",
+    "test": "vitest run",
+    "test:evals": "vitest run src/evals"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "openai": "^4.86.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.0"
+  }
+}

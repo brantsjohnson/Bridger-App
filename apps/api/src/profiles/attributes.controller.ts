@@ -31,7 +31,9 @@ import {
   Query,
   UseGuards
 } from '@nestjs/common';
+import { normalizeAttribute } from '@bridger/ai';
 import type { Json } from '@bridger/shared';
+import { AiJobsService } from '../ai/ai-jobs.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -68,8 +70,17 @@ const KIND_PREFIX: Record<string, string> = {
   about: 'about:',
   hobby: 'hobby:',
   fav: 'fav:',
+  food: 'food:',
+  ent: 'ent:',
+  everyday: 'everyday:',
+  sports: 'sports:',
   thisOrThat: 'tot:',
   place: 'place:',
+  top5: 'top5:',
+  obsession: 'obsession:',
+  timeline: 'timeline:',
+  rec: 'rec:',
+  goal: 'goal:',
   currently: 'currently_'
 };
 
@@ -82,7 +93,10 @@ const KIND_EXACT: Record<string, string> = {
 @Controller('me/attributes')
 @UseGuards(SupabaseAuthGuard)
 export class AttributesController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly aiJobs: AiJobsService
+  ) {}
 
   // --- READ your facts (all, or just one kind) ---
   @Get()
@@ -143,6 +157,19 @@ export class AttributesController {
       .insert(insertRows)
       .select('id, key, value, layer, visible_to_tier, matchable, updated_at');
     if (error) throw error;
+
+    // AI: re-embed + refresh person summary when matchable facts change.
+    await this.enqueueMatchableAi(user.id);
+
+    // Optional Discover-module notes when a whole category was replaced.
+    if (typeof body?.replacePrefix === 'string' && body.replacePrefix) {
+      await this.aiJobs.enqueueModuleNotes({
+        userId: user.id,
+        moduleKey: body.replacePrefix.replace(/:$/, ''),
+        answers: rows.map((r) => ({ key: r.key, value: r.value }))
+      });
+    }
+
     return (data ?? []).map(toDto);
   }
 
@@ -168,6 +195,7 @@ export class AttributesController {
       .select('id, key, value, layer, visible_to_tier, matchable, updated_at')
       .maybeSingle();
     if (error) throw error;
+    await this.enqueueMatchableAi(user.id);
     return data ? toDto(data) : null;
   }
 
@@ -180,7 +208,42 @@ export class AttributesController {
       .eq('id', id)
       .eq('owner_id', user.id);
     if (error) throw error;
+    await this.enqueueMatchableAi(user.id);
     return { ok: true };
+  }
+
+  /**
+   * PRIVACY: only matchable Zone B facts are embedded. Writers no-op when the
+   * person has turned Discoverable off (checked below).
+   */
+  private async enqueueMatchableAi(userId: string): Promise<void> {
+    const { data: settings } = await this.supabase.admin
+      .from('user_settings')
+      .select('discoverable')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (settings && settings.discoverable === false) return;
+
+    const { data: attrs } = await this.supabase.admin
+      .from('attributes')
+      .select('key, value, matchable')
+      .eq('owner_id', userId)
+      .eq('matchable', true);
+
+    const matchable = (attrs ?? []).map((a) => ({
+      key: a.key,
+      value: a.value
+    }));
+    if (!matchable.length) return;
+
+    await this.aiJobs.enqueueEmbeddings({
+      userId,
+      attributes: matchable
+    });
+    await this.aiJobs.enqueuePersonSummary({
+      userId,
+      facts: matchable.map((a) => normalizeAttribute(a))
+    });
   }
 }
 

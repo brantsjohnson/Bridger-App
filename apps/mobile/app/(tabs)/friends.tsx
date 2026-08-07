@@ -1,10 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Friends tab: your confirmed circle, grouped by Close / Friends /
-// Acquaintances. Edit moves people between circles (TierPicker replaces web
-// drag-and-drop). The + opens Add friend (QR + link + scan). Friend Pod and
-// Inside Jokes sit above the roster. Data comes from hooks so demo fixtures
-// and the live API use the same screen.
+// Acquaintances. Edit mode lets you drag people into another group (or use
+// the Move-to sheet via tap / long-press). The header + is Add friend ONLY
+// (QR / link / scan) — "Add your recap" lives on the Friend Pod card below.
+// Friend Pod and Inside Jokes sit above the roster.
 // Analytics: opens the friends surface on mount; every control uses FRIENDS.*
 // ids from the shared taxonomy (no invented names).
 // ============================================
@@ -13,7 +13,7 @@ import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PlusIcon } from 'lucide-react-native';
 import type { Tier } from '@bridger/shared';
-import { FRIENDS, TIER_LABEL, openSurface } from '@bridger/shared';
+import { FRIENDS, openSurface, trackProduct } from '@bridger/shared';
 import {
   ButtonSecondary,
   Screen,
@@ -21,7 +21,6 @@ import {
   ScreenHeader,
   SearchField,
   SectionTitle,
-  cn,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
@@ -29,7 +28,8 @@ import { ColdStart } from '../../components/ColdStart';
 import { AddFriendSheet } from '../../components/friends/AddFriendSheet';
 import { AddInsideJokeSheet } from '../../components/friends/AddInsideJokeSheet';
 import { FriendPodWidget } from '../../components/friends/FriendPodWidget';
-import { FriendRow, type FriendRowPerson } from '../../components/friends/FriendRow';
+import { FriendsRoster } from '../../components/friends/FriendsRoster';
+import type { FriendRowPerson } from '../../components/friends/FriendRow';
 import { InsideJokesWidget } from '../../components/friends/InsideJokesWall';
 import { ScanFriendSheet } from '../../components/friends/ScanFriendSheet';
 import { SubmitQuestion } from '../../components/friends/SubmitQuestion';
@@ -38,16 +38,7 @@ import { RecapRecorder } from '../../components/pod/RecapRecorder';
 import { useFriendPod } from '../../hooks/useFriendPod';
 import { useFriends } from '../../hooks/useFriends';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
-import { apiFetch } from '../../lib/api';
-import { isDemoMode } from '../../lib/demo';
-
-// Short "what this circle means" copy for each Friends tier title.
-const TIER_DESCRIPTIONS: Record<Tier, string> = {
-  close: 'Your innermost circle. They see the most of your profile and updates.',
-  friend: 'Your main circle. They see most of what you share.',
-  acquaintance: 'People you know a little. They see the least of your profile.',
-  none: 'Private, visible only to you.'
-};
+import { createShareInvite } from '../../data/invites';
 
 /**
  * Feature flag: when false the search bar is not rendered at all.
@@ -75,6 +66,7 @@ export default function FriendsScreen() {
   };
 
   // Record opens the recorder, unless the user's rolling week hasn't reset yet.
+  // Only wired to "Add your recap" in Friend Pod — never the header +.
   const openRecorder = () => {
     if (recap?.canRecordAfter) {
       const when = new Date(recap.canRecordAfter);
@@ -84,10 +76,19 @@ export default function FriendsScreen() {
       );
       return;
     }
+    setAddOpen(false);
     setRecordOpen(true);
+  };
+
+  // Header + is add-friend only (QR / link / scan). Never opens the recap recorder.
+  const openAddFriend = () => {
+    setRecordOpen(false);
+    setAddOpen(true);
   };
   const [jokeOpen, setJokeOpen] = useState(false);
   const [moving, setMoving] = useState<FriendRowPerson | null>(null);
+  /** Freeze page scroll while a native drag is in progress. */
+  const [rosterDragging, setRosterDragging] = useState(false);
 
   // Mark Friends as the active analytics surface when this tab mounts.
   useEffect(() => {
@@ -110,24 +111,29 @@ export default function FriendsScreen() {
 
   const openMove = (person: FriendRowPerson) => setMoving(person);
 
-  const handleRowPress = (person: FriendRowPerson) => {
-    if (editing) {
-      openMove(person);
-      return;
+  // THIS SECTION DOES: move someone into a new circle (drag or picker).
+  const retierPerson = async (person: FriendRowPerson, tier: Tier) => {
+    if (person.tier === tier) return;
+    const from = person.tier ?? 'friend';
+    const result = await onMoveTier(person.id, tier, editing);
+    // Outcome only when the circle actually changes — never names.
+    if (result.landedIn !== from) {
+      trackProduct('friend_retiered', {
+        from_tier: from,
+        to_tier: result.landedIn
+      });
     }
-    // Open that friend's profile (same destination as Coming up).
-    router.push({ pathname: '/person/[id]', params: { id: person.id } });
-  };
-
-  const handleMove = async (tier: Tier) => {
-    if (!moving) return;
-    const result = await onMoveTier(moving.id, tier, editing);
     if (result.upsell) {
       Alert.alert(
         'Circle is full',
         'Free plans hold 10 Close friends and 25 Friends. They landed in Acquaintances. Co-op lifts the caps.'
       );
     }
+  };
+
+  const handlePickerMove = async (tier: Tier) => {
+    if (!moving) return;
+    await retierPerson(moving, tier);
     setMoving(null);
   };
 
@@ -149,20 +155,21 @@ export default function FriendsScreen() {
             >
               {editing ? 'Done' : 'Edit'}
             </ButtonSecondary>
-            {/* + opens the Add-friend sheet (QR / link / scan) */}
+            {/* + opens Add friend only (never the recap / podcast recorder) */}
             <Pressable
-              onPress={withAnalyticsPress(FRIENDS.top_nav.add, () => setAddOpen(true))}
+              onPress={withAnalyticsPress(FRIENDS.top_nav.add, openAddFriend)}
               accessibilityRole="button"
               accessibilityLabel="Add friend"
-              className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-90"
+              className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
             >
-              <PlusIcon size={18} color={c.ink} strokeWidth={2.6} />
+              {/* Solid ink circle + canvas plus so the + stays readable in both themes */}
+              <PlusIcon size={18} color={c.canvas} strokeWidth={3} />
             </Pressable>
           </View>
         }
       />
 
-      <ScreenBody>
+      <ScreenBody scrollEnabled={!rosterDragging}>
         {searchEnabled ? (
           <View className="mb-4">
             <SearchField
@@ -229,7 +236,7 @@ export default function FriendsScreen() {
 
         {editing && !empty ? (
           <Text className="mb-1 mt-7 font-sans-sb text-[12px] text-ink-mute">
-            Tap a friend to move them into a circle.
+            Drag a friend into another group. Tap to pick instead.
           </Text>
         ) : null}
 
@@ -238,50 +245,17 @@ export default function FriendsScreen() {
             <ColdStart onAdd={() => setAddOpen(true)} />
           </View>
         ) : (
-          filteredSections.map((section) => {
-            if (section.people.length === 0 && !editing) return null;
-            return (
-              <View
-                key={section.tier}
-                className={cn(
-                  'mt-7 rounded-2xl',
-                  editing && 'border border-dashed border-ink/20 p-3'
-                )}
-              >
-                {/* Tier title: dashed underline + short "what this circle means" bubble */}
-                <SectionTitle
-                  title={TIER_LABEL[section.tier]}
-                  description={TIER_DESCRIPTIONS[section.tier]}
-                  infoAnalyticsId={FRIENDS.roster.info}
-                  parentScreen="friends"
-                  section="roster"
-                  analyticsProps={{ tier: section.tier }}
-                  count={section.people.length}
-                  className="mb-2"
-                />
-
-                <View className="gap-2.5">
-                  {section.people.length === 0 && editing ? (
-                    <Text className="py-3 text-center font-sans-sb text-[12px] text-ink-mute">
-                      Move someone here
-                    </Text>
-                  ) : null}
-
-                  {section.people.map((p, i) => (
-                    <FriendRow
-                      key={p.id}
-                      person={p}
-                      index={i}
-                      editing={editing}
-                      onPress={() => handleRowPress(p)}
-                      onLongPress={() => openMove(p)}
-                      onStory={() => router.push(`/story/${p.id}?from=profile`)}
-                    />
-                  ))}
-                </View>
-              </View>
-            );
-          })
+          <FriendsRoster
+            sections={filteredSections}
+            editing={editing}
+            onOpenPerson={(p) =>
+              router.push({ pathname: '/person/[id]', params: { id: p.id } })
+            }
+            onOpenStory={(p) => router.push(`/story/${p.id}?from=profile`)}
+            onOpenMove={openMove}
+            onDropTier={(p, tier) => void retierPerson(p, tier)}
+            onDraggingChange={setRosterDragging}
+          />
         )}
       </ScreenBody>
 
@@ -291,16 +265,12 @@ export default function FriendsScreen() {
         onShare={() => {
           setAddOpen(false);
           void (async () => {
-            if (isDemoMode()) {
-              Alert.alert('Invite link', 'Demo mode — live builds share a real link.');
-              return;
-            }
             try {
-              const { url } = await apiFetch<{ url: string }>(
-                '/connections/invite-link',
-                { method: 'POST', body: JSON.stringify({}) }
-              );
-              await Share.share({ message: url, url });
+              const invite = await createShareInvite();
+              await Share.share({
+                message: `Add me on Bridger\n${invite.url}`,
+                url: invite.url
+              });
             } catch (e) {
               Alert.alert(
                 'Could not make invite link',
@@ -339,7 +309,7 @@ export default function FriendsScreen() {
         onClose={() => setMoving(null)}
         personName={moving?.name ?? ''}
         currentTier={moving?.tier ?? 'friend'}
-        onPick={(tier) => void handleMove(tier)}
+        onPick={(tier) => void handlePickerMove(tier)}
       />
     </Screen>
   );

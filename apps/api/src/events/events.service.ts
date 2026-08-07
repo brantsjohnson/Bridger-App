@@ -25,6 +25,7 @@ import type {
 } from '@bridger/shared';
 import { accentForId, isBlocked } from '../common/visibility';
 import { CoopService } from '../coop/coop.service';
+import { MatchingEventService } from '../matching/matching-event.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
 const CHIP_METHODS = [
@@ -127,7 +128,8 @@ export class EventsService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly config: ConfigService,
-    private readonly coop: CoopService
+    private readonly coop: CoopService,
+    private readonly matchingEvents: MatchingEventService
   ) {
     this.mediaBucket =
       this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
@@ -772,9 +774,11 @@ export class EventsService {
     }
 
     if (typeof body.done === 'boolean') {
-      // LOCK: only the assignee can mark done.
-      if (item.assignee_id !== userId) {
-        throw new ForbiddenException('Only the assignee can check this off');
+      // LOCK: assignee or host/co-host can mark done (hosts can check anyone's).
+      if (item.assignee_id !== userId && !editor) {
+        throw new ForbiddenException(
+          'Only the assignee or host can check this off'
+        );
       }
       patch.done = body.done;
     }
@@ -807,12 +811,16 @@ export class EventsService {
     return this.toEventDto(next.event, userId, next.invites, next.assignments);
   }
 
-  /** Matching deferred — empty list until Discover matching ships. */
+  /** FoF scored by Nest matching — opaque ids; client rejoins names. */
   async meetSuggestions(
-    _userId: string,
-    _eventId: string
+    userId: string,
+    eventId: string
   ): Promise<MeetSuggestion[]> {
-    // TODO: matching — attendees Bridger thinks you'd click with
-    return [];
+    const ranked = await this.matchingEvents.meetSuggestions(userId, eventId);
+    return ranked.map((s) => ({
+      personId: s.personId,
+      thread: s.sharedThread,
+      status: 'invited' as const
+    }));
   }
 }

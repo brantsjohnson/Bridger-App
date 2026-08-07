@@ -5,12 +5,13 @@
 // ============================================
 import { Module } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
+import { MatchingModule } from '../matching/matching.module';
 import { TiersModule } from '../tiers/tiers.module';
 import { ConnectionsController } from './connections.controller';
 import { ConnectionsService } from './connections.service';
 
 @Module({
-  imports: [TiersModule],
+  imports: [TiersModule, MatchingModule],
   controllers: [ConnectionsController],
   providers: [ConnectionsService, SupabaseAuthGuard]
 })

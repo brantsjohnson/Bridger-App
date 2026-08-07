@@ -7,7 +7,7 @@
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { type Href, useRouter } from 'expo-router';
+import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import {
   ButtonSecondary,
   Screen,
@@ -34,6 +34,7 @@ import {
   AnnouncementsCarousel,
   CoopAnnouncementCard
 } from '../../components/home/AnnouncementsCarousel';
+import { AssistantHomeCard } from '../../components/home/AssistantHomeCard';
 import { HomeWidget, type WidgetSize } from '../../components/home/HomeWidget';
 import {
   ActivityWidget,
@@ -47,6 +48,7 @@ import { AskSheet } from '../../components/home/AskSheet';
 import { ComingUpWidget } from '../../components/home/ComingUpWidget';
 import { FreshnessCard } from '../../components/home/FreshnessCard';
 import { StoryRepliesRow } from '../../components/home/StoryRepliesRow';
+import { fetchAssistantSettings } from '../../data/assistant';
 import { getHomeLayout, saveHomeLayout, clearStoryReplyNotifications } from '../../data/feed';
 import { startThreadWith } from '../../data/messages';
 import { isDemoMode } from '../../lib/demo';
@@ -126,10 +128,12 @@ export default function HomeScreen() {
   /** Home shows the newest one only; Events carries the whole list */
   const signal = visibleSignals[0] ?? null;
   const [openSignal, setOpenSignal] = useState<GrassSignal | null>(null);
-  const [showQuickCheck] = useState(true);
+  const [showQuickCheck, setShowQuickCheck] = useState(true);
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
+  // THIS SECTION DOES: show the Assistant card in Announcements only when opted in.
+  const [assistantOn, setAssistantOn] = useState(false);
   const nextEvent = events[0] ?? null;
   // Prefer a result already saved on the quiz payload (live complete).
   const quizResultId = feed.quiz?.resultId ?? null;
@@ -138,6 +142,19 @@ export default function HomeScreen() {
   useEffect(() => {
     openSurface('home');
   }, []);
+
+  // THIS SECTION DOES: re-check Assistant opt-in whenever Home is focused.
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
+      void fetchAssistantSettings().then((s) => {
+        if (!cancelled) setAssistantOn(Boolean(s.assistantEnabled));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   // Load saved / admin Home layout (demo stays on the seeded DEFAULT_LAYOUT).
   useEffect(() => {
@@ -218,7 +235,12 @@ export default function HomeScreen() {
     announcements.push({
       id: 'quick-check',
       kind: 'quickCheck',
-      content: <FreshnessCard />
+      content: (
+        <FreshnessCard
+          // X only closes the card — "Kept it." is reserved for tapping Yes.
+          onDismiss={() => setShowQuickCheck(false)}
+        />
+      )
     });
   }
   if (!empty) {
@@ -454,6 +476,8 @@ export default function HomeScreen() {
               }}
             />
           )}
+          {/* Assistant doorway under Stories (only when Settings opt-in is on). */}
+          {assistantOn ? <AssistantHomeCard /> : null}
         </View>
 
         {empty ? (

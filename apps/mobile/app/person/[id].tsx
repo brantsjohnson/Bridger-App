@@ -1,21 +1,20 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// A friend's profile page — opened from Coming up, the Friends roster, or
-// Discover. Same shared card idea as your own Profile, but for them: who they
-// are, Message, and tabs for About / In common / Inside jokes / Bucket list /
-// Notes (your private scratchpad — never part of their shared card).
-// Analytics: surface=profile (friend view); tabs use PROFILE.friend_tabs.*;
-// Message uses PROFILE.actions.message; notes use PROFILE.notes_reminders.*.
+// A friend's profile — same Spotify composition as your own page. Header
+// (square photo, tier control, overflow) above tabs; About them uses the
+// shared shell. In common / Inside jokes / Bucket / Notes stay as tabs.
+// Analytics: surface=profile (friend view).
 // ============================================
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SendIcon } from 'lucide-react-native';
+import type { FavoriteModule, ObsessionSquare, Top5Item, WhereMetView } from '@bridger/shared';
 import { openSurface, PROFILE, type BucketItem } from '@bridger/shared';
+// Friend Favorites tiles are built from their fav groups (never the viewer's).
 import {
   Screen,
   ScreenBody,
-  ScreenHeader,
   SectionTitle,
   SegmentedTabs,
   withAnalyticsPress
@@ -24,10 +23,20 @@ import { CommonalityList } from '../../components/discover/CommonalityList';
 import { InsideJokesWall } from '../../components/friends/InsideJokesWall';
 import { BucketList } from '../../components/profile/BucketList';
 import { HowYouMetCard } from '../../components/profile/HowYouMetCard';
+import { InCommonAnswers } from '../../components/profile/InCommonAnswers';
 import { MutualFriendsStrip } from '../../components/profile/MutualFriendsStrip';
 import { NotesReminders } from '../../components/profile/NotesReminders';
-import { ProfileCard, ProfileHeader } from '../../components/profile/ProfileCard';
+import { ProfileCard } from '../../components/profile/ProfileCard';
+import { ProfileHeaderBlock } from '../../components/profile/ProfileHeaderBlock';
+import {
+  ProfileSearchSheet,
+  type ProfileSearchHit
+} from '../../components/profile/ProfileSearchSheet';
 import { SharedPlacePhotos } from '../../components/profile/SharedPlacePhotos';
+import {
+  PROFILE_HEADER_TO_TABS,
+  PROFILE_TABS_TO_CONTENT
+} from '../../components/profile/profileSpacing';
 import type { Commonality } from '../../data/discover';
 import { startThreadWith } from '../../data/messages';
 import { mutualFriendsWith, personById } from '../../data/people';
@@ -39,12 +48,48 @@ import type {
   ThisOrThatRow,
   TravelPlace
 } from '../../data/profile';
-import { getPersonProfile, listPersonBucket } from '../../data/profile';
+import {
+  getPersonProfile,
+  listObsession,
+  listPersonBucket,
+  listTop5
+} from '../../data/profile';
 import { getReveal } from '../../data/reveal';
+
+/** Build album tiles from a friend's filled groups only (read-only). */
+function favoriteModulesFromFriend(
+  favs: FavGroup[],
+  tot: ThisOrThatRow[]
+): FavoriteModule[] {
+  const countFor = (group: string) => {
+    const g = favs.find((row) => row.group === group);
+    return g?.total ?? g?.items.length ?? 0;
+  };
+  const catalog: Array<{ id: string; label: string; emoji: string; count: number }> = [
+    { id: 'food_drinks', label: 'Food & drinks', emoji: '🍜', count: countFor('Food') },
+    {
+      id: 'entertainment',
+      label: 'Entertainment',
+      emoji: '🎬',
+      count: countFor('Entertainment')
+    },
+    { id: 'everyday', label: 'Everyday', emoji: '🧺', count: countFor('Everyday') },
+    { id: 'sports', label: 'Sports', emoji: '🚲', count: countFor('Sports') },
+    { id: 'this_or_that', label: 'This or that', emoji: '⚖️', count: tot.length }
+  ];
+  return catalog
+    .filter((m) => m.count > 0)
+    .map((m) => ({
+      id: m.id,
+      label: m.label,
+      emoji: m.emoji,
+      answeredCount: m.count,
+      empty: false
+    }));
+}
 
 const TABS = ['About them', 'In common', 'Inside jokes', 'Bucket list', 'Notes'];
 
-/** Map friend-view tab labels to taxonomy ids. */
 function friendTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
     case 'About them':
@@ -70,10 +115,9 @@ export default function PersonScreen() {
   const first = person.name.split(' ')[0];
 
   const [tab, setTab] = useState('About them');
-  /** Same overlap content as the Connection Reveal — re-openable anytime */
+  const [searchOpen, setSearchOpen] = useState(false);
   const [commonalities, setCommonalities] = useState<Commonality[]>([]);
 
-  // Card sections for this friend — loaded from fixtures in demo mode.
   const [header, setHeader] = useState<MyProfileHeader>({
     city: person.label || 'Somewhere',
     bio: '',
@@ -87,11 +131,13 @@ export default function PersonScreen() {
   const [favs, setFavs] = useState<FavGroup[]>([]);
   const [thisOrThat, setThisOrThat] = useState<ThisOrThatRow[]>([]);
   const [places, setPlaces] = useState<TravelPlace[]>([]);
-  // Their bucket list — loaded separately so the tab isn't empty.
+  const [top5, setTop5] = useState<Top5Item[]>([]);
+  const [obsession, setObsession] = useState<ObsessionSquare[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteModule[]>([]);
+  const [whereMet, setWhereMet] = useState<WhereMetView | null>(null);
   const [bucket, setBucket] = useState<BucketItem[]>([]);
   const [bucketLoading, setBucketLoading] = useState(true);
 
-  // Friend profiles still count as the profile surface (friend view).
   useEffect(() => {
     openSurface('profile');
   }, []);
@@ -107,9 +153,8 @@ export default function PersonScreen() {
       .finally(() => setBucketLoading(false));
   }, [personId]);
 
-  // Load their card data so "About them" is not empty.
   useEffect(() => {
-    void getPersonProfile(personId).then((p) => {
+    void getPersonProfile(personId).then(async (p) => {
       if (!p) {
         setHeader({
           city: person.label || 'Somewhere',
@@ -131,8 +176,38 @@ export default function PersonScreen() {
       setFavs(p.favs);
       setThisOrThat(p.thisOrThat);
       setPlaces(p.places);
+      // Demo: reuse own top5/obsession fixtures for friend card richness.
+      // Favorites tiles come from THIS friend's answers only.
+      const [t5, ob] = await Promise.all([listTop5(), listObsession()]);
+      setTop5(t5);
+      setObsession(ob);
+      setFavorites(favoriteModulesFromFriend(p.favs, p.thisOrThat));
+      if (p.header.city) {
+        setWhereMet({ label: p.header.city, via: undefined });
+      }
     });
   }, [personId, person.label]);
+
+  const mutuals = mutualFriendsWith(personId);
+
+  const searchHits: ProfileSearchHit[] = useMemo(() => {
+    const hits: ProfileSearchHit[] = [];
+    if (header.city) {
+      hits.push({ id: 'city', label: 'City', value: header.city, section: 'Header' });
+    }
+    for (const f of about) {
+      hits.push({ id: f.id, label: f.key, value: f.value, section: 'About me' });
+    }
+    for (const t of top5) {
+      hits.push({
+        id: t.id,
+        label: `Top 5 #${t.order + 1}`,
+        value: t.text,
+        section: 'Top 5'
+      });
+    }
+    return hits;
+  }, [header, about, top5]);
 
   const openMessage = async () => {
     const threadId = await startThreadWith(personId);
@@ -141,44 +216,30 @@ export default function PersonScreen() {
 
   return (
     <Screen tone="canvas">
-      <ScreenHeader
-        title={first}
-        onBack={() => router.back()}
-        hideProfile
-        analyticsSurface="profile"
-        trailing={
-          // One clear way to message them: a labelled orange pill in the corner
-          // (replaces the old black icon + separate full-width Message button).
-          <Pressable
-            onPress={withAnalyticsPress(PROFILE.actions.message, () => void openMessage())}
-            accessibilityRole="button"
-            accessibilityLabel={`Message ${first}`}
-            className="h-10 flex-row items-center gap-1.5 rounded-full bg-coral px-3.5 active:opacity-90"
-          >
-            <Text className="font-sans-b text-[13px] text-white">Message {first}</Text>
-            <SendIcon size={16} color="#FFFFFF" strokeWidth={2.6} />
-          </Pressable>
-        }
-      />
-
-      <ScreenBody>
-        {/*
-          Who this is, once: photo, name · mutuals, then city / song / book as
-          one details group, then bio. Tabs sit underneath.
-        */}
-        <ProfileHeader
+      <ScreenBody padded={false}>
+        <ProfileHeaderBlock
           person={person}
           header={header}
           own={false}
           editing={false}
           empty={false}
-          onOpenMutuals={() => setTab('In common')}
-          onOpenStory={() =>
-            router.push(`/story/${personId}?from=profile`)
+          onBack={() => router.back()}
+          onOpenStory={() => router.push(`/story/${personId}?from=profile`)}
+          onSearch={() => setSearchOpen(true)}
+          heroTrailing={
+            <Pressable
+              onPress={withAnalyticsPress(PROFILE.actions.message, () => void openMessage())}
+              accessibilityRole="button"
+              accessibilityLabel={`Message ${first}`}
+              className="h-10 flex-row items-center gap-1.5 rounded-full bg-coral px-3.5 active:opacity-90"
+            >
+              <Text className="font-sans-b text-[13px] text-white">Message</Text>
+              <SendIcon size={16} color="#FFFFFF" strokeWidth={2.6} />
+            </Pressable>
           }
         />
 
-        <View className="mt-5">
+        <View style={{ marginTop: PROFILE_HEADER_TO_TABS, paddingHorizontal: 16 }}>
           <SegmentedTabs
             tabs={TABS}
             value={tab}
@@ -189,35 +250,39 @@ export default function PersonScreen() {
         </View>
 
         {tab === 'About them' ? (
-          <View className="mt-5">
+          <View style={{ marginTop: PROFILE_TABS_TO_CONTENT }}>
             <ProfileCard
               person={person}
               header={header}
               showHeader={false}
-              currently={null}
               about={about}
               hobbies={hobbies}
               favs={favs}
               thisOrThat={thisOrThat}
               places={places}
+              top5={top5}
+              obsession={obsession}
+              favorites={favorites}
               hobbyFollowUps={hobbyFollowUps}
+              mutuals={mutuals}
+              whereMet={whereMet}
               asTier={person.tier}
+              onOpenMutuals={() => setTab('In common')}
             />
           </View>
         ) : null}
 
         {tab === 'In common' ? (
-          <View className="mt-5 gap-7">
-            {/* Faces first — answers "who are the 8 mutuals?" from the header. */}
+          <View className="mt-5 gap-7 px-4">
             <MutualFriendsStrip
-              people={mutualFriendsWith(personId)}
-              onOpenPerson={(id) =>
-                router.push({ pathname: '/person/[id]', params: { id } })
+              people={mutuals}
+              onOpenPerson={(pid) =>
+                router.push({ pathname: '/person/[id]', params: { id: pid } })
               }
             />
             <SectionTitle
               title="In common"
-              description="What you and they share — hobbies, places, quiz results, and matching answers. Tap a dashed title anytime for a short reminder like this."
+              description="What you and they share — hobbies, places, quiz results, and matching answers. Shared hobbies show both answers side by side."
               infoAnalyticsId={PROFILE.in_common.info}
               parentScreen="profile"
               section="in_common"
@@ -233,14 +298,25 @@ export default function PersonScreen() {
                 </Text>
               </View>
             )}
+            <InCommonAnswers
+              theirName={first}
+              rows={Object.entries(hobbyFollowUps)
+                .slice(0, 6)
+                .map(([hid, fu]) => ({
+                  id: hid,
+                  label: hobbies.find((h) => h.id === hid)?.label ?? hid,
+                  emoji: hobbies.find((h) => h.id === hid)?.emoji,
+                  yours: fu.answer,
+                  theirs: fu.answer
+                }))}
+            />
             <HowYouMetCard personId={personId} />
             <SharedPlacePhotos personId={personId} theirName={first} />
           </View>
         ) : null}
 
-        {/* Their bucket list, read-only. Private lines are filtered server-side. */}
         {tab === 'Bucket list' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <BucketList
               items={bucket}
               loading={bucketLoading}
@@ -251,7 +327,7 @@ export default function PersonScreen() {
         ) : null}
 
         {tab === 'Inside jokes' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <InsideJokesWall
               ownerFirstName={first}
               analyticsIds={{
@@ -264,16 +340,19 @@ export default function PersonScreen() {
           </View>
         ) : null}
 
-        {/*
-          Private scratchpad — its own tab so it never looks like part of their
-          shared About content. Author-only.
-        */}
         {tab === 'Notes' ? (
-          <View className="mt-5">
+          <View className="mt-5 px-4">
             <NotesReminders personId={personId} firstName={first} />
           </View>
         ) : null}
       </ScreenBody>
+
+      <ProfileSearchSheet
+        open={searchOpen}
+        hits={searchHits}
+        onClose={() => setSearchOpen(false)}
+        onJump={() => setTab('About them')}
+      />
     </Screen>
   );
 }

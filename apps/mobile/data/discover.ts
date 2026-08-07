@@ -105,8 +105,25 @@ export async function listSuggestions(): Promise<Suggestion[]> {
       signals: [...s.signals]
     }));
   }
-  // TODO: GET /matching/suggestions
-  return [];
+  const rows = await apiFetch<
+    Array<{
+      id: string;
+      personId: string;
+      viaFriendId?: string;
+      sharedThread: string;
+      signals: string[];
+      bothOptedIn: true;
+    }>
+  >('/matching/suggestions');
+  return (rows ?? []).map((s) => ({
+    id: s.id,
+    personId: s.personId,
+    viaFriendId: s.viaFriendId ?? '',
+    sharedThread: s.sharedThread,
+    signals: [...(s.signals ?? [])],
+    accent: 'teal' as const,
+    bothOptedIn: true as const
+  }));
 }
 
 export async function listRequests(): Promise<ApprovalRequest[]> {
@@ -124,7 +141,14 @@ export async function dontSuggestAgain(suggestionId: string): Promise<void> {
     demoSuggestions = demoSuggestions.filter((s) => s.id !== suggestionId);
     return;
   }
-  // TODO: POST /matching/dismiss
+  // Resolve candidate from the active list, then dismiss forever.
+  const current = await listSuggestions();
+  const hit = current.find((s) => s.id === suggestionId);
+  if (!hit) return;
+  await apiFetch('/matching/dismiss', {
+    method: 'POST',
+    body: JSON.stringify({ candidateId: hit.personId, forever: true })
+  });
 }
 
 export async function acceptRequest(requestId: string): Promise<void> {
@@ -162,8 +186,8 @@ export async function addSuggestion(suggestionId: string): Promise<void> {
     demoSuggestions = demoSuggestions.filter((s) => s.id !== suggestionId);
     return;
   }
-  // Suggestions still come from fixtures in live mode until matching ships.
-  const sug = demoSuggestions.find((s) => s.id === suggestionId);
+  const current = await listSuggestions();
+  const sug = current.find((s) => s.id === suggestionId);
   if (!sug) return;
   await apiFetch('/connections', {
     method: 'POST',
@@ -173,26 +197,52 @@ export async function addSuggestion(suggestionId: string): Promise<void> {
       viaFriendId: sug.viaFriendId
     })
   });
-  demoSuggestions = demoSuggestions.filter((s) => s.id !== suggestionId);
 }
 
-export async function getCommonalities(_personId?: string): Promise<Commonality[]> {
+export async function getCommonalities(personId?: string): Promise<Commonality[]> {
   if (isDemoMode()) {
     // Full overlap for reveal + In common; ConnectionDetail can show a subset.
     return COMMONALITIES.map((c) => ({ ...c }));
   }
-  // TODO: GET /matching/commonalities/:personId
-  return [];
+  if (!personId) return [];
+  const payload = await apiFetch<{
+    strongest: { title: string; kind?: string } | null;
+    extras: Array<{ title: string; kind?: string }>;
+    fullList?: Array<{ title: string; kind?: string }>;
+  }>(
+    `/matching/overlap/${encodeURIComponent(personId)}?variant=in_common`
+  );
+  const list = payload.fullList?.length
+    ? payload.fullList
+    : [
+        ...(payload.strongest ? [payload.strongest] : []),
+        ...(payload.extras ?? [])
+      ];
+  return list.map((item, i) => ({
+    key: `ov-${i}`,
+    label: item.title,
+    strongest: i === 0
+  }));
 }
 
 /**
  * Compatibility scores from matching-only quizzes (e.g. "95% in Humor").
  * PRIVACY: only the dimension + number cross the connection, never answers.
  */
-export async function getQuizMatches(_personId?: string): Promise<QuizMatch[]> {
+export async function getQuizMatches(personId?: string): Promise<QuizMatch[]> {
   if (isDemoMode()) return QUIZ_MATCHES.map((q) => ({ ...q }));
-  // TODO: GET /matching/quiz-scores/:personId (server computes the %)
-  return [];
+  if (!personId) return [];
+  const payload = await apiFetch<{
+    quizCompat: Array<{ quizId: string; dimension: string; percent: number }>;
+  }>(`/matching/overlap/${encodeURIComponent(personId)}?variant=reveal`);
+  return (payload.quizCompat ?? []).map((q, i) => ({
+    key: `qm-${i}`,
+    quizId: q.quizId,
+    dimension: q.dimension,
+    score: q.percent,
+    emoji: '✨',
+    accent: 'teal' as const
+  }));
 }
 
 export async function listMatchModules(): Promise<MatchModule[]> {

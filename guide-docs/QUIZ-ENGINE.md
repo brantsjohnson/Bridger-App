@@ -1,14 +1,12 @@
 # Bridger — Quiz Engine (AI-moderated modules)
 
-How Bridger's quizzes — values, personality, communication style, and any future module — produce **accurate, consistent scores** that feed matching, with an **AI moderator** ensuring the signal is clean and adapting the quiz when it isn't. Generalizes to **every module** (each carries its own moderator goal).
+How Bridger's quizzes produce **accurate, consistent scores** that feed matching, with an **AI moderator** ensuring the signal is clean and adapting the quiz when it isn't. Generalizes to **every module** (each carries its own moderator goal).
+
+**Discover quizzes — internal ids vs. marketing names.** The Discover matching quizzes are keyed in the backend by stable **internal ids**: `personality`, `values`, `humor` (live today), with more addable (one more planned — target four). Their **user-facing titles are marketing names** stored in the quiz definition (`title`), separate from the id — rename freely without touching matching or analytics, which reference the **internal id only**. Any number of quizzes can be added; each is matchable per §gating.
+
+**"Fun" / BuzzFeed-style quizzes are the same engine.** A playful surface ("which pancake are you") runs on the identical machinery: authored dimensions + option→dimension rubric weights + the moderator. There is **no separate "fun quiz" path** — the psychology lives under the hood, and a quiz feeds matching whenever its dimensions are flagged `matchable`. Gating is **per shared quiz**: two people match on a quiz only when **both** have completed it at compatible versions (`MATCHING-ALGORITHMS.md`).
 
 The core principle: **the rubric sets the score; the AI moderates and adapts.** The LLM is *not* trusted to invent numbers — it's trusted to judge whether we have enough clear signal to score well, and to gather better signal when we don't.
-
-## Ship status (product wave before AI)
-
-**Shipped without AI:** deterministic scoring, admin authoring, generic mobile take (single/multi + optional explain), friends-only who-got-who, Home share, matchable attribute writes on complete (`quiz.<slug>.<dimension>` with confidence placeholder `1`).
-
-**Deferred to AI-SYSTEM.md §2b:** Claude moderator, contradiction flags, bounded adaptation (`adaptation_policy`), confidence-weighted matching, `quiz_adapted` events. Heuristic pass-through stays until then.
 
 ---
 

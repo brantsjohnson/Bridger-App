@@ -29,6 +29,7 @@ import {
   UseGuards
 } from '@nestjs/common';
 import type { Json } from '@bridger/shared';
+import { AssistantGateService } from '../assistant/assistant-gate.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
 import { RequireCoopMemberGuard } from '../coop/require-coop-member.guard';
@@ -59,7 +60,10 @@ const PROFILE_BACKGROUNDS = new Set(['default', 'eggshell', 'ink', 'grid']);
 @Controller()
 @UseGuards(SupabaseAuthGuard)
 export class ProfilesController {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly assistantGate: AssistantGateService
+  ) {}
 
   // --- READ your own card header ---
   @Get('me/profile')
@@ -132,10 +136,12 @@ export class ProfilesController {
     const { data } = await this.supabase.admin
       .from('user_settings')
       .select(
-        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation'
+        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation, assistant_enabled'
       )
       .eq('user_id', user.id)
       .maybeSingle();
+
+    const assistant = await this.assistantGate.visibility(user.id);
 
     return {
       discoverable: data?.discoverable ?? true,
@@ -143,21 +149,36 @@ export class ProfilesController {
       homeCity: data?.home_city ?? '',
       notifPrefs: data?.notif_prefs ?? {},
       onboardingComplete: data?.onboarding_complete ?? false,
-      profilePresentation: data?.profile_presentation ?? null
+      profilePresentation: data?.profile_presentation ?? null,
+      assistantEnabled: assistant.assistantEnabled,
+      assistantEligible: assistant.assistantEligible,
+      assistantVisible: assistant.assistantVisible
     };
   }
 
-  // --- SAVE meet scope / home city / discoverable ---
+  // --- SAVE meet scope / home city / discoverable / assistant opt-in ---
   @Patch('me/settings')
   async patchSettings(
     @CurrentUser() user: AuthUser,
     @Body()
-    body: { meetScope?: 'nearby' | 'anywhere'; homeCity?: string; discoverable?: boolean }
+    body: {
+      meetScope?: 'nearby' | 'anywhere';
+      homeCity?: string;
+      discoverable?: boolean;
+      assistantEnabled?: boolean;
+    }
   ) {
     const patch: Record<string, unknown> = { user_id: user.id };
     if (body?.meetScope) patch.meet_scope = body.meetScope;
     if (typeof body?.homeCity === 'string') patch.home_city = body.homeCity.trim();
     if (typeof body?.discoverable === 'boolean') patch.discoverable = body.discoverable;
+    if (typeof body?.assistantEnabled === 'boolean') {
+      // Only eligible users may turn Assistant on.
+      if (body.assistantEnabled && !(await this.assistantGate.isEligible(user.id))) {
+        throw new BadRequestException('Assistant is not available for this account');
+      }
+      patch.assistant_enabled = body.assistantEnabled;
+    }
 
     const { error } = await this.supabase.admin
       .from('user_settings')

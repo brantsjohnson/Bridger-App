@@ -2,7 +2,7 @@
 // WHAT THIS FILE DOES (plain English):
 // One Assignments row. Shows the item label and a dropdown of guests. Picking
 // a guest claims the item (no strikethrough — checking off happens later on
-// the event page, and only the assignee can do it). No per-item chip-in.
+// the event page, where the assignee or host can do it). No per-item chip-in.
 // ============================================
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';

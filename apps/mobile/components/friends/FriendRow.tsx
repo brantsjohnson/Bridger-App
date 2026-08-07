@@ -4,7 +4,8 @@
 // they're reading (or "Birthday today"), and a chevron. Rows are color-coded by
 // circle — Close = green, Friends = blue, Acquaintances = orange. Birthdays
 // override to vibrant pink with a cake. Mutual counts stay on the profile
-// (In common), not here. In Edit mode the chevron becomes a move handle.
+// (In common), not here. In Edit mode the chevron becomes a drag handle (⠿)
+// so you can drop the person into another circle.
 // Analytics: normal tap = roster.row, birthday = birthday_row, edit = drag_handle.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
@@ -37,16 +38,22 @@ export function FriendRow({
   person,
   index = 0,
   editing = false,
+  dragging = false,
   onPress,
   onStory,
-  onLongPress
+  onLongPress,
+  /** Wrap the ⠿ handle (native pan lives here so the list can still scroll). */
+  renderDragHandle
 }: {
   person: FriendRowPerson;
   index?: number;
   editing?: boolean;
+  /** True while this row is the one being dragged (dims the source). */
+  dragging?: boolean;
   onPress?: () => void;
   onStory?: () => void;
   onLongPress?: () => void;
+  renderDragHandle?: (handle: React.ReactNode) => React.ReactNode;
 }) {
   void index; // kept for call-site compatibility; wash is tier-based now
   const birthday = !!person.birthdayToday;
@@ -71,16 +78,63 @@ export function FriendRow({
   const vibe = personVibeLine(person);
   const subtitle = birthday ? 'Birthday today' : vibe;
 
+  const handle = (
+    <Text
+      accessible={false}
+      className={cn('px-1 text-[16px] leading-none', !onWash && 'text-ink-mute')}
+      style={nameColor ? { color: nameColor } : undefined}
+    >
+      ⠿
+    </Text>
+  );
+
+  // Name + subtitle + birthday bits (shared by pressable and edit-mode view).
+  const body = (
+    <>
+      <View className="min-w-0 flex-1">
+        <Text
+          numberOfLines={1}
+          className={cn('font-sans-b text-[15px] tracking-tight', !onWash && 'text-ink')}
+          style={nameColor ? { color: nameColor } : undefined}
+        >
+          {person.name}
+        </Text>
+        {subtitle ? (
+          <Text
+            numberOfLines={1}
+            className={cn('font-sans-sb text-[12px]', !onWash && 'text-ink-mute')}
+            style={nameColor ? { color: nameColor, opacity: 0.75 } : undefined}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {birthday && !editing ? <Sparkles /> : null}
+      {birthday && !editing ? <BirthdayDecor /> : null}
+      {!editing ? (
+        <ChevronRightIcon size={16} color={chevronColor} strokeWidth={2.5} />
+      ) : null}
+    </>
+  );
+
   return (
     /*
       Avatar sits outside the row press target so tapping a story ring opens
-      their update, not their profile. The rest of the card still opens profile
-      (or the edit handle).
+      their update, not their profile. In Edit mode the whole card is a plain
+      View so the parent pan gesture can drag it (Pressable would steal the drag).
     */
     <View
+      accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${person.name}, ${subtitle}` : person.name}
+      accessibilityHint={
+        editing
+          ? 'Drag into another group, or tap to pick a circle'
+          : 'Opens profile'
+      }
       className={cn(
         'min-h-[44px] flex-row items-center gap-3 rounded-2xl border px-3.5 py-3',
-        birthday ? BIRTHDAY_ROW : TIER_ROW[tier]
+        birthday ? BIRTHDAY_ROW : TIER_ROW[tier],
+        dragging && 'opacity-40'
       )}
     >
       <Avatar
@@ -93,52 +147,28 @@ export function FriendRow({
         onStory={!editing && person.story ? onStory : undefined}
       />
 
-      <Pressable
-        onPress={withAnalyticsPress(rowId, onPress)}
-        onLongPress={onLongPress}
-        accessibilityRole="button"
-        accessibilityLabel={subtitle ? `${person.name}, ${subtitle}` : person.name}
-        accessibilityHint={editing ? 'Opens move to circle' : 'Opens profile'}
-        className={cn(
-          'min-h-[44px] min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90',
-          editing && 'active:opacity-80'
-        )}
-      >
-        <View className="min-w-0 flex-1">
-          <Text
-            numberOfLines={1}
-            className={cn('font-sans-b text-[15px] tracking-tight', !onWash && 'text-ink')}
-            style={nameColor ? { color: nameColor } : undefined}
-          >
-            {person.name}
-          </Text>
-          {subtitle ? (
-            <Text
-              numberOfLines={1}
-              className={cn('font-sans-sb text-[12px]', !onWash && 'text-ink-mute')}
-              style={nameColor ? { color: nameColor, opacity: 0.75 } : undefined}
-            >
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Soft sparkle on birthday rows; cake icon is the main birthday cue. */}
-        {birthday && !editing ? <Sparkles /> : null}
-        {birthday && !editing ? <BirthdayDecor /> : null}
-
-        {editing ? (
-          <Text
+      {editing ? (
+        <View className="min-h-[44px] min-w-0 flex-1 flex-row items-center gap-3">
+          {body}
+          <View
             accessible={false}
-            className={cn('px-1 text-[16px] leading-none', !onWash && 'text-ink-mute')}
-            style={nameColor ? { color: nameColor } : undefined}
+            className="min-h-[44px] min-w-[44px] items-center justify-center"
           >
-            ⠿
-          </Text>
-        ) : (
-          <ChevronRightIcon size={16} color={chevronColor} strokeWidth={2.5} />
-        )}
-      </Pressable>
+            {renderDragHandle ? renderDragHandle(handle) : handle}
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          onPress={withAnalyticsPress(rowId, onPress)}
+          onLongPress={onLongPress}
+          accessibilityRole="button"
+          accessibilityLabel={subtitle ? `${person.name}, ${subtitle}` : person.name}
+          accessibilityHint="Opens profile"
+          className="min-h-[44px] min-w-0 flex-1 flex-row items-center gap-3 active:opacity-90"
+        >
+          {body}
+        </Pressable>
+      )}
     </View>
   );
 }

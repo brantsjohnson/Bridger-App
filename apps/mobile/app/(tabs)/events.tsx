@@ -24,7 +24,6 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { EventCard } from '../../components/EventCard';
-import { FreeNowStrip } from '../../components/FreeNowStrip';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { GrassSignalSheet } from '../../components/GrassSignalSheet';
 import { TouchGrassButton } from '../../components/TouchGrassButton';
@@ -109,11 +108,13 @@ export default function EventsScreen() {
             section="touch_grass"
             className="mb-2"
           />
-          {myLive ? (
-            <FreeNowStrip when={myLive.when} inIds={myLive.inIds} onEnd={() => void onEndMine()} />
-          ) : (
-            <TouchGrassButton live={false} inIds={[]} onOpen={() => setGrassOpen(true)} />
-          )}
+          {/* Always the big green button — never swap it for the thin live strip. */}
+          <TouchGrassButton
+            live={!!myLive}
+            inIds={myLive?.inIds ?? []}
+            onOpen={() => setGrassOpen(true)}
+            onEnd={myLive ? () => void onEndMine() : undefined}
+          />
 
           {signals.length > 0 ? (
             <View className="mt-3 gap-2.5">

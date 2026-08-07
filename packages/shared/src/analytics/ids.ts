@@ -135,10 +135,23 @@ export const HOME = {
     touch_grass_dismiss: aid('home', 'announcements', 'touch_grass_dismiss'),
     quick_check_yes: aid('home', 'announcements', 'quick_check_yes'),
     quick_check_edit: aid('home', 'announcements', 'quick_check_edit'),
+    quick_check_dismiss: aid('home', 'announcements', 'quick_check_dismiss'),
     coop_card: aid('home', 'announcements', 'coop_card'),
     coming_up_card: aid('home', 'announcements', 'coming_up_card'),
     section_header: aid('home', 'announcements', 'section_header'),
     info: aid('home', 'announcements', 'info')
+  },
+  // Opt-in Assistant chat box under Stories (AGENT.md). Hidden until Settings on.
+  assistant: {
+    open_card: aid('home', 'assistant', 'open_card'),
+    section_header: aid('home', 'assistant', 'section_header'),
+    info: aid('home', 'assistant', 'info'),
+    transcript: aid('home', 'assistant', 'transcript'),
+    empty_state: aid('home', 'assistant', 'empty_state'),
+    composer: aid('home', 'assistant', 'composer'),
+    send: aid('home', 'assistant', 'send'),
+    confirm: aid('home', 'assistant', 'confirm'),
+    cancel: aid('home', 'assistant', 'cancel')
   },
   stories_row: {
     your_story: aid('home', 'stories_row', 'your_story'),
@@ -434,19 +447,55 @@ export const PROFILE = {
   header: {
     avatar: aid('profile', 'header', 'avatar'),
     name: aid('profile', 'header', 'name'),
+    /** Quiet city line under the name (dead_click). */
+    city: aid('profile', 'header', 'city'),
     /** Friend profiles: "N mutuals" beside the name → In common tab */
     mutuals: aid('profile', 'header', 'mutuals'),
+    /** @deprecated Superseded by Current Obsession / play_recap. Kept for history. */
     song: aid('profile', 'header', 'song'),
+    play_recap: aid('profile', 'header', 'play_recap'),
+    story_tile: aid('profile', 'header', 'story_tile'),
+    tier_control: aid('profile', 'header', 'tier_control'),
+    edit: aid('profile', 'header', 'edit'),
+    view_as: aid('profile', 'header', 'view_as'),
+    /** Search this profile from the action row (never logs query text). */
+    search: aid('profile', 'header', 'search'),
+    /** @deprecated Moved to header.search in the action row. Kept for history. */
     overflow: aid('profile', 'header', 'overflow'),
-    header_bg: aid('profile', 'header', 'header_bg')
+    header_bg: aid('profile', 'header', 'header_bg'),
+    /** Opens co-op Customize (theme) from rearrange mode. */
+    customize_look: aid('profile', 'header', 'customize_look')
   },
   card: {
+    /** @deprecated Absorbed into obsession squares. Kept for history. */
     currently: aid('profile', 'card', 'currently'),
+    mutuals: aid('profile', 'card', 'mutuals'),
+    top5: aid('profile', 'card', 'top5'),
+    top5_row: aid('profile', 'card', 'top5_row'),
+    about_me: aid('profile', 'card', 'about_me'),
+    about_me_toggle: aid('profile', 'card', 'about_me_toggle'),
+    /** Own profile: turn on About me edit (reorder + per-field Edit). */
+    about_me_edit: aid('profile', 'card', 'about_me_edit'),
+    /** Expand the truncated bio ("Rest of bio"). */
+    about_me_bio_more: aid('profile', 'card', 'about_me_bio_more'),
+    /** Edit one about-me field or the bio while About me edit is on. */
+    about_me_field_edit: aid('profile', 'card', 'about_me_field_edit'),
+    /** Reorder an about-me field (method=up|down). */
+    about_me_reorder: aid('profile', 'card', 'about_me_reorder'),
+    upcoming: aid('profile', 'card', 'upcoming'),
+    upcoming_row: aid('profile', 'card', 'upcoming_row'),
+    obsession: aid('profile', 'card', 'obsession'),
+    obsession_square: aid('profile', 'card', 'obsession_square'),
+    favorites: aid('profile', 'card', 'favorites'),
+    favorites_tile: aid('profile', 'card', 'favorites_tile'),
+    favorites_to_start: aid('profile', 'card', 'favorites_to_start'),
+    see_all: aid('profile', 'card', 'see_all'),
+    greatest_hits: aid('profile', 'card', 'greatest_hits'),
+    where_met: aid('profile', 'card', 'where_met'),
     hobbies_widget: aid('profile', 'card', 'hobbies_widget'),
     this_or_that_row: aid('profile', 'card', 'this_or_that_row'),
     places_map: aid('profile', 'card', 'places_map'),
     places_pin: aid('profile', 'card', 'places_pin'),
-    about_me: aid('profile', 'card', 'about_me'),
     favs: aid('profile', 'card', 'favs'),
     /** empty-state CTAs that open a fill module */
     add_details: aid('profile', 'card', 'add_details'),
@@ -454,15 +503,28 @@ export const PROFILE = {
     add_favs: aid('profile', 'card', 'add_favs'),
     add_places: aid('profile', 'card', 'add_places'),
     take_this_or_that: aid('profile', 'card', 'take_this_or_that'),
-    add_module: aid('profile', 'card', 'add_module')
+    add_module: aid('profile', 'card', 'add_module'),
+    /** Pencil on a widget card: edit that section's contents. */
+    widget_edit: aid('profile', 'card', 'widget_edit'),
+    /** Move a widget up/down while rearranging (method=up|down). */
+    widget_reorder: aid('profile', 'card', 'widget_reorder')
   },
-  /** Shared ModuleFlow share-mode audience controls on Profile */
+  /** Shared ModuleFlow share-mode audience + matchable controls on Profile */
   module: {
     audience_set_all: aid('profile', 'module', 'audience_set_all'),
     audience_row: aid('profile', 'module', 'audience_row'),
+    matchable_toggle: aid('profile', 'module', 'matchable_toggle'),
+    matchable_row: aid('profile', 'module', 'matchable_row'),
+    continue: aid('profile', 'module', 'continue'),
+    cancel: aid('profile', 'module', 'cancel'),
     hobby_select: aid('profile', 'module', 'hobby_select'),
     place_search: aid('profile', 'module', 'place_search'),
     place_result: aid('profile', 'module', 'place_result')
+  },
+  /** One-time mandatory intro before first fill (PROFILE.md §0). */
+  intro: {
+    body: aid('profile_intro', 'content', 'body'),
+    continue: aid('profile_intro', 'actions', 'continue')
   },
   stories_calendar: {
     day: aid('profile', 'stories_calendar', 'day'),
@@ -506,12 +568,20 @@ export const PROFILE = {
     analytics_toggle: aid('profile', 'settings', 'analytics_toggle'),
     log_out: aid('profile', 'settings', 'log_out'),
     appearance: aid('profile', 'settings', 'appearance'),
-    blocked_people: aid('profile', 'settings', 'blocked_people')
+    blocked_people: aid('profile', 'settings', 'blocked_people'),
+    storage_plan: aid('profile', 'settings', 'storage_plan'),
+    always_original: aid('profile', 'settings', 'always_original'),
+    /** Opt-in Assistant toggle (hidden unless admin-eligible). */
+    assistant_toggle: aid('profile', 'settings', 'assistant_toggle'),
+    /** Open the Assistant surface after opt-in. */
+    assistant_open: aid('profile', 'settings', 'assistant_open')
   },
   top_nav: {
     page_title: aid('profile', 'top_nav', 'page_title'),
     edit: aid('profile', 'top_nav', 'edit'),
-    back: aid('profile', 'top_nav', 'back')
+    back: aid('profile', 'top_nav', 'back'),
+    /** Search this profile's visible fields (never logs query text). */
+    search: aid('profile', 'top_nav', 'search')
   },
   // Friend view of a profile
   about_them: {
@@ -565,7 +635,13 @@ export const CUSTOMIZE = {
     intro_body: aid('customize', 'style', 'intro_body'),
     accent_option: aid('customize', 'style', 'accent_option'),
     background_option: aid('customize', 'style', 'background_option'),
+    font_option: aid('customize', 'style', 'font_option'),
+    mode_option: aid('customize', 'style', 'mode_option'),
     preview: aid('customize', 'style', 'preview')
+  },
+  layout: {
+    module_row: aid('customize', 'layout', 'module_row'),
+    reorder: aid('customize', 'layout', 'reorder')
   },
   actions: {
     save: aid('customize', 'actions', 'save'),
@@ -634,6 +710,7 @@ export const EVENTS = {
   },
   touch_grass: {
     send: aid('events', 'touch_grass', 'send'),
+    end: aid('events', 'touch_grass', 'end'),
     featured_signal: aid('events', 'touch_grass', 'featured_signal'),
     signal_row: aid('events', 'touch_grass', 'signal_row'),
     section_header: aid('events', 'touch_grass', 'section_header'),
@@ -1055,6 +1132,30 @@ export const DELIGHT = {
   gift: {
     attribution: aid('delight', 'gift', 'attribution'),
     dismiss: aid('delight', 'gift', 'dismiss')
+  }
+} as const;
+
+// --- Assistant (opt-in relationship helper; never on default screens) ---
+export const ASSISTANT = {
+  chat: {
+    /** Non-interactive header / title region. */
+    header: aid('assistant', 'chat', 'header'),
+    /** Message list body (dead_click). */
+    transcript: aid('assistant', 'chat', 'transcript'),
+    composer: aid('assistant', 'chat', 'composer'),
+    send: aid('assistant', 'chat', 'send'),
+    voice: aid('assistant', 'chat', 'voice'),
+    close: aid('assistant', 'chat', 'close'),
+    empty_state: aid('assistant', 'chat', 'empty_state')
+  },
+  proposal: {
+    preview: aid('assistant', 'proposal', 'preview'),
+    confirm: aid('assistant', 'proposal', 'confirm'),
+    cancel: aid('assistant', 'proposal', 'cancel')
+  },
+  activity: {
+    row: aid('assistant', 'activity', 'row'),
+    undo: aid('assistant', 'activity', 'undo')
   }
 } as const;
 

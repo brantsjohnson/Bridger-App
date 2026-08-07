@@ -2,10 +2,9 @@
 // WHAT THIS FILE DOES (plain English):
 // Your private notes on a friend's profile — little reminders, calendar dates,
 // and soft "check in sometimes" nudges. Only you can see these. Demo mode
-// keeps them in memory; live mode will hit the API later. Also builds Home
-// Coming up rows and fires due check-in notifications.
-// PRIVACY: author-only. Never sent to matching/AI. Never show note text in
-// analytics.
+// keeps them in memory; live mode hits GET/POST/DELETE /me/notes.
+// Also builds Home Coming up rows and fires due check-in notifications.
+// PRIVACY: author-only. Never show note text in analytics.
 // ============================================
 import type {
   AppNotification,
@@ -14,6 +13,7 @@ import type {
   UpcomingItem
 } from '@bridger/shared';
 import { trackProduct } from '@bridger/shared';
+import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
 import { personById } from './people';
 
@@ -35,7 +35,6 @@ const SEED: FriendNote[] = [
     kind: 'check_in',
     body: 'Ask about the new job',
     cadence: 'biweek',
-    // Due now so Home / notifications can demo the nudge once.
     nextRemindAt: new Date(0).toISOString()
   }
 ];
@@ -48,57 +47,38 @@ function store(): FriendNote[] {
   return demoNotes;
 }
 
-/** Days to add for each cadence after a check-in fires. */
 function cadenceDays(c: FriendNoteCadence): number {
   if (c === 'week') return 7;
   if (c === 'month') return 30;
   return 14;
 }
 
-/** Next remind time from now for a new or just-fired check-in. */
 export function nextRemindAfter(cadence: FriendNoteCadence, from = new Date()): string {
   const d = new Date(from.getTime());
   d.setDate(d.getDate() + cadenceDays(cadence));
   return d.toISOString();
 }
 
-/** Short label for cadence chips in the UI. */
 export function cadenceLabel(c: FriendNoteCadence): string {
   if (c === 'week') return 'Weekly';
   if (c === 'month') return 'Monthly';
   return 'Every 2 weeks';
 }
 
-/** Format a stored date for the list row (keeps ISO readable). */
 function formatDateLabel(date?: string): string {
   if (!date) return '';
-  // Prefer a friendly short form when we have YYYY-MM-DD.
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return date;
   const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec'
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
   return `${months[Number(m[2]) - 1]} ${Number(m[3])}`;
 }
 
-/** How soon a date note is (for Coming up "when" chip + sort). */
 function whenForDate(date: string): { when: string; daysUntil: number } | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!m) {
-    // Free-text dates still show on Coming up with a soft label.
-    return { when: 'soon', daysUntil: 14 };
-  }
+  if (!m) return { when: 'soon', daysUntil: 14 };
   const target = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -110,7 +90,6 @@ function whenForDate(date: string): { when: string; daysUntil: number } | null {
   return { when: `in ${diffDays} days`, daysUntil: diffDays };
 }
 
-/** First name for UI copy (never for analytics). */
 function firstName(personId: string): string {
   return personById(personId).name.split(' ')[0] ?? 'them';
 }
@@ -120,8 +99,9 @@ export async function listFriendNotes(personId: string): Promise<FriendNote[]> {
   if (isDemoMode()) {
     return store().filter((n) => n.personId === personId);
   }
-  // Live path lands with the Nest profiles/notes endpoint.
-  return [];
+  return apiFetch<FriendNote[]>(
+    `/me/notes?personId=${encodeURIComponent(personId)}`
+  );
 }
 
 export type AddFriendNoteInput = {
@@ -137,24 +117,36 @@ export async function addFriendNote(input: AddFriendNoteInput): Promise<FriendNo
   const body = input.body.trim();
   if (!body) throw new Error('Note text is required');
 
-  const note: FriendNote = {
-    id: `n-${Date.now()}`,
-    personId: input.personId,
-    kind: input.kind,
-    body,
-    date: input.kind === 'date' ? input.date?.trim() || body : undefined,
-    remind: input.kind === 'date',
-    cadence: input.kind === 'check_in' ? input.cadence ?? 'biweek' : undefined,
-    nextRemindAt:
-      input.kind === 'check_in'
-        ? nextRemindAfter(input.cadence ?? 'biweek')
-        : undefined
-  };
-
   if (isDemoMode()) {
+    const note: FriendNote = {
+      id: `n-${Date.now()}`,
+      personId: input.personId,
+      kind: input.kind,
+      body,
+      date: input.kind === 'date' ? input.date?.trim() || body : undefined,
+      remind: input.kind === 'date',
+      cadence: input.kind === 'check_in' ? input.cadence ?? 'biweek' : undefined,
+      nextRemindAt:
+        input.kind === 'check_in'
+          ? nextRemindAfter(input.cadence ?? 'biweek')
+          : undefined
+    };
     store().unshift(note);
+    trackProduct('friend_note_added', { kind: note.kind, cadence: note.cadence });
+    return note;
   }
 
+  const note = await apiFetch<FriendNote>('/me/notes', {
+    method: 'POST',
+    body: JSON.stringify({
+      personId: input.personId,
+      kind: input.kind,
+      text: body,
+      date: input.kind === 'date' ? input.date?.trim() || body : undefined,
+      remind: input.kind === 'date',
+      cadence: input.kind === 'check_in' ? input.cadence ?? 'biweek' : undefined
+    })
+  });
   trackProduct('friend_note_added', { kind: note.kind, cadence: note.cadence });
   return note;
 }
@@ -165,15 +157,18 @@ export async function deleteFriendNote(id: string): Promise<void> {
     const list = store();
     const idx = list.findIndex((n) => n.id === id);
     if (idx >= 0) list.splice(idx, 1);
+  } else {
+    await apiFetch(`/me/notes/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
   trackProduct('friend_note_deleted', {});
 }
 
 /**
  * Coming up rows from your date notes (within a week) and due check-ins.
- * Birthdays stay in the catalog / feed fixtures.
+ * Demo uses the in-memory store; live Coming-up comes from /feed/coming-up.
  */
 export function upcomingFromFriendNotes(): UpcomingItem[] {
+  if (!isDemoMode()) return [];
   const out: UpcomingItem[] = [];
   const now = Date.now();
 
@@ -208,10 +203,6 @@ export function upcomingFromFriendNotes(): UpcomingItem[] {
   return out;
 }
 
-/**
- * Fire due check-in nudges once, advance next_remind_at, push in-app notify.
- * Safe to call on Home focus — only notes that are due fire.
- */
 export async function fireDueCheckInReminders(): Promise<void> {
   if (!isDemoMode()) return;
 
@@ -231,7 +222,6 @@ export async function fireDueCheckInReminders(): Promise<void> {
       unread: true,
       target: { personId: n.personId }
     };
-    // Dynamic import avoids a feed ↔ friend-notes cycle at module load.
     const { pushNotification } = await import('./feed');
     pushNotification(item);
 
@@ -240,7 +230,6 @@ export async function fireDueCheckInReminders(): Promise<void> {
   }
 }
 
-/** Friendly date label for list rows (UI only). */
 export function friendNoteDateLabel(note: FriendNote): string {
   return formatDateLabel(note.date);
 }

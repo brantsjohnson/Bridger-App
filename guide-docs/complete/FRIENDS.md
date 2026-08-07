@@ -141,7 +141,7 @@ Net effect: the quiz is both a fun artifact and the on-ramp, and the payoff surf
 | Piece | Component | Backend |
 |---|---|---|
 | Page + grouped roster | `friends.tsx` | `tiers` |
-| Move between tiers | `TierPicker` | `tiers` |
+| Move between tiers | drag into group (Edit) + `TierPicker` fallback | `tiers` |
 | Add-friend sheet | (sheet) | `connections` |
 | Row → profile | → `person/[id]` | `profiles` + `permissions` |
 | Empty state | (reuse Home cold-start) | `connections` |
@@ -156,7 +156,7 @@ Net effect: the quiz is both a fun artifact and the on-ramp, and the payoff surf
 - [ ] Empty tiers are hidden; no zero-count headers.
 - [ ] A row can be moved to another tier via drag handle or long-press menu, writing through `tiers`.
 - [ ] Tapping a row opens that person's profile.
-- [ ] The `Add` sheet shows the user's QR code directly (no "show QR" tap), plus share-link and scan-QR as live instant paths.
+- [ ] The `Add` sheet shows a real scannable QR (deep link encoded) the moment it opens, plus share-link and scan/paste redeem as instant paths (demo uses the same URL shape; live uses `invite_links` / `qr_tokens`).
 - [ ] Roster rows show song of the week (or book they're reading), never mutual counts; mutuals live on the friend profile → In common.
 - [ ] The search backend/route is stubbed and ready so the flag is the only switch needed to enable it.
 - [ ] No follower counts or "friends since" rankings appear anywhere.
