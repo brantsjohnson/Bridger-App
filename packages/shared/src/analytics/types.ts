@@ -72,6 +72,10 @@ export type AnalyticsProductEvent =
   | 'module_started'
   | 'module_completed'
   | 'module_item_added'
+  /** Home Announcements quick check: user confirmed the fact is still true */
+  | 'quick_check_kept'
+  /** Home Announcements quick check: user said the fact is no longer true */
+  | 'quick_check_removed'
   | 'friend_added'
   | 'friend_retiered'
   | 'friend_removed'
@@ -108,6 +112,8 @@ export type AnalyticsProductEvent =
   | 'event_assignment_done'
   | 'event_shared'
   | 'event_introduction_notified'
+  /** Someone was added to an event invite list (host or attendee). Never names. */
+  | 'event_guest_invited'
   | 'rsvp_going'
   | 'rsvp_cant'
   | 'inside_joke_posted'
@@ -115,6 +121,10 @@ export type AnalyticsProductEvent =
   | 'bucket_item_updated'
   | 'bucket_item_deleted'
   | 'profile_customized'
+  /** Theme tokens saved on customize (accent/background/font/mode). */
+  | 'profile_theme_saved'
+  /** Layout order of movable modules saved on customize. */
+  | 'profile_layout_saved'
   | 'connection_revealed'
   /** soft or paid join — never receipt / PII */
   | 'coop_joined'
@@ -123,12 +133,20 @@ export type AnalyticsProductEvent =
   | 'coop_cancel_scheduled'
   | 'auth_signed_in'
   | 'auth_signed_up'
+  /** Runtime demo unlocked (logo long-press confirmed). */
+  | 'demo_mode_entered'
+  /** Person left runtime demo from Settings. */
+  | 'demo_mode_left'
   | 'message_sent'
   | 'contact_shared'
   /** unmatched route or broken connection path — path trail goes to admin */
   | 'screen_not_found'
   /** Assistant opt-in (never logs query/note/transcript text) */
   | 'assistant_enabled'
+  | 'billy_allowance_exhausted'
+  | 'billy_plus_started'
+  | 'billy_plus_cancel_scheduled'
+  | 'billy_vendor_outage_seen'
   | 'assistant_disabled'
   | 'assistant_opened'
   | 'assistant_query'
@@ -136,7 +154,18 @@ export type AnalyticsProductEvent =
   | 'assistant_action_confirmed'
   | 'assistant_action_cancelled'
   | 'assistant_action_undone'
-  | 'permission_result';
+  | 'permission_result'
+  /** Linked Spotify (or later Apple Music). Never logs track titles. */
+  | 'music_connected'
+  | 'music_disconnected'
+  /** Confirmed ~30s preview started (not the tap alone if play failed). */
+  | 'music_preview_played'
+  /** Saved a catalog pick (listening / song of week / fav). */
+  | 'music_pick_saved'
+  /** Added a friend's track to the viewer's Spotify library/playlist. */
+  | 'music_saved_to_library'
+  /** Synced top artists for overlap (server-confirmed). */
+  | 'music_taste_synced';
 
 /** Shared properties stamped on every event. */
 export type AnalyticsBaseProps = {
@@ -150,6 +179,8 @@ export type AnalyticsBaseProps = {
   interaction_index?: number;
   first_interaction?: boolean;
   method?: AnalyticsMethod | string;
+  /** Invite path for event_guest_invited — host vs attendee, never names. */
+  via?: 'host' | 'attendee';
   flow?: string;
   flow_step?: string;
   timestamp?: string;

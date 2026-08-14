@@ -19,6 +19,7 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -33,9 +34,13 @@ import { getProfilePhoto } from '../data/fixtures/demo-media';
 import { getOnboardingComplete, isOnboardingCompleteCached } from '../data/onboarding';
 import { DelightHost } from '../delight/_host/DelightHost';
 import { bootstrapAnalytics } from '../lib/analytics-bootstrap';
-import { isDemoMode } from '../lib/demo';
+import { hydrateDemoMode, isDemoMode } from '../lib/demo';
 import { recordRoutePath } from '../lib/route-trail';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
+import { BridgeLiveProvider, useBridgeLive } from '../providers/bridge-live-provider';
+import { BillyVoiceProvider, useBillyVoice } from '../providers/billy-voice-provider';
+import { AgentIsland } from '../components/assistant/AgentIsland';
+import { fetchAssistantSettings } from '../data/assistant';
 
 // Analytics: wire context + (dev) sink once. Capture stays opted-out until Settings.
 bootstrapAnalytics();
@@ -67,6 +72,8 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold
   });
+  // THIS SECTION DOES: read the saved demo flag before the auth gate runs.
+  const [demoReady, setDemoReady] = useState(false);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -74,12 +81,16 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    void hydrateDemoMode().finally(() => setDemoReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (loaded && demoReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, demoReady]);
 
-  if (!loaded) {
+  if (!loaded || !demoReady) {
     return null;
   }
 
@@ -88,14 +99,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <RootLayoutNav />
+        <BridgeLiveProvider>
+          {/* Shared Billy mic lives above screens so listening survives navigation. */}
+          <BillyVoiceProvider>
+            <RootLayoutNav />
+          </BillyVoiceProvider>
+        </BridgeLiveProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
 }
 
-// --- DEMO MODE: skip sign-in so you can preview real screens on localhost.
-//     Turn on with EXPO_PUBLIC_DEMO_MODE=1 in apps/mobile/.env. Never ship this on. ---
+// --- DEMO MODE: skip sign-in when env forces it or the person unlocked via logo.
+//     Preview / internal builds allow long-press unlock; production leaves it off. ---
 // --- SECURITY: send signed-out people to Welcome / auth, and signed-in people to the app ---
 function useProtectedRoute() {
   const { session, loading } = useAuth();
@@ -174,52 +190,99 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       {/* Delight gifts mount above navigation so they can play on any screen. */}
       <DelightHost />
-      <Stack>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
-        <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="discover/connect-over" options={{ headerShown: false }} />
-        <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="event/create"
-          options={{ headerShown: false, presentation: 'fullScreenModal' }}
-        />
-        <Stack.Screen name="messages/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="messages/contact-card" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="reveal/[id]"
-          options={{ headerShown: false, presentation: 'fullScreenModal' }}
-        />
-        <Stack.Screen
-          name="story/[id]"
-          options={{ headerShown: false, presentation: 'fullScreenModal' }}
-        />
-        <Stack.Screen
-          name="story/capture"
-          options={{ headerShown: false, presentation: 'fullScreenModal' }}
-        />
-        <Stack.Screen
-          name="quiz/[slug]"
-          options={{ headerShown: false, presentation: 'fullScreenModal' }}
-        />
-        <Stack.Screen name="recap/index" options={{ headerShown: false }} />
-        <Stack.Screen name="activity/index" options={{ headerShown: false }} />
-        <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
-        <Stack.Screen name="settings/notifications" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/customize" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/index" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/index" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/mission" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/model" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/ideas/index" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/ideas/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/vote" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/cost" options={{ headerShown: false }} />
-        <Stack.Screen name="coop/portal/manage" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
+      <View className="flex-1">
+        <Stack>
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+          <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="discover/connect-over" options={{ headerShown: false }} />
+          <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="event/create"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen name="messages/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="messages/contact-card" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="reveal/[id]"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="story/[id]"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="story/capture"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="quiz/[slug]"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen name="recap/index" options={{ headerShown: false }} />
+          <Stack.Screen name="activity/index" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
+          <Stack.Screen name="settings/notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="profile/customize" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="assistant/index"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen name="coop/index" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/index" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/mission" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/model" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/ideas/index" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/ideas/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/vote" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/cost" options={{ headerShown: false }} />
+          <Stack.Screen name="coop/portal/manage" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+        {/* Billy Island: only when opted in, live, and not already on Home/Screen. */}
+        <BridgeIslandHost />
+      </View>
     </ThemeProvider>
+  );
+}
+
+/** Shows the floating Billy capsule when work is live off Home. */
+function BridgeIslandHost() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { enabled, status, line, setEnabled } = useBridgeLive();
+  const { hearing, liveTranscript, cancelListening } = useBillyVoice();
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAssistantSettings().then((s) => {
+      if (!cancelled) setEnabled(Boolean(s.assistantEnabled));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [setEnabled]);
+
+  const onHome =
+    pathname === '/home' ||
+    pathname === '/(tabs)/home' ||
+    pathname?.endsWith('/home');
+  const onAssistant = pathname?.includes('/assistant');
+
+  if (!enabled || onHome || onAssistant) return null;
+
+  return (
+    <AgentIsland
+      status={status}
+      line={line || 'Billy'}
+      hearing={hearing}
+      transcript={liveTranscript}
+      onStopListen={() => void cancelListening()}
+      onOpen={() =>
+        router.push({ pathname: '/assistant', params: { entry: 'island' } })
+      }
+    />
   );
 }
 

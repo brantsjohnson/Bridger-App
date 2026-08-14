@@ -91,6 +91,36 @@ Client env (public): `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
 ---
 
+## TestFlight / EAS (iOS ship checklist)
+
+Repo pieces live under `apps/mobile`: `eas.json` (build profiles), `app.config.ts` (bundle id `social.bridger.app`, privacy stubs, env mirrors). CI does **not** run EAS yet. No Apple or Expo secrets belong in git.
+
+**Profiles**
+
+| Profile | Who gets it | Demo long-press (`EXPO_PUBLIC_DEMO_UNLOCK`) |
+|---|---|---|
+| `development` | Dev client / simulator | on |
+| `preview` | Internal TestFlight-style builds | on |
+| `production` | App Store | **off** for now (flip later if we want store demos) |
+
+**Your account steps (do once)**
+
+1. Create a free [Expo](https://expo.dev) account.
+2. In a terminal: `cd apps/mobile` → `npx eas-cli login` → `npx eas-cli init` (links the project; paste the printed `projectId` into `app.config.ts` → `extra.eas.projectId`, or set `EAS_PROJECT_ID` in the EAS dashboard env).
+3. In [Apple Developer](https://developer.apple.com) / [App Store Connect](https://appstoreconnect.apple.com): create a new iOS app with bundle id **`social.bridger.app`**. Note the numeric App Store Connect app id and put it in `eas.json` → `submit.*.ios.ascAppId` (replace `REPLACE_AFTER_APP_STORE_CONNECT`).
+4. First build (EAS can create certs/profiles for you):  
+   `pnpm --filter @bridger/mobile eas:build:ios:preview`  
+   or `cd apps/mobile && npx eas-cli build -p ios --profile preview`.
+5. Submit to TestFlight:  
+   `pnpm --filter @bridger/mobile eas:submit:ios`  
+   or `npx eas-cli submit -p ios --latest` (use the preview submit profile when prompted).
+6. In App Store Connect → TestFlight → Internal Testing: add yourself, install from the TestFlight app.
+7. On Sign in: long-press the Bridger logo → confirm → walk the fake-data demo (preview / development builds only).
+
+**Local unlock without a store build:** set `EXPO_PUBLIC_DEMO_UNLOCK=1` in `apps/mobile/.env` (see `.env.example`). `EXPO_PUBLIC_DEMO_MODE=1` still forces demo on at launch for localhost.
+
+---
+
 ## Build order for Cursor (so nothing's missed)
 
 1. **Monorepo scaffold** — pnpm + Turborepo; `apps/mobile` (Expo Router), `apps/api` (NestJS), `packages/shared|permissions|ui`.

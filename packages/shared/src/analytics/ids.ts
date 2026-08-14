@@ -31,6 +31,8 @@ export const AUTH = {
   },
   sign_in: {
     page_title: aid('auth', 'sign_in', 'page_title'),
+    /** Center Bridger mark; long-press unlocks demo when the build allows it. */
+    brand_logo: aid('auth', 'sign_in', 'brand_logo'),
     google: aid('auth', 'sign_in', 'google'),
     apple: aid('auth', 'sign_in', 'apple'),
     email: aid('auth', 'sign_in', 'email'),
@@ -111,9 +113,12 @@ export const CHROME = {
   tab_bar: {
     tab_home: aid('chrome', 'tab_bar', 'tab_home'),
     tab_friends: aid('chrome', 'tab_bar', 'tab_friends'),
+    // Retired from the pill: Messages moved to the header (see *.top_nav.messages_icon).
+    // Kept so older events still parse.
     tab_messages: aid('chrome', 'tab_bar', 'tab_messages'),
     tab_events: aid('chrome', 'tab_bar', 'tab_events'),
-    tab_discover: aid('chrome', 'tab_bar', 'tab_discover')
+    tab_discover: aid('chrome', 'tab_bar', 'tab_discover'),
+    tab_news: aid('chrome', 'tab_bar', 'tab_news')
   }
 } as const;
 
@@ -136,12 +141,16 @@ export const HOME = {
     quick_check_yes: aid('home', 'announcements', 'quick_check_yes'),
     quick_check_edit: aid('home', 'announcements', 'quick_check_edit'),
     quick_check_dismiss: aid('home', 'announcements', 'quick_check_dismiss'),
+    /** Dead: the question body / "Quick check" label (not a button). */
+    quick_check_body: aid('home', 'announcements', 'quick_check_body'),
+    /** Dead: the "Kept it." / "Removed…" confirmation banner. */
+    quick_check_result: aid('home', 'announcements', 'quick_check_result'),
     coop_card: aid('home', 'announcements', 'coop_card'),
     coming_up_card: aid('home', 'announcements', 'coming_up_card'),
     section_header: aid('home', 'announcements', 'section_header'),
     info: aid('home', 'announcements', 'info')
   },
-  // Opt-in Assistant chat box under Stories (AGENT.md). Hidden until Settings on.
+  // Opt-in Billy widget under Stories (AGENT.md). Hidden until Settings on.
   assistant: {
     open_card: aid('home', 'assistant', 'open_card'),
     section_header: aid('home', 'assistant', 'section_header'),
@@ -151,7 +160,19 @@ export const HOME = {
     composer: aid('home', 'assistant', 'composer'),
     send: aid('home', 'assistant', 'send'),
     confirm: aid('home', 'assistant', 'confirm'),
-    cancel: aid('home', 'assistant', 'cancel')
+    cancel: aid('home', 'assistant', 'cancel'),
+    open: aid('home', 'assistant', 'open'),
+    mic: aid('home', 'assistant', 'mic'),
+    stop_listen: aid('home', 'assistant', 'stop_listen'),
+    suggestion: aid('home', 'assistant', 'suggestion'),
+    dismiss: aid('home', 'assistant', 'dismiss'),
+    draft_approve: aid('home', 'assistant', 'draft_approve'),
+    draft_edit: aid('home', 'assistant', 'draft_edit'),
+    mark: aid('home', 'assistant', 'mark'),
+    body: aid('home', 'assistant', 'body'),
+    /** Fixed event-template preview card (dead_click on body). */
+    event_preview: aid('home', 'assistant', 'event_preview'),
+    event_approve: aid('home', 'assistant', 'event_approve')
   },
   stories_row: {
     your_story: aid('home', 'stories_row', 'your_story'),
@@ -291,6 +312,12 @@ export const DISCOVER = {
     section_header: aid('discover', 'people_to_meet', 'section_header'),
     info: aid('discover', 'people_to_meet', 'info')
   },
+  // Dormant "friend radar" slot under People to meet (nearby map, not built yet).
+  local_map: {
+    section_header: aid('discover', 'local_map', 'section_header'),
+    teaser_card: aid('discover', 'local_map', 'teaser_card'),
+    info: aid('discover', 'local_map', 'info')
+  },
   discover_me: {
     answer: aid('discover', 'discover_me', 'answer'),
     image_option: aid('discover', 'discover_me', 'image_option'),
@@ -334,11 +361,149 @@ export const CONNECT_OVER = {
   }
 } as const;
 
+// --- Your Funny Bone (humor Discover quiz — own surface) ---
+// PRIVACY: never log explain text, option labels, or media titles — only option ids / counts.
+export const YOUR_FUNNY_BONE = {
+  chrome: {
+    back: aid('your_funny_bone', 'chrome', 'back'),
+    progress: aid('your_funny_bone', 'chrome', 'progress')
+  },
+  intro: {
+    body: aid('your_funny_bone', 'intro', 'body'),
+    start: aid('your_funny_bone', 'intro', 'start')
+  },
+  take: {
+    option: aid('your_funny_bone', 'take', 'option'),
+    explain: aid('your_funny_bone', 'take', 'explain'),
+    next: aid('your_funny_bone', 'take', 'next'),
+    options_more: aid('your_funny_bone', 'take', 'options_more'),
+    note_toggle: aid('your_funny_bone', 'take', 'note_toggle')
+  },
+  result: {
+    body: aid('your_funny_bone', 'result', 'body'),
+    done: aid('your_funny_bone', 'result', 'done')
+  }
+} as const;
+
+// --- What Gets You Going (values Discover quiz — own surface) ---
+// PRIVACY: never log explain text or option labels — only option ids / counts.
+export const WHAT_GETS_YOU_GOING = {
+  chrome: {
+    back: aid('what_gets_you_going', 'chrome', 'back'),
+    progress: aid('what_gets_you_going', 'chrome', 'progress')
+  },
+  intro: {
+    body: aid('what_gets_you_going', 'intro', 'body'),
+    start: aid('what_gets_you_going', 'intro', 'start')
+  },
+  take: {
+    option: aid('what_gets_you_going', 'take', 'option'),
+    explain: aid('what_gets_you_going', 'take', 'explain'),
+    next: aid('what_gets_you_going', 'take', 'next'),
+    skip: aid('what_gets_you_going', 'take', 'skip'),
+    options_more: aid('what_gets_you_going', 'take', 'options_more'),
+    note_toggle: aid('what_gets_you_going', 'take', 'note_toggle')
+  },
+  result: {
+    body: aid('what_gets_you_going', 'result', 'body'),
+    done: aid('what_gets_you_going', 'result', 'done')
+  }
+} as const;
+
+// --- The Friend Zone (attachment Discover quiz — own surface) ---
+// PRIVACY: never log explain text or option labels — only option ids / counts.
+export const THE_FRIEND_ZONE = {
+  chrome: {
+    back: aid('the_friend_zone', 'chrome', 'back'),
+    progress: aid('the_friend_zone', 'chrome', 'progress')
+  },
+  intro: {
+    body: aid('the_friend_zone', 'intro', 'body'),
+    start: aid('the_friend_zone', 'intro', 'start')
+  },
+  take: {
+    option: aid('the_friend_zone', 'take', 'option'),
+    explain: aid('the_friend_zone', 'take', 'explain'),
+    next: aid('the_friend_zone', 'take', 'next'),
+    options_more: aid('the_friend_zone', 'take', 'options_more'),
+    note_toggle: aid('the_friend_zone', 'take', 'note_toggle')
+  },
+  result: {
+    body: aid('the_friend_zone', 'result', 'body'),
+    done: aid('the_friend_zone', 'result', 'done')
+  }
+} as const;
+
+// --- Your Vibe (personality Discover quiz — own surface) ---
+// PRIVACY: never log explain text or option labels — only option ids / counts.
+export const YOUR_VIBE = {
+  chrome: {
+    back: aid('your_vibe', 'chrome', 'back'),
+    progress: aid('your_vibe', 'chrome', 'progress')
+  },
+  intro: {
+    body: aid('your_vibe', 'intro', 'body'),
+    start: aid('your_vibe', 'intro', 'start')
+  },
+  take: {
+    option: aid('your_vibe', 'take', 'option'),
+    explain: aid('your_vibe', 'take', 'explain'),
+    next: aid('your_vibe', 'take', 'next'),
+    options_more: aid('your_vibe', 'take', 'options_more'),
+    note_toggle: aid('your_vibe', 'take', 'note_toggle')
+  },
+  result: {
+    body: aid('your_vibe', 'result', 'body'),
+    done: aid('your_vibe', 'result', 'done')
+  }
+} as const;
+
+// --- Behind the Scenes (disclosure pre-quiz — own surface) ---
+// PRIVACY: never log free-text notes, custom labels, or condition names beyond
+// opaque condition_key enums already in the product model.
+export const BEHIND_THE_SCENES = {
+  chrome: {
+    back: aid('behind_the_scenes', 'chrome', 'back'),
+    skip: aid('behind_the_scenes', 'chrome', 'skip'),
+    progress: aid('behind_the_scenes', 'chrome', 'progress')
+  },
+  intro: {
+    card_body: aid('behind_the_scenes', 'intro', 'card_body'),
+    next: aid('behind_the_scenes', 'intro', 'next'),
+    share: aid('behind_the_scenes', 'intro', 'share'),
+    skip: aid('behind_the_scenes', 'intro', 'skip')
+  },
+  conditions: {
+    option: aid('behind_the_scenes', 'conditions', 'option'),
+    continue: aid('behind_the_scenes', 'conditions', 'continue')
+  },
+  other_label: {
+    input: aid('behind_the_scenes', 'other_label', 'input'),
+    continue: aid('behind_the_scenes', 'other_label', 'continue')
+  },
+  impact: {
+    option: aid('behind_the_scenes', 'impact', 'option'),
+    note_input: aid('behind_the_scenes', 'impact', 'note_input'),
+    continue: aid('behind_the_scenes', 'impact', 'continue')
+  },
+  match_weight: {
+    option: aid('behind_the_scenes', 'match_weight', 'option'),
+    continue: aid('behind_the_scenes', 'match_weight', 'continue')
+  },
+  close: {
+    body: aid('behind_the_scenes', 'close', 'body'),
+    start_fun: aid('behind_the_scenes', 'close', 'start_fun'),
+    support_link: aid('behind_the_scenes', 'close', 'support_link')
+  }
+} as const;
+
 // --- Friends ---
 export const FRIENDS = {
   top_nav: {
     settings_icon: aid('friends', 'top_nav', 'settings_icon'),
     search: aid('friends', 'top_nav', 'search'),
+    // Header messages shortcut (moved off the bottom pill).
+    messages_icon: aid('friends', 'top_nav', 'messages_icon'),
     page_title: aid('friends', 'top_nav', 'page_title'),
     profile_icon: aid('friends', 'top_nav', 'profile_icon'),
     add: aid('friends', 'top_nav', 'add'),
@@ -491,6 +656,8 @@ export const PROFILE = {
     favorites_to_start: aid('profile', 'card', 'favorites_to_start'),
     see_all: aid('profile', 'card', 'see_all'),
     greatest_hits: aid('profile', 'card', 'greatest_hits'),
+    /** One Greatest hits photo body (dead_click when not interactive). */
+    greatest_hits_photo: aid('profile', 'card', 'greatest_hits_photo'),
     where_met: aid('profile', 'card', 'where_met'),
     hobbies_widget: aid('profile', 'card', 'hobbies_widget'),
     this_or_that_row: aid('profile', 'card', 'this_or_that_row'),
@@ -574,7 +741,38 @@ export const PROFILE = {
     /** Opt-in Assistant toggle (hidden unless admin-eligible). */
     assistant_toggle: aid('profile', 'settings', 'assistant_toggle'),
     /** Open the Assistant surface after opt-in. */
-    assistant_open: aid('profile', 'settings', 'assistant_open')
+    assistant_open: aid('profile', 'settings', 'assistant_open'),
+    /** Billy allowance status card (dead_click). */
+    billy_status: aid('profile', 'settings', 'billy_status'),
+    /** Start Billy+ (soft stub or future IAP). */
+    billy_plus_cta: aid('profile', 'settings', 'billy_plus_cta'),
+    /** Cancel Billy+ at period end. */
+    billy_plus_cancel: aid('profile', 'settings', 'billy_plus_cancel'),
+    /** Connect or manage linked Spotify (account link, not login). */
+    connect_spotify: aid('profile', 'settings', 'connect_spotify'),
+    /** Disconnect Spotify after confirm. */
+    disconnect_spotify: aid('profile', 'settings', 'disconnect_spotify'),
+    /** Surprises section header (dead_click). */
+    surprises_header: aid('profile', 'settings', 'surprises_header'),
+    /** Demo/QA: queue emoji-bomb gift for yourself. */
+    play_emoji_bomb: aid('profile', 'settings', 'play_emoji_bomb'),
+    /** Demo/QA: preview reusable emoji rain. */
+    preview_emoji_rain: aid('profile', 'settings', 'preview_emoji_rain'),
+    /** Leave runtime demo and return to real Sign in. */
+    leave_demo: aid('profile', 'settings', 'leave_demo')
+  },
+  /** Music pick / preview controls on profile + Catch-Up. */
+  music: {
+    preview_play: aid('profile', 'music', 'preview_play'),
+    preview_pause: aid('profile', 'music', 'preview_pause'),
+    open_spotify: aid('profile', 'music', 'open_spotify'),
+    open_apple_music: aid('profile', 'music', 'open_apple_music'),
+    add_playlist: aid('profile', 'music', 'add_playlist'),
+    track_search: aid('profile', 'music', 'track_search'),
+    track_result: aid('profile', 'music', 'track_result'),
+    pick_save: aid('profile', 'music', 'pick_save'),
+    actions_sheet: aid('music_track_sheet', 'chrome', 'body'),
+    actions_dismiss: aid('music_track_sheet', 'actions', 'dismiss')
   },
   top_nav: {
     page_title: aid('profile', 'top_nav', 'page_title'),
@@ -606,6 +804,8 @@ export const PROFILE = {
   },
   actions: {
     message: aid('profile', 'actions', 'message'),
+    /** Friend profile: open the emoji-bomb gift confirm sheet. */
+    emoji_bomb: aid('profile', 'actions', 'emoji_bomb'),
     how_you_met: aid('profile', 'actions', 'how_you_met'),
     private_note: aid('profile', 'actions', 'private_note'),
     overflow: aid('profile', 'actions', 'overflow')
@@ -625,7 +825,9 @@ export const PROFILE = {
   }
 } as const;
 
-// --- Profile customize (co-op presentation-only MVP) ---
+// --- Profile customize (co-op Theme + Layout; presentation only) ---
+// Product outcomes (types.ts): profile_customized, profile_theme_saved,
+// profile_layout_saved. Fire on confirmed save only.
 export const CUSTOMIZE = {
   top_nav: {
     page_title: aid('customize', 'top_nav', 'page_title'),
@@ -669,7 +871,21 @@ export const EVENTS = {
     event_card: aid('events', 'list', 'event_card'),
     page_title: aid('events', 'list', 'page_title'),
     create: aid('events', 'list', 'create'),
+    // Header messages shortcut (moved off the bottom pill).
+    messages_icon: aid('events', 'list', 'messages_icon'),
     profile_icon: aid('events', 'list', 'profile_icon')
+  },
+  /** Marketing gate before the user explores the Events tab */
+  gate: {
+    headline: aid('events', 'gate', 'headline'),
+    idea_wall: aid('events', 'gate', 'idea_wall'),
+    idea_chip: aid('events', 'gate', 'idea_chip'),
+    touch_grass_mark: aid('events', 'gate', 'touch_grass_mark'),
+    /** Dismisses the gate into the normal Events list (does not open create). */
+    explore: aid('events', 'gate', 'explore'),
+    /** Retired: Explore Events used to open create. Kept so old events still parse. */
+    create: aid('events', 'gate', 'create'),
+    body: aid('events', 'gate', 'body')
   },
   detail: {
     share: aid('events', 'detail', 'share'),
@@ -683,6 +899,10 @@ export const EVENTS = {
     add_to_calendar: aid('events', 'detail', 'add_to_calendar'),
     cover_image: aid('events', 'detail', 'cover_image'),
     title_body: aid('events', 'detail', 'title_body'),
+    /** Date square next to the title (dead_click). */
+    date_chip: aid('events', 'detail', 'date_chip'),
+    /** Flip-tile countdown under When (dead_click). */
+    countdown: aid('events', 'detail', 'countdown'),
     details_body: aid('events', 'detail', 'details_body'),
     assignment_row: aid('events', 'detail', 'assignment_row'),
     assign_name: aid('events', 'detail', 'assign_name'),
@@ -693,6 +913,10 @@ export const EVENTS = {
     edit: aid('events', 'host', 'edit'),
     going_count: aid('events', 'host', 'going_count'),
     invited_count: aid('events', 'host', 'invited_count'),
+    /**
+     * Retired: "brought" left the counts row; attribution is inside the people
+     * sheet. Id kept so old events still parse.
+     */
     brought_count: aid('events', 'host', 'brought_count'),
     add_cohost: aid('events', 'host', 'add_cohost'),
     chip_in_edit: aid('events', 'host', 'chip_in_edit'),
@@ -762,7 +986,17 @@ export const CREATE_EVENT = {
     chip_in_handle: aid('create_event', 'details', 'chip_in_handle'),
     chip_in_toggle: aid('create_event', 'details', 'chip_in_toggle'),
     friends_invite_toggle: aid('create_event', 'details', 'friends_invite_toggle'),
-    guest_cap: aid('create_event', 'details', 'guest_cap')
+    guest_cap: aid('create_event', 'details', 'guest_cap'),
+    repeats_toggle: aid('create_event', 'details', 'repeats_toggle'),
+    repeats_freq: aid('create_event', 'details', 'repeats_freq'),
+    repeats_interval: aid('create_event', 'details', 'repeats_interval'),
+    repeats_weekday: aid('create_event', 'details', 'repeats_weekday'),
+    repeats_monthly_mode: aid('create_event', 'details', 'repeats_monthly_mode'),
+    repeats_monthday: aid('create_event', 'details', 'repeats_monthday'),
+    repeats_setpos: aid('create_event', 'details', 'repeats_setpos'),
+    repeats_ends: aid('create_event', 'details', 'repeats_ends'),
+    repeats_until: aid('create_event', 'details', 'repeats_until'),
+    repeats_count: aid('create_event', 'details', 'repeats_count')
   },
   invite: {
     search: aid('create_event', 'invite', 'search'),
@@ -858,6 +1092,13 @@ export const CATCH_UP = {
     answered_row: aid('catch_up', 'bottom', 'answered_row'),
     reply: aid('catch_up', 'bottom', 'reply')
   },
+  currently: {
+    /** Listening cell body (may open music actions). */
+    listening: aid('catch_up', 'currently', 'listening'),
+    /** Reading cell (dead_click region when non-interactive). */
+    reading: aid('catch_up', 'currently', 'reading'),
+    preview_play: aid('catch_up', 'currently', 'preview_play')
+  },
   chrome: {
     peek: aid('catch_up', 'chrome', 'peek'),
     handle: aid('catch_up', 'chrome', 'handle'),
@@ -877,7 +1118,11 @@ export const POST_COMPOSER = {
     voice_to_text: aid('post_composer', 'caption', 'voice_to_text')
   },
   suggested: {
-    suggested_prompt: aid('post_composer', 'suggested', 'suggested_prompt')
+    suggested_prompt: aid('post_composer', 'suggested', 'suggested_prompt'),
+    /** Opt-in random update nudges (about 1–3 / day). */
+    random_nudges_toggle: aid('post_composer', 'suggested', 'random_nudges_toggle'),
+    /** Label beside the random-nudges toggle (dead-click). */
+    random_nudges_label: aid('post_composer', 'suggested', 'random_nudges_label')
   },
   audience: {
     close: aid('post_composer', 'audience', 'close'),
@@ -920,6 +1165,19 @@ export const MESSAGES = {
     field_toggle: aid('messages', 'contact_card', 'field_toggle'),
     share: aid('messages', 'contact_card', 'share'),
     field_row: aid('messages', 'contact_card', 'field_row')
+  }
+} as const;
+
+// --- News (bottom-pill destination; placeholder feed for now) ---
+export const NEWS = {
+  top_nav: {
+    page_title: aid('news', 'top_nav', 'page_title'),
+    messages_icon: aid('news', 'top_nav', 'messages_icon'),
+    profile_icon: aid('news', 'top_nav', 'profile_icon')
+  },
+  // The empty/coming-soon body — tagged so a tap logs a dead_click.
+  feed: {
+    empty_body: aid('news', 'feed', 'empty_body')
   }
 } as const;
 
@@ -1135,7 +1393,16 @@ export const DELIGHT = {
   }
 } as const;
 
-// --- Assistant (opt-in relationship helper; never on default screens) ---
+// --- Send delight gift sheet (own surface; parent_screen = person) ---
+export const SEND_DELIGHT_SHEET = {
+  sheet: {
+    body: aid('send_delight', 'sheet', 'body'),
+    send: aid('send_delight', 'sheet', 'send'),
+    cancel: aid('send_delight', 'sheet', 'cancel')
+  }
+} as const;
+
+// --- Assistant / Billy (opt-in relationship helper; never on default screens) ---
 export const ASSISTANT = {
   chat: {
     /** Non-interactive header / title region. */
@@ -1146,12 +1413,35 @@ export const ASSISTANT = {
     send: aid('assistant', 'chat', 'send'),
     voice: aid('assistant', 'chat', 'voice'),
     close: aid('assistant', 'chat', 'close'),
-    empty_state: aid('assistant', 'chat', 'empty_state')
+    empty_state: aid('assistant', 'chat', 'empty_state'),
+    suggestion: aid('assistant', 'chat', 'suggestion'),
+    mark: aid('assistant', 'chat', 'mark'),
+    working: aid('assistant', 'chat', 'working')
   },
   proposal: {
     preview: aid('assistant', 'proposal', 'preview'),
     confirm: aid('assistant', 'proposal', 'confirm'),
     cancel: aid('assistant', 'proposal', 'cancel')
+  },
+  draft: {
+    body: aid('assistant', 'draft', 'body'),
+    edit: aid('assistant', 'draft', 'edit'),
+    approve: aid('assistant', 'draft', 'approve'),
+    voice_edit: aid('assistant', 'draft', 'voice_edit'),
+    outcome: aid('assistant', 'draft', 'outcome')
+  },
+  /** One fixed event-template preview before create-event handoff. */
+  event: {
+    body: aid('assistant', 'event', 'body'),
+    approve: aid('assistant', 'event', 'approve')
+  },
+  /** Capsule that follows you off Home while Billy is live. */
+  island: {
+    open: aid('assistant', 'island', 'open'),
+    mark: aid('assistant', 'island', 'mark'),
+    line: aid('assistant', 'island', 'line'),
+    /** Stop square while listening: discard the take (no send). */
+    stop: aid('assistant', 'island', 'stop')
   },
   activity: {
     row: aid('assistant', 'activity', 'row'),

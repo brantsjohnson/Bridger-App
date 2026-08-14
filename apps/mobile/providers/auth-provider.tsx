@@ -17,7 +17,7 @@ import {
   useState,
   type ReactNode
 } from 'react';
-import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { signInWithApple as oauthApple, signInWithGoogle as oauthGoogle } from '../lib/oauth';
 
 // --- The shape of what every screen can use ---
@@ -61,11 +61,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       // --- Email + password sign-in ---
       signInWithEmail: async (email, password) => {
+        if (!isSupabaseConfigured) {
+          return {
+            error:
+              'This build is missing Supabase settings. Use demo (long-press the logo) or rebuild with EAS env.'
+          };
+        }
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         return { error: error?.message ?? null };
       },
       // --- Email + password sign-up (they may need to confirm via email) ---
       signUpWithEmail: async (email, password) => {
+        if (!isSupabaseConfigured) {
+          return {
+            error:
+              'This build is missing Supabase settings. Use demo (long-press the logo) or rebuild with EAS env.'
+          };
+        }
         const { error } = await supabase.auth.signUp({ email, password });
         return { error: error?.message ?? null };
       },

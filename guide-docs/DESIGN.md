@@ -23,6 +23,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 | Onboarding, profile fill modules, empty states | colorful |
 | Discover | the same grid, turned up (see below) |
 | Settings, forms, account | plainest — eggshell, minimal decoration |
+| **Sign in (auth entry)** | Full-bleed brand photography (color bars) + centered Bridger mark; eggshell auth panel in the lower half. Exception to the eggshell main canvas. |
 
 ---
 
@@ -59,6 +60,16 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 ## Interest & hobby selectors (personality, not a list)
 
 The hobby/interest pickers must **not** feel like a plain checklist or a dating app. Instead: **colorful rounded "blob" pills**, each with a little **character/illustration icon** and a checkmark when selected (think friendly, hand-drawn energy). With ~95 hobbies, this is what keeps a long selection joyful instead of a chore. Color-code by category; let the shapes feel a touch organic.
+
+## Discover quiz take screens (Connect Over)
+
+Private measurement quizzes (Your Funny Bone, Your Vibe, The Friend Zone, What Gets You Going) are **fill-out energy**, not Settings forms:
+
+- Congruent checkbox+label rows; selected = accent fill + checkbox colored in.
+- Option emoji is not parked in the tile — it **tosses up then falls** from the tap (willow arc).
+- Type box always present and focused; phones advance with Return / →; Continue stays on desktop/web.
+- No `1/2` page chrome. Shared: `apps/mobile/quizzes/discover/_shared/QuizTakeShell.tsx`.
+- Cursor rule: `.cursor/rules/quiz-flow-ui.mdc`.
 
 ---
 

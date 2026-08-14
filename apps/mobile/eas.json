@@ -1,0 +1,54 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_DEMO_UNLOCK": "1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+      }
+    },
+    "preview": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_DEMO_UNLOCK": "1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+      }
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_DEMO_UNLOCK": "0",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+      }
+    }
+  },
+  "submit": {
+    "preview": {
+      "ios": {
+        "ascAppId": "6801281923"
+      }
+    },
+    "production": {
+      "ios": {
+        "ascAppId": "6801281923"
+      }
+    }
+  }
+}

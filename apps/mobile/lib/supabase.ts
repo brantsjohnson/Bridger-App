@@ -8,6 +8,11 @@
 // saved on the device (AsyncStorage) and the token is refreshed automatically so
 // you don't get kicked out. On phones we start/stop that auto-refresh with the
 // app's foreground/background state, which is the pattern Supabase recommends.
+//
+// SECURITY: never throw at import time. A missing key used to crash TestFlight
+// before any screen painted. We warn and use placeholders so Sign in / demo
+// unlock can still open; real auth fails with a clear message until EAS env
+// has the public URL + publishable key.
 // ============================================
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,18 +21,27 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@bridger/shared';
 
 // --- Read the public settings the app is allowed to see (EXPO_PUBLIC_*) ---
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
+const supabasePublishableKey =
+  process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? '';
 
-// --- Fail loudly in dev if the .env wasn't set, instead of silent breakage ---
-if (!supabaseUrl || !supabasePublishableKey) {
-  throw new Error(
-    'Missing EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY. Check apps/mobile/.env'
+/** True when this build was shipped with real public Supabase settings. */
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
+
+if (!isSupabaseConfigured) {
+  console.warn(
+    '[bridger] Supabase public URL/key missing in this build. Sign-in will not work until EAS env is set. Demo unlock still works.'
   );
 }
 
+// Placeholders keep createClient happy when env was stripped from the store build.
+const url = isSupabaseConfigured ? supabaseUrl : 'https://example.supabase.co';
+const key = isSupabaseConfigured
+  ? supabasePublishableKey
+  : 'sb_publishable_missing_configure_eas_env';
+
 // --- The typed client. `Database` gives us column/enum autocomplete + safety. ---
-export const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
+export const supabase = createClient<Database>(url, key, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,
@@ -39,7 +53,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabasePublishableK
 });
 
 // --- Keep token auto-refresh tied to app foreground state (native only) ---
-if (Platform.OS !== 'web') {
+if (Platform.OS !== 'web' && isSupabaseConfigured) {
   AppState.addEventListener('change', (state) => {
     if (state === 'active') {
       supabase.auth.startAutoRefresh();

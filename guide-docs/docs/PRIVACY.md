@@ -45,9 +45,18 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 ### 3.1 Account and identity (Zone A)
 
 - Sign-in via supported providers (e.g. Google; Sign in with Apple when Google is offered).
-- Profile basics collected in onboarding (name/display, and other basics per `ONBOARDING.md` / `PROFILE-QUESTIONS.md`).
+- Profile basics collected in onboarding (name/display, and other basics per `ONBOARDING.md` / `PROFILE-MODULES.md`).
+- **Connection style (desire step):** during onboarding we may store opaque preference keys for what you want Bridger to prioritize (`frequency` / `depth` / `plans` / `commonality`) plus a named Home layout seed. **Why:** to arrange *your own* Home and lean notification defaults toward what you said. **Who sees it:** only Bridger systems acting for you (never other users, never matching embeddings, never ads). **How long:** until you change it or delete your account (hard-delete). Skippable; skipped desire defaults to a stay-close seed. Analytics may record the opaque keys only, never free-text rants.
 - Contact handles the user chooses to share with friends (e.g. on the contact card in Messages) are user-shared, not scraped.
 - **TODO (product):** list exact account fields currently stored (email, auth provider IDs, etc.) when Settings / auth is next touched.
+
+### 3.1b Linked music accounts (Zone A secrets + Zone B picks)
+
+- You may **link Spotify** (Apple Music later) from Settings. This is **account linking**, not “sign in with Spotify.” Bridger login stays Google / Sign in with Apple.
+- Nest stores **encrypted** refresh/access tokens server-side (`music_connections`). Tokens are never shipped to the mobile client or used as Bridger auth.
+- Catalog picks (Listening, song of the week, favorites) store Spotify/Apple ids, titles, artwork, and optional `preview_url` with the same **who sees** + **matchable** rules as other profile facts (`music_picks`).
+- Top artists may be synced for “artists in common” on reveal / In common (`music_taste_artists` + matchable `music.artist.*` attributes). Disconnect deletes tokens and synced taste rows. Account deletion hard-deletes all of the above.
+- In-app play today is a short **preview** when Spotify provides one, plus Open in Spotify / Apple Music. Full-track streaming (Premium SDK) is not required for linking.
 
 ### 3.2 Profile attributes and quizzes (Zone B)
 
@@ -58,25 +67,32 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - Profile search only indexes fields the viewer may already see; search query text is never logged.
 - Quiz completion can write attributes such as `quiz.<slug>.<dimension>` with `visible_to_tier = none` until the user chooses otherwise (generic quiz path shipped).
 - Discover / matching use only **matchable, consented** facts; names rejoin on-device from opaque IDs.
+- **Behind the Scenes (disclosure pre-quiz):** optional. People may name conditions (e.g. ADHD, anxiety), rate how much each shapes day to day, add an optional private note, and choose how strongly matching may use it (`use` / `a_little` / `barely`). Stored in owner-only tables (`disclosure_profiles`, `disclosure_items`), separate from fun-quiz scores. **Never shown on a profile. Matches never see or infer it.** Soft toggle can suspend matching use without deleting. Skippable on every screen. Account delete hard-deletes these rows. **TODO (legal):** confirm special-category / health-data obligations (consent, storage, retention) for your operating regions before launch.
 
 ### 3.3 Content the user creates (UGC)
 
 - **Updates** (photo / text / video per product rules; capture-only except profile photo).
 - **Inside Jokes**, poll questions/votes, Touch Grass signals (audience + when + why), event details, recap voice answers, co-op portal ideas/comments (shown as "A member," no person names on the member portal).
 - Reactions, replies, and RSVP / attendance related records as needed to run those features.
+- **Event invite attribution:** each `event_invites` row may store `invited_by` (who invited that guest). Null means the host invited them. Used only so hosts/co-hosts can see "invited by" / "brought by" in the going/invited lists when friends-can-invite is on. Never shown as a vanity total to guests. Hard-deleted with the event or account.
+- **Event recurrence:** optional `events.recurrence` jsonb stores a schedule pattern only (weekly / monthly / yearly + end). Same visibility as the event (people going or invited). Hard-deleted with the event or account. Analytics may record `has_recurrence` / `recurrence_freq` enums only, never the schedule text.
 
 ### 3.4 Friends graph and social graph
 
 - Connections, tiers, blocks, how-you-met context (optional; place is coarse and opt-in when used).
 - Blocks cut the graph locally for the blocker (suggestions and mutual bridges).
 - **Invite links and QR codes:** opaque tokens only (UUID). Share links live in `invite_links`; QR codes use short-lived `qr_tokens` (about 15 minutes), deleted when redeemed. The QR encodes a Bridger deep link (`bridger://invite/…` or your configured `APP_LINK_BASE`), not a name or photo. Redeeming creates a connection; you cannot redeem your own invite. Tokens are not used for matching or ads.
+- **Optional surprises (delights):** if you send a gift delighter (e.g. emoji bomb), we store opaque sender/recipient ids + which surprise (`delight_triggers`) until it plays once on their next open (or the account is deleted). Opt-in companions store chosen plugin slugs on `user_settings.delight_opt_ins`. Surprises are optional fun; the app works with them all off. Analytics may record `delight_slug` only, never names.
 
 ### 3.5 Co-op / membership
 
-- Membership status, `dues_paid_through`, cancel-at-period-end / cancelled timestamps.
-- Soft-join stub today (no live StoreKit / Play / Stripe yet). Future: platform IAP and/or in-app card processor; joining remains skippable.
+- Membership status, `dues_paid_through`, cancel-at-period-end / cancelled timestamps. Signup offers **Join the co-op** or **Free Lite** (no ads tier). Free Lite keeps connection essentials with rolling ~30-day story history; co-op unlocks richer creation tools.
+- Soft-join stub today (no live StoreKit / Play / Stripe yet). Future: platform IAP and/or in-app card processor; joining remains skippable (choose Free Lite).
+- **Ads:** Bridger does not show behavioral or third-party ads on Free Lite or co-op. You are not the product.
 - Portal participation (ideas, votes). **Member portal never shows vote tallies or person names**; admin may see aggregates.
-- **Profile customization (co-op):** theme (accent, background, font, light/dark) and layout order are presentation-only skins. They never change, hide, or delete canonical attributes or tier visibility. Custom CSS/HTML (later, admin-gated) is sanitized; no user JavaScript; no off-Bridger asset URLs (so a profile cannot leak viewer IPs). Assets are Bridger-hosted. "View original" and a viewer "always show plain pages" preference always reach the native accessible layout. Customized profiles are UGC (report / operator revert). Storage meter shows used vs included; overage is opt-in with price shown before any charge.
+- **Profile customization (co-op):** theme (accent, background color/gradient/image assetId, font from allowlist, light/dark) and layout order are presentation-only skins. They never change, hide, or delete canonical attributes or tier visibility. Custom CSS/HTML columns exist but the Code tier is admin-gated OFF (no WebView renderer yet). When enabled later: sanitized; no user JavaScript; no off-Bridger asset URLs (so a profile cannot leak viewer IPs). Assets are Bridger-hosted. "View original" and a viewer "always show plain pages" preference always reach the native accessible layout. Customized profiles are UGC (report / operator revert).
+- **Storage meter (stub):** Settings → Storage & plan and the Stories storage bar show used vs included (co-op allotment from admin/config, e.g. a few GB). Overage shows a per-GB price before any charge; the current wave is a soft stub (price visible, no real billing). Deletion frees space. Free Lite accounts keep the rolling ~30-day story window.
+- **Greatest hits (co-op):** up to 3 Bridger-hosted profile photos (`profile_greatest_hits` + `media`), each with a placement index, optional section slot, and its own tier visibility. Not sent to AI or matching. Hard-deleted with the account or when the slot / media is removed. Counts toward co-op media storage.
 
 ### 3.6 Device permissions (requested in context, never at cold launch)
 
@@ -87,15 +103,15 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 | Photo library | Profile photo only (upload exception) | User can skip / use capture |
 | Notifications | Alerts for friends, Touch Grass, events, etc. | In-app activity still works |
 | Contacts | Optional friend-finding / invite (desired in onboarding; not required) | Skip; app works |
-| Location (coarse) | Optional "where you met" | Skip; app works |
+| Location (coarse) | Optional "where you met"; future **Local map** (friend radar) will also need coarse, opt-in sharing when that feature ships. Discover currently shows only a Coming soon teaser and does **not** request location for the map. | Skip; app works |
 
 Purpose strings must stay accurate in `app.json` / store listings when permissions land.
 
 ### 3.7 Analytics (PostHog)
 
 - UI events (`click`, `dead_click`, `swipe`, …) with structured `screen.section.element` ids.
-- Named product events (e.g. quiz completed, story posted, co-op cancel scheduled).
-- Properties are snake_case taxonomy fields only; **no PII**, no message/caption/quiz-explanation text.
+- Named product events (e.g. quiz completed, story posted, co-op cancel scheduled, quick-check kept/removed).
+- Properties are snake_case taxonomy fields only; **no PII**, no message/caption/quiz-explanation text, **no quick-check question text**.
 - `distinct_id` = opaque `user_ref` **only after consent**; otherwise anonymous.
 - Default opt-out until the user accepts (Settings + ATT where applicable).
 - Deleting the account must purge the PostHog person as well as our DB.
@@ -110,9 +126,21 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - All model calls go through one server-side **gateway** (`packages/ai`, `AI-SYSTEM.md`). Clients never hold AI keys.
 - **Deidentified lane** (summaries, quiz moderator, embeddings, freshness): opaque IDs only; scrubber rejects names, emails, phones, handles, and all media. Summaries are built from the person's **own words / transcripts only**, never photos or likeness.
 - **Matching / learning:** Nest scores FoF suggestions on opaque IDs using de-identified Zone B/C facts. Suggestion card “why” titles only cite Everyone+matchable shared facts. Private (`none`+matchable) quiz/personality signals may affect scores silently and never appear as evidence titles. Outcomes land in `matching_feedback` (features + label weights only; no message content, names, or UX-analytics). Opting out of Discoverable or deleting an account purges suggestions, feedback pair-rows, and Zone C embeddings. Feedback snapshots age out (~18 months).
-- **Personal-agent lane** (Assistant): may see the requester's own visible data only (notes, tier-visible friend facts, upcoming, events). Off by default; admin-gated (`founder_only` ships first); confirmed acts only (`AGENT.md`). Never feeds matching.
+- **Disclosure in matching:** additive only (shared-experience affinity / pace), never a filter that hides or excludes anyone. The person’s Screen 4 weight is a hard control (`barely` ≈ store only). Condition keys, notes, and custom labels never appear as reveal evidence titles. Analytics never include note text or custom labels.
+- **Disclosure rides with measurement quizzes:** when someone takes Your Vibe, The Friend Zone, What Gets You Going, or Your Funny Bone, the quiz moderator may receive a de-identified slice (condition keys + impact + match-weight preference only) so it can ask whether an answer is preference or capacity. Free-text disclosure notes never enter that prompt. Optional explain text on quiz answers is author-owned, private, never analytics, never shown to matches.
+- **The Friend Zone:** stores continuous friendship attachment anxiety / avoidance plus a derived style for a hand-authored match matrix. Social-evaluation sensitivity is interpretive only. Not a clinical diagnosis. Never on a profile; matches never see answers.
+- **What Gets You Going:** stores relative Schwartz-inspired priority scores and matching dials (adventure/stability, giving/striving, hedonism). Politics are not asked. Loyalty/honesty friendship norms are a separate future add-on. Optional explain text private. Never on a profile; matches never see answers.
+- **Your Funny Bone:** stores a private humor *taste* vector (five bipolar axes plus a breadth score from comedy clusters). Matching uses similarity of taste and a wider/narrower band from breadth. How someone jokes socially (style) may be stored as soft hints for a later layer and does not drive matches yet. Optional explain text and free-text "other" are private, never analytics, never shown to matches. Backend axis names are never shown in the product UI.
+- **Personal-agent lane** (Billy / Assistant): may see the requester's own visible data only (notes, tier-visible friend facts, upcoming, events, own Bridger message style). Off by default; admin-gated (`founder_only` ships first); confirmed acts only (`AGENT.md` / `AGENT-SCOPE.md`). Never feeds matching.
+- **Billy allowances:** we store per-user **estimated USD of model cost** spent/granted (`billy_balances`, `billy_ledger`) and plan status. Never the chat text in the ledger. Deleted with the account. Used to enforce monthly taste / Billy+ limits; org vendor outages are separate admin alerts.
+- Surfaces when opted in: Home AgentWidget, full-screen AgentScreen, AgentIsland when live off Home. Hidden when off.
+- Playbooks under `guide-docs/playbooks/` are global procedure docs (no PII); the agent reads them; only humans edit them.
+- **Style profile** (optional, on by default for agent users): how-you-write features learned from the user's own sent Bridger messages only (cadence/length/tone), not a log of message content to whom. Toggle off in Settings. Deleted with the account / when Assistant is disabled.
 - Assistant sessions store turn text server-side for the open conversation only; turns are deleted on close or when the user disables Assistant. Private `assistant_memory_chunks` are per-user only (not Zone C matching embeddings) and cascade on account delete.
+- Playbook id + version (which task manual Billy followed) may be stored on turns/activity as method metadata only. Playbooks contain no personal data.
 - Voice transcripts for Assistant are used in-request only; never written to analytics or used for training.
+- While Billy is listening, supporting web browsers may show **live captions** via the browser's speech recognizer (often a platform service such as Google or Apple). Final answer turns still use our server Whisper path. Live caption text is display-only, not logged to analytics. On native, live captions may be unavailable until the clip is sent.
+- Scheduled Bridger messages the user approves (draft + exact send time) are cancelable until they fire; the agent never sends without that approve.
 - Calendar: OS permission requested in context the first time the user confirms an Assistant calendar act. Purpose: add dates and reminders the user confirms. Denial degrades to a calendar handoff.
 - Foundation models: API-only under **no-training / zero-retention** terms. We do **not** fine-tune on user content. RAG + our own ranking (later) supply knowledge; content is discarded per request.
 - Fail silent: if a job is disabled, over budget, or fails quality/grounding checks, the surface hides. The app stays fully usable with AI off.
@@ -127,6 +155,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - Run the core app: friends, Updates, Events, Messages (limited), Discover, quizzes, Touch Grass, recap Friend Pod, co-op portal.
 - Enforce tiers, blocks, and membership perks.
 - Send in-app (and later push) notifications the user has allowed.
+- **Random update nudges** (`story_prompt`): optional. When you turn the toggle on (capture screen or Settings → Notifications), Bridger may send about **1–3 prompts a day** at random times asking you to post an update. Tapping opens the in-app capture screen. Off by default; turn off anytime in the same places. No one else sees that you enabled this.
 - Improve the product via **consented** PostHog analytics (not ads, not sold).
 - Moderate reported content and enforce Terms.
 - Process membership payments when real IAP / card checkout ships.
@@ -146,7 +175,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 ## 6 · Retention and deletion
 
 - Account deletion: hard-delete cascade across Zones A/B/C, media, and derived rows (`DATA.md`). Also purge PostHog person.
-- Story / Update storage: free tier rolling ~30 days; co-op members keep longer while membership is active (perks until `dues_paid_through` after cancel-at-period-end).
+- Story / Update storage: Free Lite rolling ~30 days; co-op members keep longer while membership is active (perks until `dues_paid_through` after cancel-at-period-end).
 - Recap answers: rolling window with lazy purge on playlist load (see `complete/RECAP-PODCAST.md`).
 - Export on request: **TODO (product + legal): document how a user requests export**.
 - In-app account deletion must remain reachable from Settings (App Store requirement).
@@ -167,8 +196,9 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - Analytics consent toggle (Settings; ATT on iOS when required).
 - Block and report (person and content).
 - Cancel co-op at period end; keep perks until paid-through date.
-- Skip joining the co-op entirely and keep using the free app.
+- Choose Free Lite instead of joining the co-op and keep all connection essentials (no ads).
 - "View original" on customized profiles (accessibility / contrast).
+- **Internal / preview demo mode:** some non-App-Store builds let you long-press the Bridger logo on Sign in to walk the app with **on-device fake fixtures** (no real account, no real friends graph). Demo data stays on the device and is not a Bridger account. Leaving demo (Settings) or signing in for real uses the normal account path. Production App Store builds keep this unlock off unless we intentionally turn it on later.
 
 ---
 
@@ -196,9 +226,27 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-13 | Preview/internal demo unlock: on-device fake fixtures via logo long-press; no real account until true sign-in; Store unlock off by default |
+| 2026-08-11 | Onboarding desire / connection_style: opaque keys + Home layout seed for own-Home only; deletable; not used for matching or ads; Free Lite vs co-op two-tier join (no ads) |
 | 2026-08-06 | AI System gateway: deidentified lane jobs, cost log, fail silent, Zone C cascade; personal_agent lane reserved for opt-in assistant |
 | 2026-08-06 | Assistant (opt-in): sessions/turns/private memory; calendar + mic in context; voice transcripts in-request only; no analytics content |
+| 2026-08-07 | Billy surfaces (Widget/Screen/Island); playbooks (no PII); playbook id/version on turns/activity (metadata only); style profile toggle; schedule with approve draft+time |
+| 2026-08-07 | Billy scheduled messages queue (`assistant_scheduled_messages`): body + send time after dual approve; cancelable until fire; hard-delete with account; Touch Grass send via confirm uses existing signal path |
+| 2026-08-07 | Home Announcements quick check: `quick_check_kept` / `quick_check_removed` product events + dead-click body/result ids; never logs the question text |
 | 2026-08-06 | Matching v1: Nest FoF scorer + matching_feedback; Everyone+matchable evidence; silent none+matchable for quiz/embeddings; Discoverable off purges |
+| 2026-08-07 | Profile customize Phase B: Theme + Layout presentation; storage meter stub (used vs included + soft overage price); Code tier columns reserved, flag OFF |
+| 2026-08-07 | Greatest hits (co-op): ≤3 Bridger-hosted photos with placement index + tier; hard-delete with account/media; not used for AI/matching |
+| 2026-08-07 | Optional delights: gift triggers (opaque ids + slug, play-once); opt-in slug list on settings; analytics `delight_slug` only |
+| 2026-08-07 | Spotify account link (not login): encrypted tokens server-side; music picks + top-artist sync; ~30s preview + open/save; hard-delete on disconnect/account delete |
+| 2026-08-07 | Billy allowances: USD grant/spend ledger (no chat content); taste / Billy+; deleted with account; org vendor alerts separate |
+| 2026-08-07 | Billy shared mic (Home / Island / Screen); silence auto-send; Island stop discards; web live captions via browser speech (display-only, not analytics) |
+| 2026-08-07 | Event invite attribution (`event_invites.invited_by`): host-only planning; analytics `event_guest_invited` with `via` host\|attendee, never names |
+| 2026-08-08 | Event recurrence (`events.recurrence` jsonb): schedule pattern only; same visibility as event; analytics `has_recurrence` / `recurrence_freq` only |
+| 2026-08-08 | Behind the Scenes (disclosure): optional owner-only sensitive context; additive matching only; never on profile / never to matches; skippable; hard-delete with account |
+| 2026-08-08 | Your Vibe (personality): Big Five + assertiveness; private dials; neuroticism not matchable; disclosure keys+impact may inform moderator confidence only |
+| 2026-08-08 | The Friend Zone (attachment): friendship anxiety/avoidance dials + style matrix matching; SES interpretive only; explain text private; disclosure rides along for moderator |
+| 2026-08-08 | What Gets You Going (values): forced-choice priorities; similarity dials; politics-free; explain text private; loyalty/honesty add-on later |
+| 2026-08-08 | Your Funny Bone (humor): private taste vector + breadth; similarity matching; style hints not matched yet; explain/other text private |
 | 2026-08-06 | Spotify-style profile: Top 5 / Current Obsession / Favorites; per-module who-sees + matchable consent; profile intro; co-op Theme + Layout customize; View original / always-plain preference; storage meter honesty |
 | 2026-08-06 | Invite links / QR: opaque UUID tokens; QR short-lived (~15m) and deleted on redeem; deep link encodes token only (no name/photo) |
 | 2026-08-05 | Initial scaffolding seeded from shipped co-op portal, soft join, PostHog analytics rules, Touch Grass Events-only send, Friend Pod on Friends, quiz-without-AI, polls, profile customize MVP, hard-delete / zones promises. |
