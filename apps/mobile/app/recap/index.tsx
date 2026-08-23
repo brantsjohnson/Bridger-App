@@ -34,7 +34,7 @@ export default function RecapScreen() {
 
   if (loading) {
     return (
-      <Screen tone="canvas">
+      <Screen tone="plain" className="bg-canvas">
         <ScreenHeader
           title="Weekly recap"
           onBack={() => router.back()}
@@ -52,7 +52,7 @@ export default function RecapScreen() {
 
   if (!playlist) {
     return (
-      <Screen tone="canvas">
+      <Screen tone="plain" className="bg-canvas">
         <ScreenHeader
           title="Weekly recap"
           onBack={() => router.back()}

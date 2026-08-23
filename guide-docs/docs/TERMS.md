@@ -46,7 +46,7 @@
 ## 4 · What Bridger is (and is not)
 
 - Bridger helps you stay close to people you choose (Friends tiers, Updates, Events, Touch Grass, quizzes, recap Friend Pod, Discover).
-- The **co-op** is optional membership for richer creation and organization tools. Signup offers **Join the co-op** or **Free Lite**. **Connection is never paywalled** (Discover, adding friends, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, photo/text), not friendship. See `complete/COOP.md`.
+- The **co-op** is optional membership for richer creation, named groups, and storage. Signup offers **Join the co-op** or **Free Lite**. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
 - During onboarding you may set a **connection style** preference (what you want Bridger to prioritize). That only shapes *your* Home and notification lean. It is not used to sell ads or to match you to strangers.
 
@@ -56,6 +56,7 @@
 
 - Keep your login secure; you are responsible for activity under your account unless you promptly report compromise.
 - Account deletion is available in Settings and performs a **hard delete** of your data (see Privacy Policy). Deletion also removes you from analytics (PostHog person purge).
+- Product analytics is **on while you are signed in**. It records anonymous screen and button names so we can fix confusing flows. It is not ads. It does not include your name, messages, or photos. Demo mode does not send. Deleting your account also erases your analytics person.
 - Data export on request: **TODO (product + legal)**.
 - **Demo / preview builds:** entering the on-device fake-data walkthrough (logo long-press where enabled) does **not** create a Bridger account. You are not bound as a registered user until you complete a real sign-up / sign-in. Demo fixtures are sample content for exploring the product, not other people's real data.
 
@@ -91,18 +92,20 @@
 ### 7.2 Touch Grass
 
 - **Send** from the **Events** page only. Home shows friends' signals to answer ("I'm in" / dismiss).
-- Signals notify the chosen circle; no vanity view counts.
+- Signals notify Close or Friends only (Friends includes Close). Acquaintances never get a Touch Grass blast. No vanity view counts.
 
 ### 7.3 Friend Pod / recap
 
 - Lives on the **Friends** tab (`/recap`), not Home.
 - Voice answers are shared with the audience you pick; rolling retention with purge.
+- The recap player supports **background playback**: it keeps playing when you background the app or lock your phone, and offers standard lock-screen / Control Center controls. The lock-screen card shows only the current friend's first name and a "Bridger · Weekly recap" label, never the question or answer content.
 
 ### 7.4 Quizzes and polls
 
 - Taking quizzes and **answering** polls is free.
 - **Creating** polls / "ask the group" is a co-op perk.
-- Quiz "who got who" is friends-only where implemented.
+- Quiz "who got who" / "your versions" is friends-only where implemented (account required to see friend results).
+- **Sharing your result:** you can save your result card image to your phone or send the image / a result link to other apps (Instagram, Snapchat, Messages, etc.). Once you share it off Bridger you are responsible for it, and the app you send it to has its own terms. Result links you share are meant to invite friends to take the quiz; do not use them to spam.
 
 ### 7.4b Optional surprises (delights)
 
@@ -121,7 +124,9 @@
 ### 7.6 Messages
 
 - Intentionally limited (e.g. 5 messages per person per day) to encourage real-world contact exchange.
-- Share-contact / make-a-plan style actions may be uncounted per `MESSAGES.md`.
+- Share contact posts your contact card (the fields you chose). It does not count against the daily cap.
+- Double-tap a friend's message to heart it. Hearts are reactions, not sent messages, and do not count against the cap.
+- There is no Make a plan action inside a thread. Plans belong on Events / Touch Grass.
 
 ### 7.6b Adding friends (invite link / QR)
 
@@ -138,6 +143,7 @@
 ### 7.6c Profile and customization
 
 - You control who sees each profile fact (Close / Friends / Everyone) and, separately, whether Discover may use it for matching.
+- Hobby picks (including optional culture, advocacy, or wellness labels, or a hobby you add yourself) are profile facts you choose. They are not required. The same who-sees and matchable rules apply.
 - You may delete any field; deletion removes it from Bridger's store.
 - Co-op profile customization is a **skin** only: it cannot invent, hide, or delete your facts. Theme and Layout are no-code. Custom CSS/HTML (Code tier) is admin-gated and not generally available yet; when it ships it must not include scripts, tracking pixels, or off-Bridger assets. Customized profiles are UGC and may be reverted to the native layout after a report.
 - Co-op **Greatest hits** photos are UGC you upload to Bridger-hosted storage (up to 3). Same report / revert expectations as other profile media; they are not off-platform hotlinks.
@@ -149,7 +155,7 @@
 - Hosts may mark events as repeating (weekly / monthly / yearly). You are responsible for the series you publish. Cancel or update the series from the event page.
 
 - Hosts may show chip-in amount + method (Venmo / Cash App etc.) as **peer-to-peer text links**. Bridger does **not** process those payments.
-- Guest caps: free vs co-op per `COOP.md` / `EVENTS.md`.
+- Guest caps: Free Lite 35 / co-op 100. Co-hosts, allergy collection, and assignments are co-op host tools. Hosting itself is never paywalled. See `COOP.md` / `EVENTS.md`.
 - When a host turns on "let friends invite friends," going attendees may invite people they are connected with. Those invites are attributed to the inviter for the host's planning lists. Do not spam event invites.
 
 ### 7.8 AI-generated text (when enabled)
@@ -175,6 +181,7 @@
 - **Joining is always skippable.** Choosing Free Lite keeps the essentials to stay connected (no ads).
 - **Planned payment methods** in the join flow: Apple Pay / Google Pay via platform IAP where required, plus an in-app third-party card processor for cards. **Current wave: soft-join stub** (no live StoreKit / Play / Stripe). That is intentional.
 - Do not steer iOS users to an external web checkout for membership in a way that violates Apple rules.
+- **Auth / promo codes:** we may issue codes that grant a **free year** of the co-op at no charge. A code can be used a limited number of times (set by the operator) and each person may use a given code once; codes may be turned off or expire, and giving one out is a courtesy, not a permanent entitlement. When the free year ends, membership returns to normal (renew to keep perks, or drop to Free Lite). We record which account redeemed which code (opaque id only) to enforce these limits.
 - Cancel schedules end-of-period; you keep member perks until paid-through, then return to free limits.
 - Refunds: **TODO (legal):** align with Apple / Google / card-processor policies when live payments ship.
 - Chip-in handles on events are not Bridger charges.
@@ -224,7 +231,10 @@
 
 | Date | What was added / changed |
 |---|---|
-| 2026-08-13 | Preview/internal demo walkthrough is not an account; real Terms apply on true sign-up / sign-in |
+| 2026-08-21 | Recap Friend Pod: background audio playback (locked phone / backgrounded app) with lock-screen controls; lock-screen shows friend first name + "Bridger · Weekly recap" only |
+| 2026-08-21 | Messages: contact card share + double-tap hearts (not sends); no Make a plan in-thread |
+| 2026-08-21 | Touch Grass send: Close / Friends only |
+| 2026-08-14 | Co-op vs Free Lite restated: 5/30 vs 25/125 circles; named groups, video posting, daily recaps, unlimited storage, host extras (co-hosts/allergies/assignments) are co-op; connection stays free |
 | 2026-08-11 | Onboarding: two-tier join (co-op / Free Lite), connection-style preference for own-Home only, ad-free both tiers; membership display $72/yr |
 | 2026-08-07 | Optional delights: friends-only gifts; no harassment via surprises; can be disabled |
 | 2026-08-07 | Spotify link (optional): not Bridger login; catalog picks / previews / open-in-app; disconnect deletes tokens + taste; Spotify ToS apply to the link |
@@ -248,4 +258,10 @@
 | 2026-08-07 | Co-op Greatest hits photos: Bridger-hosted UGC (≤3), reportable like other profile media |
 | 2026-08-06 | Profile: per-field visibility + separate matchable consent; co-op customize is presentation-only UGC with View original; no scripts or off-Bridger assets in custom skins |
 | 2026-08-06 | Invite link / QR: instant connect when redeemed; no self-redeem; no spam/abuse of invite links |
+| 2026-08-20 | Product analytics on while signed in; no Settings off-switch in this build; purge on account delete |
+| 2026-08-20 | Quiz result sharing: save card image or send image/result link to other apps; user owns/responsible once shared off Bridger; links are quiz invites, not for spam |
+| 2026-08-20 | J-name share links: stable per-person link; opening one may connect a later signup to the friend who invited them; free public web view, but seeing your friends' results needs an account |
+| 2026-08-21 | J-name "your versions" board is friends-only (account required); alerts when someone opens your quiz link or a friend lands on one of your top J picks |
+| 2026-08-21 | Hobby bank includes optional culture / advocacy / wellness labels plus add-your-own; same visibility and matchable rules; none required |
+| 2026-08-19 | Product analytics opt-in in Settings; opt-out stops capture and purges the PostHog person |
 | 2026-08-05 | Initial scaffolding: UGC zero-tolerance clause, report/block, co-op $24 + period-end cancel + soft join, skippable membership, Touch Grass Events-only, Friend Pod on Friends, portal no names/tallies, chip-in peer links, PostHog not ads, AI deferred but reportable when live. |

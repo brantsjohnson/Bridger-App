@@ -18,9 +18,14 @@ import {
   Pressable,
   ScrollView,
   Text,
-  View
+  View,
+  useWindowDimensions
 } from 'react-native';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import {
+  setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus
+} from 'expo-audio';
 import {
   PauseIcon,
   PlayIcon,
@@ -50,6 +55,7 @@ import { isDemoMode } from '../../lib/demo';
 import { sendRecapReaction } from '../../data/pod';
 import { personById } from '../../data/people';
 import { EMOJI_STICKERS } from '../../data/stickers';
+import { RecapPulse } from './RecapPulse';
 
 const SPEEDS = [1, 1.3, 1.5, 2] as const;
 type Speed = (typeof SPEEDS)[number];
@@ -86,6 +92,10 @@ export function RecapPlayer({
   onClose?: () => void;
 }) {
   const c = useThemeColors();
+  // Make the photo the hero: about 60% of the screen width, capped so it never
+  // gets silly-big on a tablet or the web build.
+  const { width } = useWindowDimensions();
+  const avatarSize = Math.round(Math.min(240, Math.max(160, width * 0.6)));
   const [filter, setFilter] = useState<RecapAudience>('close');
   const [speed, setSpeed] = useState<Speed>(1);
   const [index, setIndex] = useState(0);
@@ -137,6 +147,57 @@ export function RecapPlayer({
     openSurface('recap_player');
     return () => dismissSurface('recap_player');
   }, []);
+
+  // --- CO-OP: keep the recap playing when the phone locks ---
+  // The weekly recap is the co-op Friend Pod feature, so anyone who reaches this
+  // screen is a member. We set the audio session so sound keeps going when the
+  // app is backgrounded or the screen is locked, and hands the session back on
+  // the way out. (Needs the expo-audio background-playback flag in
+  // app.config.js plus a fresh dev build to actually take effect on device.)
+  useEffect(() => {
+    void setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'doNotMix'
+    });
+    return () => {
+      void setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+        interruptionMode: 'mixWithOthers'
+      });
+    };
+  }, []);
+
+  // THIS SECTION DOES: put the current friend on the lock screen so co-op
+  // members get Play/Pause there, and so Android keeps playing in the
+  // background (without this it stops after ~3 minutes). We show only the
+  // friend's first name and a Bridger label — the question and answer content
+  // stay OFF a locked phone on purpose.
+  useEffect(() => {
+    if (!clip || !speaker) return;
+    const first = speaker.name.split(' ')[0] ?? speaker.name;
+    try {
+      player.setActiveForLockScreen?.(true, {
+        title: first,
+        artist: 'Bridger · Weekly recap'
+      });
+    } catch {
+      // Older native build without background audio yet — safe to ignore.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speaker?.id, clip?.id]);
+
+  // Clear the lock-screen "now playing" card when the player screen closes.
+  useEffect(() => {
+    return () => {
+      try {
+        player.clearLockScreenControls?.();
+      } catch {
+        // No-op on builds without background audio.
+      }
+    };
+  }, [player]);
 
   // Point the player at the current clip; keep the chosen speed on every person.
   useEffect(() => {
@@ -225,7 +286,9 @@ export function RecapPlayer({
   };
 
   return (
-    <Screen tone="canvas">
+    // Plain eggshell canvas with no drifting grid behind it — the graph lines
+    // fought with the big photo and made this screen hard to look at.
+    <Screen tone="plain" className="bg-canvas">
       <ScreenHeader
         title="Weekly recap"
         onBack={onClose}
@@ -287,25 +350,32 @@ export function RecapPlayer({
             </View>
           ) : (
             <>
-              {/* Speaker + question + expiry */}
-              <View className="items-center">
+              {/* Speaker (the hero) + question + expiry */}
+              <View className="items-center pt-2">
+                {/*
+                  The big photo. The ripple halo behind it grows and fades while
+                  a voice is playing, so the screen clearly feels "on".
+                */}
                 <View
-                  className={cn(
-                    'rounded-full p-1.5',
-                    status.playing ? 'bg-purple/20' : 'bg-ink/10'
-                  )}
+                  style={{
+                    width: avatarSize,
+                    height: avatarSize,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
                 >
+                  <RecapPulse size={avatarSize} playing={status.playing} />
                   {speaker ? (
                     <Avatar
                       name={speaker.name}
                       emoji={speaker.emoji}
                       accent={speaker.accent}
                       personId={speaker.id}
-                      size="xl"
+                      diameter={avatarSize}
                     />
                   ) : null}
                 </View>
-                <Text className="mt-3 font-sans-b text-[18px] text-ink">
+                <Text className="mt-5 font-sans-b text-[24px] text-ink">
                   {speaker?.name.split(' ')[0] ?? ''}
                 </Text>
                 {/*
@@ -314,7 +384,7 @@ export function RecapPlayer({
                 */}
                 <Text
                   accessibilityLiveRegion="polite"
-                  className="mt-1.5 rounded-full bg-[#EDE6FF] px-3 py-1 font-sans-b text-[13px] text-onaccent"
+                  className="mt-2 rounded-full bg-[#EDE6FF] px-4 py-1.5 text-center font-sans-b text-[14px] text-onaccent"
                 >
                   Q{clip.questionIndex + 1} · {question}
                 </Text>
