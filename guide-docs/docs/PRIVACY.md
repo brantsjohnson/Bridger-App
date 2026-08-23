@@ -35,7 +35,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - **Capture-only media**, except the **profile photo** (the one upload exception).
 - **No vanity metrics** (no follower counts, view counts, invited totals, streaks, leaderboards).
 - **No ad tracking** and no third-party ad SDKs.
-- **Product analytics (PostHog)** is first-party, **opt-in / consented**, de-identified, deletable with the account, never sold, never fed into matching.
+- **Product analytics (PostHog)** is first-party, **on by default while signed in**, de-identified, deletable with the account, never sold, never fed into matching.
 - **Tier visibility** (Close / Friends / Everyone / custom groups) controls who sees shared content; RLS enforces it.
 
 ---
@@ -61,6 +61,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 ### 3.2 Profile attributes and quizzes (Zone B)
 
 - Hobbies, favorites, places, this-or-that, bucket list, deeper questions, Top 5, Current Obsession, life timeline, recommendations, goals, and quiz results tagged with **visibility** (`visibleToTier`) and a separate **`matchable`** flag.
+- The hobby bank includes optional culture, advocacy, and wellness labels you can pick (or add your own). Same who-sees and matchable rules as any other hobby. None of these are required.
 - Every fill module ends with (1) who can see the answers and (2) an explicit "use this to connect me in Discover?" ask. Visibility and matching are independent consents.
 - Sensitive About Me Deeper fields (identity / beliefs) default Close and are never bulk-matchable; each is listed individually in the matchable step.
 - A mandatory one-time profile intro explains group-based sharing and that deleting a field removes it from Bridger's database.
@@ -74,8 +75,11 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - **Updates** (photo / text / video per product rules; capture-only except profile photo).
 - **Inside Jokes**, poll questions/votes, Touch Grass signals (audience + when + why), event details, recap voice answers, co-op portal ideas/comments (shown as "A member," no person names on the member portal).
 - Reactions, replies, and RSVP / attendance related records as needed to run those features.
-- **Event invite attribution:** each `event_invites` row may store `invited_by` (who invited that guest). Null means the host invited them. Used only so hosts/co-hosts can see "invited by" / "brought by" in the going/invited lists when friends-can-invite is on. Never shown as a vanity total to guests. Hard-deleted with the event or account.
+- **Message hearts:** double-tap a friend's bubble stores only that you hearted that message id (and that they can see it). Never the message text. A heart is not a sent message and does not use the daily cap. Hard-deleted with the account or the thread.
+- **Event invite attribution:** each `event_invites` row may store `invited_by` (who invited that guest). Null means the host invited them (or they joined via an open share link when friends-can-invite is on). Used only so hosts/co-hosts can see "invited by" / "brought by" in the going/invited lists when friends-can-invite is on. Never shown as a vanity total to guests. Hard-deleted with the event or account.
+- **Shared event links:** opening an event link when you are not on the invite list shows **basics only** (title, host, when, place name, bio). No going list, meet suggestions, full address, or assignments. If the host turned on friends-can-invite, you may RSVP Going (joins the list, still under the guest cap). If that setting is off, you cannot RSVP until invited.
 - **Event recurrence:** optional `events.recurrence` jsonb stores a schedule pattern only (weekly / monthly / yearly + end). Same visibility as the event (people going or invited). Hard-deleted with the event or account. Analytics may record `has_recurrence` / `recurrence_freq` enums only, never the schedule text.
+- **Quiz result + share/referral (Which "J" name are you?):** `jname_results` stores your fun result only (a J-name, a percent, and your top J-name picks by score). A `jname_shares` row is one stable share link per person, snapshotting the J-name/percent so the free web page can render it. `jname_referrals` records that someone opened your link so that, if they later make an account, we can connect them to you ("who invited whom"). While a viewer is logged out we keep only an opaque device id (`anon_ref`), never a name. The public web view (`/q/<token>`) needs no account; the "your version of X" friend board requires an account (API `GET /jname/leaderboard`). Notifications: `jname_link_opened` when someone opens your link; `jname_top_match` when a friend lands on a J-name in your top 3 picks. All of these hard-delete with the account.
 
 ### 3.4 Friends graph and social graph
 
@@ -86,8 +90,9 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 
 ### 3.5 Co-op / membership
 
-- Membership status, `dues_paid_through`, cancel-at-period-end / cancelled timestamps. Signup offers **Join the co-op** or **Free Lite** (no ads tier). Free Lite keeps connection essentials with rolling ~30-day story history; co-op unlocks richer creation tools.
+- Membership status, `dues_paid_through`, cancel-at-period-end / cancelled timestamps. Signup offers **Join the co-op** or **Free Lite** (no ads in the feed). Free Lite keeps connection essentials with rolling ~30-day story history and 5 Close / 30 Friends (Acquaintances unlimited). Co-op unlocks richer creation, 25 Close / 125 Friends, named groups, and storage.
 - Soft-join stub today (no live StoreKit / Play / Stripe yet). Future: platform IAP and/or in-app card processor; joining remains skippable (choose Free Lite).
+- **Auth / promo codes:** an operator can issue a code that grants a **free year** of the co-op with no payment. When you redeem one we store which code you used and when (`coop_promo_redemptions`: opaque `user_id` + `promo_code_id` + timestamp only, never the code text or any payment/PII). This lets the operator see how many uses remain and who redeemed each code. Redemptions are hard-deleted with your account.
 - **Ads:** Bridger does not show behavioral or third-party ads on Free Lite or co-op. You are not the product.
 - Portal participation (ideas, votes). **Member portal never shows vote tallies or person names**; admin may see aggregates.
 - **Profile customization (co-op):** theme (accent, background color/gradient/image assetId, font from allowlist, light/dark) and layout order are presentation-only skins. They never change, hide, or delete canonical attributes or tier visibility. Custom CSS/HTML columns exist but the Code tier is admin-gated OFF (no WebView renderer yet). When enabled later: sanitized; no user JavaScript; no off-Bridger asset URLs (so a profile cannot leak viewer IPs). Assets are Bridger-hosted. "View original" and a viewer "always show plain pages" preference always reach the native accessible layout. Customized profiles are UGC (report / operator revert).
@@ -100,21 +105,25 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 |---|---|---|
 | Camera | Post Updates, video replies | Feature degrades; app still works |
 | Microphone | Video replies, recap voice answers, Assistant voice questions (opt-in) | Same |
-| Photo library | Profile photo only (upload exception) | User can skip / use capture |
+| Photo library (read) | Profile photo only (upload exception) | User can skip / use capture |
+| Photo library (add only) | Save a quiz result card you made to your camera roll so you can post it to a story. Requested only when you tap "Save image"; add-only, we never read your existing photos for this. | Skip; you can still share the card straight to another app |
 | Notifications | Alerts for friends, Touch Grass, events, etc. | In-app activity still works |
 | Contacts | Optional friend-finding / invite (desired in onboarding; not required) | Skip; app works |
 | Location (coarse) | Optional "where you met"; future **Local map** (friend radar) will also need coarse, opt-in sharing when that feature ships. Discover currently shows only a Coming soon teaser and does **not** request location for the map. | Skip; app works |
 
 Purpose strings must stay accurate in `app.json` / store listings when permissions land.
 
+**Background audio (co-op weekly recap):** the recap Friend Pod player keeps playing when the app is backgrounded or the phone is locked, and shows standard lock-screen / Control Center playback controls. This uses the OS audio background mode (iOS) and a media-playback foreground service (Android); it does not collect any new data. The lock-screen "now playing" card shows only the current friend's first name plus a "Bridger · Weekly recap" label. Recap question text and answer audio content are deliberately kept off the lock screen. No location, no microphone, and no new permission is involved in playback (the microphone permission covers recording your own answer only).
+
 ### 3.7 Analytics (PostHog)
 
 - UI events (`click`, `dead_click`, `swipe`, …) with structured `screen.section.element` ids.
 - Named product events (e.g. quiz completed, story posted, co-op cancel scheduled, quick-check kept/removed).
 - Properties are snake_case taxonomy fields only; **no PII**, no message/caption/quiz-explanation text, **no quick-check question text**.
-- `distinct_id` = opaque `user_ref` **only after consent**; otherwise anonymous.
-- Default opt-out until the user accepts (Settings + ATT where applicable).
-- Deleting the account must purge the PostHog person as well as our DB.
+- `distinct_id` = opaque account id while signed in. Logged-out and demo modes do not send.
+- **On by default** for signed-in accounts (no Settings off-switch in the current build). We do **not** use Apple ATT: this is first-party product analytics, not cross-app tracking (no ads, no IDFA).
+- Session replay, SDK autocapture, surveys, and geo-IP are off. Demo mode never sends.
+- Deleting the account must purge the PostHog person plus our DB.
 
 ### 3.8 Diagnostics / ops
 
@@ -156,7 +165,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - Enforce tiers, blocks, and membership perks.
 - Send in-app (and later push) notifications the user has allowed.
 - **Random update nudges** (`story_prompt`): optional. When you turn the toggle on (capture screen or Settings → Notifications), Bridger may send about **1–3 prompts a day** at random times asking you to post an update. Tapping opens the in-app capture screen. Off by default; turn off anytime in the same places. No one else sees that you enabled this.
-- Improve the product via **consented** PostHog analytics (not ads, not sold).
+- Improve the product via PostHog analytics (anonymous screen/button names; not ads, not sold).
 - Moderate reported content and enforce Terms.
 - Process membership payments when real IAP / card checkout ships.
 - **We do not** sell personal data. **We do not** use third-party ad networks. **We do not** train foundation models on user content.
@@ -166,9 +175,10 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 ## 5 · Who we share with
 
 - **Other users**, only as the user chose (tier / audience / public co-op portal reads).
-- **Service providers** that host or process data for us: Supabase (DB/Auth/Storage), AWS (API host), PostHog (product analytics, consented), AI providers (Anthropic / OpenAI) **server-side only** through the PII firewall when AI is enabled, and future payment processors for membership.
+- **Service providers** that host or process data for us: Supabase (DB/Auth/Storage), AWS (API host), PostHog (product analytics), AI providers (Anthropic / OpenAI) **server-side only** through the PII firewall when AI is enabled, and future payment processors for membership.
 - **Law enforcement / legal** when required by law: **TODO (legal): standard compulsion language**.
 - Co-op portal public pages are readable without membership; writes require membership. Portal comments display as "A member," not a name.
+- **Apps you choose to share to:** when you tap "Share to story" / "Share link" on a quiz result, your phone's own share sheet hands the image or link to whatever app you pick (Instagram, Snapchat, Messages, etc.). That app's own privacy policy then governs it. We do not post on your behalf and we send nothing to those apps unless you pick them.
 
 ---
 
@@ -191,7 +201,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 ## 8 · User choices and controls
 
-- Audience / tier pickers on posts, Touch Grass, polls, recap share.
+- Audience / tier pickers on posts, polls, recap share (Close / Friends / Everyone). Touch Grass send is Close / Friends only.
 - Discoverable / matching opt-out (drops Zone C).
 - Analytics consent toggle (Settings; ATT on iOS when required).
 - Block and report (person and content).
@@ -226,7 +236,9 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
-| 2026-08-13 | Preview/internal demo unlock: on-device fake fixtures via logo long-press; no real account until true sign-in; Store unlock off by default |
+| 2026-08-21 | Messages: contact-card share (not a raw number); double-tap heart on a friend's bubble (id only, not a send); no Make a plan in-thread |
+| 2026-08-21 | Touch Grass send: Close / Friends only (acquaintances never get a signal) |
+| 2026-08-14 | Co-op vs Free Lite: circle caps 5/30 vs 25/125; named groups and extra place photos are co-op; viewing custom profiles and co-op video stays free |
 | 2026-08-11 | Onboarding desire / connection_style: opaque keys + Home layout seed for own-Home only; deletable; not used for matching or ads; Free Lite vs co-op two-tier join (no ads) |
 | 2026-08-06 | AI System gateway: deidentified lane jobs, cost log, fail silent, Zone C cascade; personal_agent lane reserved for opt-in assistant |
 | 2026-08-06 | Assistant (opt-in): sessions/turns/private memory; calendar + mic in context; voice transcripts in-request only; no analytics content |
@@ -249,4 +261,11 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 | 2026-08-08 | Your Funny Bone (humor): private taste vector + breadth; similarity matching; style hints not matched yet; explain/other text private |
 | 2026-08-06 | Spotify-style profile: Top 5 / Current Obsession / Favorites; per-module who-sees + matchable consent; profile intro; co-op Theme + Layout customize; View original / always-plain preference; storage meter honesty |
 | 2026-08-06 | Invite links / QR: opaque UUID tokens; QR short-lived (~15m) and deleted on redeem; deep link encodes token only (no name/photo) |
+| 2026-08-20 | Shared event links: outsider basics-only view; RSVP via link only when friends-can-invite is on; no guest list leak |
+| 2026-08-20 | Product analytics on by default while signed in; Settings toggle removed; still no PII / replay / ATT; purge on account delete |
+| 2026-08-20 | Quiz result sharing: add-only Photo library permission (save card on tap, never reads existing photos); OS share sheet hands image/link to apps you pick; `quiz_shared` analytics carries `method` only, never the result name/text |
+| 2026-08-20 | J-name share links + referrals: `jname_results` / `jname_shares` / `jname_referrals`; stable per-person link; opaque `anon_ref` for logged-out opens; who-invited-whom resolved after signup; free public web view at `/q/<token>` (friend results still need an account); all hard-delete with the account |
+| 2026-08-21 | J-name leaderboard + alerts: friends grouped by J-name result ("your version of X"); top 3 on Home teaser, grows as friends take it; `jname_link_opened` / `jname_top_match` notifications (opaque ids + quiz slug only) |
+| 2026-08-21 | Co-op weekly recap background audio: playback continues when the app is backgrounded / phone locked, with lock-screen controls; iOS audio background mode + Android media foreground service; no new data collected; lock-screen shows friend first name + "Bridger · Weekly recap" only, never question/answer content |
+| 2026-08-19 | PostHog SDK wired: Settings opt-in (default off), no ATT, no session replay / geo-IP, opaque id after consent, person purge on opt-out and account delete |
 | 2026-08-05 | Initial scaffolding seeded from shipped co-op portal, soft join, PostHog analytics rules, Touch Grass Events-only send, Friend Pod on Friends, quiz-without-AI, polls, profile customize MVP, hard-delete / zones promises. |

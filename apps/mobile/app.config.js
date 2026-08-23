@@ -30,8 +30,27 @@ module.exports = ({ config }) => ({
     privacyManifests: {
       NSPrivacyTracking: false,
       NSPrivacyTrackingDomains: [],
-      NSPrivacyCollectedDataTypes: [],
-      NSPrivacyAccessedAPITypes: []
+      NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality'
+          ]
+        }
+      ],
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1']
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['C617.1']
+        }
+      ]
     }
   },
   android: {
@@ -71,14 +90,42 @@ module.exports = ({ config }) => ({
         recordAudioAndroid: true
       }
     ],
-    'expo-audio',
+    // Background audio: lets the co-op weekly recap keep playing when the phone
+    // is locked or the app is backgrounded, and shows lock-screen controls.
+    // (On iOS this adds the `audio` background mode; on Android it adds a media
+    // playback foreground service. A fresh dev/native build is required.)
+    [
+      'expo-audio',
+      {
+        enableBackgroundPlayback: true,
+        enableBackgroundRecording: false,
+        microphonePermission:
+          'Bridger uses your microphone so your video replies have sound, so you can record your weekly recap answer, and so you can ask the Assistant by voice.'
+      }
+    ],
     [
       'expo-calendar',
       {
         calendarPermission:
           "Bridger adds dates and reminders you confirm so you don't forget a friend's birthday or check-in."
       }
-    ]
+    ],
+    // Saving a quiz result card to the camera roll (opt-in, in context, only
+    // when you tap "Save image"). We never read your existing photos for this.
+    [
+      'expo-media-library',
+      {
+        photosPermission:
+          'Bridger saves your quiz result card to your photos so you can post it to your story.',
+        savePhotosPermission:
+          'Bridger saves your quiz result card to your photos so you can post it to your story.',
+        isAccessMediaLocationEnabled: false
+      }
+    ],
+    // The system share sheet, used to send your result image or link to apps
+    // like Instagram, Snapchat, or Messages.
+    'expo-sharing',
+    'expo-localization'
   ],
   experiments: {
     typedRoutes: true
