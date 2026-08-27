@@ -37,6 +37,7 @@ guide-docs/
 ├── AGENT.md
 ├── AGENT-SCOPE.md
 ├── ADMIN.md
+├── DELIGHT.md                    ← umbrella for optional delighters
 │
 ├── complete/                     ← shipped + archived
 │   ├── ONBOARDING.md
@@ -54,8 +55,7 @@ guide-docs/
 │   ├── TOUCHGRASS-AND-QUIZ.md
 │   ├── QUIZ-ENGINE.md
 │   ├── PROFILE-MODULES.md
-│   ├── MATCHING-ALGORITHMS.md
-│   └── DELIGHT.md
+│   └── MATCHING-ALGORITHMS.md
 │
 ├── playbooks/                    ← agent operating manuals
 │   ├── README.md
@@ -131,15 +131,16 @@ guide-docs/
 |---|---|---|
 | `PROFILE.md` | [BUILDING] | The Spotify-artist profile layout. Header/tabs/scroll order + most modules there; Settings stubs, storage, some modules/polish, recap-play + customize entry, music still landing. |
 | `PROFILE-CUSTOMIZATION.md` | [BUILDING] | Theme + Layout (no-code) mostly there; the **Code tier** (custom CSS + sanitized HTML subset, sandboxed WebView) and some co-op/storage edges still open. |
-| `AGENT.md` | [BUILDING] | The assistant's rules/lane/gating/invariants. Bridge UI (Widget/Island/Screen) + fill loop in progress; several act-tools still handoffs. |
+| `AGENT.md` | [BUILDING] | The assistant's rules/lane/gating/invariants. Billy UI (Widget/Island/Screen) + fill loop in progress; several act-tools still handoffs. |
 | `AGENT-SCOPE.md` | [BUILDING] | The assistant capability catalog (fill loop, previews, triage, drafting, photo, activity log). Stays paired with `AGENT.md` until the whole assistant ships. |
 | `ADMIN.md` | [BUILDING] | Operator console (separate repo). Exists in some form; doc/acceptance-criteria (plugins, marketing archive, assistant flags, integrations health) not finished. |
+| `DELIGHT.md` | [BUILDING] | Umbrella guide for optional delighters + library/backlog; emoji-bomb is the first built gift. Ideas stay open forever. |
 
 ### 4.3 · Complete / archived (`complete/` — shipped, reference only)
 
 | Doc | Status | Feature |
 |---|---|---|
-| `complete/ONBOARDING.md` | [COMPLETE] | Welcome video → 9-step signup + one-question-at-a-time fill pattern. |
+| `complete/ONBOARDING.md` | [COMPLETE] | Welcome "trying again" beats → desire step (Home seed) → essentials → co-op / Free Lite join. |
 | `complete/HOME.md` | [COMPLETE] | Announcements carousel, stories row, responses, always-visible Touch Grass send, ask-the-group. |
 | `complete/STORIES.md` | [COMPLETE] | Story player, the Catch-Up swipe-up (week-hero), responses, AI week summary (words-only). |
 | `complete/FRIENDS.md` | [COMPLETE] | Roster + tiers, add-friend, inside jokes, Friend Pod, private notes/reminders, report/block. |
@@ -148,14 +149,13 @@ guide-docs/
 | `complete/EVENTS.md` | [COMPLETE] | Event detail/host, cover, co-host, chip-in, assignments, native share, going/to-meet counts, touch-grass. |
 | `complete/MESSAGES.md` | [COMPLETE] | Threads, contact-card share, make-a-plan, the 5/day message cap. |
 | `complete/RECAP-PODCAST.md` | [COMPLETE] | The weekly recap recorder + stitched podcast player (5 questions). |
-| `complete/COOP.md` | [COMPLETE] | The co-op membership + benefits surface (single annual membership). |
+| `complete/COOP.md` | [COMPLETE] | Two tiers: Join the co-op ($72/yr) or Free Lite (5 Close / 30 Friends, 30-day storage, no ads). |
 | `complete/COOP-PORTAL.md` | [COMPLETE] | The multi-page portal: mission, model, ideas, vote, transparent economics/cost. |
 | `complete/ASSISTANT-ACCESS-WIDEN.md` | [COMPLETE] | The ops rollout checklist for widening assistant access (flag stages). |
 | `complete/TOUCHGRASS-AND-QUIZ.md` | [COMPLETE] | Touch-grass send (Events) + Home answer cards + quiz take/share/who-got-who. |
 | `complete/QUIZ-ENGINE.md` | [COMPLETE] | Deterministic scorer + server moderator; internal quiz ids (personality/values/humor); fun quizzes = same engine. |
 | `complete/PROFILE-MODULES.md` | [COMPLETE] | The canonical question bank: all 14 modules, hobby follow-ups, the two closing consents. |
 | `complete/MATCHING-ALGORITHMS.md` | [COMPLETE] | Nest matching: discover-refresh / bridge-suggest / event-suggest / pair-overlap; six-feature v1; per-shared-quiz gating. |
-| `complete/DELIGHT.md` | [COMPLETE] | The isolated delight/gift plugin host + fail-safe + admin toggles. |
 
 ### 4.4 · Playbooks (`playbooks/` — agent operating manuals)
 
@@ -195,7 +195,7 @@ guide-docs/
 
 ## 5 · Feature build order (for net-new work)
 
-Foundations (permanent contracts) → onboarding → profile + modules → friends/tiers → home → stories → discover/reveal/matching → events → messages → co-op → recap → assistant → admin/delight. Most of the early chain is already in `complete/`; the current front is **profile redesign + customization + assistant + admin**.
+Foundations (permanent contracts) → onboarding → profile + modules → friends/tiers → home → stories → discover/reveal/matching → events → messages → co-op → recap → assistant → admin → delight library. Most of the early chain is already in `complete/`; the current front is **profile redesign + customization + assistant + admin + delight (emoji-bomb + open backlog)**.
 
 ---
 
@@ -218,10 +218,14 @@ Foundations (permanent contracts) → onboarding → profile + modules → frien
 - **v1 scores with all six feature-dictionary components live day one**; a component contributes **0 when a pair lacks its data** (zero-by-absence), never a config phase.
 - **Pre-connection suggestion pool = attributes with `visibility = Everyone` AND `matchable = true`;** Friends/Close-tier fields feed only the post-connection overlap engine under beat-0 tier gating.
 - **Quiz matching is per shared quiz** (both completed, compatible versions). Discover quiz **internal ids** `personality`/`values`/`humor` (+addable); user-facing titles are marketing names; matching/analytics use internal ids only.
+- **Your Vibe (`personality`)** measures sociability, assertiveness, agreeableness, conscientiousness, openness, neuroticism. Matching: agreeableness = similarity; assertiveness = complementarity; sociability/conscientiousness/openness = mild similarity; neuroticism = never a match gate. Disclosure (keys + impact only) rides along for preference-vs-capacity confidence.
+- **The Friend Zone (`attachment`)** measures continuous anxiety + avoidance (friendship-worded), derives secure/anxious/avoidant/fearful. Matching uses a hand-authored **style matrix** (secure works widely; anxious+avoidant is the classic trap) — not similarity or complementarity. SES is interpretive only.
+- **What Gets You Going (`values`)** is the load-bearing similarity quiz: 30 forced-choice Schwartz-inspired items → adventure↔stability, giving↔striving, hedonism dials. Loyalty/honesty norms are a later friendship add-on (separate scores). Politics-word-free.
 - **"Fun"/BuzzFeed quizzes use the same QUIZ-ENGINE** (rubric + moderator); no separate path.
-- **Deterministic rubric sets the score; the AI moderator moderates/adapts but never sets a score.**
+- **Deterministic rubric sets the score; the AI moderator moderates/adapts but never sets a score.** AI adapts only below each quiz's `adaptBelowConfidence` floor (disclosure = off).
 - **Evidence gate:** below threshold, Discover returns FEW/ZERO — never desperate backfill.
 - **Connection is never gated** (answering polls is free; creating requires co-op). Connecting never costs.
+- **Circle caps:** Free Lite is **5 Close / 30 Friends / unlimited Acquaintances**. Co-op is **25 Close / 125 Friends / unlimited Acquaintances**, plus named groups. Hitting a cap never blocks the connection (they land in Acquaintances). Host extras (co-hosts, allergies, assignments) and guest cap 100 are co-op; hosting itself is free up to 35.
 
 **AI, ML & the agent**
 - **AI is invisible & firewalled:** all model calls route through the PII-scrubbing gateway (opaque IDs, no content/media on the deidentified lane); foundation models are **never trained/fine-tuned on user data** (RAG + our own small ranking models instead).
@@ -235,6 +239,11 @@ Foundations (permanent contracts) → onboarding → profile + modules → frien
 - **First-party, consented, de-identified, walled off** from matching/ML; deletable.
 - **Product events fire on confirmed outcomes, never on the tap that begins them.**
 - **Everything named from scratch:** `screen.section.element`, reused-not-prefixed; sheets/overlays are their own surfaces.
+
+**Messages**
+- **Share contact** posts your contact card (the fields you chose). It is not a raw "share my number" shortcut, and it does not burn a daily slot.
+- **No Make a plan in a thread.** Plans live on Events / Touch Grass. That button does not belong in Messages.
+- **Double-tap a friend's bubble to heart it.** A heart is a reaction, not a sent message, and never counts against the 5/day cap. No heart counts (no vanity metrics).
 
 **User-facing vs internal names**
 - **Updates** (not stories) · **Inside Jokes** (not quips) · **Touch Grass** · **The Catch-Up** · **Co-op**. Never surface internal module names in UI copy; never rename DB tables to chase UI copy.
@@ -251,4 +260,4 @@ An earlier INDEX rotted because docs moved and it didn't. Rules to prevent that:
 - **When a new doc is created,** add a registry row (§4.x) with path + one-line role + status.
 - **Deletions** get a one-line note here so a stale reference is explainable, not mysterious.
 
-*Last rebuilt: 2026-08-07 — reflects the `complete/` archive split, the five docs moved in (TOUCHGRASS-AND-QUIZ, QUIZ-ENGINE, PROFILE-MODULES, MATCHING-ALGORITHMS, DELIGHT), the profile redesign, the assistant + the ten playbooks now written, and the matching decision locks. Verified against the real repo: no `ANALYTICS-README.md` or `FIRST-PROMPT.md` exist; `.cursor/rules/` filenames corrected.*
+*Last rebuilt: 2026-08-07 — DELIGHT.md returned to active build as the umbrella guide for optional delighters (not archived). complete/ holds shipped feature docs; delight ideas stay open forever.*

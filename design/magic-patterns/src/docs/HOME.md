@@ -133,7 +133,7 @@ The five destinations sit in a **floating pill nav** — detached from the botto
 Two entry points, no third: the **co-op card** here, and the **Co-op row in Profile → Settings**. Both are membership-aware and land in different places:
 
 - **Member** → straight to the **member portal** (`coop/portal.tsx`): vote on what gets built next, the quarterly books, what shipped from previous votes, and a direct feedback line. "What membership includes" links back to the benefits page.
-- **Not a member** → the **membership page** (`coop/index.tsx`): always-free list, what members get, circle caps, and **Join · $24 a year**. Joining makes you a member and drops you straight into the portal.
+- **Not a member** → the **membership page** (`coop/index.tsx`): always-free list, what members get, circle caps, and **Join · $72 a year**. Joining makes you a member and drops you straight into the portal.
 
 > **Split vs stack rule:** side-by-side layout is for *actions* (buttons/tiles), never for two live content feeds — two content columns are too cramped at phone width. Zone 6 splits; everything else stacks full-width.
 
@@ -153,7 +153,7 @@ Poll creation is its own action (zone 6), **not** folded into the story composer
 
 ### Touch grass — send and answer
 
-- **Send** (header trigger): pick an audience (same concentric picker) and a rough "when," then send. Everyone in that audience gets a **notification** and sees your signal on their Home. No view counts.
+- **Send** lives on Events (not Home): pick Close or Friends and a rough "when," then send. People in that circle get a **notification**. No view counts.
 - **Answer** (a friend's signal card): **"I'm in"** or dismiss with an **✕** — there is no explicit "no."
 
 **Saying "I'm in" is a moment, and it lands you in the conversation.** Grass explodes out of the card, then you're taken **straight into the message thread** with the person who posted it, with your yes already sent ("I'm in for touching grass. What's the plan?"). Agreeing and then working out where to meet shouldn't be two separate jobs in two separate places — the whole point of touch grass is getting outside together, so the app hands you the thread and gets out of the way. Only the originator is notified. This works identically from the card and from the detail sheet, on Home and on Events.

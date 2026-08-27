@@ -37,6 +37,7 @@ import {
   submitResponse
 } from '../../data/quiz';
 import { personById } from '../../data/people';
+import { MANIFEST } from './manifest';
 import { QUESTIONS } from './questions';
 import {
   allResultBuckets,
@@ -306,7 +307,7 @@ export default function RoadTripQuiz({ slug }: { slug: string }) {
   if (!current) {
     return (
       <Screen tone="canvas">
-        <ScreenHeader title="Quiz" onBack={close} />
+        <ScreenHeader title={MANIFEST.title} onBack={close} />
         <ScreenBody>
           <Text className="mt-8 text-center font-sans-sb text-ink-mute">Loading…</Text>
         </ScreenBody>
@@ -316,7 +317,7 @@ export default function RoadTripQuiz({ slug }: { slug: string }) {
 
   return (
     <Screen tone="canvas">
-      <ScreenHeader title="Quiz" onBack={close} />
+      <ScreenHeader title={MANIFEST.title} onBack={close} />
       <ScreenBody>
         {/* Progress: how far through the quiz */}
         <View

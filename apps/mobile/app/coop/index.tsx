@@ -1,11 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Co-op benefits screen. Shows what is always free vs what members unlock,
-// the $24/year price, and Join / Open portal. From Magic Patterns coop/index.
+// the $72/year price, and Join / Open portal. From Magic Patterns coop/index.
 // Connecting is never behind a paywall.
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CheckIcon } from 'lucide-react-native';
 import {
@@ -18,6 +18,7 @@ import { COOP } from '../../lib/analytics-ids';
 import {
   AnalyticsRegion,
   ButtonPrimary,
+  ButtonSecondary,
   ListRow,
   ORGANIC,
   SectionTitle,
@@ -28,17 +29,17 @@ import {
   cn
 } from '@bridger/ui';
 import { PortalPanel } from '../../components/coop/PortalPanel';
-import { getMembership, joinCoop } from '../../data/coop';
+import { getMembership, joinCoop, redeemPromoCode } from '../../data/coop';
 
 const ALWAYS_FREE = [
-  'Meet people in Discover',
+  'Meet people in Discover, including the reveal',
   'Add anyone, unlimited acquaintances',
-  'Messages, touch grass, quizzes',
+  'Messages, Touch Grass, quizzes, Inside Jokes, Bucket list',
   'Answering any poll or question you are sent',
-  'Photos, text, voice, stickers',
-  'Watch every video, read every profile',
+  'Post stories (photos, text, voice, stickers)',
+  'Watch every story and video, view every profile',
   'Attend events, host up to 35',
-  'Your weekly recap'
+  'Previous-week recap of stories'
 ];
 
 const UNLOCKS: {
@@ -58,7 +59,7 @@ const UNLOCKS: {
   {
     key: 'circles',
     title: 'Bigger circles',
-    line: 'No caps, plus your own named groups.',
+    line: '25 Close, 125 Friends, plus named groups.',
     emoji: '👥',
     accent: 'teal'
   },
@@ -79,7 +80,7 @@ const UNLOCKS: {
   {
     key: 'recaps',
     title: 'Daily recaps',
-    line: 'Every day, not just the week.',
+    line: 'Updated daily, not a week behind.',
     emoji: '📅',
     accent: 'amber'
   },
@@ -93,7 +94,7 @@ const UNLOCKS: {
   {
     key: 'events',
     title: 'Host up to 100',
-    line: 'Plus member activities and drops.',
+    line: 'Plus co-hosts, allergies, and assignments.',
     emoji: '🎉',
     accent: 'pink'
   }
@@ -111,6 +112,10 @@ export default function CoopBenefitsScreen() {
   const [since, setSince] = useState<string | undefined>();
   const [renews, setRenews] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  // Auth-code redeem panel (free year, no payment).
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [code, setCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
 
   useEffect(() => {
     void getMembership().then((m) => {
@@ -136,6 +141,28 @@ export default function CoopBenefitsScreen() {
     }
   }
 
+  // THIS SECTION DOES: redeem an auth code for a free year, then open the portal.
+  async function onRedeem() {
+    if (redeeming || !code.trim()) return;
+    setRedeeming(true);
+    try {
+      const res = await redeemPromoCode(code);
+      setMember(res.membership.member);
+      setSince(res.membership.since);
+      setRenews(res.membership.renews);
+      setShowRedeem(false);
+      setCode('');
+      router.push('/coop/portal');
+    } catch (err) {
+      Alert.alert(
+        'Code',
+        err instanceof Error ? err.message : 'That code did not work.'
+      );
+    } finally {
+      setRedeeming(false);
+    }
+  }
+
   return (
     <Screen tone="canvas">
       <ScreenHeader
@@ -154,7 +181,7 @@ export default function CoopBenefitsScreen() {
             <Text className="mt-1.5 font-sans-sb text-[14px] text-onaccent/80">
               {member
                 ? `Member${since ? ` since ${since}` : ''}${renews ? ` · renews ${renews}` : ''}`
-                : '$24 a year · members keep it running'}
+                : '$72 a year · members keep it running'}
             </Text>
           </View>
         </AnalyticsRegion>
@@ -229,7 +256,7 @@ export default function CoopBenefitsScreen() {
         <View className="mb-5">
           <SectionTitle
             title="Your circles"
-            description="Acquaintances stay unlimited for everyone. Member plans remove caps on close friends and friends."
+            description="Acquaintances stay unlimited for everyone. Free Lite is 5 Close and 30 Friends. Co-op is 25 Close and 125 Friends, plus named groups."
             infoAnalyticsId={COOP.benefits.info}
             parentScreen="coop"
             section="benefits"
@@ -311,10 +338,54 @@ export default function CoopBenefitsScreen() {
                   analyticsId={COOP.benefits.join}
                   onPress={() => void onJoin()}
                   loading={busy}
-                  accessibilityLabel="Join the co-op for twenty four dollars a year"
+                  accessibilityLabel="Join the co-op for seventy two dollars a year"
                 >
-                  Join · $24 a year
+                  Join · $72 a year
                 </ButtonPrimary>
+
+                {/* Auth code: a free year without paying. Tucked below join. */}
+                {showRedeem ? (
+                  <PortalPanel accent="amber" fill="surface" shape="bold">
+                    <Text className="font-sans-b text-[14px] text-ink">
+                      Have an auth code?
+                    </Text>
+                    <Text className="mt-0.5 font-sans-sb text-[12px] text-ink-soft">
+                      Enter it for a free year of the co-op.
+                    </Text>
+                    <TextInput
+                      value={code}
+                      onChangeText={setCode}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      placeholder="BRIDGER-FREE-YEAR"
+                      placeholderTextColor="#8A8778"
+                      accessibilityLabel="Auth code"
+                      className="mt-2 rounded-card border border-ink-line bg-surface px-3 py-2.5 font-sans-sb text-[15px] text-ink"
+                    />
+                    <View className="mt-3">
+                      <ButtonPrimary
+                        full
+                        size="sm"
+                        analyticsId={COOP.benefits.redeem_submit}
+                        onPress={() => void onRedeem()}
+                        loading={redeeming}
+                        accessibilityLabel="Redeem auth code for a free year"
+                      >
+                        Redeem free year
+                      </ButtonPrimary>
+                    </View>
+                  </PortalPanel>
+                ) : (
+                  <ButtonSecondary
+                    full
+                    tone="ghost"
+                    analyticsId={COOP.benefits.redeem_open}
+                    onPress={() => setShowRedeem(true)}
+                    accessibilityLabel="I have an auth code"
+                  >
+                    Have an auth code?
+                  </ButtonSecondary>
+                )}
               </>
             )}
           </View>

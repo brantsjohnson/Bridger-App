@@ -96,7 +96,37 @@ export class BridgerServiceStack extends cdk.Stack {
             ADMIN_PASSWORD: apprunner.Secret.fromSecretsManager(serverSecret, 'ADMIN_PASSWORD'),
             ADMIN_JWT_SECRET: apprunner.Secret.fromSecretsManager(serverSecret, 'ADMIN_JWT_SECRET'),
             EMAIL_HMAC_KEY: apprunner.Secret.fromSecretsManager(serverSecret, 'EMAIL_HMAC_KEY'),
-            EMAIL_ENCRYPTION_KEY: apprunner.Secret.fromSecretsManager(serverSecret, 'EMAIL_ENCRYPTION_KEY')
+            EMAIL_ENCRYPTION_KEY: apprunner.Secret.fromSecretsManager(serverSecret, 'EMAIL_ENCRYPTION_KEY'),
+            SPOTIFY_CLIENT_ID: apprunner.Secret.fromSecretsManager(serverSecret, 'SPOTIFY_CLIENT_ID'),
+            SPOTIFY_CLIENT_SECRET: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'SPOTIFY_CLIENT_SECRET'
+            ),
+            SPOTIFY_REDIRECT_URI: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'SPOTIFY_REDIRECT_URI'
+            ),
+            MUSIC_TOKEN_ENCRYPTION_KEY: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'MUSIC_TOKEN_ENCRYPTION_KEY'
+            ),
+            APPLE_MUSIC_TEAM_ID: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'APPLE_MUSIC_TEAM_ID'
+            ),
+            APPLE_MUSIC_KEY_ID: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'APPLE_MUSIC_KEY_ID'
+            ),
+            APPLE_MUSIC_MEDIA_ID: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'APPLE_MUSIC_MEDIA_ID'
+            ),
+            APPLE_MUSIC_PRIVATE_KEY: apprunner.Secret.fromSecretsManager(
+              serverSecret,
+              'APPLE_MUSIC_PRIVATE_KEY'
+            ),
+            API_PUBLIC_URL: apprunner.Secret.fromSecretsManager(serverSecret, 'API_PUBLIC_URL')
           }
         }
       }),

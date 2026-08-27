@@ -12,6 +12,7 @@ import type {
   FavoriteModule,
   ObsessionSquare,
   Person,
+  PhotoBlock,
   Tier,
   Top5Item,
   WhereMetView
@@ -69,6 +70,7 @@ export function ProfileCard({
   obsession = [],
   favorites,
   upcoming = [],
+  greatestHits = [],
   mutuals = [],
   whereMet = null,
   editable = false,
@@ -99,6 +101,8 @@ export function ProfileCard({
   obsession?: ObsessionSquare[];
   favorites?: FavoriteModule[];
   upcoming?: UpcomingEventRow[];
+  /** Co-op Greatest hits (tier-filtered by caller). */
+  greatestHits?: PhotoBlock[];
   mutuals?: Person[];
   whereMet?: WhereMetView | null;
   editable?: boolean;
@@ -136,6 +140,9 @@ export function ProfileCard({
   const visibleObsession = empty
     ? []
     : obsession.filter((o) => TIER_RANK[o.visibleToTier] <= TIER_RANK[asTier]);
+  const visibleGreatestHits = empty
+    ? []
+    : greatestHits.filter((p) => TIER_RANK[p.visibleToTier] <= TIER_RANK[asTier]);
 
   const favModules = useMemo(() => {
     if (favorites) return favorites;
@@ -275,6 +282,7 @@ export function ProfileCard({
         places={empty ? [] : places}
         thisOrThat={empty ? [] : thisOrThat}
         whereMet={whereMet}
+        greatestHits={visibleGreatestHits}
         onOpenMutuals={onOpenMutuals}
         onOpenTop5={() => openModule('top5')}
         onOpenAbout={() => openModule('about_basics')}

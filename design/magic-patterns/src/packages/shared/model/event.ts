@@ -1,7 +1,7 @@
 import { Accent } from './person';
 import { Cover } from './cover';
 
-export type EventRole = 'host' | 'going' | 'invited';
+export type EventRole = 'host' | 'going' | 'invited' | 'outsider';
 
 export interface EventItem {
   id: string;
@@ -17,6 +17,8 @@ export interface EventItem {
   address?: string;
   goingIds: string[];
   invitedIds?: string[];
+  /** Who invited whom (missing = the host). Host planning only. */
+  inviteByIds?: Record<string, string>;
   hostId: string;
   /** people who can edit the event and see the host dashboard */
   coHostIds?: string[];

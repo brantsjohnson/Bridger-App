@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Everything the Messages tab needs: list conversations, open a thread, send
-// a capped text, share your contact card, and nudge Make a plan. Demo mode
+// a capped text, share your contact card, and heart a friend's bubble.
+// Hearts and Share contact never count as a sent message. Demo mode
 // keeps threads and your card in memory for the session. Live mode will call
 // the messages API — same function names either way.
 //
@@ -35,6 +36,10 @@ export type ThreadBubble = {
   phone?: string;
   kind: Message['kind'];
   countsAgainstCap: boolean;
+  /** You hearted their bubble. Not a sent message. */
+  heartedByMe: boolean;
+  /** They hearted your bubble. */
+  heartedByThem: boolean;
 };
 
 export type ThreadDetail = {
@@ -111,7 +116,9 @@ function toDetail(t: DemoThread): ThreadDetail {
       text: b.text,
       phone: b.phone,
       kind: b.kind ?? 'text',
-      countsAgainstCap: b.countsAgainstCap !== false && b.kind !== 'contactCard' && b.kind !== 'planNudge'
+      countsAgainstCap: b.countsAgainstCap !== false && b.kind !== 'contactCard' && b.kind !== 'planNudge',
+      heartedByMe: !!b.heartedByMe,
+      heartedByThem: !!b.heartedByThem
     }))
   };
 }
@@ -192,7 +199,9 @@ export async function sendMessage(input: {
         from: 'me',
         text,
         kind: 'text',
-        countsAgainstCap: true
+        countsAgainstCap: true,
+        heartedByMe: false,
+        heartedByThem: false
       }
     ];
     t.myLeft = Math.max(0, t.myLeft - 1);
@@ -233,7 +242,9 @@ export async function shareContact(threadId: string): Promise<ThreadDetail | nul
         text: summary,
         phone,
         kind: 'contactCard',
-        countsAgainstCap: false
+        countsAgainstCap: false,
+        heartedByMe: false,
+        heartedByThem: false
       }
     ];
     t.preview = 'You shared your contact card';
@@ -248,30 +259,29 @@ export async function shareContact(threadId: string): Promise<ThreadDetail | nul
 }
 
 /**
- * Drop a "let's make a plan" nudge into the thread. Does NOT count against the cap.
- * The UI then opens Touch Grass / Events — this only records the uncounted bubble.
+ * Heart or unheart a friend's bubble. Never a sent message. Never burns a cap slot.
+ * PRIVACY: we store only the message id + that you hearted it. Never the text.
  */
-export async function makePlan(threadId: string): Promise<ThreadDetail | null> {
+export async function toggleHeart(
+  threadId: string,
+  bubbleId: string,
+  method: 'double_tap' | 'a11y' = 'double_tap'
+): Promise<ThreadDetail | null> {
   if (isDemoMode()) {
     const t = demoThreads.find((x) => x.id === threadId);
     if (!t) return null;
-    t.bubbles = [
-      ...t.bubbles,
-      {
-        id: `b-plan-${Date.now()}`,
-        from: 'me',
-        text: "Let's make a plan",
-        kind: 'planNudge',
-        countsAgainstCap: false
-      }
-    ];
-    t.preview = "Let's make a plan";
-    t.time = 'now';
-    trackProduct('message_sent', { counts_against_cap: false, method: 'plan' });
+    const bubble = t.bubbles.find((b) => b.id === bubbleId);
+    if (!bubble || bubble.from !== 'them') return toDetail(t);
+    bubble.heartedByMe = !bubble.heartedByMe;
+    trackProduct('message_hearted', {
+      on: !!bubble.heartedByMe,
+      counts_against_cap: false,
+      method
+    });
     return toDetail(t);
   }
-  // TODO: POST /messages/:id/make-plan
-  throw new Error('makePlan requires the live API outside demo mode');
+  // TODO: POST /messages/:id/heart { bubbleId } — no ciphertext, no text
+  throw new Error('toggleHeart requires the live API outside demo mode');
 }
 
 /** Your once-set contact card. */

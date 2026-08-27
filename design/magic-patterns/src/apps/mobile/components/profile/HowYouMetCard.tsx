@@ -1,4 +1,3 @@
-import React from 'react';
 import { CalendarIcon, MapPinIcon, UsersIcon } from 'lucide-react';
 import { HowYouMet } from '../../../../packages/shared';
 import { PixelHeading, cn } from '../../../../packages/ui';

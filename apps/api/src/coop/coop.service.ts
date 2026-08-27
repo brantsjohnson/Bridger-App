@@ -5,14 +5,22 @@
 // (rolling ~30-day story storage).
 //
 // PAYMENT: soft-join sets provisional dues_paid_through; real IAP goes through
-// PurchaseGateway later. Display dues are always "$24/year".
+// PurchaseGateway later. Display dues are always "$72/year".
 // ============================================
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { CoopAnnouncement, CoopMembership } from '@bridger/shared';
+import {
+  FREE_STORY_STORAGE_BYTES,
+  buildStorageMeter,
+  formatStorageBytes,
+  includedBytesFromGb,
+  overagePriceLabel,
+  parseStorageConfig,
+  storageUsedPct
+} from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
 
-const DISPLAY_DUES = '$24/year';
-const FREE_STORY_BYTES = 500_000_000;
+const DISPLAY_DUES = '$72/year';
 
 type MembershipRow = {
   active: boolean;
@@ -41,8 +49,8 @@ export class CoopService {
         summary: 'daily' as const,
         event_cap: 100,
         circle_caps: {
-          close: null,
-          friend: null,
+          close: 25,
+          friend: 125,
           acquaintance: null
         }
       };
@@ -54,8 +62,8 @@ export class CoopService {
       summary: 'weekly' as const,
       event_cap: 35,
       circle_caps: {
-        close: 10,
-        friend: 25,
+        close: 5,
+        friend: 30,
         acquaintance: null
       }
     };
@@ -246,34 +254,52 @@ export class CoopService {
     return this.getMembership(userId);
   }
 
-  /** Story storage bar for Profile calendar. */
+  /**
+   * Storage meter for Settings + Stories bar.
+   * Co-op: used vs included GB (admin_config.storage). Overage price is soft-stub.
+   * Free: rolling ~30-day story allotment (FREE_STORY_STORAGE_BYTES).
+   */
   async getStorage(userId: string): Promise<{
     plan: 'free' | 'coop';
     usedPct: number;
     usedBytes: number;
+    includedBytes: number;
+    overageBytes: number;
     limitBytes: number | null;
     label: string;
+    overagePriceLabel: string | null;
   }> {
     await this.reconcileMembership(userId);
     const plan = await this.loadPlan(userId);
     const isCoop = plan?.plan === 'coop';
     const usedBytes = Number(plan?.used_bytes ?? 0);
+    const storageConfig = await this.loadStorageConfig();
 
     if (isCoop) {
+      const includedBytes = includedBytesFromGb(storageConfig.includedGb);
+      const meter = buildStorageMeter({ usedBytes, includedBytes });
+      const usedPct = storageUsedPct(meter);
+      const usedLabel = formatStorageBytes(meter.usedBytes);
+      const includedLabel = formatStorageBytes(meter.includedBytes);
       return {
         plan: 'coop',
-        usedPct: 0,
-        usedBytes,
-        limitBytes: null,
-        label: 'Members keep everything'
+        usedPct,
+        usedBytes: meter.usedBytes,
+        includedBytes: meter.includedBytes,
+        overageBytes: meter.overageBytes,
+        limitBytes: meter.includedBytes,
+        label: `${usedLabel} of ${includedLabel} included`,
+        // Soft stub: show the price so members know overage is opt-in; no charge yet.
+        overagePriceLabel: overagePriceLabel(storageConfig.overageCentsPerGb)
       };
     }
 
     let usedPct = 0;
+    let effectiveUsed = usedBytes;
     if (usedBytes > 0) {
       usedPct = Math.min(
         100,
-        Math.round((usedBytes / FREE_STORY_BYTES) * 100)
+        Math.round((usedBytes / FREE_STORY_STORAGE_BYTES) * 100)
       );
     } else {
       const since = new Date();
@@ -284,18 +310,38 @@ export class CoopService {
         .eq('owner_id', userId)
         .gte('created_at', since.toISOString());
       usedPct = Math.min(100, (count ?? 0) * 5);
+      // Approximate bytes from the percent so the meter has a number to show.
+      effectiveUsed = Math.round((usedPct / 100) * FREE_STORY_STORAGE_BYTES);
     }
+
+    const meter = buildStorageMeter({
+      usedBytes: effectiveUsed,
+      includedBytes: FREE_STORY_STORAGE_BYTES
+    });
 
     return {
       plan: 'free',
       usedPct,
-      usedBytes,
-      limitBytes: FREE_STORY_BYTES,
+      usedBytes: meter.usedBytes,
+      includedBytes: meter.includedBytes,
+      overageBytes: meter.overageBytes,
+      limitBytes: FREE_STORY_STORAGE_BYTES,
       label:
         usedPct >= 100
           ? 'Your free month is full. Older posts will roll off.'
-          : 'Story media older than 30 days rolls off.'
+          : 'Story media older than 30 days rolls off.',
+      overagePriceLabel: null
     };
+  }
+
+  // THIS SECTION DOES: read included GB + overage stub price from admin_config.
+  private async loadStorageConfig() {
+    const { data } = await this.supabase.admin
+      .from('admin_config')
+      .select('storage')
+      .limit(1)
+      .maybeSingle();
+    return parseStorageConfig(data?.storage);
   }
 
   /** Shared helper: reconcile first, then true only if still active. */

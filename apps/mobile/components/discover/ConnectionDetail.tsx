@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// One request or suggestion opened full-screen: their face, Accept/Decline
-// (or Add / Not now), Map A of how you're linked, and what you have in common.
+// One request or suggestion opened full-screen: their face and name,
+// Accept/Decline (or Add / Not now), Map A of how you're linked, and what
+// you have in common. No "via · label" line: the map already shows the mutual.
 // Full connection reveal ships later (REVEAL.md); this is the decision surface.
 // Analytics: approve/decline use DISCOVER.wants_to_connect.*; Add uses people_to_meet.add.
 // ============================================
@@ -82,9 +83,6 @@ export function ConnectionDetail({
           <PersonAvatar id={person.id} size="xl" />
           <Text className="mt-3 font-sans-b text-[20px] tracking-tight text-ink">
             {person.name}
-          </Text>
-          <Text className="font-sans-sb text-[13px] text-ink-mute">
-            via {via.name} · {person.label}
           </Text>
         </View>
 

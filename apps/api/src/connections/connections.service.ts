@@ -14,6 +14,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import type {
   Tier
 } from '@bridger/shared';
 import { MatchingFeedbackService } from '../matching/matching-feedback.service';
+import { DemoWeekService } from '../demo-week/demo-week.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TiersService } from '../tiers/tiers.service';
 
@@ -43,7 +45,8 @@ export class ConnectionsService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly tiers: TiersService,
-    private readonly matchingFeedback: MatchingFeedbackService
+    private readonly matchingFeedback: MatchingFeedbackService,
+    private readonly demoWeek: DemoWeekService
   ) {}
 
   // --- helpers ---
@@ -290,6 +293,7 @@ export class ConnectionsService {
   // --- INVITE LINK / QR / REDEEM ---
 
   async createInviteLink(userId: string): Promise<{ token: string; url: string }> {
+    await this.assertInviteAllowed(userId);
     const token = randomUUID();
     const { error } = await this.supabase.admin.from('invite_links').insert({
       token,
@@ -303,6 +307,7 @@ export class ConnectionsService {
   }
 
   async createQrToken(userId: string): Promise<{ token: string; url: string }> {
+    await this.assertInviteAllowed(userId);
     const token = randomUUID();
     const expires = new Date();
     expires.setMinutes(expires.getMinutes() + 15);
@@ -389,7 +394,21 @@ export class ConnectionsService {
       await this.supabase.admin.from('qr_tokens').delete().eq('token', token);
     }
 
+    // Demo week: invitees may use the app but cannot invite others.
+    await this.demoWeek.markJoinedViaInvite(userId);
+
     return { personId: ownerId };
+  }
+
+  /** Demo week blocks invite links for people who joined via someone else. */
+  private async assertInviteAllowed(userId: string): Promise<void> {
+    try {
+      await this.demoWeek.assertCanCreateInvite(userId);
+    } catch {
+      throw new ForbiddenException(
+        'Invites are paused during the demo. Ask your friend to add you, or wait until the public launch.'
+      );
+    }
   }
 
   // --- HOW YOU MET ---

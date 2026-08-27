@@ -1,7 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Touch Grass on the server: the "I'm free to hang" signal. People send a
-// signal to a circle (Close / Friends / Everyone) with a timing (now / tonight
+// signal to Close or Friends (never Everyone / acquaintances) with a timing (now / tonight
 // / weekend) and a short why. Friends in that circle get a notification and see
 // it on Home + Events. Recipients respond "I'm in" (notifies the sender) or
 // dismiss. The sender sees who's in (visible to them only). Signals expire.
@@ -10,7 +10,7 @@
 // This service uses the service-role client, so it re-checks the audience by
 // hand (the tiers table) instead of relying on row-level security.
 // ============================================
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { GrassSignal, GrassWhen, Tier } from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -29,13 +29,11 @@ const WHEN_LABEL: Record<GrassWhen, string> = {
   weekend: 'This weekend'
 };
 
-/** Map the app's "who" choice to a stored audience tier. */
+/** Map the app's "who" choice to a stored audience tier. Everyone is not allowed. */
 const AUDIENCE_TIER: Record<string, Tier> = {
   close: 'close',
   friends: 'friend',
-  friend: 'friend',
-  everyone: 'acquaintance',
-  acquaintance: 'acquaintance'
+  friend: 'friend'
 };
 
 @Injectable()
@@ -162,7 +160,11 @@ export class TouchGrassService {
     userId: string,
     body: { who: string; when: GrassWhen; note?: string }
   ): Promise<GrassSignal> {
-    const audienceTier = AUDIENCE_TIER[body.who] ?? 'friend';
+    const whoKey = (body.who ?? '').toLowerCase();
+    const audienceTier = AUDIENCE_TIER[whoKey];
+    if (!audienceTier) {
+      throw new BadRequestException('Touch Grass can only go to Close or Friends.');
+    }
     const when = body.when;
     const expiresAt = this.computeExpiry(when);
 

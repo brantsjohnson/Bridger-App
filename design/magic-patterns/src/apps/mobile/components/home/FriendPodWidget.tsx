@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronRightIcon, MicIcon, PlayIcon, PlusIcon } from 'lucide-react';
 import { Avatar, cn } from '../../../../packages/ui';
 import { RECAP_ANSWERS, RECAP_WEEK } from '../../state/pod';

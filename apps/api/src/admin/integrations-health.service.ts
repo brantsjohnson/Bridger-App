@@ -1,0 +1,313 @@
+// ============================================
+// WHAT THIS FILE DOES (plain English):
+// Checks whether Bridger's outbound APIs and keys look healthy for the admin
+// console. Never returns secret values. A green check means "configured" and,
+// when we can do it safely, "responded to a lightweight probe."
+// ============================================
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  loadAppleMusicPrivateKey,
+  mintAppleMusicDeveloperToken
+} from '../music/apple-music-jwt';
+import { PosthogService } from '../posthog/posthog.service';
+import { SupabaseService } from '../supabase/supabase.service';
+
+export type IntegrationStatus = 'ok' | 'warn' | 'error' | 'skip';
+
+export type IntegrationCheck = {
+  id: string;
+  label: string;
+  status: IntegrationStatus;
+  /** Short plain-English note for the admin UI. Never secrets. */
+  detail: string;
+  /** configured | live | self */
+  kind: 'config' | 'live' | 'self';
+  checkedAt: string;
+};
+
+export type IntegrationsHealthReport = {
+  checkedAt: string;
+  overall: IntegrationStatus;
+  checks: IntegrationCheck[];
+};
+
+@Injectable()
+export class IntegrationsHealthService {
+  private readonly log = new Logger(IntegrationsHealthService.name);
+
+  constructor(
+    private readonly config: ConfigService,
+    private readonly supabase: SupabaseService,
+    private readonly posthog: PosthogService
+  ) {}
+
+  async checkAll(): Promise<IntegrationsHealthReport> {
+    const checkedAt = new Date().toISOString();
+    const checks: IntegrationCheck[] = [];
+
+    checks.push(this.selfCheck(checkedAt));
+    checks.push(await this.supabaseCheck(checkedAt));
+    checks.push(await this.spotifyCheck(checkedAt));
+    checks.push(await this.appleMusicCheck(checkedAt));
+    checks.push(this.keyCheck('anthropic', 'Anthropic (Claude)', 'ANTHROPIC_API_KEY', checkedAt));
+    checks.push(this.keyCheck('openai', 'OpenAI embeddings', 'OPENAI_API_KEY', checkedAt));
+    checks.push(this.keyCheck('resend', 'Resend email', 'RESEND_API_KEY', checkedAt));
+    checks.push(
+      this.keyCheck(
+        'music_token_key',
+        'Music token encryption',
+        'MUSIC_TOKEN_ENCRYPTION_KEY',
+        checkedAt,
+        'EMAIL_ENCRYPTION_KEY'
+      )
+    );
+    checks.push(await this.posthogCheck(checkedAt));
+
+    const overall = rollup(checks);
+    return { checkedAt, overall, checks };
+  }
+
+  // THIS SECTION DOES: confirm this Nest process itself answered.
+  private selfCheck(checkedAt: string): IntegrationCheck {
+    return {
+      id: 'nest_api',
+      label: 'Nest API process',
+      status: 'ok',
+      detail: 'Admin health endpoint reached this process.',
+      kind: 'self',
+      checkedAt
+    };
+  }
+
+  // THIS SECTION DOES: one cheap DB round-trip with the service role.
+  private async supabaseCheck(checkedAt: string): Promise<IntegrationCheck> {
+    const url = this.config.get<string>('SUPABASE_URL');
+    const secret = this.config.get<string>('SUPABASE_SECRET_KEY');
+    if (!url || !secret) {
+      return {
+        id: 'supabase',
+        label: 'Supabase',
+        status: 'error',
+        detail: 'SUPABASE_URL or SUPABASE_SECRET_KEY is missing.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    try {
+      const { error } = await this.supabase.admin
+        .from('users')
+        .select('id')
+        .limit(1);
+      if (error) {
+        return {
+          id: 'supabase',
+          label: 'Supabase',
+          status: 'error',
+          detail: `Query failed (${error.code ?? 'error'}).`,
+          kind: 'live',
+          checkedAt
+        };
+      }
+      return {
+        id: 'supabase',
+        label: 'Supabase',
+        status: 'ok',
+        detail: 'Service role can query the database.',
+        kind: 'live',
+        checkedAt
+      };
+    } catch (e) {
+      this.log.warn(`Supabase health failed: ${String(e)}`);
+      return {
+        id: 'supabase',
+        label: 'Supabase',
+        status: 'error',
+        detail: 'Could not reach Supabase.',
+        kind: 'live',
+        checkedAt
+      };
+    }
+  }
+
+  // THIS SECTION DOES: Spotify keys present + client-credentials token probe.
+  private async spotifyCheck(checkedAt: string): Promise<IntegrationCheck> {
+    const clientId = this.config.get<string>('SPOTIFY_CLIENT_ID');
+    const clientSecret = this.config.get<string>('SPOTIFY_CLIENT_SECRET');
+    const redirect = this.config.get<string>('SPOTIFY_REDIRECT_URI');
+    if (!clientId || !clientSecret) {
+      return {
+        id: 'spotify',
+        label: 'Spotify Web API',
+        status: 'error',
+        detail: 'SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET is missing.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!redirect) {
+      return {
+        id: 'spotify',
+        label: 'Spotify Web API',
+        status: 'warn',
+        detail: 'Keys present, but SPOTIFY_REDIRECT_URI is empty (connect will fail).',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    try {
+      const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${basic}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({ grant_type: 'client_credentials' }).toString()
+      });
+      if (!res.ok) {
+        return {
+          id: 'spotify',
+          label: 'Spotify Web API',
+          status: 'error',
+          detail: `Token probe failed (HTTP ${res.status}). Check Client ID/secret.`,
+          kind: 'live',
+          checkedAt
+        };
+      }
+      return {
+        id: 'spotify',
+        label: 'Spotify Web API',
+        status: 'ok',
+        detail: 'Configured; client-credentials token succeeded.',
+        kind: 'live',
+        checkedAt
+      };
+    } catch (e) {
+      this.log.warn(`Spotify health failed: ${String(e)}`);
+      return {
+        id: 'spotify',
+        label: 'Spotify Web API',
+        status: 'error',
+        detail: 'Could not reach accounts.spotify.com.',
+        kind: 'live',
+        checkedAt
+      };
+    }
+  }
+
+  // THIS SECTION DOES: Apple MusicKit keys present + developer JWT mint probe.
+  private async appleMusicCheck(checkedAt: string): Promise<IntegrationCheck> {
+    const teamId = this.config.get<string>('APPLE_MUSIC_TEAM_ID');
+    const keyId = this.config.get<string>('APPLE_MUSIC_KEY_ID');
+    const path = this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY_PATH');
+    const inline = this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY');
+    if (!teamId || !keyId) {
+      return {
+        id: 'apple_music',
+        label: 'Apple Music (MusicKit)',
+        status: 'error',
+        detail: 'APPLE_MUSIC_TEAM_ID or APPLE_MUSIC_KEY_ID is missing.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!path && !inline) {
+      return {
+        id: 'apple_music',
+        label: 'Apple Music (MusicKit)',
+        status: 'error',
+        detail: 'APPLE_MUSIC_PRIVATE_KEY_PATH or APPLE_MUSIC_PRIVATE_KEY is missing.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    try {
+      const privateKeyPem = loadAppleMusicPrivateKey({ path, inlinePem: inline });
+      await mintAppleMusicDeveloperToken({
+        teamId,
+        keyId,
+        privateKeyPem,
+        ttlSeconds: 60
+      });
+      return {
+        id: 'apple_music',
+        label: 'Apple Music (MusicKit)',
+        status: 'ok',
+        detail: 'Configured; developer JWT mint succeeded.',
+        kind: 'live',
+        checkedAt
+      };
+    } catch (e) {
+      this.log.warn(`Apple Music health failed: ${String(e)}`);
+      return {
+        id: 'apple_music',
+        label: 'Apple Music (MusicKit)',
+        status: 'error',
+        detail: 'Could not mint a MusicKit developer token. Check Team ID, Key ID, and .p8.',
+        kind: 'live',
+        checkedAt
+      };
+    }
+  }
+
+  // THIS SECTION DOES: PostHog project probe (never returns the personal key).
+  private async posthogCheck(checkedAt: string): Promise<IntegrationCheck> {
+    const result = await this.posthog.healthCheck();
+    return {
+      id: 'posthog',
+      label: 'PostHog analytics',
+      status: result.status,
+      detail: result.detail,
+      kind: result.kind,
+      checkedAt
+    };
+  }
+
+  // THIS SECTION DOES: confirm a secret env var is set (never echo the value).
+  private keyCheck(
+    id: string,
+    label: string,
+    primaryKey: string,
+    checkedAt: string,
+    fallbackKey?: string
+  ): IntegrationCheck {
+    const primary = this.config.get<string>(primaryKey);
+    const fallback = fallbackKey ? this.config.get<string>(fallbackKey) : undefined;
+    if (primary && primary.trim()) {
+      return {
+        id,
+        label,
+        status: 'ok',
+        detail: `${primaryKey} is set.`,
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (fallback && fallback.trim()) {
+      return {
+        id,
+        label,
+        status: 'warn',
+        detail: `${primaryKey} unset; using ${fallbackKey} as fallback.`,
+        kind: 'config',
+        checkedAt
+      };
+    }
+    return {
+      id,
+      label,
+      status: 'error',
+      detail: `${primaryKey} is missing.`,
+      kind: 'config',
+      checkedAt
+    };
+  }
+}
+
+function rollup(checks: IntegrationCheck[]): IntegrationStatus {
+  if (checks.some((c) => c.status === 'error')) return 'error';
+  if (checks.some((c) => c.status === 'warn')) return 'warn';
+  if (checks.every((c) => c.status === 'ok' || c.status === 'skip')) return 'ok';
+  return 'warn';
+}

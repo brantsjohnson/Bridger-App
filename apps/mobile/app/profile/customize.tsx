@@ -1,9 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The first co-op profile customize screen. Members pick one approved accent
-// and one safe background token, preview the result, and save it. The fixed
-// profile widgets and every field's visibility stay untouched. "View original"
-// clears presentation settings so the accessible default is always available.
+// Co-op Theme + Layout customize. Members pick accent, background, font,
+// light/dark, and reorder movable modules. Preview, then save. Header and
+// tabs stay anchored. Modules with data can move but not be removed here.
+// "View original" clears presentation so the accessible default returns.
+// Code-tier CSS/HTML is not on this screen (admin-gated, later).
 // ============================================
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
@@ -32,9 +33,12 @@ import {
 } from "@bridger/ui";
 import { getMembership } from "../../data/coop";
 import {
-  defaultLayoutOrder,
+  defaultPresentation,
   getProfilePresentation,
   saveProfilePresentation,
+  withAccent,
+  withBackgroundToken,
+  withFont,
   type ProfileBackground,
   type ProfilePresentation,
 } from "../../data/profile-presentation";
@@ -81,7 +85,7 @@ const BACKGROUNDS: Array<{ id: ProfileBackground; label: string }> = [
   { id: "default", label: "Default" },
   { id: "eggshell", label: "Warm eggshell" },
   { id: "ink", label: "Dark ink" },
-  { id: "grid", label: "Drifting grid" },
+  { id: "grid", label: "Soft gradient" },
 ];
 
 const BACKGROUND_CLASS: Record<ProfileBackground, string> = {
@@ -93,20 +97,15 @@ const BACKGROUND_CLASS: Record<ProfileBackground, string> = {
 
 export default function CustomizeProfileScreen() {
   const router = useRouter();
-  const [presentation, setPresentation] = useState<ProfilePresentation>({
-    accent: "purple",
-    background: "default",
-    font: "clean",
-    mode: "light",
-    layoutOrder: defaultLayoutOrder(),
-  });
+  const [presentation, setPresentation] = useState<ProfilePresentation>(
+    defaultPresentation(),
+  );
   const [viewOriginal, setViewOriginal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const startedAt = useRef(Date.now());
   const completed = useRef(false);
   const lastStep = useRef("open");
-
   // --- MEMBERSHIP + CURRENT STYLE: the server remains the final save gate. ---
   useEffect(() => {
     let alive = true;
@@ -160,21 +159,21 @@ export default function CustomizeProfileScreen() {
   }, [router]);
 
   function chooseAccent(accent: Accent) {
-    setPresentation((current) => ({ ...current, accent }));
+    setPresentation((current) => withAccent(current, accent));
     setViewOriginal(false);
     lastStep.current = "accent";
     trackFlowStep("customize_profile", "accent", { surface: "customize" });
   }
 
   function chooseBackground(background: ProfileBackground) {
-    setPresentation((current) => ({ ...current, background }));
+    setPresentation((current) => withBackgroundToken(current, background));
     setViewOriginal(false);
     lastStep.current = "background";
     trackFlowStep("customize_profile", "background", { surface: "customize" });
   }
 
   function chooseFont(font: ProfileFont) {
-    setPresentation((current) => ({ ...current, font }));
+    setPresentation((current) => withFont(current, font));
     setViewOriginal(false);
     lastStep.current = "font";
     trackFlowStep("customize_profile", "font", { surface: "customize" });
@@ -190,7 +189,7 @@ export default function CustomizeProfileScreen() {
   /** Move a layout module up one slot (header + tabs stay anchored off-list). */
   function moveModule(index: number, dir: -1 | 1) {
     setPresentation((current) => {
-      const order = [...(current.layoutOrder ?? defaultLayoutOrder())];
+      const order = [...(current.layoutOrder ?? [...MOVABLE_MODULE_ORDER])];
       const next = index + dir;
       if (next < 0 || next >= order.length) return current;
       const tmp = order[index];
@@ -211,13 +210,29 @@ export default function CustomizeProfileScreen() {
     trackFlowStep("customize_profile", "save", { surface: "customize" });
     try {
       await saveProfilePresentation(viewOriginal ? null : presentation);
+      const dwell = Date.now() - startedAt.current;
       trackProduct("profile_customized", {
         enabled: !viewOriginal,
         accent: viewOriginal ? undefined : presentation.accent,
         background: viewOriginal ? undefined : presentation.background,
       });
+      // Product events fire on confirmed save only (never on the first chip tap).
+      if (!viewOriginal) {
+        trackProduct("profile_theme_saved", {
+          accent: presentation.accent,
+          background: presentation.background,
+          font: presentation.fontId ?? presentation.font,
+          mode: presentation.mode,
+          dwell_ms: dwell,
+        });
+        trackProduct("profile_layout_saved", {
+          module_count: (presentation.layoutOrder ?? MOVABLE_MODULE_ORDER)
+            .length,
+          dwell_ms: dwell,
+        });
+      }
       completed.current = true;
-      trackFlowCompleted("customize_profile", Date.now() - startedAt.current, {
+      trackFlowCompleted("customize_profile", dwell, {
         surface: "customize",
         flow_step: "save",
       });
@@ -231,6 +246,9 @@ export default function CustomizeProfileScreen() {
       setSaving(false);
     }
   }
+
+  const activeFont = presentation.fontId ?? presentation.font ?? "clean";
+  const activeMode = presentation.mode ?? "light";
 
   return (
     <Screen>
@@ -248,12 +266,13 @@ export default function CustomizeProfileScreen() {
           interactive={false}
         >
           <Text className="mb-5 font-sans-sb text-[13px] leading-snug text-ink-mute">
-            Change the presentation, not the facts. Your profile sections stay
-            in the same order and keep the same privacy settings.
+            Change the look, not the facts. Theme colors and fonts restyle the
+            page. Layout reorders modules. Header and tabs stay put. Privacy
+            tiers never change here.
           </Text>
         </AnalyticsRegion>
 
-        {/* ACCENT: approved DESIGN.md colors only. */}
+        {/* ACCENT / PALETTE: approved DESIGN.md colors only. */}
         <Text className="mb-2 font-pixel text-[18px] text-ink">Accent</Text>
         <View className="mb-6 flex-row flex-wrap gap-2">
           {ACCENTS.map((option) => (
@@ -269,7 +288,7 @@ export default function CustomizeProfileScreen() {
           ))}
         </View>
 
-        {/* BACKGROUND: token choices keep contrast predictable and URLs out. */}
+        {/* BACKGROUND: color / gradient tokens (image assetId later). */}
         <Text className="mb-2 font-pixel text-[18px] text-ink">Background</Text>
         <View className="mb-6 flex-row flex-wrap gap-2">
           {BACKGROUNDS.map((option) => (
@@ -293,7 +312,7 @@ export default function CustomizeProfileScreen() {
               key={option.id}
               label={option.label}
               accent={presentation.accent}
-              selected={!viewOriginal && (presentation.font ?? "clean") === option.id}
+              selected={!viewOriginal && activeFont === option.id}
               onPress={() => chooseFont(option.id)}
               analyticsId={CUSTOMIZE.style.font_option}
               analyticsProps={{ font: option.id }}
@@ -309,7 +328,7 @@ export default function CustomizeProfileScreen() {
               key={option.id}
               label={option.label}
               accent={presentation.accent}
-              selected={!viewOriginal && (presentation.mode ?? "light") === option.id}
+              selected={!viewOriginal && activeMode === option.id}
               onPress={() => chooseMode(option.id)}
               analyticsId={CUSTOMIZE.style.mode_option}
               analyticsProps={{ mode: option.id }}
@@ -320,47 +339,61 @@ export default function CustomizeProfileScreen() {
         {/* LAYOUT: reorder movable modules only (header + tabs stay anchored). */}
         <Text className="mb-2 font-pixel text-[18px] text-ink">Layout order</Text>
         <Text className="mb-3 font-sans-sb text-[12px] text-ink-mute">
-          Header and tabs stay at the top. Modules with data can move but cannot be removed here.
+          Header and tabs stay at the top. Modules with data can move but cannot
+          be removed here.
         </Text>
         <View className="mb-6 gap-2">
-          {(presentation.layoutOrder ?? [...MOVABLE_MODULE_ORDER]).map((mod, index) => (
-            <View
-              key={mod}
-              className="min-h-[48px] flex-row items-center justify-between rounded-card border border-ink-line bg-surface px-3"
-            >
-              <Pressable
-                onPress={withAnalyticsPress(CUSTOMIZE.layout.module_row, () => undefined)}
-                accessibilityRole="text"
-                accessibilityLabel={LAYOUT_LABELS[mod]}
-                className="min-w-0 flex-1"
+          {(presentation.layoutOrder ?? [...MOVABLE_MODULE_ORDER]).map(
+            (mod, index) => (
+              <View
+                key={mod}
+                className="min-h-[48px] flex-row items-center justify-between rounded-card border border-ink-line bg-surface px-3"
               >
-                <Text className="font-sans-b text-[14px] text-ink">{LAYOUT_LABELS[mod]}</Text>
-              </Pressable>
-              <View className="flex-row gap-2">
                 <Pressable
-                  onPress={withAnalyticsPress(CUSTOMIZE.layout.reorder, () =>
-                    moveModule(index, -1),
+                  onPress={withAnalyticsPress(
+                    CUSTOMIZE.layout.module_row,
+                    () => undefined,
                   )}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Move ${LAYOUT_LABELS[mod]} up`}
-                  disabled={index === 0}
-                  className="h-10 w-10 items-center justify-center rounded-full border border-ink-line"
+                  accessibilityRole="text"
+                  accessibilityLabel={LAYOUT_LABELS[mod]}
+                  className="min-w-0 flex-1"
                 >
-                  <Text className="font-sans-b text-[14px] text-ink">↑</Text>
+                  <Text className="font-sans-b text-[14px] text-ink">
+                    {LAYOUT_LABELS[mod]}
+                  </Text>
                 </Pressable>
-                <Pressable
-                  onPress={withAnalyticsPress(CUSTOMIZE.layout.reorder, () =>
-                    moveModule(index, 1),
-                  )}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Move ${LAYOUT_LABELS[mod]} down`}
-                  className="h-10 w-10 items-center justify-center rounded-full border border-ink-line"
-                >
-                  <Text className="font-sans-b text-[14px] text-ink">↓</Text>
-                </Pressable>
+                <View className="flex-row gap-2">
+                  <Pressable
+                    onPress={withAnalyticsPress(CUSTOMIZE.layout.reorder, () =>
+                      moveModule(index, -1),
+                    )}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move ${LAYOUT_LABELS[mod]} up`}
+                    disabled={index === 0}
+                    className="h-10 w-10 items-center justify-center rounded-full border border-ink-line"
+                  >
+                    <Text className="font-sans-b text-[14px] text-ink">↑</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={withAnalyticsPress(CUSTOMIZE.layout.reorder, () =>
+                      moveModule(index, 1),
+                    )}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move ${LAYOUT_LABELS[mod]} down`}
+                    disabled={
+                      index ===
+                      (presentation.layoutOrder ?? MOVABLE_MODULE_ORDER)
+                        .length -
+                        1
+                    }
+                    className="h-10 w-10 items-center justify-center rounded-full border border-ink-line"
+                  >
+                    <Text className="font-sans-b text-[14px] text-ink">↓</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          ))}
+            ),
+          )}
         </View>
 
         {/* PREVIEW: a small sample, never a second editable profile layout. */}
@@ -381,7 +414,7 @@ export default function CustomizeProfileScreen() {
                 Your profile
               </Text>
               <Text className="mt-1 font-sans-sb text-[13px] text-onaccent/85">
-                Core widgets stay fixed and easy to find.
+                Theme and layout only. Facts stay where they belong.
               </Text>
             </ColorCard>
           </View>

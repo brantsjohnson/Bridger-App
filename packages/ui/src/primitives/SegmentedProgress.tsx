@@ -17,6 +17,8 @@ type Props = {
   durationMs?: number;
   /** pause the fill (sheets open, menu open, etc.) */
   paused?: boolean;
+  /** Fires once when the active bar finishes filling (not on pause / unmount). */
+  onComplete?: () => void;
   className?: string;
 };
 
@@ -25,9 +27,12 @@ export function SegmentedProgress({
   index,
   durationMs = 6000,
   paused = false,
+  onComplete,
   className
 }: Props) {
   const progress = useRef(new Animated.Value(0)).current;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
   const [reduceMotion, setReduceMotion] = useState(false);
   // Keeps the latest fill amount (0..1) so a pause can resume from where it
   // stopped instead of starting the bar over.
@@ -63,15 +68,23 @@ export function SegmentedProgress({
       return;
     }
 
+    // Past the last segment: every bar is already full, nothing to run.
+    if (index >= count) {
+      progress.setValue(1);
+      return;
+    }
+
     const remaining = durationMs * (1 - value.current);
     const anim = Animated.timing(progress, {
       toValue: 1,
       duration: Math.max(0, remaining),
       useNativeDriver: false
     });
-    anim.start();
+    anim.start(({ finished }) => {
+      if (finished) onCompleteRef.current?.();
+    });
     return () => anim.stop();
-  }, [index, paused, durationMs, progress, reduceMotion]);
+  }, [index, count, paused, durationMs, progress, reduceMotion]);
 
   return (
     <View

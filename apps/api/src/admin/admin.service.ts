@@ -13,7 +13,10 @@ import {
 import type {
   AdaptationPolicy,
   Cover,
+  DelightEntry,
+  DelightKind,
   DelightScope,
+  DelightStatus,
   HomeDefaults,
   QuizDimension,
   QuizQuestion,
@@ -38,11 +41,13 @@ function asCover(value: unknown): Cover | undefined {
   return undefined;
 }
 
+/** Hands-off until confidence is clearly low; ML may tune the floor later. */
 const DEFAULT_ADAPTATION: AdaptationPolicy = {
   mayReword: true,
   mayInsertClarifiers: true,
   maxInsertedQuestions: 2,
-  mayReorder: false
+  mayReorder: false,
+  adaptBelowConfidence: 0.35
 };
 
 @Injectable()
@@ -581,7 +586,31 @@ export class AdminService {
     return { count: members.length, members };
   }
 
-  // --- Delights ---
+  // --- Delights (open Surprises backlog) ---
+
+  private mapDelight(d: {
+    id: string;
+    slug: string | null;
+    name: string;
+    status?: string | null;
+    kind?: string | null;
+    notes?: string | null;
+    enabled: boolean;
+    scope: DelightScope;
+    schedule: unknown;
+  }): DelightEntry {
+    return {
+      id: d.id,
+      slug: d.slug ?? d.id,
+      name: d.name,
+      status: (d.status as DelightStatus) ?? 'idea',
+      kind: (d.kind as DelightKind) ?? 'standalone',
+      notes: d.notes ?? '',
+      enabled: d.enabled,
+      scope: d.scope,
+      schedule: (d.schedule as { from?: string; to?: string }) ?? {}
+    };
+  }
 
   async listDelights() {
     const { data, error } = await this.supabase.admin
@@ -589,41 +618,38 @@ export class AdminService {
       .select('*')
       .order('name', { ascending: true });
     if (error) throw error;
-    return (data ?? []).map((d) => ({
-      id: d.id,
-      slug: d.slug ?? d.id,
-      name: d.name,
-      enabled: d.enabled,
-      scope: d.scope,
-      schedule: (d.schedule as { from?: string; to?: string }) ?? {}
-    }));
+    return (data ?? []).map((d) => this.mapDelight(d));
   }
 
   async createDelight(input: {
     slug: string;
     name: string;
     scope: DelightScope;
+    kind?: DelightKind;
+    status?: DelightStatus;
+    notes?: string;
   }) {
+    if (!input.slug?.trim() || !input.name?.trim()) {
+      throw new BadRequestException('slug and name are required');
+    }
+    const status: DelightStatus = input.status ?? 'idea';
+    const kind: DelightKind = input.kind ?? 'standalone';
     const { data, error } = await this.supabase.admin
       .from('delights')
       .insert({
-        slug: input.slug,
-        name: input.name,
+        slug: input.slug.trim(),
+        name: input.name.trim(),
         scope: input.scope,
+        kind,
+        status,
+        notes: input.notes?.trim() ?? '',
         enabled: false,
         schedule: {}
       })
       .select('*')
       .single();
     if (error) throw error;
-    return {
-      id: data.id,
-      slug: data.slug ?? input.slug,
-      name: data.name,
-      enabled: data.enabled,
-      scope: data.scope,
-      schedule: {}
-    };
+    return this.mapDelight(data);
   }
 
   async patchDelight(
@@ -633,13 +659,47 @@ export class AdminService {
       scope?: DelightScope;
       schedule?: { from?: string; to?: string };
       name?: string;
+      status?: DelightStatus;
+      kind?: DelightKind;
+      notes?: string;
     }
   ) {
+    const { data: current, error: curErr } = await this.supabase.admin
+      .from('delights')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (curErr) throw curErr;
+    if (!current) throw new NotFoundException('Delight not found');
+
+    const nextStatus = (patch.status ?? current.status ?? 'idea') as DelightStatus;
+    const nextKind = (patch.kind ?? current.kind ?? 'standalone') as DelightKind;
+    let nextEnabled =
+      patch.enabled !== undefined ? patch.enabled : current.enabled;
+
+    // Ideas and effects cannot be turned on for the host.
+    if (nextStatus === 'idea' || nextKind === 'effect') {
+      nextEnabled = false;
+    }
+    if (patch.enabled === true && (nextStatus !== 'live' || nextKind !== 'standalone')) {
+      throw new BadRequestException(
+        'Only live standalone delights can be turned on'
+      );
+    }
+
     const update: Record<string, unknown> = {};
-    if (patch.enabled !== undefined) update.enabled = patch.enabled;
+    if (patch.enabled !== undefined || nextEnabled !== current.enabled) {
+      update.enabled = nextEnabled;
+    }
     if (patch.scope !== undefined) update.scope = patch.scope;
     if (patch.schedule !== undefined) update.schedule = patch.schedule;
     if (patch.name !== undefined) update.name = patch.name;
+    if (patch.status !== undefined) update.status = patch.status;
+    if (patch.kind !== undefined) update.kind = patch.kind;
+    if (patch.notes !== undefined) update.notes = patch.notes;
+    if (nextStatus === 'idea' || nextKind === 'effect') {
+      update.enabled = false;
+    }
 
     const { data, error } = await this.supabase.admin
       .from('delights')
@@ -649,14 +709,7 @@ export class AdminService {
       .maybeSingle();
     if (error) throw error;
     if (!data) throw new NotFoundException('Delight not found');
-    return {
-      id: data.id,
-      slug: data.slug ?? data.id,
-      name: data.name,
-      enabled: data.enabled,
-      scope: data.scope,
-      schedule: (data.schedule as { from?: string; to?: string }) ?? {}
-    };
+    return this.mapDelight(data);
   }
 
   // --- Weekly recap (the podcast questions) ---

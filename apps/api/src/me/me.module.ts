@@ -6,10 +6,11 @@
 import { Module } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
 import { CoopModule } from '../coop/coop.module';
+import { PosthogModule } from '../posthog/posthog.module';
 import { MeController } from './me.controller';
 
 @Module({
-  imports: [CoopModule],
+  imports: [CoopModule, PosthogModule],
   controllers: [MeController],
   providers: [SupabaseAuthGuard]
 })

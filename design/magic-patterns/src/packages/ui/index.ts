@@ -1,6 +1,9 @@
 export * from './tokens';
 export * from './motion';
+export * from './lib/reduce-motion';
 export * from './primitives/PixelHeading';
+export * from './primitives/BillyMark';
+export * from './primitives/VoiceWave';
 export * from './primitives/Button';
 export * from './primitives/Card';
 export * from './primitives/Chip';
@@ -23,4 +26,5 @@ export * from './primitives/ProfileSkin';
 export * from './primitives/ModuleFlow';
 export * from './layout/FloatingTabBar';
 export * from './layout/MessagesLink';
+export * from './layout/ProfileLink';
 export * from './layout/Screen';

@@ -7,9 +7,15 @@
 // ============================================
 import type {
   ApprovalRequest,
+  DisclosureProfile,
+  DisclosureSaveInput,
   DiscoverSettings,
   Suggestion
 } from '@bridger/shared';
+import type { AttachmentScoreResult } from '../quizzes/discover/attachment/score';
+import type { HumorScoreResult } from '../quizzes/discover/humor/score';
+import type { PersonalityScoreResult } from '../quizzes/discover/personality/score';
+import type { ValuesScoreResult } from '../quizzes/discover/values/score';
 import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
 import { loadPeople } from '../lib/people-cache';
@@ -47,6 +53,24 @@ let demoRequests: ApprovalRequest[] = FIXTURE_REQUESTS.map((r) => ({ ...r }));
 
 /** Module ids you've finished — answers stay local, never on a profile. */
 let demoCompletedModules: string[] = [];
+
+/**
+ * PRIVACY: Behind the Scenes answers. Demo keeps them in memory only.
+ * Never shown on a profile. Never sent to other users.
+ */
+let demoDisclosure: DisclosureProfile | null = null;
+
+/** Demo store for Your Vibe scores (private; never on a profile). */
+let demoPersonality: PersonalityScoreResult | null = null;
+
+/** Demo store for The Friend Zone scores (private; never on a profile). */
+let demoAttachment: AttachmentScoreResult | null = null;
+
+/** Demo store for What Gets You Going scores (private; never on a profile). */
+let demoValues: ValuesScoreResult | null = null;
+
+/** Demo store for Your Funny Bone scores (private; never on a profile). */
+let demoHumor: HumorScoreResult | null = null;
 
 function cloneSettings(): DiscoverSettings {
   return {
@@ -273,4 +297,195 @@ export async function completeMatchModule(moduleId: string): Promise<void> {
     return;
   }
   // TODO: POST /quizzes/match-modules/:id/complete (private ProfileAttributes)
+}
+
+/**
+ * Save Behind the Scenes (disclosure). Owner-only. Additive matching later.
+ * PRIVACY: never log free-text notes or custom labels in analytics.
+ */
+export async function saveDisclosure(input: DisclosureSaveInput): Promise<void> {
+  if (isDemoMode()) {
+    demoDisclosure = {
+      version: input.version,
+      status: input.status,
+      matchWeightPreference: input.matchWeightPreference,
+      matchingEnabled: true,
+      items: input.items.map((i) => ({ ...i })),
+      completedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    if (!demoCompletedModules.includes('disclosure')) {
+      demoCompletedModules = [...demoCompletedModules, 'disclosure'];
+    }
+    return;
+  }
+  // TODO: PUT /discover/disclosure (writes disclosure_profiles + disclosure_items)
+  void input;
+  void apiFetch;
+}
+
+/** Read the current disclosure profile (owner only). */
+export async function getDisclosure(): Promise<DisclosureProfile | null> {
+  if (isDemoMode()) {
+    return demoDisclosure
+      ? {
+          ...demoDisclosure,
+          items: demoDisclosure.items.map((i) => ({ ...i }))
+        }
+      : null;
+  }
+  // TODO: GET /discover/disclosure
+  return null;
+}
+
+/**
+ * Save Your Vibe trait dials. Private + matchable (except neuroticism).
+ * PRIVACY: never write explain text here; scores only.
+ */
+export async function savePersonalityResult(
+  result: PersonalityScoreResult
+): Promise<void> {
+  if (isDemoMode()) {
+    demoPersonality = {
+      ...result,
+      traits: result.traits.map((t) => ({ ...t })),
+      symptomFlags: [...result.symptomFlags],
+      notes: [...result.notes]
+    };
+    if (!demoCompletedModules.includes('personality')) {
+      demoCompletedModules = [...demoCompletedModules, 'personality'];
+    }
+    return;
+  }
+  // TODO: POST /discover/quizzes/personality/complete
+  void result;
+}
+
+export async function getPersonalityResult(): Promise<PersonalityScoreResult | null> {
+  if (isDemoMode()) {
+    return demoPersonality
+      ? {
+          ...demoPersonality,
+          traits: demoPersonality.traits.map((t) => ({ ...t })),
+          symptomFlags: [...demoPersonality.symptomFlags],
+          notes: [...demoPersonality.notes]
+        }
+      : null;
+  }
+  return null;
+}
+
+/**
+ * Save The Friend Zone dials (anxiety / avoidance / style). Private.
+ * Matching uses the style matrix later. Never write explain text.
+ */
+export async function saveAttachmentResult(
+  result: AttachmentScoreResult
+): Promise<void> {
+  if (isDemoMode()) {
+    demoAttachment = {
+      ...result,
+      bands: { ...result.bands },
+      confidence: { ...result.confidence },
+      notes: [...result.notes]
+    };
+    if (!demoCompletedModules.includes('attachment')) {
+      demoCompletedModules = [...demoCompletedModules, 'attachment'];
+    }
+    return;
+  }
+  // TODO: POST /discover/quizzes/attachment/complete
+  void result;
+}
+
+export async function getAttachmentResult(): Promise<AttachmentScoreResult | null> {
+  if (isDemoMode()) {
+    return demoAttachment
+      ? {
+          ...demoAttachment,
+          bands: { ...demoAttachment.bands },
+          confidence: { ...demoAttachment.confidence },
+          notes: [...demoAttachment.notes]
+        }
+      : null;
+  }
+  return null;
+}
+
+/**
+ * Save What Gets You Going dials + Schwartz priorities. Private.
+ * Matching uses similarity on adventure/giving/hedonism. Never explain text.
+ */
+export async function saveValuesResult(
+  result: ValuesScoreResult
+): Promise<void> {
+  if (isDemoMode()) {
+    demoValues = {
+      ...result,
+      schwartz: result.schwartz.map((s) => ({ ...s })),
+      dials: result.dials.map((d) => ({ ...d })),
+      notes: [...result.notes]
+    };
+    if (!demoCompletedModules.includes('values')) {
+      demoCompletedModules = [...demoCompletedModules, 'values'];
+    }
+    return;
+  }
+  // TODO: POST /discover/quizzes/values/complete
+  void result;
+}
+
+export async function getValuesResult(): Promise<ValuesScoreResult | null> {
+  if (isDemoMode()) {
+    return demoValues
+      ? {
+          ...demoValues,
+          schwartz: demoValues.schwartz.map((s) => ({ ...s })),
+          dials: demoValues.dials.map((d) => ({ ...d })),
+          notes: [...demoValues.notes]
+        }
+      : null;
+  }
+  return null;
+}
+
+/**
+ * Save Your Funny Bone taste vector + breadth. Private.
+ * Matching uses similarity + breadth band. Never write explain text.
+ */
+export async function saveHumorResult(
+  result: HumorScoreResult
+): Promise<void> {
+  if (isDemoMode()) {
+    demoHumor = {
+      ...result,
+      axes: result.axes.map((a) => ({ ...a })),
+      styleHints: result.styleHints.map((s) => ({ ...s })),
+      mediaIds: [...result.mediaIds],
+      clusters: [...result.clusters],
+      notes: [...result.notes]
+    };
+    if (!demoCompletedModules.includes('humor')) {
+      demoCompletedModules = [...demoCompletedModules, 'humor'];
+    }
+    return;
+  }
+  // TODO: POST /discover/quizzes/humor/complete
+  void result;
+}
+
+export async function getHumorResult(): Promise<HumorScoreResult | null> {
+  if (isDemoMode()) {
+    return demoHumor
+      ? {
+          ...demoHumor,
+          axes: demoHumor.axes.map((a) => ({ ...a })),
+          styleHints: demoHumor.styleHints.map((s) => ({ ...s })),
+          mediaIds: [...demoHumor.mediaIds],
+          clusters: [...demoHumor.clusters],
+          notes: [...demoHumor.notes]
+        }
+      : null;
+  }
+  return null;
 }

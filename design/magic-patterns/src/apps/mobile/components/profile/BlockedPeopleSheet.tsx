@@ -1,4 +1,3 @@
-import React from 'react';
 import { Person } from '../../../../packages/shared';
 import { Avatar, Sheet } from '../../../../packages/ui';
 

@@ -1,18 +1,27 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Shapes for the optional easter-egg layer (pet cats, emoji bombs, seasonal
-// confetti). Each delight is an isolated plugin; these types are how admin
-// toggles them and how the app mounts / plays them.
+// Shapes for the optional delight umbrella: backlog rows in admin, standalone
+// plugins the host mounts, and gift triggers waiting to play.
 // ============================================
 
 export type DelightScope = 'global' | 'opt-in' | 'gift';
 
-/** One registered delight (matches a folder under apps/mobile/delight/). */
+/** Where a surprise sits in the open backlog. */
+export type DelightStatus = 'idea' | 'built' | 'live';
+
+/** Standalone = host plugin; effect = reusable importable motion. */
+export type DelightKind = 'standalone' | 'effect';
+
+/** One surprise in the admin catalog (matches a folder under apps/mobile/delight/). */
 export interface DelightEntry {
   id: string;
-  /** Stable plugin folder name (e.g. "emoji-bomb"). */
+  /** Stable plugin/effect folder name (e.g. "emoji-bomb"). */
   slug: string;
   name: string;
+  status: DelightStatus;
+  kind: DelightKind;
+  /** Free-text notes for humans + Cursor (where it might live, vibe). */
+  notes: string;
   enabled: boolean;
   scope: DelightScope;
   schedule?: { from?: string; to?: string };
@@ -26,6 +35,6 @@ export interface DelightTrigger {
   fromUserId: string;
   toUserId: string;
   played: boolean;
-  /** Display name of the sender, rejoined on-device when available. */
+  /** Display name of the sender, rejoined on-device or from the API. */
   fromName?: string;
 }

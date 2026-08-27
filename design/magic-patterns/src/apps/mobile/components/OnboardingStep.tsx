@@ -35,7 +35,7 @@ type OnboardingStepProps = {
  */
 export function OnboardingStep({
   step,
-  total = 9,
+  total = 10,
   purpose,
   ask,
   children,

@@ -11,6 +11,7 @@ import type { Accent, Tier } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
 import { ACCENTS, Card, cn, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
+import { WASH_MUTED } from './onboarding-wash';
 import type { VisibilityRow } from '../../data/onboarding';
 
 /** Each circle owns a color here and everywhere else the tiers appear. */
@@ -75,7 +76,7 @@ export function ReviewStep({
         </Card>
 
         <View className="flex-row items-center gap-2">
-          <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">Set all</Text>
+          <Text className={cn('font-sans-b text-[12px] uppercase tracking-wide', WASH_MUTED)}>Set all</Text>
           <View className="flex-row gap-1.5">
             {LEVELS.map((l) => (
               <Pressable

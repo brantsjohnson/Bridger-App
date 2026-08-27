@@ -2,15 +2,15 @@ import React from 'react';
 import { ColorCard, TextField } from '../../../../packages/ui';
 import { OnboardingStep } from '../../components/OnboardingStep';
 
-/** 3 · The one hard requirement. */
+/** 4 · The one hard requirement. */
 export function NameScreen({ onNext }: {onNext?: () => void;}) {
   const [name, setName] = React.useState('');
 
   return (
     <OnboardingStep
-      step={3}
-      total={9}
-      purpose="So your people know it's you."
+      step={4}
+      total={10}
+      purpose="Just you, for the people who already like you."
       ask="Your name"
       accent="purple"
       ctaDisabled={name.trim().length === 0}

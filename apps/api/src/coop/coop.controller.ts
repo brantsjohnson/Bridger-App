@@ -10,6 +10,7 @@ import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
 import { CoopService } from './coop.service';
+import { PromoService } from './promo.service';
 import { PurchaseGateway, type DuesMethod } from './purchase.gateway';
 
 @Controller('coop')
@@ -17,7 +18,8 @@ import { PurchaseGateway, type DuesMethod } from './purchase.gateway';
 export class CoopController {
   constructor(
     private readonly coop: CoopService,
-    private readonly purchases: PurchaseGateway
+    private readonly purchases: PurchaseGateway,
+    private readonly promo: PromoService
   ) {}
 
   @Get('announcements')
@@ -57,6 +59,13 @@ export class CoopController {
   @Post('membership/cancel')
   cancelMembership(@CurrentUser() user: AuthUser) {
     return this.coop.cancelMembership(user.id);
+  }
+
+  // Redeem an auth / promo code for a free year (no payment). The server checks
+  // the code, grants membership, and records who used it.
+  @Post('membership/redeem')
+  redeem(@CurrentUser() user: AuthUser, @Body() body: { code: string }) {
+    return this.promo.redeem(user.id, body?.code ?? '');
   }
 
   @Get('storage')

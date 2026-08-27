@@ -15,6 +15,7 @@ import { Avatar, Chip, SearchField, TextField, Toggle, cn, withAnalyticsPress } 
 import { listPeople } from '../../../data/people';
 import { AddressField } from './AddressField';
 import { DatePickerChip, TimePickerChip } from './DateTimePickers';
+import { RecurrenceFields } from './RecurrenceFields';
 import type { CreateEventDraft } from './types';
 
 const CHIP_METHODS = ['Venmo', 'Cash App', 'PayPal', 'Zelle', 'Cash in person'] as const;
@@ -106,6 +107,14 @@ export function DetailsStep({
             <TimePickerChip time={draft.time} onChange={(t) => onChange({ time: t })} />
           </View>
         </View>
+
+        {/* --- REPEATS: optional weekly / monthly / yearly rule --- */}
+        <RecurrenceFields
+          repeats={draft.repeats}
+          recurrence={draft.recurrence}
+          dayIso={draft.dayIso}
+          onChange={onChange}
+        />
 
         {/* --- ADDRESS: one field; place name fills from a suggestion --- */}
         <AddressField

@@ -10,24 +10,24 @@ const PREFS = [
 { id: 'events', label: 'Events', emoji: '📅', accent: 'teal' }] as
 const;
 
-/** 2 · Stay in touch. Multi-select, writes notification prefs. */
+/** 3 · Stay in touch. Multi-select, writes notification prefs. */
 export function NotificationsScreen({
   onNext,
   onSkip
-
-
-
-}: {onNext?: () => void;onSkip?: () => void;}) {
+}: {
+  onNext?: () => void;
+  onSkip?: () => void;
+}) {
   const [picked, setPicked] = React.useState<string[]>(['close', 'birthdays']);
 
   const toggle = (id: string) =>
-  setPicked((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
 
   return (
     <OnboardingStep
-      step={2}
-      total={9}
-      purpose="Tech should help you stay close."
+      step={3}
+      total={10}
+      purpose="It let us drift. What should we nudge you about?"
       ask="What should we nudge you about?"
       accent="amber"
       onContinue={onNext}

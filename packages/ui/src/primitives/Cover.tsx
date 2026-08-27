@@ -101,7 +101,7 @@ export function CoverArt({
                   position: 'absolute',
                   left: `${s.x}%`,
                   top: `${s.y}%`,
-                  fontSize: s.size + 4,
+                  fontSize: s.size,
                   opacity: s.opacity + 0.15,
                   transform: [{ rotate: `${s.rotate}deg` }]
                 }}
@@ -158,20 +158,25 @@ export function CoverArt({
 /**
  * Where each scattered emoji lands. Hand-placed rather than random so banners
  * are stable between renders and nothing bunches up behind the middle glyph.
+ *
+ * IMPORTANT: keep pieces inside a safe inset (roughly 8–82% x, 8–52% y) with
+ * modest sizes. Pieces parked on the bottom/side clip edge of short covers
+ * (like the Events idea chips) flicker in and out while a parent marquee
+ * moves, because sub-pixel translate + overflow:hidden turns them on/off.
  */
 const CONFETTI = [
-  { x: 3, y: 6, size: 20, rotate: -18, opacity: 0.55 },
-  { x: 16, y: 52, size: 15, rotate: 12, opacity: 0.4 },
-  { x: 8, y: 74, size: 24, rotate: -8, opacity: 0.5 },
-  { x: 27, y: 12, size: 17, rotate: 22, opacity: 0.45 },
-  { x: 34, y: 72, size: 14, rotate: -25, opacity: 0.38 },
-  { x: 45, y: 4, size: 22, rotate: 8, opacity: 0.5 },
-  { x: 52, y: 78, size: 19, rotate: -14, opacity: 0.45 },
-  { x: 63, y: 16, size: 15, rotate: 28, opacity: 0.4 },
-  { x: 71, y: 62, size: 23, rotate: -6, opacity: 0.52 },
-  { x: 80, y: 8, size: 18, rotate: 16, opacity: 0.45 },
-  { x: 88, y: 44, size: 21, rotate: -20, opacity: 0.5 },
-  { x: 92, y: 76, size: 15, rotate: 10, opacity: 0.38 },
-  { x: 60, y: 40, size: 13, rotate: -30, opacity: 0.32 },
-  { x: 22, y: 32, size: 13, rotate: 18, opacity: 0.32 }
+  { x: 8, y: 10, size: 14, rotate: -18, opacity: 0.5 },
+  { x: 18, y: 36, size: 12, rotate: 12, opacity: 0.38 },
+  { x: 12, y: 48, size: 15, rotate: -8, opacity: 0.45 },
+  { x: 28, y: 14, size: 13, rotate: 22, opacity: 0.42 },
+  { x: 36, y: 44, size: 12, rotate: -25, opacity: 0.35 },
+  { x: 48, y: 8, size: 15, rotate: 8, opacity: 0.45 },
+  { x: 54, y: 46, size: 13, rotate: -14, opacity: 0.4 },
+  { x: 66, y: 16, size: 12, rotate: 28, opacity: 0.38 },
+  { x: 72, y: 40, size: 14, rotate: -6, opacity: 0.48 },
+  { x: 78, y: 10, size: 13, rotate: 16, opacity: 0.42 },
+  { x: 82, y: 34, size: 14, rotate: -20, opacity: 0.45 },
+  { x: 84, y: 48, size: 12, rotate: 10, opacity: 0.35 },
+  { x: 58, y: 28, size: 11, rotate: -30, opacity: 0.3 },
+  { x: 24, y: 26, size: 11, rotate: 18, opacity: 0.3 }
 ] as const;

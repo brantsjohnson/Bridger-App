@@ -2,8 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // Your invite QR in the Add-friend sheet. Loads a short-lived invite from the
 // invites helper (demo or live — same URL shape), then draws a real scannable
-// QR that encodes that deep link. The link text under it is selectable so
-// someone can paste into Scan when a camera is not handy.
+// QR that encodes that deep link. The raw URL stays inside the code only —
+// we do not print it under the square (Share invite link covers pasting).
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
@@ -59,14 +59,6 @@ export function QrBlock() {
           />
         ) : null}
       </View>
-      {invite ? (
-        <Text
-          selectable
-          className="px-4 text-center font-sans text-[11px] text-ink-mute"
-        >
-          {invite.url}
-        </Text>
-      ) : null}
       {error ? (
         <Text className="text-center font-sans text-[11px] text-coral">{error}</Text>
       ) : null}

@@ -8,9 +8,13 @@ Maps to the (now active) `messages` module + `app/(tabs)/messages` tab; entered 
 
 ## The philosophy (why it's capped)
 
-You **don't need another inbox.** Messaging is a bridge: enough to say "hey, want to hang?" and swap contacts, not enough to live in DMs. So it's capped, and the two easiest actions in any thread are **Share contact** and **Make a plan**.
+You **don't need another inbox.** Messaging is a bridge: enough to say "hey, want to hang?" and swap a **contact card**, not enough to live in DMs. So it's capped, and the first-class action in any thread is **Share contact**.
 
-**Cap: you can send 5 messages to each person per day** (per recipient; tunable). When you're out with someone, the composer locks until tomorrow with a nudge to share contact or make a plan.
+**Cap: you can send 5 messages to each person per day** (per recipient; tunable). When you're out with someone, the composer locks until tomorrow with a nudge to share your contact card.
+
+There is **no Make a plan** in a thread. Plans live on Events / Touch Grass.
+
+**Double-tap a friend's bubble to heart it.** A heart is a reaction, not a sent message, and never counts against the cap.
 
 Everyone sets up a **contact card** once (below) so sharing it is one tap.
 
@@ -26,9 +30,10 @@ Everyone sets up a **contact card** once (below) so sharing it is one tap.
 ### Conversation
 - Header: back · avatar · name · **"{n} left today"** chip.
 - Text message bubbles (them left, you right). **Text only** — no media inbox (that's what stories are for).
-- **Quick actions** row, first-class: **Share contact** (shares your contact card into the thread) · **Make a plan** (→ touch grass / create an event).
-- Composer with a live **"{n} of 5 left today"** counter + "swap contacts to keep going."
-- **At the cap (your side):** composer locks — *"Out of messages today — share contact or make a plan"* — with the two quick actions still available (they don't count against the cap).
+- **Quick action:** **Share contact** (shares your contact card into the thread, not a raw phone-number shortcut).
+- **Double-tap** a friend's bubble to heart it. A small heart stays on the bubble. Double-tap again to unheart. This is **not** a sent message.
+- Composer with a live **"{n} of 5 left today"** counter + "share your contact card to keep going."
+- **At the cap (your side):** composer locks — *"Out of messages today — share your contact card"* — Share contact still works (it does not count against the cap).
 
 ### Contact card (set up once in Messages)
 - In the Messages app, everyone sets up a **contact card**: name + whatever they choose to include (phone, Instagram, email…). They **pick what's on it** and can edit anytime.
@@ -48,7 +53,7 @@ Everyone sets up a **contact card** once (below) so sharing it is one tap.
 
 - You can message **people you're connected with** (friends). Find-a-friend searches your roster.
 - The cap is **per recipient per day** — 5 messages to *each* person; the two directions of a thread are independent (being maxed toward someone doesn't stop them messaging you).
-- **Share contact**, **Make a plan**, and **story-reply mirrors** (`kind: 'storyReply'`) are **not** counted against the 5/day cap — the app *wants* you to use the first two, and story replies already "spent" their attention on the story surface (`NOTIFICATIONS.md`).
+- **Share contact**, **hearts**, and **story-reply mirrors** (`kind: 'storyReply'`) are **not** counted against the 5/day cap. Story replies already "spent" their attention on the story surface (`NOTIFICATIONS.md`). Hearts are reactions only (no new bubble, no vanity count).
 - No read receipts, no typing indicators, no "online now," no message counts shown to others — nothing that manufactures inbox pressure.
 - The daily count **resets each day**.
 
@@ -64,7 +69,7 @@ When a friend replies on your story, that reply also appears in your Messages th
 
 - Message bodies are **end-to-end encrypted**. Encrypt on the sender's device before upload; decrypt only on the two participants' devices.
 - The server and database store **ciphertext only**. Bridger staff, admins, support tools, and logs must never be able to read plaintext message content or contact-card field values.
-- Analytics never includes message text, phone numbers, or contact-card values — only opaque outcomes (`message_sent`, `contact_shared`, `counts_against_cap`).
+- Analytics never includes message text, phone numbers, or contact-card values — only opaque outcomes (`message_sent`, `contact_shared`, `message_hearted`, `counts_against_cap`).
 - Demo mode may keep plaintext in memory for local UI preview. That pattern must never ship to production storage.
 
 ---
@@ -84,11 +89,13 @@ interface Message {
   id: string;
   conversationId: string;
   senderId: string;
-  kind: 'text' | 'contactCard' | 'planNudge' | 'storyReply';  // storyReply = mirrored story reply
+  kind: 'text' | 'contactCard' | 'planNudge' | 'storyReply';  // planNudge is legacy only
   text?: string;
   contactCardId?: string;
   createdAt: string;
-  countsAgainstCap: boolean;       // false for share-contact / make-a-plan / storyReply
+  countsAgainstCap: boolean;       // false for share-contact / hearts / storyReply
+  heartedByMe?: boolean;           // you hearted their bubble (not a send)
+  heartedByThem?: boolean;         // they hearted yours
 }
 
 interface ContactCard {            // set up once per user
@@ -116,7 +123,7 @@ interface DailyCap {               // per sender → recipient, per day
 | Contact card (set up once, share) | `messages` (or `profiles`) |
 | Find a friend | `tiers` / `connections` (your roster) |
 | Message from profile | `person/[id]` → `messages` |
-| Make a plan | `touchgrass` / `events` |
+| Double-tap heart | `messages` (reaction; not a send) |
 
 ---
 
@@ -126,10 +133,20 @@ interface DailyCap {               // per sender → recipient, per day
 - [ ] You can only message people you're connected with; Find-a-friend searches your roster.
 - [ ] You can send **5 messages to each person per day**; the composer shows a live "{n} left today" counter.
 - [ ] The cap is per recipient and per direction — being maxed toward someone does not stop them from messaging you.
-- [ ] At your cap the composer locks with a "share contact or make a plan" nudge; quick actions still work.
+- [ ] At your cap the composer locks with a "share your contact card" nudge; Share contact still works.
 - [ ] When you message someone who has used their 5 to you, the thread shows "{Name} can't reply until tomorrow" and prompts "Share your contact instead."
 - [ ] Everyone can set up a **contact card** once (choose which fields — phone / Instagram / email); **Share contact** shares it in one tap.
-- [ ] "Share contact", "Make a plan", and story-reply mirrors do NOT count against the cap.
+- [ ] "Share contact", hearts, and story-reply mirrors do NOT count against the cap.
+- [ ] There is no Make a plan action in a thread.
+- [ ] Double-tap a friend's bubble hearts it (toggle). No heart counts. Does not send a message.
 - [ ] A story reply also appears in the thread as `storyReply`; opening the thread clears the matching notification (`NOTIFICATIONS.md`).
 - [ ] Text only — no media inbox. No read receipts, typing indicators, or presence.
 - [ ] The daily count resets each day.
+
+---
+
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-08-21 | Removed Make a plan from threads (plans live on Events / Touch Grass). Share contact is the contact card. Double-tap a friend's bubble to heart it; hearts never count as a send. |

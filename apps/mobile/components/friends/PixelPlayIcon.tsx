@@ -11,6 +11,7 @@
 // white card → black button.
 // ============================================
 import React, { useMemo } from 'react';
+import { Platform } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 
 /** Face grid (perfect circle). Extra rows below hold the extrusion. */
@@ -23,7 +24,7 @@ const GRID_H = FACE_N + DEPTH;
 export const PLAY_GRID_W = GRID_W;
 export const PLAY_GRID_H = GRID_H;
 
-// Layer ids
+// THIS SECTION DOES: name each paint layer so buildLayers can stamp them.
 const EMPTY = 0;
 const EX_DEEP = 1;
 const EX_MID = 2;
@@ -47,6 +48,7 @@ function playGlyphCells(): Array<[number, number]> {
   const thick = 2;
   const halfEnd = 15; // last upper row; 16 is its mirror partner
 
+  // THIS SECTION DOES: a blank mask we stamp play-triangle pixels onto.
   const mask: boolean[][] = Array.from({ length: FACE_N }, () =>
     Array(FACE_N).fill(false)
   );
@@ -54,6 +56,7 @@ function playGlyphCells(): Array<[number, number]> {
     if (x >= 0 && x < FACE_N && y >= 0 && y < FACE_N) mask[y]![x] = true;
   };
 
+  // THIS SECTION DOES: how far right the diagonal has reached on this upper row.
   const rightAtUpper = (y: number) => {
     if (y === halfEnd) return tipX;
     const t = (y - topY) / (halfEnd - topY);
@@ -82,6 +85,7 @@ function playGlyphCells(): Array<[number, number]> {
     }
   }
 
+  // THIS SECTION DOES: turn the finished mask into a flat list of cells.
   const cells: Array<[number, number]> = [];
   for (let y = 0; y < FACE_N; y++) {
     for (let x = 0; x < FACE_N; x++) {
@@ -96,6 +100,7 @@ function playGlyphCells(): Array<[number, number]> {
  * triangle, and bottom extrusion. More circular than the old traced oval.
  */
 function buildLayers() {
+  // THIS SECTION DOES: start with an empty pixel grid (face + extrusion rows).
   const g: number[][] = Array.from({ length: GRID_H }, () =>
     Array(GRID_W).fill(EMPTY)
   );
@@ -167,6 +172,7 @@ function buildLayers() {
     }
   }
 
+  // THIS SECTION DOES: mark rim (dist 1) and inset ring (dist 2) from that distance map.
   for (let y = 0; y < FACE_N; y++) {
     for (let x = 0; x < FACE_N; x++) {
       if (!inFace(x, y)) continue;
@@ -199,6 +205,7 @@ function buildLayers() {
       g[ty]![x] = d === 1 ? EX_MID : EX_DEEP;
     }
   }
+  // THIS SECTION DOES: slight outward flare so the extrusion feels thick on the sides.
   for (let d = 2; d <= DEPTH; d++) {
     for (let x = 0; x < FACE_N; x++) {
       const b = bottomAt[x]!;
@@ -214,6 +221,7 @@ function buildLayers() {
     }
   }
 
+  // THIS SECTION DOES: compress each layer into horizontal runs for cheap SVG rects.
   function runs(kind: number): Array<[number, number, number, number]> {
     const out: Array<[number, number, number, number]> = [];
     for (let y = 0; y < GRID_H; y++) {
@@ -231,6 +239,7 @@ function buildLayers() {
     return out;
   }
 
+  // THIS SECTION DOES: hand back every layer the SVG painter needs.
   return {
     EX_DEEP: runs(EX_DEEP),
     EX_MID: runs(EX_MID),
@@ -242,8 +251,10 @@ function buildLayers() {
   };
 }
 
+// THIS SECTION DOES: build the pixel art once when this module loads.
 const LAYERS = buildLayers();
 
+// THIS SECTION DOES: turn one layer's runs into SVG rectangles of one color.
 function paint(
   runs: Array<[number, number, number, number]>,
   fill: string,
@@ -299,8 +310,10 @@ export function PixelPlayIcon({
   height?: number;
   colors?: PixelPlayColors;
 }) {
+  // THIS SECTION DOES: unpack the color recipe for this theme.
   const { face, faceMid, edge, border, glyph, extrusion, extrusionMid } = colors;
 
+  // THIS SECTION DOES: build SVG rects once per color set (back to front).
   const shapes = useMemo(
     () => (
       <>
@@ -316,15 +329,22 @@ export function PixelPlayIcon({
     [face, faceMid, edge, border, glyph, extrusion, extrusionMid]
   );
 
+  // THIS SECTION DOES: draw the icon. Parent Pressable owns the real tap + label.
+  // ACCESSIBILITY: native-only props — react-native-svg forwards them to DOM on web.
+  const nativeA11yProps =
+    Platform.OS === 'web'
+      ? {}
+      : {
+          accessible: false as const,
+          importantForAccessibility: 'no-hide-descendants' as const
+        };
+
   return (
-    // ACCESSIBILITY: decorative only; parent RecapTeaser carries the label.
-    // shapeRendering is a web SVG hint and is not typed on react-native-svg.
     <Svg
       width={width}
       height={height}
       viewBox={`0 0 ${GRID_W} ${GRID_H}`}
-      accessible={false}
-      importantForAccessibility="no-hide-descendants"
+      {...nativeA11yProps}
       {...({ shapeRendering: 'crispEdges' } as Record<string, string>)}
     >
       {shapes}

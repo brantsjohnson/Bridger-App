@@ -44,6 +44,7 @@ export function NameStep({
     >
       <View className="gap-3">
         <TextField
+          labelTone="onaccent"
           label="First name"
           value={first}
           onChange={onChangeFirst}
@@ -51,6 +52,7 @@ export function NameStep({
           analyticsId={ONBOARDING.name.first_input}
         />
         <TextField
+          labelTone="onaccent"
           label="Last name"
           value={last}
           onChange={onChangeLast}

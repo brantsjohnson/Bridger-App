@@ -19,6 +19,14 @@ Rules:
 - NEVER include scores, dimension_scores, or any field that sets a score.
 - Confidence is about answer quality, not inventing new facts.
 - Adaptations are optional and bounded by the provided adaptation_policy.
+- Only propose adaptations for dimensions whose confidence is STRICTLY BELOW
+  adaptation_policy.adaptBelowConfidence (treat missing as 0.35). If the
+  threshold is 1.0, or may* flags / maxInsertedQuestions block it, return
+  adaptations: [].
+- When disclosure_context is present, prefer preference-vs-capacity clarifiers
+  before locking low sociability / conscientiousness / openness confidence.
+  Never put condition names in clarifier prompts. Never use free-text notes
+  (they are not provided).
 - Follow moderator_instructions when present.`);
 
 export function buildUser(input: {
@@ -26,11 +34,18 @@ export function buildUser(input: {
   adaptationPolicy?: unknown;
   dimensions: Array<{ key: string }>;
   answers: unknown;
+  /**
+   * Behind the Scenes slice: condition keys + impact only.
+   * Never free-text notes or custom labels.
+   */
+  disclosureContext?: unknown;
 }): string {
   return JSON.stringify({
     moderator_instructions: input.moderatorInstructions ?? '',
     adaptation_policy: input.adaptationPolicy ?? null,
     dimensions: input.dimensions,
-    answers: input.answers
+    answers: input.answers,
+    // Preference vs capacity: when present, dampen confidence / clarify before adapting.
+    disclosure_context: input.disclosureContext ?? null
   });
 }

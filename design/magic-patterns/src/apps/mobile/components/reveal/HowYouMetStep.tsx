@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckIcon, HandshakeIcon, MapPinIcon, UsersIcon } from 'lucide-react';
 import { MeetContext } from '../../../../packages/shared';
 import { cn } from '../../../../packages/ui';

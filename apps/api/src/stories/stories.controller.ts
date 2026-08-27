@@ -47,6 +47,7 @@ export class StoriesController {
       caption?: string;
       themeSlug?: string;
       visibleToTier?: Tier;
+      eventId?: string;
     }
   ) {
     return this.stories.create(user.id, body);

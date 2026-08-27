@@ -8,7 +8,7 @@
 // Analytics: opens the friends surface on mount; every control uses FRIENDS.*
 // ids from the shared taxonomy (no invented names).
 // ============================================
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PlusIcon } from 'lucide-react-native';
@@ -39,6 +39,7 @@ import { useFriendPod } from '../../hooks/useFriendPod';
 import { useFriends } from '../../hooks/useFriends';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 import { createShareInvite } from '../../data/invites';
+import { getInviteAccess } from '../../data/access';
 
 /**
  * Feature flag: when false the search bar is not rendered at all.
@@ -47,27 +48,40 @@ import { createShareInvite } from '../../data/invites';
 const searchEnabled = false;
 
 export default function FriendsScreen() {
+  // THIS SECTION DOES: theme colors for icons in the header.
   const c = useThemeColors();
   const router = useRouter();
+
+  // THIS SECTION DOES: load the roster, jokes wall, and this week's Friend Pod.
   const { sections, total, refresh, onMoveTier } = useFriends();
   const { jokes, onAdd: onAddJoke } = useInsideJokes('all');
   const { recap, refresh: refreshPod } = useFriendPod();
 
+  // THIS SECTION DOES: local UI state for sheets, edit mode, and search.
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [questionOpen, setQuestionOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
+  const [jokeOpen, setJokeOpen] = useState(false);
+  const [moving, setMoving] = useState<FriendRowPerson | null>(null);
+  const [canInvite, setCanInvite] = useState(true);
+  /** Freeze page scroll while a native drag is in progress. */
+  const [rosterDragging, setRosterDragging] = useState(false);
 
-  // Play opens the full-page weekly podcast (not a popup).
-  const openPlayer = () => {
+  // THIS SECTION DOES: block Recap if the header + just won the tap (fall-through guard).
+  const preferAddFriend = useRef(false);
+
+  // THIS SECTION DOES: open the full-page weekly podcast (not a popup).
+  const openPlayer = useCallback(() => {
     router.push('/recap');
-  };
+  }, [router]);
 
-  // Record opens the recorder, unless the user's rolling week hasn't reset yet.
-  // Only wired to "Add your recap" in Friend Pod — never the header +.
-  const openRecorder = () => {
+  // THIS SECTION DOES: open the recap recorder from Friend Pod only (never header +).
+  const openRecorder = useCallback(() => {
+    // Header + and this row can fight if the title row remounts mid-tap.
+    if (preferAddFriend.current) return;
     if (recap?.canRecordAfter) {
       const when = new Date(recap.canRecordAfter);
       Alert.alert(
@@ -78,30 +92,74 @@ export default function FriendsScreen() {
     }
     setAddOpen(false);
     setRecordOpen(true);
-  };
+  }, [recap?.canRecordAfter]);
 
-  // Header + is add-friend only (QR / link / scan). Never opens the recap recorder.
-  const openAddFriend = () => {
+  // THIS SECTION DOES: header + is add-friend only (QR / link / scan).
+  const openAddFriend = useCallback(() => {
+    if (!canInvite) {
+      Alert.alert(
+        'Invites paused',
+        'During the TestFlight demo you cannot send invite links. Ask a friend who is already on Bridger to add you.'
+      );
+      return;
+    }
+    preferAddFriend.current = true;
     setRecordOpen(false);
     setAddOpen(true);
-  };
-  const [jokeOpen, setJokeOpen] = useState(false);
-  const [moving, setMoving] = useState<FriendRowPerson | null>(null);
-  /** Freeze page scroll while a native drag is in progress. */
-  const [rosterDragging, setRosterDragging] = useState(false);
+    // Clear the lock after the gesture settles so Pod record still works.
+    setTimeout(() => {
+      preferAddFriend.current = false;
+    }, 400);
+  }, [canInvite]);
 
-  // Mark Friends as the active analytics surface when this tab mounts.
+  // THIS SECTION DOES: keep Edit / + as the same React nodes so the header
+  // does not remount them on every Friends re-render (that let + taps hit Recap).
+  const headerTrailing = useMemo(
+    () => (
+      <View className="flex-row items-center gap-2">
+        {/* Edit toggles move-between-circles mode */}
+        <ButtonSecondary
+          size="sm"
+          className="h-10"
+          tone={editing ? 'solid' : 'light'}
+          onPress={() => setEditing((v) => !v)}
+          accessibilityLabel={editing ? 'Done editing friends' : 'Edit friends'}
+          analyticsId={FRIENDS.top_nav.edit}
+        >
+          {editing ? 'Done' : 'Edit'}
+        </ButtonSecondary>
+        {/* + opens Add friend only (never the recap / podcast recorder) */}
+        <Pressable
+          onPress={withAnalyticsPress(FRIENDS.top_nav.add, openAddFriend)}
+          accessibilityRole="button"
+          accessibilityLabel="Add friend"
+          hitSlop={8}
+          className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
+        >
+          {/* Solid ink circle + canvas plus so the + stays readable in both themes */}
+          <PlusIcon size={18} color={c.canvas} strokeWidth={3} />
+        </Pressable>
+      </View>
+    ),
+    [editing, openAddFriend, c.canvas]
+  );
+
+  // THIS SECTION DOES: mark Friends as the active analytics surface on mount.
   useEffect(() => {
     openSurface('friends');
+    void getInviteAccess()
+      .then((a) => setCanInvite(a.canInvite))
+      .catch(() => setCanInvite(true));
   }, []);
 
-  // Edit mode shows empty tier drop zones so you can move the last person out.
+  // THIS SECTION DOES: in edit mode, show empty tier drop zones too.
   useEffect(() => {
     void refresh(editing);
   }, [editing, refresh]);
 
   const empty = total === 0;
 
+  // THIS SECTION DOES: filter the roster when search is enabled.
   const filteredSections = sections.map((s) => ({
     ...s,
     people: searchEnabled && query.trim()
@@ -126,11 +184,12 @@ export default function FriendsScreen() {
     if (result.upsell) {
       Alert.alert(
         'Circle is full',
-        'Free plans hold 10 Close friends and 25 Friends. They landed in Acquaintances. Co-op lifts the caps.'
+        'Free Lite holds 5 Close friends and 30 Friends. They landed in Acquaintances. Co-op raises the caps and adds named groups.'
       );
     }
   };
 
+  // THIS SECTION DOES: finish a Move-to sheet pick, then close the sheet.
   const handlePickerMove = async (tier: Tier) => {
     if (!moving) return;
     await retierPerson(moving, tier);
@@ -139,37 +198,16 @@ export default function FriendsScreen() {
 
   return (
     <Screen tone="canvas">
+      {/* THIS SECTION DOES: page title + Edit + Add-friend +. */}
       <ScreenHeader
         title="Friends"
         analyticsSurface="friends"
-        trailing={
-          <View className="flex-row items-center gap-2">
-            {/* Edit toggles move-between-circles mode */}
-            <ButtonSecondary
-              size="sm"
-              className="h-10"
-              tone={editing ? 'solid' : 'light'}
-              onPress={() => setEditing((v) => !v)}
-              accessibilityLabel={editing ? 'Done editing friends' : 'Edit friends'}
-              analyticsId={FRIENDS.top_nav.edit}
-            >
-              {editing ? 'Done' : 'Edit'}
-            </ButtonSecondary>
-            {/* + opens Add friend only (never the recap / podcast recorder) */}
-            <Pressable
-              onPress={withAnalyticsPress(FRIENDS.top_nav.add, openAddFriend)}
-              accessibilityRole="button"
-              accessibilityLabel="Add friend"
-              className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
-            >
-              {/* Solid ink circle + canvas plus so the + stays readable in both themes */}
-              <PlusIcon size={18} color={c.canvas} strokeWidth={3} />
-            </Pressable>
-          </View>
-        }
+        trailing={headerTrailing}
       />
 
+      {/* THIS SECTION DOES: the scrolling page body (frozen while dragging). */}
       <ScreenBody scrollEnabled={!rosterDragging}>
+        {/* THIS SECTION DOES: optional search (feature-flagged off until live). */}
         {searchEnabled ? (
           <View className="mb-4">
             <SearchField
@@ -181,7 +219,7 @@ export default function FriendsScreen() {
           </View>
         ) : null}
 
-        {/* Friend Pod + Inside Jokes only when you have people */}
+        {/* THIS SECTION DOES: Friend Pod + Inside Jokes when you have people. */}
         {!empty ? (
           <>
             <View>
@@ -217,7 +255,8 @@ export default function FriendsScreen() {
                     accessibilityLabel="Add an Inside Joke"
                     className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
                   >
-                    <Text className="font-sans-b text-[18px] leading-none text-white">+</Text>
+                    {/* Icon + (not a Text "+") so font metrics cannot shove it off-center. */}
+                    <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
                   </Pressable>
                 }
               />
@@ -234,15 +273,17 @@ export default function FriendsScreen() {
           </>
         ) : null}
 
+        {/* THIS SECTION DOES: a short tip while Edit mode is on. */}
         {editing && !empty ? (
           <Text className="mb-1 mt-7 font-sans-sb text-[12px] text-ink-mute">
             Drag a friend into another group. Tap to pick instead.
           </Text>
         ) : null}
 
+        {/* THIS SECTION DOES: empty state, or the tiered friends roster. */}
         {empty ? (
           <View className="mt-4">
-            <ColdStart onAdd={() => setAddOpen(true)} />
+            <ColdStart onAdd={() => openAddFriend()} inviteLocked={!canInvite} />
           </View>
         ) : (
           <FriendsRoster
@@ -259,10 +300,18 @@ export default function FriendsScreen() {
         )}
       </ScreenBody>
 
+      {/* THIS SECTION DOES: sheets that open from the page (add, scan, recap, jokes, move). */}
       <AddFriendSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onShare={() => {
+          if (!canInvite) {
+            Alert.alert(
+              'Invites paused',
+              'During the TestFlight demo you cannot send invite links.'
+            );
+            return;
+          }
           setAddOpen(false);
           void (async () => {
             try {

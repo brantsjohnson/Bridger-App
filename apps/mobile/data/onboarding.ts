@@ -116,17 +116,33 @@ export async function saveName(name: string): Promise<void> {
 
 /**
  * 4 · Profile photo — the one place an upload is allowed (stories stay
- * capture-only). Demo just records the source; live uploads through the media
- * store and applies the house filter.
+ * capture-only). Demo just records the source; live uploads the picked file to
+ * the private media bucket, then PATCH /me with the new avatar media id so it
+ * shows on your profile behind the house filter.
  */
-export async function savePhoto(input: { source: PhotoSource }): Promise<void> {
+export async function savePhoto(input: {
+  source: PhotoSource;
+  uri?: string;
+}): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.photo = input.source;
     return;
   }
-  // FOLLOW-UP (needs a Supabase Storage bucket + signed upload, like recap
-  // audio): upload the file, create a `media` row, then PATCH /me with the new
-  // avatar media id. The /me PATCH route is ready; only the upload path is left.
+  // No file to upload (they picked a source but cancelled the picker): nothing
+  // to save, and never crash the run over an optional photo.
+  if (!input.uri) return;
+
+  // Upload the bytes and create the owned `media` row, then point identity at it.
+  const { uploadMedia } = await import('../lib/media-upload');
+  const mediaId = await uploadMedia(
+    input.uri,
+    'photo',
+    `avatar/${Date.now()}.jpg`
+  );
+  await apiFetch('/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ avatarMediaId: mediaId })
+  });
 }
 
 /**
@@ -152,16 +168,23 @@ export async function saveBirthday(value: string): Promise<void> {
 }
 
 /**
- * Invite a friend to Bridger. Bridger only works once you have a friend on it,
- * so onboarding nudges one invite up front.
- * PRIVACY: contacts are never uploaded in bulk; this is a single, explicit share.
+ * Invite a friend to Bridger. During demo week this asks for contacts, shares a
+ * link, and records the send so access unlocks. PRIVACY: contacts stay on-device.
  */
 export async function sendInvite(): Promise<void> {
-  if (isDemoMode()) {
-    demoDraftSaved.invited = true;
+  const { loadInviteContacts, sendInviteToContact, shareInviteForAccess } =
+    await import('../lib/invite-from-contacts');
+  const { contacts, permission } = await loadInviteContacts();
+  if (contacts.length > 0) {
+    await sendInviteToContact(contacts[0]!);
     return;
   }
-  // TODO: open the OS share sheet with a personal invite link
+  if (isDemoMode()) {
+    demoDraftSaved.invited = true;
+  }
+  if (permission !== 'granted' || contacts.length === 0) {
+    await shareInviteForAccess();
+  }
 }
 
 /** 6 · Meet new people — city only, never an address. */
@@ -194,6 +217,203 @@ export async function saveVisibility(rows: VisibilityRow[]): Promise<void> {
   // this needs the basics step to first return the saved attribute ids so each
   // review row knows which DB fact it controls; today the row id is the answer
   // id, not the attribute id. The PATCH route itself is ready.
+}
+
+/**
+ * Connection style — how you want friends-of-friends matched to you (opaque
+ * keys only: humor, values, personality, hobbies, communication). Own-matching
+ * preference; never shown to others as free text.
+ */
+export async function saveConnectionStyle(styles: string[]): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.connectionStyle = [...styles];
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ connectionStyle: styles })
+  });
+}
+
+/** 10A · Right now — current job + dream job. Two "essential" facts. */
+export async function saveRightNow(input: {
+  currentJob: string;
+  dreamJob: string;
+}): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.rightNow = { ...input };
+    return;
+  }
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      replacePrefix: 'work',
+      attributes: [
+        input.currentJob.trim()
+          ? { key: 'current_job', value: { text: input.currentJob.trim() }, layer: 'essential', visibleToTier: 'friend' }
+          : null,
+        input.dreamJob.trim()
+          ? { key: 'dream_job', value: { text: input.dreamJob.trim() }, layer: 'essential', visibleToTier: 'friend' }
+          : null
+      ].filter(Boolean)
+    })
+  });
+}
+
+/** 10B · Obsession — the song on repeat (typed fallback; connect flows use data/music). */
+export async function saveObsessionSong(song: string): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.song = song.trim();
+    return;
+  }
+  if (!song.trim()) return;
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      replacePrefix: 'current_song',
+      attributes: [
+        { key: 'current_song', value: { text: song.trim() }, layer: 'essential', visibleToTier: 'friend' }
+      ]
+    })
+  });
+}
+
+/** 10C · Social battery — nights out per week (0..7, 7 means 7+). Own-pacing only. */
+export async function saveSocialBattery(nights: number): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.socialBattery = nights;
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ socialBattery: nights })
+  });
+}
+
+/** 10D · Your color — a personal accent hex used to tint your own surfaces. */
+export async function saveColor(hex: string): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.color = hex;
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ profileColor: hex })
+  });
+}
+
+/** 10E · Your places — hometown, current town, favorite place visited. Towns only. */
+export async function savePlaces(input: {
+  hometown: string;
+  currentTown: string;
+  favoritePlace: string;
+}): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.places = { ...input };
+    return;
+  }
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      replacePrefix: 'place',
+      attributes: [
+        input.hometown.trim()
+          ? { key: 'hometown', value: { city: input.hometown.trim() }, layer: 'essential', visibleToTier: 'friend' }
+          : null,
+        input.currentTown.trim()
+          ? { key: 'current_city', value: { city: input.currentTown.trim() }, layer: 'essential', visibleToTier: 'friend' }
+          : null,
+        input.favoritePlace.trim()
+          ? { key: 'favorite_place', value: { city: input.favoritePlace.trim() }, layer: 'essential', visibleToTier: 'friend' }
+          : null
+      ].filter(Boolean)
+    })
+  });
+}
+
+/**
+ * 10F · Recap — the highlight of your week (typed or a 20s voice memo).
+ * Voice mode uploads the recorded clip to the private media bucket and stores
+ * the resulting media id on the attribute; text mode stores the words. Demo
+ * records only the mode + text (no upload).
+ */
+export async function saveRecap(input: {
+  mode: 'voice' | 'text';
+  text: string;
+  recorded: boolean;
+  recordedUri?: string;
+}): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.recap = {
+      mode: input.mode,
+      text: input.text,
+      recorded: input.recorded
+    };
+    return;
+  }
+
+  // VOICE: upload the clip first, then save the attribute pointing at the audio.
+  if (input.mode === 'voice' && input.recorded && input.recordedUri) {
+    const { uploadMedia } = await import('../lib/media-upload');
+    const mediaId = await uploadMedia(
+      input.recordedUri,
+      'audio',
+      `recap/onboarding/${Date.now()}.m4a`
+    );
+    await apiFetch('/me/attributes', {
+      method: 'POST',
+      body: JSON.stringify({
+        replacePrefix: 'weekly_recap',
+        attributes: [
+          { key: 'weekly_recap', value: { mediaId }, layer: 'essential', visibleToTier: 'friend' }
+        ]
+      })
+    });
+    return;
+  }
+
+  // TEXT: just the words, no media.
+  if (input.mode === 'text' && input.text.trim()) {
+    await apiFetch('/me/attributes', {
+      method: 'POST',
+      body: JSON.stringify({
+        replacePrefix: 'weekly_recap',
+        attributes: [
+          { key: 'weekly_recap', value: { text: input.text.trim() }, layer: 'essential', visibleToTier: 'friend' }
+        ]
+      })
+    });
+  }
+}
+
+/**
+ * Build the Privacy & Control review rows from the taste answers. Only the six
+ * things the spec lists appear: birthday, job, dream job, favorite place, song,
+ * weekly recap. Empty answers show "Not added" but still carry an audience.
+ */
+export function buildPrivacyRows(input: {
+  birthday: string;
+  currentJob: string;
+  dreamJob: string;
+  favoritePlace: string;
+  song: string;
+  recapText: string;
+  recapRecorded: boolean;
+}): VisibilityRow[] {
+  const val = (s: string) => (s.trim() ? s.trim() : 'Not added');
+  return [
+    { id: 'birthday', label: 'Birthday', value: val(input.birthday), tier: 'friend' as Tier },
+    { id: 'current_job', label: 'Job', value: val(input.currentJob), tier: 'friend' as Tier },
+    { id: 'dream_job', label: 'Dream job', value: val(input.dreamJob), tier: 'friend' as Tier },
+    { id: 'favorite_place', label: 'Place traveled', value: val(input.favoritePlace), tier: 'friend' as Tier },
+    { id: 'current_song', label: 'Song', value: val(input.song), tier: 'friend' as Tier },
+    {
+      id: 'weekly_recap',
+      label: 'Weekly recap',
+      value: input.recapRecorded ? 'Voice memo' : val(input.recapText),
+      tier: 'friend' as Tier
+    }
+  ];
 }
 
 /** 8 · Co-op pitch outcome. "Use free" is first-class; never a paywall. */

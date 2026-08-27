@@ -9,7 +9,7 @@ import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { ClockIcon, HandCoinsIcon, MapPinIcon } from 'lucide-react-native';
 import type { Cover } from '@bridger/shared';
-import { CREATE_EVENT } from '@bridger/shared';
+import { CREATE_EVENT, formatRecurrenceLabel } from '@bridger/shared';
 import {
   AnalyticsRegion,
   Avatar,
@@ -83,6 +83,11 @@ export function PreviewStep({
                   <Text className="font-sans-b text-[14px] leading-snug text-ink">
                     {draft.day} at {draft.time}
                   </Text>
+                  {draft.repeats && draft.recurrence ? (
+                    <Text className="mt-0.5 font-sans-sb text-[13px] text-ink-soft">
+                      {formatRecurrenceLabel(draft.recurrence)}
+                    </Text>
+                  ) : null}
                 </DetailRow>
                 {draft.place || draft.address ? (
                   <DetailRow

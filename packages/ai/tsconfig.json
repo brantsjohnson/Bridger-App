@@ -3,9 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "module": "CommonJS",
-    "moduleResolution": "Node",
-    "noEmit": false
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "noEmit": false,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/evals/**/*.ts", "dist"]

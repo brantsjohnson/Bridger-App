@@ -104,20 +104,21 @@ Each answer asks **Who can see this?**
 
 ## Module 3 · Hobbies & Interests — "Select your hobbies"
 
-*Tap anything that fits. We'll ask one quick follow-up about each one.* Rendered as the colorful blob-chip picker (`DESIGN.md`), color-coded by category. **+ Add your own** is always available.
+*Tap anything that fits. We'll ask one quick follow-up about each one.* Rendered as the colorful chip picker (`DESIGN.md`), grouped by category, with search and a tap burst of that hobby's emoji. **+ Add your own** is always available.
 
-**Outdoors:** Hiking · Camping · Backpacking · Skiing · Snowboarding · Surfing · Rock climbing · Cycling · Fishing · Hunting · Kayaking · Sailing · Scuba diving · Stargazing
-**Sports:** Soccer · Basketball · Football · Baseball · Hockey · Tennis · Pickleball · Golf · Volleyball · Martial arts · Track and field
-**Fitness & wellness:** Yoga · Pilates · Weightlifting · CrossFit · Boxing · Swimming · Meditation · Running
-**Creative:** Painting · Drawing · Photography · Videography · Pottery · Knitting · Sewing · Woodworking · DIY · Graphic design · Journaling · Collecting
-**Music & performance:** Playing an instrument · Singing · Going to concerts · Music festivals · Podcasts · DJing · Vinyl collecting · Musicals and theatre
-**Food & drink:** Cooking · Baking · Trying restaurants · Coffee · Wine · Beer and breweries · Cocktails · Tea
-**Movies, games & media:** Movies · TV shows · Stand-up comedy · Anime · Video games · Board games · D&D and TTRPGs · Chess
-**Reading & writing:** Reading · Writing · Book club
-**Tech & making:** Coding · 3D printing
-**Animals & nature:** Dogs · Cats · Horseback riding · Gardening · Houseplants · Farming
-**Lifestyle & culture:** Dancing · Karaoke · Volunteering · Thrifting · Fashion · Tattoos · Astrology · Politics
-**Learning:** Learning languages · History · True crime
+**Creativity:** Acting · Animation · Blogging · Calligraphy · Creative Writing · Digital Art · Drawing · Fashion Design · Filmmaking · Graphic design · Illustration · Jewelry Making · Painting · Photography · Poetry · Pottery · Sculpting · Storytelling · Videography · Writing · Collecting
+**Crafts:** DIY · Embroidery · Home Decor · Interior Design · Knitting · Quilting · Sewing · Thrifting · Woodworking
+**Education:** Art History · Book club · Civic Engagement · Genealogy · History · Learning languages · Museum Visits · Philosophy · Reading
+**Entertainment:** Anime · Binge-watching · Board games · Broadway · Card Games · Chess · Cosplay · Documentaries · Disney · D&D and TTRPGs · Drag · Escape Rooms · Gaming · Improv · Karaoke · Magic Tricks · Marvel · Movies · Netflix · Podcasts · Puzzles · Reality TV · Stand-up comedy · Star Wars · Thrillers · TikTok · Trivia · True crime · TV shows · Video games · YouTube
+**Fitness:** Martial arts · Biking · Boxing · CrossFit · Dancing · Gym · Hiking · Yoga · Pilates · Rock climbing · Running · Surfing · Swimming · Skiing · Tennis · Volleyball · Weightlifting
+**Food & Drink:** Baking · BBQ · Brunch · Coffee · Cooking · Foodie · Ice Cream · Pizza · Sushi · Tea · Wine · Beer and breweries · Cocktails · Trying restaurants · Vegan · Vegetarian
+**Music:** Christian Music · DJing · EDM · Going to concerts · Guitar · Jazz · K-pop · Metal · Music Composition · Music Production · Music festivals · Musicals and theatre · Piano · Playing an instrument · Pop · Rap · Rock · Singing · Vinyl collecting
+**Outdoors:** Backpacking · Beach Activities · Bird Watching · Camping · Cycling · Fishing · Foraging · Gardening · Hunting · Kayaking · Nature Exploration · Roller Skating · Sailing · Scuba diving · Snowboarding · Stargazing · Sunsets · Urban Exploring
+**Social:** Activism · Astrology · Clubbing · Conservative · Debate · Environmentalism · Fashion · House Parties · LGBTQ+ Advocacy · Non-political · Personality Tests · Politics · Progressive · Spirituality · Tattoos · Volunteering
+**Tech:** 3D printing · AI · App Design · Coding · Crypto · Cybersecurity · Game Streaming · NFTs · Stock Trading · Productivity · Programming · UI/UX Design · Web Design · Web3
+**Wellness:** Biohacking · Cold Plunge · Crystals · Journaling · Meditation · Mental Health · Mindfulness · Saunas · Supplements · Tarot Reading · Therapy
+**Sports:** Soccer · Basketball · Football · Baseball · Hockey · Pickleball · Golf · Track and field
+**Animals:** Dogs · Cats · Horseback riding · Houseplants · Farming
 **Travel:** Road trips · Solo travel
 
 ### Follow-ups — "Tell your friends more"
@@ -215,6 +216,109 @@ Each answer asks **Who can see this?**
 | True crime | Go-to true crime podcast? |
 | Road trips | What route would you do again? |
 | Solo travel | Favorite place you've traveled? |
+| Acting | Favorite role you have played? |
+| Animation | What do you like to animate? |
+| Blogging | What do you write about? |
+| Calligraphy | Favorite thing to letter? |
+| Creative Writing | What genre do you write? |
+| Digital Art | How would you describe your style? |
+| Fashion Design | What do you like to design? |
+| Filmmaking | What film are you most proud of? |
+| Illustration | What do you like to illustrate? |
+| Jewelry Making | Favorite piece you have made? |
+| Poetry | A poem you always come back to? |
+| Sculpting | Favorite thing you have sculpted? |
+| Storytelling | What kind of stories do you tell? |
+| Embroidery | Go-to thing to stitch? |
+| Home Decor | What room did you redo last? |
+| Interior Design | How would you describe your style? |
+| Quilting | Favorite quilt you have made? |
+| Art History | Favorite period or artist? |
+| Civic Engagement | What cause are you closest to? |
+| Genealogy | Coolest thing you found in your family tree? |
+| Museum Visits | Favorite museum? |
+| Philosophy | A question you keep chewing on? |
+| Binge-watching | Show you always recommend? |
+| Broadway | Favorite show you have seen? |
+| Card Games | Go-to card game? |
+| Cosplay | Favorite costume you have made? |
+| Documentaries | One that stuck with you? |
+| Disney | Favorite Disney movie? |
+| Drag | What do you love about drag? |
+| Escape Rooms | Best room you have done? |
+| Gaming | What are you playing right now? |
+| Improv | Where do you like to play? |
+| Magic Tricks | First trick you learned? |
+| Marvel | Favorite hero? |
+| Netflix | Show you always put on? |
+| Puzzles | Favorite kind of puzzle? |
+| Reality TV | Guilty-pleasure show? |
+| Star Wars | Favorite movie or show? |
+| Thrillers | One that actually got you? |
+| TikTok | What do you watch there? |
+| Trivia | Your strongest category? |
+| YouTube | Channel you always recommend? |
+| Biking | Favorite route? |
+| Gym | Favorite kind of workout? |
+| BBQ | Signature thing on the grill? |
+| Brunch | Go-to brunch order? |
+| Foodie | Restaurant you always recommend? |
+| Ice Cream | Go-to flavor? |
+| Pizza | Favorite topping combo? |
+| Sushi | Go-to roll? |
+| Vegan | Favorite vegan spot? |
+| Vegetarian | Favorite vegetarian dish? |
+| Christian Music | Artist you always put on? |
+| EDM | Favorite festival or DJ? |
+| Guitar | What do you like to play? |
+| Jazz | Favorite artist or era? |
+| K-pop | Bias group right now? |
+| Metal | Band you always come back to? |
+| Music Composition | What do you like to write? |
+| Music Production | What do you like to make? |
+| Piano | Piece you love to play? |
+| Pop | Song you have on repeat? |
+| Rap | Album you always recommend? |
+| Rock | Band that got you into it? |
+| Beach Activities | Favorite thing to do at the beach? |
+| Bird Watching | Coolest bird you have spotted? |
+| Foraging | Best thing you have found? |
+| Nature Exploration | Favorite place to wander? |
+| Roller Skating | Where do you like to skate? |
+| Sunsets | Best sunset you have seen? |
+| Urban Exploring | Favorite spot you have found? |
+| Activism | What are you working toward? |
+| Clubbing | Favorite night out spot? |
+| Conservative | What does that mean for you? |
+| Debate | Favorite topic to argue? |
+| Environmentalism | What do you do about it day to day? |
+| House Parties | What makes a good one? |
+| LGBTQ+ Advocacy | What work matters most to you? |
+| Non-political | What do you like to talk about instead? |
+| Personality Tests | Your favorite result? |
+| Progressive | What does that mean for you? |
+| Spirituality | What practice grounds you? |
+| AI | What do you like to make with it? |
+| App Design | App you are most proud of? |
+| Crypto | What got you into it? |
+| Cybersecurity | What part of it do you love? |
+| Game Streaming | What do you stream? |
+| NFTs | What do you collect or make? |
+| Stock Trading | What got you started? |
+| Productivity | System you actually stick to? |
+| Programming | Best language, in your opinion? |
+| UI/UX Design | How would you describe your style? |
+| Web Design | Site you are proud of? |
+| Web3 | What are you building or following? |
+| Biohacking | What are you trying right now? |
+| Cold Plunge | How long can you stay in? |
+| Crystals | Which one do you keep close? |
+| Mental Health | What helps you most? |
+| Mindfulness | When do you practice? |
+| Saunas | Favorite spot? |
+| Supplements | One you actually notice? |
+| Tarot Reading | Favorite deck? |
+| Therapy | What do you like about it? |
 | **Custom hobby** | Tell me more about {hobby}. |
 
 These follow-ups power the hobbies widget's tap-a-chip answers and the side-by-side answers in **In common** (`PROFILE.md`).

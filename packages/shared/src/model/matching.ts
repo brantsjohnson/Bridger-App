@@ -39,7 +39,12 @@ export const MATCHING_LABEL_WEIGHTS = {
 export type MatchingOutcome = keyof typeof MATCHING_LABEL_WEIGHTS;
 
 /** Discover quiz internal ids (marketing titles live on quiz_registry.title). */
-export const DISCOVER_QUIZ_IDS = ['personality', 'values', 'humor'] as const;
+export const DISCOVER_QUIZ_IDS = [
+  'personality',
+  'values',
+  'humor',
+  'attachment'
+] as const;
 
 export type DiscoverQuizId = (typeof DISCOVER_QUIZ_IDS)[number];
 
@@ -89,6 +94,46 @@ export type PairFeaturesSnapshot = {
   isExploration: boolean;
   configVersion: number;
 };
+
+/** All six features start at 0 (zero-by-absence baseline). */
+export function emptyMatchingFeatureRecord(): Record<MatchingFeature, number> {
+  return {
+    quiz_alignment: 0,
+    embedding_similarity: 0,
+    shared_attributes: 0,
+    moderator_notes_affinity: 0,
+    mutual_warmth: 0,
+    context_fit: 0
+  };
+}
+
+/**
+ * THIS SECTION DOES: make sure a learning snapshot always has every feature
+ * and every weighted contribution filled in (missing → 0), so trainers never
+ * see a sparse row.
+ */
+export function normalizePairFeaturesSnapshot(
+  input: Partial<PairFeaturesSnapshot> | null | undefined
+): PairFeaturesSnapshot {
+  const features = emptyMatchingFeatureRecord();
+  const contribs = emptyMatchingFeatureRecord();
+  for (const f of MATCHING_FEATURES) {
+    features[f] = Number(input?.features?.[f] ?? 0) || 0;
+    contribs[f] = Number(input?.contribs?.[f] ?? 0) || 0;
+  }
+  return {
+    features,
+    contribs,
+    score: Number(input?.score ?? 0) || 0,
+    evidenceGatePassed: Boolean(input?.evidenceGatePassed),
+    sharedQuizIds: Array.isArray(input?.sharedQuizIds)
+      ? [...input.sharedQuizIds]
+      : [],
+    sharedAttributeCount: Number(input?.sharedAttributeCount ?? 0) || 0,
+    isExploration: Boolean(input?.isExploration),
+    configVersion: Number(input?.configVersion ?? 0) || 0
+  };
+}
 
 export type MatchingEvidenceItem = {
   kind: 'hobby' | 'this_or_that' | 'place' | 'event' | 'attribute' | 'quiz';

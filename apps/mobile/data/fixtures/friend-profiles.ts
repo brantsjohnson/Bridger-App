@@ -2,9 +2,11 @@
 // WHAT THIS FILE DOES (plain English):
 // Fake card data for each roster person, so opening a friend profile shows a
 // real "About them" tab instead of empty sections. Varied from the own-profile
-// fixtures so each person feels distinct. Screens never import this — they go
-// through getPersonProfile in data/profile.ts.
+// fixtures so each person feels distinct. Top 5 / Obsession are keyed by person
+// id (never reuse the viewer's own fixtures). Screens never import this —
+// they go through getPersonProfile in data/profile.ts.
 // ============================================
+import type { ObsessionSquare, PhotoBlock, Top5Item } from '@bridger/shared';
 import type {
   AboutField,
   FavGroup,
@@ -21,6 +23,12 @@ export type FriendProfile = {
   favs: FavGroup[];
   thisOrThat: ThisOrThatRow[];
   places: TravelPlace[];
+  /** Subject's Top 5 (tier-visible); never the viewer's. */
+  top5: Top5Item[];
+  /** Subject's Current Obsession squares. */
+  obsession: ObsessionSquare[];
+  /** Co-op Greatest hits when the subject has slots (demo stubs). */
+  greatestHits?: PhotoBlock[];
   header: {
     city: string;
     bio: string;
@@ -80,6 +88,56 @@ const MAYA: FriendProfile = {
     { id: 'm-p1', label: 'Oaxaca', note: 'Clay markets', lat: 17.0732, lng: -96.7266, countryCode: 'MX', emoji: '🌶', year: '2023' },
     { id: 'm-p2', label: 'Banff', note: 'Cold lake swim', lat: 51.1784, lng: -115.5708, countryCode: 'CA', emoji: '🏔', year: '2022' },
     { id: 'm-p3', label: 'Lisbon', note: 'Tile hunting', lat: 38.7223, lng: -9.1393, countryCode: 'PT', emoji: '🟦', year: '2024' }
+  ],
+  top5: [
+    {
+      id: 'maya-t1',
+      text: 'Always packing trail snacks for the group',
+      emoji: '🥜',
+      order: 0,
+      visibleToTier: 'friend'
+    },
+    {
+      id: 'maya-t2',
+      text: 'Clay under the nails is a lifestyle',
+      emoji: '🏺',
+      order: 1,
+      visibleToTier: 'friend'
+    },
+    {
+      id: 'maya-t3',
+      text: 'Will drive for a good sunrise',
+      emoji: '🌅',
+      order: 2,
+      visibleToTier: 'acquaintance'
+    }
+  ],
+  obsession: [
+    {
+      id: 'maya-ob1',
+      prompt: 'Building:',
+      text: 'a set of wonky mugs',
+      emoji: '☕️',
+      order: 0,
+      visibleToTier: 'friend'
+    },
+    {
+      id: 'maya-ob2',
+      prompt: 'Reading…',
+      text: 'Braiding Sweetgrass',
+      emoji: '📖',
+      order: 1,
+      visibleToTier: 'friend'
+    }
+  ],
+  greatestHits: [
+    {
+      id: 'maya-gh1',
+      assetId: 'demo-maya-1',
+      order: 0,
+      afterModule: 'aboutMe',
+      visibleToTier: 'friend'
+    }
   ]
 };
 
@@ -147,6 +205,40 @@ const DEVON: FriendProfile = {
   places: [
     { id: 'd-p1', label: 'Tokyo', note: 'Record hunting in Shimokitazawa', lat: 35.6762, lng: 139.6503, countryCode: 'JP', emoji: '🎶', year: '2023' },
     { id: 'd-p2', label: 'Berlin', note: 'Three clubs, one night', lat: 52.52, lng: 13.405, countryCode: 'DE', emoji: '🪩', year: '2019' }
+  ],
+  top5: [
+    {
+      id: 'devon-t1',
+      text: 'Record store Saturdays are non-negotiable',
+      emoji: '💿',
+      order: 0,
+      visibleToTier: 'friend'
+    },
+    {
+      id: 'devon-t2',
+      text: 'Night owl, texts after midnight',
+      emoji: '🌙',
+      order: 1,
+      visibleToTier: 'friend'
+    }
+  ],
+  obsession: [
+    {
+      id: 'devon-ob1',
+      prompt: 'Listening…',
+      text: 'Blue Rev on vinyl',
+      emoji: '🎧',
+      order: 0,
+      visibleToTier: 'friend'
+    },
+    {
+      id: 'devon-ob2',
+      prompt: 'Obsessed with…',
+      text: 'thrift-store speakers',
+      emoji: '🔊',
+      order: 1,
+      visibleToTier: 'acquaintance'
+    }
   ]
 };
 
@@ -187,6 +279,32 @@ const INES: FriendProfile = {
   places: [
     { id: 'i-p1', label: 'Banff', note: 'Backpacked the Rockies', lat: 51.1784, lng: -115.5708, countryCode: 'CA', emoji: '🏔', year: '2021' },
     { id: 'i-p2', label: 'Patagonia', note: 'Wind that never stopped', lat: -50.0, lng: -73.0, countryCode: 'AR', emoji: '💨', year: '2024' }
+  ],
+  top5: [
+    {
+      id: 'ines-t1',
+      text: 'Up before the sun, trails first',
+      emoji: '🥾',
+      order: 0,
+      visibleToTier: 'acquaintance'
+    },
+    {
+      id: 'ines-t2',
+      text: 'Dog named Moss comes everywhere',
+      emoji: '🐕',
+      order: 1,
+      visibleToTier: 'friend'
+    }
+  ],
+  obsession: [
+    {
+      id: 'ines-ob1',
+      prompt: 'Training for…',
+      text: 'a ridge run in Hood River',
+      emoji: '🏃',
+      order: 0,
+      visibleToTier: 'friend'
+    }
   ]
 };
 
@@ -237,6 +355,25 @@ const THEO: FriendProfile = {
   ],
   places: [
     { id: 't-p1', label: 'Oaxaca', note: 'Mole school', lat: 17.0732, lng: -96.7266, countryCode: 'MX', emoji: '🌶', year: '2022' }
+  ],
+  top5: [
+    {
+      id: 'theo-t1',
+      text: 'If it is not spicy, I am not interested',
+      emoji: '🌶️',
+      order: 0,
+      visibleToTier: 'acquaintance'
+    }
+  ],
+  obsession: [
+    {
+      id: 'theo-ob1',
+      prompt: 'Obsessed with…',
+      text: 'Carolina Reaper salsa',
+      emoji: '🔥',
+      order: 0,
+      visibleToTier: 'friend'
+    }
   ]
 };
 
@@ -295,6 +432,32 @@ const NOUR: FriendProfile = {
   places: [
     { id: 'n-p1', label: 'Kyoto', note: 'Temple mornings', lat: 35.0116, lng: 135.7681, countryCode: 'JP', emoji: '⛩', year: '2019' },
     { id: 'n-p2', label: 'Reykjavík', note: 'Saw the lights', lat: 64.1466, lng: -21.9426, countryCode: 'IS', emoji: '🌌', year: '2024' }
+  ],
+  top5: [
+    {
+      id: 'nour-t1',
+      text: 'Black and white, mostly',
+      emoji: '📷',
+      order: 0,
+      visibleToTier: 'acquaintance'
+    },
+    {
+      id: 'nour-t2',
+      text: 'Developing film in the bathroom',
+      emoji: '🎞',
+      order: 1,
+      visibleToTier: 'friend'
+    }
+  ],
+  obsession: [
+    {
+      id: 'nour-ob1',
+      prompt: 'Working on…',
+      text: 'a darkroom print series',
+      emoji: '🖼',
+      order: 0,
+      visibleToTier: 'friend'
+    }
   ]
 };
 

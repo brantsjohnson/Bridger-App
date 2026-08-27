@@ -126,8 +126,10 @@ export function RecapTeaser() {
         ])
       )
     );
+    // THIS SECTION DOES: start the master timeline and every bar's bounce loop.
     master.start();
     barLoops.forEach((l) => l.start());
+    // THIS SECTION DOES: stop both when the component unmounts or Reduce Motion flips on.
     return () => {
       master.stop();
       barLoops.forEach((l) => l.stop());
@@ -197,7 +199,7 @@ export function RecapTeaser() {
     outputRange: [0, 0, 30, 30]
   });
 
-  // Stagger steps scale with bar count so fill still lands ~0.55 and drain ~0.93.
+  // THIS SECTION DOES: how many bars to fill, and how fast each one lights / drains.
   const fillStep = barCount > 1 ? 0.25 / (barCount - 1) : 0;
   const drainStep = barCount > 1 ? 0.3 / (barCount - 1) : 0;
 
@@ -303,6 +305,7 @@ export function RecapTeaser() {
           }}
         >
           {bars.map((b, j) => {
+            // THIS SECTION DOES: when this bar lights up, then when it drains away.
             const fillOn = 0.28 + j * fillStep;
             const fillIn = fillOn + 0.015;
             const drainOff = 0.6 + j * drainStep;
@@ -311,6 +314,7 @@ export function RecapTeaser() {
               inputRange: [0, fillOn, fillIn, drainOff, drainOut, 1],
               outputRange: [0, 0, 1, 1, 0, 0]
             });
+            // THIS SECTION DOES: bounce the bar height so the wave looks alive.
             const height = b.interpolate({
               inputRange: [0, 1],
               outputRange: [4, 8 + (j % 3) * 6]

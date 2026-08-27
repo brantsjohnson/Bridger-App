@@ -168,7 +168,7 @@ function AddFriendBody({
         <QrBlock />
       </Pressable>
       <Text className="text-center font-sans-sb text-[12px] text-ink-mute">
-        Let them scan this
+        Scan this to add each other.
       </Text>
       <ButtonSecondary
         full

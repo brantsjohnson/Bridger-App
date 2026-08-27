@@ -38,6 +38,7 @@ import {
   getLiveQuizDetail,
   submitResponse
 } from '../../data/quiz';
+import { quizTitleForSlug } from '../registry';
 
 type Phase = 'loading' | 'take' | 'result' | 'missing';
 
@@ -162,7 +163,11 @@ export default function GenericQuizTake({ slug }: { slug: string }) {
   if (phase === 'loading') {
     return (
       <Screen tone="canvas">
-        <ScreenHeader title="Quiz" onBack={() => router.back()} hideProfile />
+        <ScreenHeader
+          title={quizTitleForSlug(slug)}
+          onBack={() => router.back()}
+          hideProfile
+        />
         <ScreenBody>
           <ActivityIndicator className="mt-10" />
         </ScreenBody>
@@ -173,7 +178,11 @@ export default function GenericQuizTake({ slug }: { slug: string }) {
   if (phase === 'missing' || !quiz) {
     return (
       <Screen tone="canvas">
-        <ScreenHeader title="Quiz" onBack={() => router.back()} hideProfile />
+        <ScreenHeader
+          title={quizTitleForSlug(slug)}
+          onBack={() => router.back()}
+          hideProfile
+        />
         <ScreenBody>
           <Text className="mt-8 text-center font-pixel text-[22px] text-ink">
             Quiz not found

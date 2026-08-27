@@ -47,8 +47,12 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `the_friend_zone` | `discover` (Connect Over) | Attachment quiz — open then bail? finish? (`dwell_ms`) |
 | `what_gets_you_going` | `discover` (Connect Over) | Values quiz — open then bail? finish? skips? (`dwell_ms`) |
 | `your_funny_bone` | `discover` (Connect Over) | Humor taste quiz — open then bail? finish? (`dwell_ms`) |
+| `end_quiz_sheet` | `quiz` | Back mid-take: do they confirm End quiz or Keep going? (`dwell_ms`) |
 | `post_composer` | `home` (your story) | do they use the suggested buttons? finish? |
 | `add_friend_sheet` | `friends` | QR vs link vs scan (method) |
+| `invite_access` | post-onboarding gate (demo week) | must invite a friend to unlock app — do they bail? |
+| `invite_contacts_sheet` | `invite_access` | pick one contact to text invite link (on-device only) |
+| `onboarding_invite_contacts_sheet` | `onboarding` | pick a contact for Link 1 / 2 / 3 during onboarding |
 | `customize` | `profile.settings` | do they customize at all, and for how long (`dwell_ms`) |
 | `friend_options_sheet` | `profile.friend_view` | remove / block / report reach |
 | `create_hub` *(retired)* | — | (removed — do not re-add) |
@@ -109,18 +113,22 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `quiz_adapted` | moderator rewords/inserts (per `QUIZ-ENGINE.md`) | `reason` (low_confidence/select_all/contradiction) |
 | `quiz_abandoned` | left before finishing | `last_question_id`, `percent_complete`, `time_spent_ms` |
 | `quiz_completed` | finished | `quiz_id`, `time_to_complete_ms`, `questions_answered` |
+| `quiz_shared` | shared a result | `quiz_id`, `method` (image / link / save_image) — never the result name or card text |
 | `module_started` / `module_completed` | a profile module (basics, hobbies, this-or-that, places, bucket_list, discover_me) | `module`, `items_added`, `time_to_complete_ms` |
 | `module_item_added` | one item added (a hobby, a bucket-list item) | `module`, `friend_tagged` (bool), `visibility` |
 | `quick_check_kept` | Announcements quick check: user confirmed the stale fact is still true | `—` (never the question text) |
 | `quick_check_removed` | Announcements quick check: user said the fact is no longer true | `—` (never the question text) |
 | `friend_added` | a connection is **confirmed** (redeem / server create — not share-sheet or scan-button tap) | `method` (qr/link/scan/suggestion), `via` |
+| `invite_link_shared` | OS share completed or SMS compose opened with an invite link (not the tap alone; dismiss ≠ share) | `method` (`sms`\|`share`), `context` (`onboarding`\|`invite_access`), optional `slot` (1\|2\|3) — never names/phones |
 | `friend_retiered` | a friend moves tiers (**not** just a drag) | `from_tier`, `to_tier` |
 | `friend_removed` / `friend_blocked` / `friend_reported` | the action completes | `—` |
 | `friend_note_added` | a private note / date / check-in is saved on a friend | `kind` (`text`\|`date`\|`check_in`), `cadence` (check_in only) — **never note text** |
 | `friend_note_deleted` | a private note is removed | `—` |
 | `friend_check_in_reminded` | a soft check-in nudge fires for the author | `cadence` — **never note text** |
-| `story_posted` | an update posts | `method` (photo/video/text/voice), `is_coop` |
+| `story_posted` | an update posts | `method` (photo/video/text/voice), `is_coop`, optional `event_id` when tagged to an event album |
+| `party_capture_prompt_sent` | mid-party capture nudge fires (`story_prompt` on, under daily cap) | `event_id` |
 | `response_posted` | a reaction/reply posts | `method` (video/comment/sticker/custom_sticker/reaction), `duration_seconds` on video |
+| `stories_caught_up` | finished every update in the tray (or a lone author) and the end screen showed | `—` |
 | `sticker_created` | someone saves a sticker they made | `method` (photo) — **never the image** |
 | `touch_grass_sent` | a signal is sent | `audience`, `when`, `has_why` (bool), `parent_screen` |
 | `touch_grass_answered` | someone says I'm in | `—` |
@@ -136,7 +144,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `event_assignment_taken` | a guest claims / is assigned an item | `—` (no item text or names) |
 | `event_assignment_released` | assignee removes themselves from an item | `—` |
 | `event_assignment_done` | assignee or host/co-host checks off (or unchecks) an item | `—` |
-| `event_shared` | OS reports the event was shared (not merely that the share sheet opened) | `method` (share_sheet; copy_link retired) |
+| `event_shared` | OS reports the event was shared, or web copied the link when Share was unavailable | `method` (`share_sheet` \| `copy_link`) |
 | `event_introduction_notified` | introduction pings sent for an event | `count` (people notified — never names) |
 | `event_guest_invited` | a person was added to an event invite list (confirmed server/demo write) | `via` (`host` \| `attendee`) — **never names** |
 | `rsvp_going` / `rsvp_cant` | RSVP actions | `—` |
@@ -148,12 +156,13 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `profile_theme_saved` | Theme tokens saved (accent / background / font / mode) on customize | `accent`, `background`, `font`, `mode`, `dwell_ms` — never CSS or asset URLs |
 | `profile_layout_saved` | Layout order of movable modules saved | `module_count`, `dwell_ms` |
 | `connection_revealed` | a reveal completes | `recorded_where` (bool), `added_note` (bool), `meet_context` (`just-met` \| `already-know`), `to_tier` — NEVER place/note text or names |
-| `music_connected` / `music_disconnected` | Spotify (or later Apple Music) link confirmed / removed | `method` (`spotify`\|`apple_music`) — **never** track titles |
+| `music_connected` / `music_disconnected` | Spotify or Apple Music link confirmed / removed | `method` (`spotify`\|`apple_music`) — **never** track titles |
 | `music_preview_played` | ~30s preview actually started | `method` (`tap`) — **never** title/artist |
 | `music_pick_saved` | Listening / song of week / fav catalog pick saved | `method` (pick `kind`) — **never** title |
 | `music_saved_to_library` | Viewer saved a track to their Spotify library | `method` (`spotify`) |
-| `music_taste_synced` | Top artists sync completed after connect | `method` (`spotify`) |
+| `music_taste_synced` | Top artists sync completed after connect | `method` (`spotify`\|`apple_music`) |
 | `message_sent` | a chat message posts | `counts_against_cap` (bool) — NEVER include message text |
+| `message_hearted` | you hearted or unhearted a friend's bubble | `on` (bool), `counts_against_cap` (always false), `method` (`double_tap`\|`a11y`) — NEVER include message text |
 | `contact_shared` | contact card shared into a thread | `counts_against_cap` (always false) — NEVER include field values |
 | `auth_signed_in` | sign-in succeeds | `method` (google/apple/email) |
 | `auth_signed_up` | account create succeeds | `method` (google/apple/email) |
@@ -176,7 +185,8 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `home_layout_saved` | user finishes editing their Home layout | `widget_count` |
 | `connection_style_set` | onboarding desire step is confirmed (rank / primary saved) | `primary` (`frequency`\|`depth`\|`plans`\|`commonality`), `home_layout_seed` (`stay_close`\|`go_deeper`\|`make_plans`\|`meet_people`) — never free text |
 | `onboarding_tier_chosen` | join screen choice is confirmed (soft Free Lite pick, or co-op soft-join / IAP path selected and accepted) | `method` (`coop`\|`free_lite`) — never receipt or PII |
-| `coop_joined` | soft join or IAP stub completes | `method` (apple/google/card/soft) — never receipt or PII |
+| `coop_joined` | soft join, IAP stub, or promo code completes | `method` (apple/google/card/soft/promo) — never receipt or PII |
+| `coop_promo_redeemed` | server confirms an auth / promo code granted a free year | `method` (`promo`) — never the code text or PII |
 | `coop_cancel_scheduled` | member schedules period-end cancel | `—` (perks stay until paid-through) |
 | `coop_left` | membership ends (period elapsed or hard leave) | `—` |
 | `notification_received` | a notification is delivered to the device/app | `kind`, `source` (`push` \| `in_app`) — NEVER text or names |
@@ -185,6 +195,8 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `notifications_marked_read` | Mark all as read on the Notifications page (scoped to active `filter`) | `filter` (`all`\|`home`\|`friends`\|`events`\|`discover`) |
 | `notification_pref_changed` | user flips a Settings kind or circle toggle | `pref` (kind or circle id), `pref_scope` (`kind` \| `circle`), `enabled` (bool) |
 | `permission_result` | an OS permission prompt is answered | `permission` (`camera`\|`mic`\|`contacts`\|`notifications`\|`photos`\|`location`\|`calendar`), `outcome` (`granted`\|`denied`\|`dismissed`), `context` (e.g. `assistant`, `assistant_calendar`) — never content |
+| `analytics_opted_in` | (legacy / unused in UI) was Settings toggle on | `method` (`settings`) |
+| `analytics_opted_out` | (legacy / unused in UI) was Settings toggle off | `method` (`settings`) |
 
 **The rule:** if a click changes data or advances the user toward a real goal, emit a **named product event** alongside the UI event — never rely on the click alone. The click lives in the taxonomy below; the outcome lives here.
 
@@ -215,9 +227,9 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 ### `auth`
 | section | elements |
 |---|---|
-| `welcome` | **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead)** |
-| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `google` (method=google), `apple` (method=apple), `email`, `password`, `submit`, `switch_to_sign_up` |
-| `sign_up` | **`page_title` (dead)**, `google` (method=google), `apple` (method=apple), `email`, `password`, `submit`, `switch_to_sign_in` |
+| `welcome` | first-open CRT intro (surface `auth`, parent `welcome`): non-interactive, no skip (must be watched); emits `surface_opened` / `surface_dismissed` with `dwell_ms` only. Legacy text-beat ids kept so old events parse: **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead)** |
+| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` |
+| `sign_up` | **`page_title` (dead)**, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `confirm_password`, `submit`, `switch_to_sign_in` |
 
 ### `chrome` (floating tab bar — global)
 | section | elements |
@@ -225,22 +237,24 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
 
 ### `onboarding`
+New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → recap → privacy & control → [screentime stat] → co-op → welcome in. The four stat interstitials and welcome-in do not count in the progress bar.
+
 | section | elements |
 |---|---|
 | `chrome` | `continue`, `skip`, `back`, `progress_bar`, **`step_title` (dead)** |
-| `privacy` | `acknowledge` |
-| `desire` | `option` (opaque key via `method`: `frequency`\|`depth`\|`plans`\|`commonality`), `rank` (reorder), **`body` (dead)** |
-| `name` | `first_input`, `last_input` |
-| `photo` | `take`, `upload`, `retake`, `skip` |
-| `notifications` | `pref` |
-| `groups` | `invite`, **`tier_card` (dead)** |
-| `meet` | `nearby`, `anywhere`, `city_input`, `skip` |
+| `confirm_profile` | `first_input`, `last_input`, `take`, `upload`, `retake` |
 | `basics` | `answer` (birthday) |
-| `review` | `row_audience`, `set_all` |
-| `coop` | `join`, `apple_pay`, `google_pay`, `card`, `free_lite` (legacy alias `use_free` → `free_lite`) |
-| `welcome_in` | `lets_go` |
+| `stat` | `info` (opens sources sheet, `variant`), `bridge` ("Let's try again", `variant`), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)** |
+| `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, `skip` |
+| `friends_of_friends` | `style` (opaque key via `style`: `humor`\|`values`\|`personality`\|`hobbies`\|`communication`), `all` ("All of the above"), `skip` |
+| `notifications` | `pref` (`pref`: `birthdays`\|`life_updates`\|`meet`\|`activities`\|`messages`\|`reconnect`; method `on`\|`off` via Toggle) |
+| `taste` | `start`, **`preview_list` (dead)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `hometown_input`, `current_town_input`, `favorite_place_input`, `recap_record`, `recap_play`, `recap_type`, `skip` |
+| `review` | `row_audience` (`field`, `tier`), `set_all` (`tier`), `terms`, `privacy_policy` |
+| `coop` | `invite_free` (Option A; props `invites_sent` 0–2 when progress shown), `join_paid` (Option B), `apple_pay`, `google_pay`, `card`, `use_free`, `redeem_open`, `redeem_input`, `redeem_submit`, **`perks_grid` (dead)** |
+| `welcome_in` | `lets_go`, **`next_cards` (dead)** |
+| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `name.*`, `photo.*`, `groups.*`, `meet.*` |
 
-Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Desire step emits `flow_step` with `step=desire`; confirmed save emits `connection_style_set`. Join emits `flow_step` with `step=coop` and `method` for the card tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`.
+Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only.
 
 ### `home`
 | section | elements |
@@ -270,7 +284,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 ### `touch_grass_sheet` *(surface)*
 | section | elements |
 |---|---|
-| `who` | `close`, `friends`, `everyone` |
+| `who` | `close`, `friends` (`everyone` retired, id kept) |
 | `when` | `now`, `tonight`, `weekend` |
 | `why` | `input` |
 | `actions` | `send`, `dismiss` |
@@ -357,6 +371,12 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `take` | `option` (method = option id / media id only — never titles), `explain` (focus only; never logs text), `next`, `options_more` (method = prev\|next), `note_toggle` |
 | `result` | **`body` (dead)**, `done` |
 
+### `invite_access` (demo week gate)
+| section | elements |
+|---|---|
+| `main` | **`body` (dead)**, `invite_button` |
+| `contacts_sheet` | `contact_row`, `cancel` |
+
 ### `friends`
 | section | elements |
 |---|---|
@@ -372,13 +392,13 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list`, `settings_gear` (record `first_interaction` → what they open first) |
 | `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `tier_control`, `edit` (rearrange mode), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
 | `card` | `mutuals`, `top5`, `top5_row`, `about_me` (**dead**), `about_me_toggle`, `about_me_edit`, `about_me_bio_more`, `about_me_field_edit`, `about_me_reorder` (method=`up`\|`down`), `upcoming`, `upcoming_row`, `obsession`, `obsession_square`, `favorites`, `favorites_tile`, `favorites_to_start`, `see_all` (pill under top-4 grids), `greatest_hits`, `greatest_hits_photo` (**dead**), `where_met`, `hobbies_widget` (method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin`, `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module`, `widget_edit` (pencil on a widget box), `widget_reorder` (method=`up`\|`down`). `currently` retired (see Renames) |
-| `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
+| `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `hobby_search` (focus search; never logs query text), **`hobby_category` (dead)**, `hobby_add_own`, `hobby_custom_name`, `hobby_custom_emoji`, `hobby_custom_save`, `hobby_custom_remove`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
 | `intro` *(surface `profile_intro`)* | **`body` (dead)**, `continue` |
 | `stories_calendar` | `day` (opens story), `month_nav`, `storage_bar` |
 | `inside_jokes` | `note` (tap → meta), `add`, `filter`, **`note_body` (dead)** |
 | `bucket_list` | `item`, `add`, `check_off`, `edit` (Edit/Done toggle), `edit_item` (open edit sheet), `delete` (method=`swipe`\|`edit_mode`\|`sheet`), `save` |
 | `quizzes` | `untaken_row`, **`section_header` (dead)** |
-| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `notifications` (opens `notification_prefs`), `account`, `delete_account`, `analytics_toggle`, `log_out`, `appearance`, `blocked_people`, `storage_plan`, `always_original`, `connect_spotify`, `disconnect_spotify`, `assistant_toggle`, `assistant_open`, **`billy_status` (dead)**, `billy_plus_cta`, `billy_plus_cancel`, **`surprises_header` (dead)**, `play_emoji_bomb`, `preview_emoji_rain`, `leave_demo` |
+| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `notifications` (opens `notification_prefs`), `account`, `delete_account`, `analytics_toggle` (**removed from Settings UI**; product analytics is on by default while signed in), `log_out`, `appearance`, `blocked_people`, `storage_plan`, `always_original`, `connect_spotify`, `disconnect_spotify`, `connect_apple_music`, `disconnect_apple_music`, `assistant_toggle`, `assistant_open`, **`billy_status` (dead)**, `billy_plus_cta`, `billy_plus_cancel`, **`surprises_header` (dead)**, `play_emoji_bomb`, `preview_emoji_rain`, `leave_demo` |
 | `music` | `preview_play`, `preview_pause`, `open_spotify`, `open_apple_music`, `add_playlist`, `track_search` (never logs query text), `track_result`, `pick_save` |
 | `top_nav` | **`page_title` (dead)**, `edit`, `back`, `search` (searches this profile's visible fields; never logs query text) |
 
@@ -416,7 +436,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 |---|---|
 | `list` | `tab`, `event_card` (opens `events.detail`), **`page_title` (dead)**, `create` (opens `create_event`), `messages_icon` (header shortcut), `profile_icon` |
 | `gate` | **`headline` (dead)**, **`body` (dead)**, **`idea_wall` (dead)**, **`idea_chip` (dead)**, **`touch_grass_mark` (dead)**, `explore` (dismisses gate into Events list). `create` retired |
-| `detail` | `back`, `share` (header only; native share sheet; method=share_sheet), `going`, `cant`, `going_count`, `to_meet_count`, `meet_row`, `map`, `add_to_calendar`, `assignment_row`, `assign_name`, **`title_body` (dead)**, **`date_chip` (dead)**, **`countdown` (dead)**, **`details_body` (dead)**, **`cover_image` (dead)**. `copy_link` retired |
+| `detail` | `back`, `share` (header only; native share sheet, web falls back to copy link; method=`share_sheet`\|`copy_link`), `going`, `cant`, `going_count`, `to_meet_count`, `meet_row`, `map`, `add_to_calendar`, `assignment_row`, `assign_name`, **`title_body` (dead)**, **`date_chip` (dead)**, **`countdown` (dead)**, **`details_body` (dead)**, **`cover_image` (dead)**. `copy_link` element id retired as a separate button |
 | `host` | `edit`, `going_count`, `invited_count`, `add_cohost`, `chip_in_edit`, `reminders_toggle`, **`reminders_header` (dead)**, `introduction_row`, **`introductions_header` (dead)**. `brought_count` retired (attribution lives in `event_people_sheet`) |
 | `touch_grass` | `send` (opens `touch_grass_sheet`, parent=events), `end` (ends your live signal; button stays the big green control), `featured_signal`, `signal_row`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `hosting` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
@@ -443,7 +463,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 ### `story` (viewer)
 | section | elements |
 |---|---|
-| `viewer` | `tap_next`, `tap_prev`, `tap_pause` (center of media), `progress_bar` (**dead**), `author` (opens overflow), `overflow`, `close`, `caption_body` (**dead**) |
+| `viewer` | `tap_next`, `tap_prev`, `tap_pause` (center of media), `progress_bar` (**dead**), `author` (opens overflow), `overflow`, `close`, `caption_body` (**dead**), `caught_up_body` (**dead** — "You're all caught up" end screen), `caught_up_done` (Done / X on that screen) |
 | `reaction_rail` | `sticker` (method=sticker, opens `sticker_tray`), `comment` (method=comment), `record` (method=video, opens `circle_recorder`), `reaction` (method=reaction). Order on screen: emoji → comment → record (red dot), bottom-right beside the caption. |
 
 ### `sticker_tray` *(surface — parent `story`)*
@@ -473,7 +493,7 @@ Record the week's 5 recap answers by voice, then pick who hears it. Pairs with t
 | section | elements |
 |---|---|
 | `question` | **`body` (dead)**, **`list` (dead — full preview before recording)** |
-| `record` | `start` (method=voice), `stop`, `rerecord`, `next` |
+| `record` | `start` (method=voice), `stop`, `play`, `pause`, `rerecord`, `next` |
 | `audience` | `close`, `friends`, `everyone` |
 | `actions` | `start` (preview → Q1), `post`, `dismiss` |
 
@@ -503,7 +523,7 @@ Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_se
 | section | elements |
 |---|---|
 | `top_nav` | `page_title` (**dead**), `new_message`, `search`, `profile_icon` |
-| `conversation` | `row`, `section_header` (**dead**), `contact_card_row`, `cap_note` (**dead**), `bubble`, `share_contact`, `make_a_plan`, `back`, `maxed_notice` |
+| `conversation` | `row`, `section_header` (**dead**), `contact_card_row`, `cap_note` (**dead**), `bubble` (**dead** single tap), `heart` (double-tap; product `message_hearted`), `share_contact`, `make_a_plan` (retired, id kept), `back`, `maxed_notice` |
 | `composer` | `input`, `send` |
 | `contact_card` | `edit`, `field_toggle`, `share`, `field_row` (**dead**) |
 
@@ -554,12 +574,12 @@ Settings: `profile.settings.assistant_toggle`, `profile.settings.assistant_open`
 ### `reveal` *(surface/flow)*
 | section | elements |
 |---|---|
-| `flow` | `how_you_met_choice`, `record_place_toggle`, `tier_choice`, `meet_note`, `continue`, `see_profile`, `tap_next` (story forward), `tap_prev` (story back), `close` (X → new connection's profile), **`progress` (dead)**, **`orbs` (dead)**, **`venn` (dead, legacy)** |
+| `flow` | `how_you_met_choice`, `record_place_toggle`, `tier_choice`, `meet_note`, `meet_note_toggle`, `continue`, `see_profile`, `tap_next` (story forward), `tap_prev` (story back), `close` (X → new connection's profile), **`progress` (dead)**, **`orbs` (dead)**, **`venn` (dead, legacy)** |
 
 ### `coop` (benefits + multi-page portal)
 | section | elements |
 |---|---|
-| `benefits` | `page_title`, `info`, `free_info`, `unlocks_info`, `hero` (dead), `join`, `use_free`, `open_portal` |
+| `benefits` | `page_title`, `info`, `free_info`, `unlocks_info`, `hero` (dead), `join`, `use_free`, `open_portal`, `redeem_open`, `redeem_input`, `redeem_submit` |
 | `portal` | `page_title`, `info`, `hero` (dead), `nav_overview`, `guide_card`, `join_cta`, `feedback`, `spend_body` (dead), `shipped_body` (dead) |
 | `mission` | `nav`, `info`, `page_title`, `section_header` (dead), `principle_card` (dead), `support` |
 | `model` | `nav`, `info`, `roadmap_info`, `compare_info`, `page_title`, `section_header` (dead), `phase_card` (dead), `comparison` (dead) |
@@ -571,10 +591,16 @@ Settings: `profile.settings.assistant_toggle`, `profile.settings.assistant_open`
 ### `quiz` (take / result surface)
 | section | elements |
 |---|---|
-| `take` | `option`, `explain`, `next`, `back`, **`progress` (dead)** |
+| `take` | `option`, `explain`, `next`, `back`, **`progress` (dead)**, **`question` (dead)**, **`commentary` (dead)** |
 | `result` | **`label` (dead)**, `share`, `who_got_who`, `see_more`, `done` |
 
-Pairs with product events `quiz_started` / `quiz_question_answered` / `quiz_adapted` / `quiz_abandoned` / `quiz_completed` (§3b). Never put explanation text in analytics.
+Pairs with product events `quiz_started` / `quiz_question_answered` / `quiz_adapted` / `quiz_abandoned` / `quiz_completed` (§3b). Never put explanation text in analytics. `quiz.take.back` is the X on every take and commentary screen (no back arrow). It opens `end_quiz_sheet` while a take is in progress. `quiz_abandoned` fires only if they confirm End quiz.
+
+### `end_quiz_sheet` *(surface)*
+| section | elements |
+|---|---|
+| `body` | **`body` (dead)** |
+| `actions` | `end` (leaves; product `quiz_abandoned`), `stay`, `dismiss` |
 
 ### `delight`
 | section | elements |
@@ -598,7 +624,7 @@ Pairs with product events `delight_gifted` / `delight_played` (`delight_slug` on
 | section | elements |
 |---|---|
 | `login` | `password`, `submit` |
-| `nav` | `live_quiz`, `registry`, `activity`, `coop`, `portal`, `members`, `home_defaults`, `prompts`, `delights`, `not_found_hits`, `logout` |
+| `nav` | `live_quiz`, `registry`, `activity`, `coop`, `portal`, `members`, `promo_codes`, `home_defaults`, `prompts`, `delights`, `not_found_hits`, `logout` |
 | `actions` | `set_live_quiz`, `new_quiz`, `save_quiz_design`, `save_activity`, `toggle_activity`, `publish_announcement`, `save_home_defaults`, `save_prompts`, `toggle_delight`, `new_delight` |
 
 ---
@@ -698,7 +724,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-06 | `event_shared` on share-sheet open | only when `Share.sharedAction` | Same timing rule: dismiss/cancel is not a share |
 | 2026-08-06 | `profile.header.song`, `profile.card.currently` | `profile.header.play_recap` + `profile.card.obsession` / `obsession_square` | Spotify-artist profile: Listening/Reading absorbed into Current Obsession |
 | 2026-08-07 | — | `send_delight` surface, `profile.actions.emoji_bomb`, `profile.settings.play_emoji_bomb` / `preview_emoji_rain` / `surprises_header` | Delight umbrella + emoji-bomb gift |
-| 2026-08-07 | — | `profile.settings.connect_spotify` / `disconnect_spotify`, `profile.music.*`, `music_track_sheet`, `catch_up.currently.*` + music product events | Spotify account link + preview / open / save (never titles) |
+| 2026-08-27 | — | `profile.settings.connect_apple_music` / `disconnect_apple_music`; `music_taste_synced` method includes `apple_music` | Apple Music account link + taste sync (never titles) |
 | 2026-08-07 | — | `profile_theme_saved` / `profile_layout_saved` product events | Phase B Theme + Layout customize outcomes |
 | 2026-08-07 | — | `profile.card.greatest_hits_photo` | Greatest hits photo body (dead_click) |
 | 2026-08-06 | — | `profile.card.top5`, `favorites_*`, `upcoming_*`, `mutuals`, `where_met`, `greatest_hits`, `about_me_toggle`, `see_all` | Spotify layout sections (PROFILE.md) |
@@ -720,10 +746,25 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-07 | — | `events.detail.date_chip`, `events.detail.countdown` + `event_guest_invited` (`via` host\|attendee) | Date square in header; flip-tile countdown; invite attribution |
 | 2026-08-08 | — | `events.gate.*` | Events marketing gate (memories wall) before first host create |
 | 2026-08-11 | — | `post_composer.suggested.random_nudges_toggle` / `random_nudges_label` + `story_prompt` kind | Opt-in random update nudges (~1–3 / day) on capture |
+| 2026-08-23 | — | `post_composer.suggested.event_tag_label` / `event_tag_clear`; `events.detail.photo_album_header` / `photo_album_tile`; `party_capture_prompt_sent` | Mid-party capture nudge + event album tagging |
+| 2026-08-25 | `auth.welcome` text beats (`brand`/`beat_body`/`progress_bar`, now dead) | one-off CRT terminal intro (surface `auth`, non-interactive, no skip) | First-open experience replaced by the CRT intro (plays once per install, then sign-in) |
+| 2026-08-25 | `demo_mode_entered` `method: logo_password` | added `method: logo_onboard` (3-tap logo → password `onboard`) | Demo bypass straight into a fresh onboarding run (dev/preview only); reuses `auth.sign_in.brand_logo` |
 | 2026-08-08 | — | `create_event.details.repeats_*` + `event_created.has_recurrence` / `recurrence_freq` | Recurring events create Details + product outcome (freq enum only) |
 | 2026-08-11 | `onboarding` steps … → notifications → … | privacy → **desire** → notifications → … → coop → welcome | Desire / connection_style step seeds Home |
 | 2026-08-11 | `chrome.tab_bar.tab_messages` (pill) | `chrome.tab_bar.tab_news` + `*.top_nav.messages_icon` on every tab; `tab_discover` icon = globe | Pill = Home/Friends/Events/Discover/News; Messages moved to header top-right, profile photo moved left of the title (tab_messages id kept, retired) |
 | 2026-08-11 | `onboarding.coop.use_free` | `onboarding.coop.free_lite` (alias kept) | Two-tier join: co-op or Free Lite |
 | 2026-08-11 | — | `onboarding.desire.*` + `connection_style_set` + `onboarding_tier_chosen` | Desire rank + confirmed join tier (`method` coop\|free_lite) |
 | 2026-08-13 | — | `auth.sign_in.brand_logo`, `profile.settings.leave_demo`, `demo_mode_entered` / `demo_mode_left` | Branded Sign in + channel-gated demo unlock |
+| 2026-08-20 | — | `event_shared.method` `copy_link` on web fallback; outsider shared-link visibility | Share stays one header control; open-link RSVP only when friends-can-invite |
+| 2026-08-21 | — | `quiz.take.question` (dead) | Fun-quiz brutalist question slab |
+| 2026-08-21 | — | `quiz.take.commentary` (dead) | Fun-quiz yellow commentary body |
+| 2026-08-21 | — | `end_quiz_sheet` + `end` / `stay` / `dismiss` | Mid-quiz Back asks before leaving; `quiz_abandoned` on confirm only |
+| 2026-08-21 | `messages.conversation.make_a_plan` | retired (id kept) | Messages no longer has Make a plan; Share contact + double-tap heart |
+| 2026-08-21 | — | `messages.conversation.heart` + `message_hearted` | Double-tap a friend's bubble; never counts as a send |
+| 2026-08-21 | `touch_grass_sheet.who.everyone` | retired (id kept) | Touch Grass who-to-tell is Close / Friends only |
+| 2026-08-21 | — | `reveal.flow.meet_note_toggle` | Add a note - optional opens the how-you-met box |
+| 2026-08-20 | — | Product analytics always on while signed in; Settings `analytics_toggle` removed from UI; `analytics_opted_in` / `analytics_opted_out` unused |
+| 2026-08-20 | — | `story.viewer.caught_up_body` / `caught_up_done` + `stories_caught_up` | End-of-tray "You're all caught up" screen with confetti |
+| 2026-08-19 | — | `analytics_opted_in` / `analytics_opted_out` | Settings product-analytics consent (PostHog SDK; default off) |
+| 2026-08-27 | — | `onboarding.contacts.invite_slot` / `contact_row` / `contacts_cancel` + surface `onboarding_invite_contacts_sheet` + `invite_link_shared` | Three Link 1/2/3 slots; co-op progress from confirmed SMS/share |
 |

@@ -18,8 +18,10 @@ import { DelightModule } from './delight/delight.module';
 import { EventsModule } from './events/events.module';
 import { FeedModule } from './feed/feed.module';
 import { HealthModule } from './health/health.module';
+import { JnameModule } from './jname/jname.module';
 import { MatchingModule } from './matching/matching.module';
 import { MeModule } from './me/me.module';
+import { MusicModule } from './music/music.module';
 import { NotesModule } from './notes/notes.module';
 import { PollsModule } from './polls/polls.module';
 import { ProfilesModule } from './profiles/profiles.module';
@@ -30,6 +32,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { TiersModule } from './tiers/tiers.module';
 import { TouchGrassModule } from './touchgrass/touchgrass.module';
+import { DemoWeekModule } from './demo-week/demo-week.module';
 
 @Module({
   imports: [
@@ -42,8 +45,10 @@ import { TouchGrassModule } from './touchgrass/touchgrass.module';
     // Opt-in relationship Assistant (personal_agent lane).
     AssistantModule,
     HealthModule,
+    DemoWeekModule,
     MeModule,
     NotesModule,
+    MusicModule,
     MatchingModule,
     ProfilesModule,
     TiersModule,
@@ -55,6 +60,7 @@ import { TouchGrassModule } from './touchgrass/touchgrass.module';
     AdminModule,
     ContentModule,
     QuizModule,
+    JnameModule,
     ActivityModule,
     CoopModule,
     DelightModule,

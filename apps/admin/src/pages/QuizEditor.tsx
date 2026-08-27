@@ -30,11 +30,13 @@ type Design = {
   questions: QuizQuestion[];
 };
 
+/** Hands-off until confidence is clearly low; ML may tune the floor later. */
 const DEFAULT_POLICY: AdaptationPolicy = {
   mayReword: true,
   mayInsertClarifiers: true,
   maxInsertedQuestions: 2,
-  mayReorder: false
+  mayReorder: false,
+  adaptBelowConfidence: 0.35
 };
 
 function newQuestion(): QuizQuestion {
@@ -275,6 +277,28 @@ export function QuizEditor() {
                   })
                 }
               />
+              <Field
+                id="adapt-below"
+                label="Adapt only below confidence (0–1)"
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                value={policy.adaptBelowConfidence ?? 0.35}
+                onChange={(e) =>
+                  setDesign({
+                    ...design,
+                    adaptationPolicy: {
+                      ...policy,
+                      adaptBelowConfidence: Number(e.target.value) || 0
+                    }
+                  })
+                }
+              />
+              <p className="text-sm text-ink-mute">
+                AI stays hands-off until a dimension&apos;s confidence drops below
+                this floor. Use 1 to disable adaptation. ML may tune later.
+              </p>
             </div>
           </Card>
 

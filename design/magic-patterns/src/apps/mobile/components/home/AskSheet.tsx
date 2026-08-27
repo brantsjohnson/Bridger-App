@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlusIcon, XIcon } from 'lucide-react';
-import { ButtonPrimary, ButtonSecondary, Sheet, TextField, cn } from '../../../../packages/ui';
+import { ButtonPrimary, ButtonSecondary, Sheet, TextField } from '../../../../packages/ui';
 
 /** Ask the group something — a poll with options, or an open question. */
 export function AskSheet({

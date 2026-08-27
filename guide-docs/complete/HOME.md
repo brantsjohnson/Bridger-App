@@ -10,6 +10,10 @@ Home is a **bounded hub**, not an infinite algorithmic feed. It shows a finite, 
 
 Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARCHITECTURE.md`): no story view counts and no follower counts appear anywhere on this screen for anyone.
 
+### Onboarding seeds the starting arrangement
+
+Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboarding's desire step writes a per-user `home_layout_seed` (`stay_close` / `go_deeper` / `make_plans` / `meet_people`) and seeds that person's starting Home order + empty-state teach from a deterministic map in `ONBOARDING.md`. Same bones for everyone; desire only changes emphasis. The person can rearrange anytime (`home_layout_saved`). Desire prefs never enter matching embeddings.
+
 ---
 
 ## Layout (top → bottom)
@@ -53,9 +57,9 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 |---|---|---|---|---|
 | 1 | Header | Search (people; events later) + **messages icon** (opens Messages — see `MESSAGES.md`) | `MessagesButton` | always shown |
 | 2 | **Announcements carousel** | One **swipeable** strip holding whatever's live — **touch-grass signals** (I'm in / ✕), the **quick check-in**, **co-op** announcements, and **coming up** (birthdays ≤1wk + day-of, custom date reminders, check-in nudges). Page dots; each card tappable | `AnnouncementsCarousel` | **hidden entirely when there are no announcements** |
-| 4 | Stories | Tier filter (Close / Friends / Everyone) + tiles; **first tile = "Your story"** — post *and* **tap to view your own** posted update. When Assistant is opted in, a **compact chat box** (same size as an Announcements card) sits **directly under** this row (and under "what people said" when present) | `StoryTile` + `AssistantHomeCard` | see state matrix |
+| 4 | Stories | Tier filter (Close / Friends / Everyone) + tiles; **first tile = "Your story"** — post *and* **tap to view your own** posted update. When Assistant is opted in, the **AgentWidget** (Billy) sits **directly under** this row (and under "what people said" when present); full-screen AgentScreen for longer threads; AgentIsland when live off Home | `StoryTile` + `AgentWidget` | see state matrix |
 | 4a | What people said | Under the stories row: **reactions & video responses** to your update ("this is what people said") — **tap to watch/read and reply** | `ResponseStrip` | hidden when no responses |
-| 5 | Notifications preview | ~2–3 unread + **See all → Notifications page**; no unread → **"All caught up!"** | `NotificationRow` | shows unread; empty → All caught up |
+| 5 | Notifications preview | ~2–3 unread; **tap the card or See all → Notifications page**; tap a row → that item's destination; no unread → **"All caught up!"** | `NotificationRow` | shows unread; empty → All caught up |
 | 5b | Inside jokes | A few **new sticky-note inside jokes** from the week (from the Inside Jokes wall); when none are new, falls back to older ones as **"moments"** | — | always shows something (new or moments) |
 | 6 | Ask the group | **Create a poll** \| **Ask a question** — **co-op only** (creating; answering is free) — plus a **"See previous polls"** link into past/other polls | (split row) | shown; create gated to co-op |
 | 7 | Your live poll | Your active poll + running results, visible on your own Home | — | hidden when no live poll |
@@ -87,7 +91,7 @@ The zone is **absent entirely** until an activity is switched on in admin, and d
 
 Notifications no longer live behind a header bell. Instead:
 - A **Notifications preview** zone in the feed shows ~2–3 recent items with **"See all"** → a dedicated **Notifications page** (its own screen) with the full list.
-- **See all** always opens that page. **Tapping one row** goes to what that notification is about (Discover request, event, etc.).
+- **Tapping the card** (or See all) always opens that page. **Tapping one row** goes to what that notification is about (Discover request, event, etc.).
 - **Story replies are not in this widget.** They already have the Home replies row under Stories. They still appear on the full Notifications page and in Messages. Full rules: **`NOTIFICATIONS.md`**.
 - The old "Updates" section is folded into this — friend changes/plans surface here too.
 
@@ -104,15 +108,15 @@ The top of Home is a single **swipeable carousel** that consolidates what used t
 
 ### Assistant on Home (opt-in)
 
-When the person has turned Assistant on in Settings, a **compact chat box** appears **under Stories** (after the story tiles and the replies row). It matches Announcements card height: short transcript + Ask / Send. Confirmed acts still hand off to messages, events, or calendar the same way as the full Assistant screen. Settings → Open Assistant remains for longer sessions. People who never opted in never see this box.
+When the person has turned Assistant on in Settings, the **AgentWidget** (user-facing name: Billy) appears **under Stories** (after the story tiles and the replies row). Short asks can finish on Home; longer threads open the full-screen AgentScreen. If work is still live when they leave Home, **AgentIsland** pins a small capsule at the top (never on Home itself; idle = hidden). Confirmed acts still use Bridger drafts/previews (messages are in-Bridger only). Settings keeps the toggle + Open entry. People who never opted in never see Widget, Screen, or Island. See `AGENT.md` / `AGENT-SCOPE.md` and Magic Patterns `components/assistant/`.
 
 ### Messages (header icon)
 
-The header's top-right icon opens **Messages** — Bridger's intentionally-limited chat (5/day per conversation, built to push people to swap numbers; see `MESSAGES.md`). You can also start a message from a friend's profile.
+The header's top-right icon opens **Messages** — Bridger's intentionally-limited chat (5/day per conversation, built to push people to share a contact card; see `MESSAGES.md`). You can also start a message from a friend's profile.
 
 ### Floating nav
 
-The five destinations sit in a **floating pill nav** — detached from the bottom edge with margin, rounded, and slightly dynamic (Apple's newer style; may tuck on scroll). Active destination = filled circle in that tab's color (Home teal · Friends coral · Messages blue · Events touch-grass green · Discover amber). A matching-color dot marks unread activity on a tab. See `DESIGN.md`.
+The five destinations sit in a **floating elongated capsule** — detached from the bottom edge with a little side margin, and slightly dynamic (Apple's newer style; may tuck on scroll). Active destination = filled elongated pill in that tab's color (Home teal · Friends coral · Events touch-grass green · Discover amber · News purple). A matching-color dot marks unread activity on a tab. See `DESIGN.md`.
 
 ### Co-op portal access
 
@@ -254,7 +258,7 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 - [ ] `friendCount === 0` renders the cold-start invitation, not empty zones.
 - [ ] There is no generic `+`; the header's right control is the messages icon, and the only post entry is the "Your story" tile. **Home has no Touch Grass send button** (send lives on the Events page).
 - [ ] The top of Home is a single swipeable announcements carousel (touch-grass signals, quick check-in, co-op announcements, coming-up birthdays/reminders/check-ins) with page dots; it hides entirely when there are nothing live.
-- [ ] When Assistant is opted in, a compact chat box appears under Stories (same size as an Announcements card); when off, it is absent.
+- [ ] When Assistant is opted in, AgentWidget appears under Stories; AgentScreen / AgentIsland behave per AGENT.md; when off, all three are absent.
 - [ ] The announcements carousel hides entirely when empty; updates, your poll, and This week each hide independently (no header, no gap) when empty.
 - [ ] Posting shows the multi-select audience picker: choosing Friends also checks Close friends (both lit); Everyone checks all three.
 - [ ] Each tier row has a caret that expands its members for per-person deselection; deselections apply only to that post.

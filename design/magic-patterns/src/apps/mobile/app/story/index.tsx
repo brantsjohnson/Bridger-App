@@ -288,7 +288,7 @@ function CatchUpPanel({
         drag="y"
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={0.08}
-        onDragEnd={(_, info) => {
+        onDragEnd={(_e, info: { offset: { x: number; y: number } }) => {
           if (info.offset.y < -40) onOpenChange(true);
           if (info.offset.y > 60) onOpenChange(false);
         }}

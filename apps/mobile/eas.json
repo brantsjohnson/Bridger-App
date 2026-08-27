@@ -22,6 +22,9 @@
       "ios": {
         "resourceClass": "m-medium"
       },
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
         "EXPO_PUBLIC_DEMO_UNLOCK": "1",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
@@ -31,6 +34,9 @@
     "production": {
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_DEMO_UNLOCK": "0",
@@ -43,11 +49,19 @@
     "preview": {
       "ios": {
         "ascAppId": "6801281923"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     },
     "production": {
       "ios": {
         "ascAppId": "6801281923"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

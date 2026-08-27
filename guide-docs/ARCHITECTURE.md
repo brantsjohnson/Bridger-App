@@ -153,7 +153,8 @@ apps/api/src/
 ├── common/                     # guards, interceptors, the permissions guard
 │   └── guards/tier.guard.ts    # rejects reads above the caller's tier
 ├── auth/                       # sign up, sign in, sessions; email + Google + Apple (OAuth)
-├── profiles/                   # the pool + the 3 layers (essential/profile/connection); "Currently" = Spotify link + current book
+├── profiles/                   # the pool + the 3 layers (essential/profile/connection); Listening via music_picks + currently_song
+├── music/                      # Spotify account link (not login), search, picks, top-artists sync, save-to-library
 ├── attributes/                 # individual tagged facts; every write sets visibility+matchable
 ├── activities/                 # weekly hosted activity/challenge: prompt, posts (in-app capture), double-tap hearts; admin on/off (see ADMIN.md)
 ├── connections/                # the ACT of connecting: requests, accept/decline, links, QR; records how-you-met (event/mutual/coarse place)
@@ -207,7 +208,7 @@ apps/mobile/
 │   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; Profile opened from header avatar (pill hidden on Profile)
 │   │   ├── home.tsx            # hub: announcements carousel, stories+responses, touch grass, ask-the-group, this-week (see HOME.md)
 │   │   ├── friends.tsx         # contact list + drag-drop tiering
-│   │   ├── messages.tsx        # capped inbox (5/day); share contact + make a plan (see MESSAGES.md)
+│   │   ├── messages.tsx        # capped inbox (5/day); share contact card + double-tap heart (see MESSAGES.md)
 │   │   ├── events.tsx          # create / friends' events / community (coming soon)
 │   │   ├── discover.tsx        # suggestions + connection-intent settings + network graph
 │   │   └── profile.tsx         # own profile (header avatar, not in the pill); shared card + Settings (see PROFILE.md)
@@ -227,10 +228,12 @@ apps/mobile/
 │   ├── _host/                  # generic loader: mounts a quiz by slug
 │   ├── registry.ts             # slugs + status (live | draft | archived) — only shared file
 │   └── <quiz-slug>/            # manifest.ts, Quiz.tsx, questions.ts, result.ts, styles.module.css (SCOPED)
-├── delight/                    # ISOLATED easter-egg plugins — flag-gated quirks (see DELIGHT.md)
-│   ├── _host/                  # mounts enabled delights; no-op when none on; errors caught
-│   ├── registry.ts             # {id, enabled, scope} — only shared file
-│   └── <delight-id>/           # manifest.ts, Delight.tsx, styles.module.css (SCOPED)
+├── delight/                    # optional delighters: effects/ + plugins/ + host (see DELIGHT.md)
+│   ├── _host/                  # mounts standalone plugins; no-op when none on; errors caught
+│   ├── registry.ts             # standalone plugins only (slug → lazy load)
+│   ├── CATALOG.md              # living index of ideas + built delighters
+│   ├── effects/<slug>/         # reusable motions (import from feature screens)
+│   └── plugins/<slug>/         # standalone host-mounted delighters (manifest + Delight)
 ├── components/                 # reusable UI built on packages/ui
 │   ├── StoryTile.tsx           # rectangular tile, pic in corner, image = story
 │   ├── StoryViewer.tsx         # tap-through + reaction bar

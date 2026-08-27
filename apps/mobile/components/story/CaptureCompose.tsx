@@ -3,7 +3,12 @@
 // Capture + compose for a new Update. Tap the shutter for a photo, hold for
 // video (≤20s). Text/overlay and audience come after capture — there is no
 // camera-roll upload path. Video posting shows a co-op lock for free members.
-// Emits the post_story flow + story_posted product event.
+// Under Themed posts, a toggle opts into random update nudges (about 1–3 a
+// day). Emits the post_story flow + story_posted product event.
+//
+// ACCESSIBILITY: capture is always a near-black camera UI (fixed #0E0E0E), even
+// in dark mode — never themed `bg-ink`, which flips light and washes out white
+// chrome. White pills on that canvas use always-dark `onaccent` type.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -25,32 +30,47 @@ import {
   trackProduct
 } from '@bridger/shared';
 import {
+  AnalyticsRegion,
   AudiencePicker,
   ButtonPrimary,
   ButtonSecondary,
   SurfaceHost,
+  Toggle,
   cn,
   useSurfaceAct,
-  useThemeColors,
   withAnalyticsPress,
   type AudienceLevel
 } from '@bridger/ui';
+import {
+  getNotificationPrefs,
+  setNotificationKindPref
+} from '../../data/notification-prefs';
 import { useStoryCapture } from '../../hooks/useStoryCapture';
+
+// Fixed near-black canvas for the camera sheet (does not follow theme ink).
+const CAPTURE_BG = '#0E0E0E';
+// Always-dark type on the white close pill and nudges card.
+const ON_LIGHT_INK = '#1C1B16';
+const ON_LIGHT_MUTE = '#4A483F';
 
 type Props = {
   onClose?: () => void;
   onPosted?: () => void;
   /** PAYMENT: free members can't post video — show lock instead of capture */
   isCoopMember?: boolean;
+  /** Pre-tag an event when opened from a party capture notification. */
+  initialEventId?: string;
+  initialEventTitle?: string;
 };
 
 export function CaptureCompose({
   onClose,
   onPosted,
-  isCoopMember = false
+  isCoopMember = false,
+  initialEventId,
+  initialEventTitle
 }: Props) {
   const insets = useSafeAreaInsets();
-  const c = useThemeColors();
   const { left, prompts, atCap, onCreate } = useStoryCapture();
 
   const [theme, setTheme] = useState<string | null>(null);
@@ -60,6 +80,14 @@ export function CaptureCompose({
   const [audience, setAudience] = useState<AudienceLevel>('friend');
   const [group, setGroup] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
+  /** Opt-in random "time to post" nudges — same pref as Settings → Notifications. */
+  const [randomNudges, setRandomNudges] = useState(false);
+  const [taggedEventId, setTaggedEventId] = useState<string | null>(
+    initialEventId ?? null
+  );
+  const [taggedEventTitle, setTaggedEventTitle] = useState<string | undefined>(
+    initialEventTitle
+  );
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flowStartedAt = useRef(Date.now());
   const lastStep = useRef('open');
@@ -80,6 +108,34 @@ export function CaptureCompose({
       }
     };
   }, []);
+
+  // THIS SECTION DOES: keep the event tag label in sync when the route hands us a title.
+  useEffect(() => {
+    if (initialEventId) setTaggedEventId(initialEventId);
+    if (initialEventTitle) setTaggedEventTitle(initialEventTitle);
+  }, [initialEventId, initialEventTitle]);
+
+  // THIS SECTION DOES: load whether random update nudges are already on.
+  useEffect(() => {
+    let alive = true;
+    void getNotificationPrefs().then((p) => {
+      if (alive) setRandomNudges(p.kinds.story_prompt === true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // THIS SECTION DOES: save the random-nudge pref (also listed in Settings).
+  const toggleRandomNudges = (on: boolean) => {
+    setRandomNudges(on);
+    void setNotificationKindPref('story_prompt', on);
+    trackProduct('notification_pref_changed', {
+      pref: 'story_prompt',
+      pref_scope: 'kind',
+      enabled: on
+    });
+  };
 
   const startHold = () => {
     if (atCap) {
@@ -132,12 +188,14 @@ export function CaptureCompose({
         themeSlug: theme ?? undefined,
         audience,
         group,
+        eventId: taggedEventId ?? undefined,
         emoji: captured === 'video' ? '🎥' : '📸',
         accent: 'purple'
       });
       trackProduct('story_posted', {
         method: captured,
-        is_coop: isCoopMember
+        is_coop: isCoopMember,
+        ...(taggedEventId ? { event_id: taggedEventId } : {})
       });
       trackFlowCompleted('post_story', Date.now() - flowStartedAt.current, {
         method: captured
@@ -171,11 +229,15 @@ export function CaptureCompose({
           group={group}
           setGroup={setGroup}
           posting={posting}
+          taggedEventTitle={taggedEventId ? taggedEventTitle : undefined}
+          onClearEventTag={() => {
+            setTaggedEventId(null);
+            setTaggedEventTitle(undefined);
+          }}
           onRetake={() => setCaptured(null)}
           onPost={() => void handlePost()}
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
-          ink={c.ink}
         />
       </SurfaceHost>
     );
@@ -184,8 +246,12 @@ export function CaptureCompose({
   return (
     <SurfaceHost surface="post_composer" parentScreen="home" open>
       <View
-        style={{ paddingTop: Math.max(insets.top, 12), paddingBottom: Math.max(insets.bottom, 16) }}
-        className="relative flex-1 bg-ink"
+        style={{
+          paddingTop: Math.max(insets.top, 12),
+          paddingBottom: Math.max(insets.bottom, 16),
+          backgroundColor: CAPTURE_BG
+        }}
+        className="relative flex-1 bg-canvas-dark"
       >
         <View className="flex-row items-center justify-between px-4">
           <Pressable
@@ -194,7 +260,7 @@ export function CaptureCompose({
             accessibilityLabel="Close"
             className="h-9 w-9 items-center justify-center rounded-full bg-white/85"
           >
-            <ChevronDownIcon size={20} color={c.ink} strokeWidth={2.6} />
+            <ChevronDownIcon size={20} color={ON_LIGHT_INK} strokeWidth={2.6} />
           </Pressable>
           <Text className="font-pixel text-[15px] text-white">Your story</Text>
           <Text className="font-sans-b text-[12px] text-white/70">{left} left</Text>
@@ -245,6 +311,32 @@ export function CaptureCompose({
                 </Text>
               </Pressable>
             ))}
+          </View>
+
+          {/* THIS SECTION DOES: opt into surprise "time to post" nudges (1–3 / day) */}
+          <View className="mt-3 flex-row items-center gap-3 rounded-card bg-white px-3 py-3">
+            <AnalyticsRegion
+              analyticsId={POST_COMPOSER.suggested.random_nudges_label}
+              interactive={false}
+              className="min-w-0 flex-1"
+            >
+              <Text className="font-sans-b text-[13px] text-onaccent">
+                Random update nudges
+              </Text>
+              <Text
+                className="mt-0.5 font-sans-md text-[11px] leading-snug"
+                style={{ color: ON_LIGHT_MUTE }}
+              >
+                About 1–3 surprise taps a day, including a mid-party nudge to
+                capture mems when you are at an event.
+              </Text>
+            </AnalyticsRegion>
+            <Toggle
+              checked={randomNudges}
+              onChange={toggleRandomNudges}
+              label="Random update nudges, about 1 to 3 a day"
+              analyticsId={POST_COMPOSER.suggested.random_nudges_toggle}
+            />
           </View>
         </View>
 
@@ -299,11 +391,12 @@ function ComposeInner({
   group,
   setGroup,
   posting,
+  taggedEventTitle,
+  onClearEventTag,
   onRetake,
   onPost,
   insetsTop,
-  insetsBottom,
-  ink
+  insetsBottom
 }: {
   captured: 'photo' | 'video';
   themeLabel?: string;
@@ -314,18 +407,23 @@ function ComposeInner({
   group: string | null;
   setGroup: (g: string | null) => void;
   posting: boolean;
+  taggedEventTitle?: string;
+  onClearEventTag?: () => void;
   onRetake: () => void;
   onPost: () => void;
   insetsTop: number;
   insetsBottom: number;
-  ink: string;
 }) {
   const { markActed } = useSurfaceAct();
 
   return (
     <View
-      style={{ paddingTop: Math.max(insetsTop, 12), paddingBottom: Math.max(insetsBottom, 16) }}
-      className="relative flex-1 bg-ink"
+      style={{
+        paddingTop: Math.max(insetsTop, 12),
+        paddingBottom: Math.max(insetsBottom, 16),
+        backgroundColor: CAPTURE_BG
+      }}
+      className="relative flex-1 bg-canvas-dark"
     >
       <View className="flex-row items-center justify-between px-4">
         <Pressable
@@ -334,7 +432,7 @@ function ComposeInner({
           accessibilityLabel="Retake"
           className="h-9 w-9 items-center justify-center rounded-full bg-white/85"
         >
-          <ChevronDownIcon size={20} color={ink} strokeWidth={2.6} />
+          <ChevronDownIcon size={20} color={ON_LIGHT_INK} strokeWidth={2.6} />
         </Pressable>
         <Text className="font-pixel text-[15px] text-white">
           {themeLabel ?? 'Add text'}
@@ -378,6 +476,30 @@ function ComposeInner({
             everyone: POST_COMPOSER.audience.everyone
           }}
         />
+        {taggedEventTitle ? (
+          <View className="flex-row items-center justify-between rounded-full border border-white/30 px-4 py-2.5">
+            <AnalyticsRegion
+              analyticsId={POST_COMPOSER.suggested.event_tag_label}
+              interactive={false}
+              className="min-w-0 flex-1"
+            >
+              <Text className="font-sans-b text-[13px] text-white">
+                Tagged: {taggedEventTitle}
+              </Text>
+              <Text className="mt-0.5 font-sans-md text-[11px] text-white/60">
+                Saves to the event photo album
+              </Text>
+            </AnalyticsRegion>
+            <Pressable
+              onPress={withAnalyticsPress(POST_COMPOSER.suggested.event_tag_clear, onClearEventTag)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove event tag"
+              className="rounded-full bg-white/15 px-3 py-1.5"
+            >
+              <Text className="font-sans-b text-[12px] text-white">Remove</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <ButtonPrimary
           full
           loading={posting}

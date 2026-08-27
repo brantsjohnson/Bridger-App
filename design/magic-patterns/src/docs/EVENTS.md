@@ -2,7 +2,13 @@
 
 Build doc for the Events tab. Maps to `apps/mobile/app/(tabs)/events.tsx`, the `events` API module, and its connections to `matching`, `connections`, and `notifications` in `ARCHITECTURE.md`. Read that file first.
 
-Events is where connection becomes in-person. It has four surfaces: the **list**, the **create** flow, the **invitee** event view (RSVP), and the **host** dashboard. Its distinctive job is turning a guest list into introductions — so the same matchmaking that powers Discover runs *inside* an event.
+Events is where connection becomes in-person. It has five surfaces: the **gate** (first-time host marketing page), the **list**, the **create** flow, the **invitee** event view (RSVP), and the **host** dashboard. Its distinctive job is turning a guest list into introductions — so the same matchmaking that powers Discover runs *inside* an event.
+
+---
+
+## 0 · Events gate (first-time host)
+
+Before the user has hosted an event, Events shows a marketing page: headline **Create places where memories happen.**, three scrolling rows of small decorative idea chips (activism / share-ideas first), and **Create an event**. Chips do not prefill create. After the first host event, the normal list + Touch Grass returns.
 
 ---
 
@@ -70,7 +76,8 @@ What a guest sees: cover, title, host **and co-hosts**, then the two things they
 The host's view of their own event (see mockup):
 
 - **Edit** — the host (or a co-host) edits their own event in place: title, day, time, place, address, what it is, what to bring, and the whole chip-in block.
-- **Counts** — "3 going" / "6 invited", both **tappable**, opening the same two-tab people sheet a guest sees (co-hosts badged, no-answers marked).
+- **Counts** — two wide pills "N going" / "N invited" (big numerals), both **tappable**, opening the people sheet (co-hosts badged, no-answers marked). When friends-can-invite is on, rows show "invited by" / "brought by"; no separate "brought" pill.
+- **Header date** — date square sits next to the title; When uses a flip-tile countdown.
 - **Chipping in, first** — amount per person, the method, and the handle, stated plainly so nobody has to ask where to send it. Guests pay the host directly; we never touch it and never take a cut.
 - **Co-hosts** — add anyone who said yes; they can edit and invite, but not delete.
 - **Share** — the same share sheet as the guest view.
@@ -110,7 +117,8 @@ interface EventDetail extends EventSummary {
 }
 
 interface HostView {
-  attendees: Attendee[];
+  attendees: Attendee[];           // may show invitedBy when friends-can-invite
+  inviteByIds?: Record<string, string>; // personId → inviter; omit = host
   introductions: Introduction[];   // pairwise, with the "why"
   sharedAllergies: string[];       // host-only, opt-in
   reminders: { twoDays: boolean; twoHours: boolean };

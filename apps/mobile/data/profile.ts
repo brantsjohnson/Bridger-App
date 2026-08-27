@@ -15,11 +15,22 @@ import type {
   FavoriteModule,
   ObsessionSquare,
   Person,
+  PhotoBlock,
   Tier,
   Top5Item
 } from '@bridger/shared';
+import {
+  DEFAULT_STORAGE_CONFIG,
+  FREE_STORY_STORAGE_BYTES,
+  buildStorageMeter,
+  formatStorageBytes,
+  includedBytesFromGb,
+  overagePriceLabel,
+  storageUsedPct
+} from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
+import { getMembership } from './coop';
 import { PEOPLE } from './fixtures/catalog';
 import {
   ABOUT_ME_FIELDS,
@@ -81,9 +92,19 @@ export type MyProfileHeader = {
   book?: { title: string; author: string };
 };
 
+/**
+ * Storage meter for Settings + Stories.
+ * Co-op shows used vs included; free shows the rolling month bar.
+ * overagePriceLabel is soft-stub copy (no real charge).
+ */
 export type StorageState = {
   usedPct: number;
   plan: 'free' | 'coop';
+  usedBytes: number;
+  includedBytes: number;
+  overageBytes: number;
+  label: string;
+  overagePriceLabel: string | null;
 };
 
 export type HobbyFollowUp = { question: string; answer: string };
@@ -123,6 +144,16 @@ let demoObsession: ObsessionSquare[] = CURRENT_OBSESSION.map((o) => ({
 }));
 /** One-time profile intro seen (demo session). */
 let demoProfileIntroSeen = false;
+/** Co-op Greatest hits slots (≤3). Demo starts with one after About me. */
+let demoGreatestHits: PhotoBlock[] = [
+  {
+    id: 'me-gh1',
+    assetId: 'demo-me-1',
+    order: 0,
+    afterModule: 'aboutMe',
+    visibleToTier: 'friend'
+  }
+];
 
 // --- LIVE WIRING HELPERS ---
 // Every "fact" comes back from the API as this shape. We store the exact
@@ -322,12 +353,57 @@ export async function listTop5(): Promise<Top5Item[]> {
   return rows.map((r) => r.value).sort((a, b) => a.order - b.order);
 }
 
+/** Attach Listening catalog fields onto obsession squares when we have a pick. */
+async function withListeningMusic(squares: ObsessionSquare[]): Promise<ObsessionSquare[]> {
+  try {
+    const { fetchListeningNow } = await import('./music');
+    const pick = await fetchListeningNow();
+    if (!pick) return squares;
+    const music = {
+      pickId: pick.id,
+      spotifyId: pick.spotifyId,
+      spotifyUri: pick.spotifyUri,
+      title: pick.title,
+      artistName: pick.artistName,
+      artworkUrl: pick.artworkUrl,
+      previewUrl: pick.previewUrl
+    };
+    let found = false;
+    const next = squares.map((o) => {
+      if (!/^listening/i.test(String(o.prompt))) return o;
+      found = true;
+      return {
+        ...o,
+        text: o.text || `${pick.title} · ${pick.artistName}`,
+        music
+      };
+    });
+    if (found) return next;
+    // No Listening square yet: prepend one from the pick.
+    return [
+      {
+        id: `listening-${pick.id}`,
+        prompt: 'Listening…',
+        text: `${pick.title} · ${pick.artistName}`,
+        emoji: '🎧',
+        order: -1,
+        visibleToTier: pick.visibleToTier,
+        matchable: pick.matchable,
+        music
+      },
+      ...next
+    ];
+  } catch {
+    return squares;
+  }
+}
+
 /** Current Obsession squares (who you are today). */
 export async function listObsession(): Promise<ObsessionSquare[]> {
   if (isDemoMode()) {
     // Migrate legacy Currently song/book into Listening/Reading if empty.
     if (demoObsession.length === 0 && demoCurrently.checkedIn) {
-      return [
+      return withListeningMusic([
         {
           id: 'legacy-listening',
           prompt: 'Listening…',
@@ -344,18 +420,54 @@ export async function listObsession(): Promise<ObsessionSquare[]> {
           order: 1,
           visibleToTier: 'friend'
         }
-      ];
+      ]);
     }
-    return demoObsession.map((o) => ({ ...o }));
+    return withListeningMusic(demoObsession.map((o) => ({ ...o })));
   }
   const rows = await fetchAttributes<ObsessionSquare>('obsession');
-  return rows.map((r) => r.value).sort((a, b) => a.order - b.order);
+  return withListeningMusic(rows.map((r) => r.value).sort((a, b) => a.order - b.order));
 }
 
 /**
  * Album-style Favorites modules for the grid (filled + to-start on own).
  * Built from which fav groups / modules have answers.
  */
+/** Co-op Greatest hits (≤3 Bridger-hosted photo slots). */
+export async function listGreatestHits(): Promise<PhotoBlock[]> {
+  if (isDemoMode()) {
+    return demoGreatestHits.map((p) => ({ ...p }));
+  }
+  return apiFetch<PhotoBlock[]>('/me/greatest-hits');
+}
+
+/**
+ * Replace all Greatest hits slots (co-op only on the server).
+ * placementIndex is 0..2; afterModule places the photo between sections.
+ */
+export async function saveGreatestHits(
+  slots: Array<{
+    mediaId: string;
+    placementIndex: number;
+    afterModule?: string | null;
+    visibleToTier?: Tier;
+  }>
+): Promise<PhotoBlock[]> {
+  if (isDemoMode()) {
+    demoGreatestHits = slots.slice(0, 3).map((s, i) => ({
+      id: `me-gh-${s.placementIndex}`,
+      assetId: s.mediaId,
+      order: s.placementIndex ?? i,
+      afterModule: s.afterModule ?? undefined,
+      visibleToTier: s.visibleToTier ?? 'friend'
+    }));
+    return listGreatestHits();
+  }
+  return apiFetch<PhotoBlock[]>('/me/greatest-hits', {
+    method: 'PUT',
+    body: JSON.stringify({ slots })
+  });
+}
+
 export async function listFavoriteModules(own: boolean): Promise<FavoriteModule[]> {
   const favs = await listFavs();
   const tot = await listThisOrThat();
@@ -511,16 +623,24 @@ export async function saveHobbies(
   const tier = visibility.hobbies ?? 'friend';
 
   const next: Interest[] = selected.map((id, i) => {
+    const customLabel = answers[`customLabel:${id}`];
+    const customEmoji = answers[`customEmoji:${id}`];
     const label =
       ALL_HOBBIES.find((h) => hobbyId(h) === id) ??
-      id
-        .split('-')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
+      (typeof customLabel === 'string' && customLabel.trim()
+        ? customLabel.trim()
+        : id
+            .split('-')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' '));
     return {
       id,
       label,
-      emoji: HOBBY_EMOJI[id] ?? '✨',
+      emoji:
+        HOBBY_EMOJI[id] ??
+        (typeof customEmoji === 'string' && customEmoji.trim()
+          ? customEmoji.trim()
+          : '✨'),
       accent: hobbyAccent(i) as Accent,
       shape: i % 6,
       tier
@@ -530,8 +650,11 @@ export async function saveHobbies(
   const followUps: Record<string, HobbyFollowUp> = {};
   for (const id of selected) {
     const answer = (answers[`followup:${id}`] as string) ?? '';
+    const saved = next.find((h) => h.id === id);
     followUps[id] = {
-      question: HOBBY_FOLLOWUP_QUESTIONS[id] ?? `Tell me more about ${id}`,
+      question:
+        HOBBY_FOLLOWUP_QUESTIONS[id] ??
+        `Tell me more about ${saved?.label ?? id}`,
       answer: answer.trim() || '—'
     };
   }
@@ -783,18 +906,215 @@ export async function saveCustomNotes(
 // --- Friend profiles ---
 
 /**
- * Load another person's card data. Demo mode serves fixtures; live mode will
- * fetch attributes filtered by the caller's tier on the server (RLS).
+ * Map tier-filtered attribute rows from GET /people/:id/profile into the
+ * FriendProfile shape the card renders. PRIVACY: the server already filtered
+ * by the owner's tier for this viewer; we only reshape.
+ */
+function mapPersonAttributes(
+  attrs: ApiAttribute[]
+): Omit<FriendProfile, 'greatestHits'> {
+  const about: AboutField[] = [];
+  const hobbies: Interest[] = [];
+  const hobbyFollowUps: Record<string, HobbyFollowUp> = {};
+  const favByGroup = new Map<string, FavGroup>();
+  const thisOrThat: ThisOrThatRow[] = [];
+  const places: TravelPlace[] = [];
+  const top5: Top5Item[] = [];
+  const obsession: ObsessionSquare[] = [];
+  let bio = '';
+  let song = { title: '', artist: '' };
+  let book: { title: string; author: string } | undefined;
+  let songMusic: ObsessionSquare['music'] | undefined;
+
+  for (const a of attrs) {
+    const key = a.key;
+    const value = a.value as Record<string, unknown>;
+    if (key === 'bio') {
+      bio = typeof value?.text === 'string' ? value.text : '';
+      continue;
+    }
+    if (key === 'currently_song') {
+      song = {
+        title: typeof value?.title === 'string' ? value.title : '',
+        artist: typeof value?.artist === 'string' ? value.artist : ''
+      };
+      songMusic = {
+        pickId: typeof value?.pickId === 'string' ? value.pickId : undefined,
+        title: song.title,
+        artistName: song.artist,
+        previewUrl:
+          typeof (value as { previewUrl?: string }).previewUrl === 'string'
+            ? (value as { previewUrl: string }).previewUrl
+            : null,
+        spotifyId:
+          typeof (value as { spotifyId?: string }).spotifyId === 'string'
+            ? (value as { spotifyId: string }).spotifyId
+            : null,
+        spotifyUri:
+          typeof (value as { spotifyUri?: string }).spotifyUri === 'string'
+            ? (value as { spotifyUri: string }).spotifyUri
+            : null,
+        artworkUrl:
+          typeof (value as { artworkUrl?: string }).artworkUrl === 'string'
+            ? (value as { artworkUrl: string }).artworkUrl
+            : null
+      };
+      continue;
+    }
+    if (key === 'currently_book' && value?.title) {
+      book = {
+        title: String(value.title),
+        author: String(value.author ?? '')
+      };
+      continue;
+    }
+    if (key.startsWith('about:') && value && typeof value === 'object') {
+      const f = value as unknown as AboutField;
+      if (f.id && f.key) about.push({ ...f, tier: f.tier ?? a.visibleToTier });
+      continue;
+    }
+    if (key.startsWith('hobby:') && value && typeof value === 'object') {
+      const h = value as unknown as Interest & {
+        followUp?: HobbyFollowUp;
+      };
+      if (h.id) {
+        hobbies.push({
+          id: h.id,
+          label: h.label,
+          emoji: h.emoji,
+          accent: h.accent,
+          shape: h.shape,
+          tier: h.tier ?? a.visibleToTier
+        });
+        if (h.followUp) hobbyFollowUps[h.id] = { ...h.followUp };
+      }
+      continue;
+    }
+    if (key.startsWith('fav:') && value && typeof value === 'object') {
+      const g = value as unknown as FavGroup;
+      if (g.group) favByGroup.set(g.group, { ...g, items: [...(g.items ?? [])] });
+      continue;
+    }
+    if (key.startsWith('tot:') && value && typeof value === 'object') {
+      thisOrThat.push(value as unknown as ThisOrThatRow);
+      continue;
+    }
+    if (key.startsWith('place:') && value && typeof value === 'object') {
+      places.push(value as unknown as TravelPlace);
+      continue;
+    }
+    if (key.startsWith('top5:') && value && typeof value === 'object') {
+      const t = value as unknown as Top5Item;
+      top5.push({
+        ...t,
+        visibleToTier: t.visibleToTier ?? a.visibleToTier
+      });
+      continue;
+    }
+    if (key.startsWith('obsession:') && value && typeof value === 'object') {
+      const o = value as unknown as ObsessionSquare;
+      obsession.push({
+        ...o,
+        visibleToTier: o.visibleToTier ?? a.visibleToTier
+      });
+    }
+  }
+
+  // THIS SECTION DOES: attach Spotify preview fields to Listening squares for friends.
+  if (songMusic?.title) {
+    let attached = false;
+    for (let i = 0; i < obsession.length; i++) {
+      const o = obsession[i]!;
+      if (!/^listening/i.test(String(o.prompt))) continue;
+      obsession[i] = {
+        ...o,
+        text: o.text || `${songMusic.title} · ${songMusic.artistName}`,
+        music: o.music ?? songMusic
+      };
+      attached = true;
+    }
+    if (!attached) {
+      obsession.push({
+        id: 'from-currently-song',
+        prompt: 'Listening…',
+        text: `${songMusic.title} · ${songMusic.artistName}`,
+        emoji: '🎧',
+        order: -1,
+        visibleToTier: 'friend',
+        music: songMusic
+      });
+    }
+  }
+
+  return {
+    about,
+    hobbies,
+    hobbyFollowUps,
+    favs: Array.from(favByGroup.values()),
+    thisOrThat,
+    places,
+    top5: top5.sort((a, b) => a.order - b.order),
+    obsession: obsession.sort((a, b) => a.order - b.order),
+    header: { city: '', bio, song, book }
+  };
+}
+
+/**
+ * Load another person's card data. Demo mode serves fixtures keyed by person
+ * id. Live mode maps GET /people/:id/profile (tier-filtered attributes +
+ * Greatest hits). Never falls back to the viewer's own Top 5 / Obsession.
  */
 export async function getPersonProfile(personId: string): Promise<FriendProfile | null> {
   if (isDemoMode()) {
-    return FRIEND_PROFILES[personId] ?? null;
+    const fixture = FRIEND_PROFILES[personId];
+    if (!fixture) return null;
+    return {
+      ...fixture,
+      about: fixture.about.map((f) => ({ ...f })),
+      hobbies: fixture.hobbies.map((h) => ({ ...h })),
+      hobbyFollowUps: fixture.hobbyFollowUps
+        ? Object.fromEntries(
+            Object.entries(fixture.hobbyFollowUps).map(([k, v]) => [k, { ...v }])
+          )
+        : undefined,
+      favs: fixture.favs.map((g) => ({ ...g, items: [...g.items] })),
+      thisOrThat: fixture.thisOrThat.map((t) => ({ ...t })),
+      places: fixture.places.map((p) => ({ ...p })),
+      top5: fixture.top5.map((t) => ({ ...t })),
+      obsession: fixture.obsession.map((o) => ({ ...o })),
+      greatestHits: fixture.greatestHits?.map((p) => ({ ...p })),
+      header: {
+        ...fixture.header,
+        song: { ...fixture.header.song },
+        book: fixture.header.book ? { ...fixture.header.book } : undefined
+      }
+    };
   }
-  // FOLLOW-UP: GET /people/:id/profile is live (returns the person's identity +
-  // tier-filtered attributes). What's left is a mapper from those raw rows into
-  // the richer FriendProfile shape the card renders, plus a second real account
-  // to test against. Kept on fixtures until that mapper lands.
-  return null;
+
+  type PersonProfileApi = {
+    id: string;
+    name: string;
+    avatarMediaId: string | null;
+    viewerTier: Tier;
+    attributes: ApiAttribute[];
+    greatestHits?: PhotoBlock[];
+  };
+
+  const res = await apiFetch<PersonProfileApi | null>(
+    `/people/${encodeURIComponent(personId)}/profile`
+  );
+  if (!res) return null;
+
+  const mapped = mapPersonAttributes(res.attributes ?? []);
+  // City often lives on settings; live friend cards may only have bio attrs.
+  return {
+    ...mapped,
+    header: {
+      ...mapped.header,
+      city: mapped.header.city || ''
+    },
+    greatestHits: (res.greatestHits ?? []).map((p) => ({ ...p }))
+  };
 }
 
 // --- Bucket list ---
@@ -891,13 +1211,87 @@ export async function listStoryDays(month?: string): Promise<Record<number, stri
   return res.days ?? {};
 }
 
+/** Empty meter used while the Stories tab is still loading. */
+export function emptyStorageState(): StorageState {
+  return {
+    plan: 'free',
+    usedPct: 0,
+    usedBytes: 0,
+    includedBytes: FREE_STORY_STORAGE_BYTES,
+    overageBytes: 0,
+    label: 'Story storage',
+    overagePriceLabel: null
+  };
+}
+
+/**
+ * Settings + Stories read the same helper.
+ * Demo: free month looks full; after soft-join, shows ~1.2 GB of 3 GB + overage stub.
+ */
 export async function getStorageState(): Promise<StorageState> {
-  if (isDemoMode()) return { usedPct: 100, plan: 'free' };
+  if (isDemoMode()) {
+    const membership = await getMembership();
+    if (membership.member) {
+      const includedBytes = includedBytesFromGb(DEFAULT_STORAGE_CONFIG.includedGb);
+      // Demo numbers: about 1.2 GB used of the included allotment.
+      const usedBytes = Math.round(1.2 * 1024 * 1024 * 1024);
+      const meter = buildStorageMeter({ usedBytes, includedBytes });
+      return {
+        plan: 'coop',
+        usedPct: storageUsedPct(meter),
+        usedBytes: meter.usedBytes,
+        includedBytes: meter.includedBytes,
+        overageBytes: meter.overageBytes,
+        label: `${formatStorageBytes(meter.usedBytes)} of ${formatStorageBytes(meter.includedBytes)} included`,
+        overagePriceLabel: overagePriceLabel(DEFAULT_STORAGE_CONFIG.overageCentsPerGb)
+      };
+    }
+    const meter = buildStorageMeter({
+      usedBytes: FREE_STORY_STORAGE_BYTES,
+      includedBytes: FREE_STORY_STORAGE_BYTES
+    });
+    return {
+      plan: 'free',
+      usedPct: 100,
+      usedBytes: meter.usedBytes,
+      includedBytes: meter.includedBytes,
+      overageBytes: 0,
+      label: 'Your free month is full. Older posts will roll off.',
+      overagePriceLabel: null
+    };
+  }
+
   const res = await apiFetch<{
     usedPct: number;
     plan: 'free' | 'coop';
+    usedBytes?: number;
+    includedBytes?: number;
+    overageBytes?: number;
+    label?: string;
+    overagePriceLabel?: string | null;
   }>('/me/storage');
-  return { usedPct: res.usedPct ?? 0, plan: res.plan ?? 'free' };
+
+  const includedBytes =
+    res.includedBytes ??
+    (res.plan === 'coop'
+      ? includedBytesFromGb(DEFAULT_STORAGE_CONFIG.includedGb)
+      : FREE_STORY_STORAGE_BYTES);
+  const usedBytes = res.usedBytes ?? 0;
+  const meter = buildStorageMeter({ usedBytes, includedBytes });
+
+  return {
+    plan: res.plan ?? 'free',
+    usedPct: res.usedPct ?? storageUsedPct(meter),
+    usedBytes: meter.usedBytes,
+    includedBytes: meter.includedBytes,
+    overageBytes: res.overageBytes ?? meter.overageBytes,
+    label: res.label ?? 'Storage',
+    overagePriceLabel:
+      res.overagePriceLabel ??
+      (res.plan === 'coop'
+        ? overagePriceLabel(DEFAULT_STORAGE_CONFIG.overageCentsPerGb)
+        : null)
+  };
 }
 
 // --- Blocked people (Settings → Blocked) ---

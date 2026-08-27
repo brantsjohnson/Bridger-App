@@ -22,6 +22,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 | Main app (home, friends, events, profile, feed) | eggshell / black, with the drifting grid behind it |
 | Onboarding, profile fill modules, empty states | colorful |
 | Discover | the same grid, turned up (see below) |
+| **Intro gates** (Events first look, Discover first look) | **Black** (`Screen tone="intro"`). White type. Same family as Discover's retro first screen. After Explore / Get started, the tab returns to eggshell. |
 | Settings, forms, account | plainest — eggshell, minimal decoration |
 | **Sign in (auth entry)** | Full-bleed brand photography (color bars) + centered Bridger mark; eggshell auth panel in the lower half. Exception to the eggshell main canvas. |
 
@@ -47,7 +48,8 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 ## Shape & surfaces
 
 - Rounded rectangles, pill buttons, soft cards, clean modular blocks. Radius ~12–24px on cards, pill radius on chips/buttons.
-- **Floating nav bar.** The bottom navigation is a **detached, rounded pill** inset from the screen edge — Apple's newer dynamic/"liquid-glass" style: translucent where possible, subtly dynamic (may shrink or tuck away on scroll), active destination shown as a filled circle. Not a full-width bar flush to the bottom edge.
+- **Floating nav bar.** The bottom navigation is a **detached, elongated capsule** inset from the screen edge (a little margin left and right, never flush). Same long-pill language as the toggle: the track stretches most of the width, and the active destination is a **filled elongated pill** in that tab's color, not a tight circle. Translucent where possible; may shrink or tuck away on scroll.
+- **Fun quiz take (Which "J" name are you?):** geometric brutalist exception. Solid **white** canvas (no drifting grid). Question sits in a large sharp navy slab. Answers are large **accent-colored** blocks (purple, coral, teal, amber…) so options read as different, with thick white gutters. Tap sprays a short emoji shower from that tile (Reduce Motion skips it). No rounded pills on the take. Leave is always an **X** top-right (no back arrow); it opens End quiz. **Commentary / quip screens** are a different beat: vivid amber canvas (not dusty yellow), the line sits free in the middle (no slab), same X, Continue is the old-Windows metallic `ButtonPrimary` at the bottom. Discover / Connect Over quizzes stay on the shared `QuizTakeShell`.
 - **Page title headers scroll with the page.** Home / Friends / Events / etc. title rows are not sticky and do not slide back when you scroll up mid-page. They leave only as content pushes them off the top, and they return only when you scroll all the way back to the top (`ScreenHeader` + `ScreenBody` in `packages/ui`).
 - **Flat.** No heavy shadows, no fake depth, no busy textures. A faint hairline or a solid color fill separates surfaces — that's enough.
 - **White is the default container; color is earned.** `surface` is plain white. Color does not come from tinting every card a pale shade — a pastel wash everywhere reads muted, not playful. It comes from making the things that matter **fully vivid**: the Touch Grass button, Connect Over cards, message rows, the event banner. When in doubt: white base, loud feature.
@@ -77,7 +79,7 @@ Private measurement quizzes (Your Funny Bone, Your Vibe, The Friend Zone, What G
 
 The slowly-drifting perspective grid is **the app's background everywhere**, not a Discover-only trick. It is the one part of synth Bridger actually wants — not the neon, not the chrome.
 
-- **Every screen gets it.** `Screen` renders `SynthGrid` behind the content. Only `tone="plain"` screens skip it (the story player and anything drawn edge to edge over a photo, where a grid just looks like dirt).
+- **Every screen gets it.** `Screen` renders `SynthGrid` behind the content. Only `tone="plain"` screens skip it (the story player, the fun-quiz take, and anything drawn edge to edge over a photo, where a grid just looks like dirt).
 - **Discover gets the boldest version** (`strength="bold"`); everywhere else is one step down. It still has to stay behind the content — text on top must read comfortably.
 - **The maps and graphs stay neoclassical.** The friend maps (Map A / Map B in `DISCOVER.md`) and any connection graphs render **clean and modern** — thin lines, tidy nodes, readable — on a crisp card floating over the grid. The grid is the *stage*; the map is the *content*, and content stays clean.
 - Pixel **Discover** header sits on the synth canvas.

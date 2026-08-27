@@ -92,8 +92,8 @@ export function BasicsScreen({ onNext, onSkip }: {onNext?: () => void;onSkip?: (
 
   return (
     <OnboardingStep
-      step={5}
-      total={9}
+      step={6}
+      total={10}
       purpose="A few things friends want to know."
       ask={q.ask}
       cta={last ? 'Done' : 'Continue'}

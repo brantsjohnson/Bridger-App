@@ -261,7 +261,8 @@ export class FeedService {
           requestId: payload.request_id,
           signalId: payload.signal_id,
           eventId: payload.event_id,
-          pollId: payload.poll_id
+          pollId: payload.poll_id,
+          quizSlug: payload.quiz_slug
         }
       };
     });
@@ -281,6 +282,7 @@ function mapNotificationKind(kind: string): AppNotification['kind'] {
       return 'touch_grass_im_in';
     case 'story_reply':
     case 'story_reply_elsewhere':
+    case 'story_prompt':
     case 'connect_request':
     case 'mutual_connection':
     case 'touch_grass_signal':
@@ -294,11 +296,14 @@ function mapNotificationKind(kind: string): AppNotification['kind'] {
     case 'event_assignment':
     case 'poll_activity':
     case 'quiz_share':
+    case 'jname_link_opened':
+    case 'jname_top_match':
     case 'recap_reaction':
     case 'inside_joke':
     case 'message':
     case 'coop_announcement':
     case 'activity_live':
+    case 'delight_gift':
       return kind;
     default:
       return 'story_reply';
@@ -309,6 +314,10 @@ function labelForKind(kind: string, payload: Record<string, string>): string {
   switch (kind) {
     case 'story_reply':
       return 'Replied to your update';
+    case 'story_prompt':
+      return payload.event_id
+        ? "📸 Don't forget to capture the mems"
+        : 'Time to post an update';
     case 'friend_check_in':
       return 'Check in with a friend?';
     case 'connection_request':
@@ -337,6 +346,14 @@ function labelForKind(kind: string, payload: Record<string, string>): string {
       return payload.action === 'created'
         ? 'Posted a poll for your circle'
         : 'Answered your poll';
+    case 'quiz_share':
+      return 'Shared a quiz with you';
+    case 'jname_link_opened':
+      return 'Opened your quiz link';
+    case 'jname_top_match':
+      return payload.j_name
+        ? `Got ${payload.j_name} — one of your top picks`
+        : 'Got one of your top J-name picks';
     case 'recap_reaction':
       return payload.emoji
         ? `reacted ${payload.emoji} to your recap`

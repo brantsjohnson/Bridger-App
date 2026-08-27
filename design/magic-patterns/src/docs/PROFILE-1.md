@@ -76,7 +76,7 @@ The In-common tab is computed from the overlap of your and their matchable attri
 
 **Every module uses one baseline flow.** The basics, Hobbies, This or that, List of favs, Places traveled, Deeper questions — all of them are answered **one question per screen**, with the same progress bar, the same smooth transitions, the same "Skip for now," and the same closing review as onboarding. Filling out your favorites should feel as quick and painless as the onboarding basics, never like a dense form. This is a rule, not a preference: a module that renders a stacked form is wrong.
 
-Filling is broken into **modules** (`PROFILE-QUESTIONS.md`), in this order: The basics, **Hobbies**, This or that, List of favs, Places traveled, Deeper questions, Custom notes. Rules:
+Filling is broken into **modules** (`PROFILE-MODULES.md`), in this order: The basics, **Hobbies**, This or that, List of favs, Places traveled, Deeper questions, Custom notes. Rules:
 
 - **Hobbies come near the top** — they're fast and fun to pick, so they get filled in "in a second" and give the profile immediate personality.
 - **All optional.** Fill any subset, in any order.
@@ -201,7 +201,7 @@ interface FriendNote { personId: string; note: string; }  // private, author-onl
 | "View as" preview (own profile) | `permissions` (render as tier) |
 | In-common tab (friend profile) | `matching` (attribute overlap) + `permissions` |
 | Mandatory intro screen (once) | `profiles` (flag) |
-| Fill modules + question bank | `profiles` + question bank (see `PROFILE-QUESTIONS.md`) |
+| Fill modules + question bank | `profiles` + question bank (see `PROFILE-MODULES.md`) |
 | Module save / resume / cancel | `profiles` (draft state, discarded on cancel) |
 | Review & share (set-all + per-item) | `attributes` + `permissions` |
 | "Ask me" icebreakers (friend-filled) | `profiles` |

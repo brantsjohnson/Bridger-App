@@ -67,6 +67,7 @@ The working surface once opted in:
   - **Prefer the specific, surprising overlap** — the matcher should surface the oddly-specific thread ("Chili tolerance: high") over the safe-generic ("you both like food"). Specificity is what makes a suggestion feel human and exciting; genericness is what makes it feel like a dating app.
   - An **Add** button starts the connection → runs the reveal. Both parties must have opted in to appear.
 - **Basis today: friends-of-friends.** Suggestions are people who **share a friend with you** (second-degree). **A "nearby"/location-based layer with a map is planned for later** — not built now; today it's purely the mutual-friend graph.
+- **Local map teaser (dormant).** Under People to meet, Discover shows a **"Local map · Coming soon"** friend-radar preview (`LocalMapTeaser`). It is a placeholder only (no live location, no pins). Framing: opt-in friends nearby in your city (Snap Map energy, platonic), never strangers and never a dating radar. When the real layer ships, this slot becomes the live map and must stay opt-in + coarse per `PRIVACY.md`.
 - **Blocks are a hole in your graph.** Anyone you've **blocked** (`FRIENDS.md`) is excluded from your suggestions entirely — never a candidate, and **never a mutual-connection bridge** (you'll never see "you both know {blocked}", and they can't route anyone to you). The exclusion is symmetric (you're gone from their suggestions too) and local to the two of you — everyone else's graph is unaffected. **"Don't suggest again"** on a card is the lighter version: it drops one person from your suggestions without a full block.
 - **"Wants to connect"** cards get the same treatment — lead with the shared thread and state the mutual ("you both know Theo"), not just a name.
 - Suggestions recompute after each new connection and after events (the "who you should meet" cards in `EVENTS.md` route here).
@@ -150,6 +151,7 @@ type Tier = 'close' | 'friend' | 'acquaintance' | 'none';  // 'none' = private b
 - [ ] Suggestion cards lead with the shared thread as the headline (name as subtitle), state the mutual as a connection ("you both know {friend}" — not a vouch), show 2–3 shared-signal chips and interest color, and mark them as Bridger's picks; the top match is a spotlight card. Only people who have also opted in appear.
 - [ ] The matcher prefers the most specific/surprising shared thread over generic ones for the headline.
 - [ ] Suggestions are friends-of-friends today; a nearby/location layer with a map is planned but not built now.
+- [ ] Under People to meet, a dormant **Local map · Coming soon** teaser (friend-radar preview) is visible; it does not request location or show real people.
 - [ ] The network map shows friends (solid) and could-meet second-degree people (dashed), including friend-to-friend cross-links.
 - [ ] Connection approvals (confirm/ignore) happen on Discover, not Friends.
 - [ ] Adding someone runs the reveal, and "In common" is reachable again as a tab on that person's profile.

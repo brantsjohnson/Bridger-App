@@ -38,9 +38,9 @@ export function ReviewScreen({ onNext }: {onNext?: () => void;}) {
 
   return (
     <OnboardingStep
-      step={7}
-      total={9}
-      purpose="You decide who sees what."
+      step={8}
+      total={10}
+      purpose="You decide who sees what. Always."
       ask="Set who sees each answer"
       cta="Looks right"
       accent="blue"

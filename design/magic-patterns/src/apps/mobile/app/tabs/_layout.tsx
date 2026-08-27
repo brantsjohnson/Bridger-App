@@ -8,6 +8,7 @@ import {
 import {
   FloatingTabBar,
   MessagesLinkProvider,
+  ProfileLinkProvider,
   TabKey,
   screenTransition } from
 '../../../../packages/ui';
@@ -32,6 +33,8 @@ import { FriendPodScreen } from '../pod';
 import { CoopScreen } from '../coop';
 import { CoopPortalScreen } from '../coop/portal';
 import { PollsArchiveScreen } from '../polls';
+import { NewsScreen } from './news';
+import { ME } from '../../state/mock-data';
 
 export type TabRoute =
 TabKey |
@@ -49,6 +52,7 @@ TabKey |
 'quiz' |
 'quiz-result' |
 'home-quiz-taken' |
+'profile' |
 'profile-empty' |
 'messages' |
 'thread' |
@@ -73,7 +77,6 @@ TabKey |
 'pod-empty';
 
 const PARENT: Record<string, TabKey> = {
-  coop: 'profile',
   notifications: 'home',
   activity: 'home',
   quiz: 'home',
@@ -88,7 +91,6 @@ const PARENT: Record<string, TabKey> = {
   'story-catchup': 'home',
   'story-comments': 'home',
   capture: 'home',
-  'profile-empty': 'profile',
   messages: 'home',
   thread: 'home',
   'thread-blocked': 'home',
@@ -104,11 +106,18 @@ const PARENT: Record<string, TabKey> = {
   'messages-empty': 'home',
   'activity-empty': 'home',
   'pod-empty': 'friends',
-  'profile-customize': 'profile',
-  'coop-portal': 'profile',
   polls: 'home',
   'polls-empty': 'home'
 };
+
+/** Profile and co-op open from the header photo, not the pill. Hide the bar there. */
+const HIDE_TABS = new Set<TabRoute>([
+  'profile',
+  'profile-empty',
+  'profile-customize',
+  'coop',
+  'coop-portal'
+]);
 
 const FULL_SCREEN = [
 'story',
@@ -169,8 +178,13 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
   };
   const tab: TabKey = (PARENT[route] ?? route) as TabKey;
   const immersive = FULL_SCREEN.includes(route);
+  const hideTabs = immersive || HIDE_TABS.has(route);
 
   return (
+    <ProfileLinkProvider
+      open={() => setRoute('profile')}
+      profile={{ name: ME.name, emoji: ME.emoji, accent: ME.accent }}
+    >
     <MessagesLinkProvider open={() => setRoute('messages')} unread>
     <div className="relative h-full w-full overflow-hidden bg-canvas">
       <AnimatePresence mode="wait" initial={false}>
@@ -214,6 +228,7 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
           {route === 'friends-empty' &&
             <FriendsScreen empty onOpenPerson={openPerson} />
             }
+          {route === 'news' && <NewsScreen />}
           {route === 'profile' &&
             <ProfileScreen
               customTheme={pageTheme}
@@ -345,10 +360,11 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
         </motion.div>
       </AnimatePresence>
 
-      {!immersive &&
+      {!hideTabs &&
         <FloatingTabBar value={tab} onChange={(k) => setRoute(k)} badges={{ discover: true }} />
         }
     </div>
-    </MessagesLinkProvider>);
+    </MessagesLinkProvider>
+    </ProfileLinkProvider>);
 
 }

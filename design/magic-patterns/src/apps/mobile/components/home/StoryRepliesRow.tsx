@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronRightIcon, PlayIcon } from 'lucide-react';
 import { Avatar, cn } from '../../../../packages/ui';
 import { STORY_REPLIES, personById } from '../../state/mock-data';

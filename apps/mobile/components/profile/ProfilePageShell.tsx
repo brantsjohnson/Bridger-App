@@ -1,9 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Spotify-order profile body shared by own and friend profiles. Each
-// section sits in a clear widget box. Own Edit mode can rearrange movable
-// modules (layoutOrder) and edit each box's contents. Header + tabs stay
-// anchored above this shell.
+// The Spotify-order profile body shared by own and friend profiles:
+// Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → Hobbies →
+// Places → Where you met. Co-op Greatest hits photos insert after a section
+// via afterModule. Own Edit mode can rearrange movable modules.
 // ============================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View, type ImageSourcePropType } from 'react-native';
@@ -23,7 +23,8 @@ import {
   DEFAULT_PROFILE_LAYOUT,
   MOVABLE_MODULE_ORDER,
   PROFILE,
-  trackClick
+  trackClick,
+  trackProduct
 } from '@bridger/shared';
 import { AnalyticsRegion, withAnalyticsPress } from '@bridger/ui';
 import type { Interest, ThisOrThatRow, TravelPlace } from '../../data/profile';
@@ -178,11 +179,17 @@ export function ProfilePageShell({
     await saveProfilePresentation({
       accent: current?.accent ?? 'purple',
       background: current?.background ?? 'default',
-      font: current?.font,
+      backgroundSpec: current?.backgroundSpec,
+      palette: current?.palette ?? current?.accent ?? 'purple',
+      fontId: current?.fontId ?? current?.font,
+      font: current?.fontId ?? current?.font,
       mode: current?.mode,
       layoutOrder: next
     });
     trackClick(CUSTOMIZE.layout.reorder, {});
+    trackProduct('profile_layout_saved', {
+      module_count: next.length
+    });
   }, []);
 
   const moveModule = useCallback(
@@ -212,17 +219,42 @@ export function ProfilePageShell({
     [own, mutuals.length, whereMet, greatestHits, persistOrder]
   );
 
+  // THIS SECTION DOES: Spotify scroll order. Greatest hits inject after a module.
   const visibleModules = useMemo(() => {
     return layoutOrder.filter((m) => {
       if (m === 'mutuals') return !own && mutuals.length > 0;
       if (m === 'whereMet') return !own && !!whereMet;
-      if (m === 'greatestHits') return !!(greatestHits && greatestHits.length > 0);
+      // Photos insert via afterModule; do not render a lone end-of-page block.
+      if (m === 'greatestHits') return false;
       // Not shipped as live widgets yet — skip until content exists.
       if (m === 'recommendations' || m === 'timeline') return false;
       if (m === 'upcoming') return upcoming.length > 0;
       return true;
     });
-  }, [layoutOrder, own, mutuals.length, whereMet, greatestHits, upcoming.length]);
+  }, [layoutOrder, own, mutuals.length, whereMet, upcoming.length]);
+
+  /** Photos that sit after a given section (placement_index order). */
+  const hitsAfter = useCallback(
+    (moduleId: MovableModule): PhotoBlock[] => {
+      const hits = greatestHits ?? [];
+      return hits
+        .filter((p) => (p.afterModule ?? 'aboutMe') === moduleId)
+        .sort((a, b) => a.order - b.order);
+    },
+    [greatestHits]
+  );
+
+  /** Hits whose afterModule is missing from the visible list (show after aboutMe). */
+  const orphanHits = useMemo(() => {
+    const hits = greatestHits ?? [];
+    const visible = new Set(visibleModules);
+    return hits
+      .filter((p) => {
+        const after = (p.afterModule ?? 'aboutMe') as MovableModule;
+        return !visible.has(after);
+      })
+      .sort((a, b) => a.order - b.order);
+  }, [greatestHits, visibleModules]);
 
   const renderModule = (id: MovableModule) => {
     const idx = visibleModules.indexOf(id);
@@ -286,11 +318,7 @@ export function ProfilePageShell({
           />
         );
       case 'greatestHits':
-        return wrap(
-          undefined,
-          <GreatestHitsBlock photos={greatestHits ?? []} />,
-          { skipEmpty: !greatestHits?.length }
-        );
+        return null;
       case 'favorites':
         return wrap(undefined, (
           <FavoritesSection
@@ -402,7 +430,24 @@ export function ProfilePageShell({
         </View>
       ) : null}
 
-      {visibleModules.map((id) => renderModule(id))}
+      {/* THIS SECTION DOES: render each section, then any Greatest hits after it. */}
+      {visibleModules.map((id) => {
+        const moduleNode = renderModule(id);
+        const after = hitsAfter(id);
+        // Orphans (after a hidden module) land after About me.
+        const extras =
+          id === 'aboutMe' ? [...after, ...orphanHits.filter((p) => !after.includes(p))] : after;
+        return (
+          <React.Fragment key={id}>
+            {moduleNode}
+            {extras.length > 0 ? (
+              <ProfileWidgetCard key={`${id}-hits`} editable={false}>
+                <GreatestHitsBlock photos={extras} />
+              </ProfileWidgetCard>
+            ) : null}
+          </React.Fragment>
+        );
+      })}
     </View>
   );
 }

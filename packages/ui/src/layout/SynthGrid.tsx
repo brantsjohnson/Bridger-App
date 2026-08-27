@@ -88,10 +88,21 @@ export function SynthGrid({ strength = 'normal' }: { strength?: keyof typeof STR
         the top of the screen would flash empty under the title and it would
         look like the grid just stopped. Horizontals alone do the slow drift.
       */}
+      {/*
+        Vertical lines run edge to edge (no side pad). An inset pad used to
+        read as a purple "picture frame" around the whole app and made
+        full-bleed marquees look clipped inside a border.
+      */}
       <View
         style={[
           StyleSheet.absoluteFill,
-          { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 8 }
+          {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            // Nudge past the screen edges so the outermost lines don't form a box.
+            left: -StyleSheet.hairlineWidth,
+            right: -StyleSheet.hairlineWidth
+          }
         ]}
       >
         {Array.from({ length: COLS }).map((_, i) => (

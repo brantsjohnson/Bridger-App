@@ -196,8 +196,15 @@ export const EVENTS: EventItem[] = [
     bio: 'Pens, paper, no pressure. Bring a sketchbook if you have one.',
     goingIds: ['maya', 'devon', 'ines', 'kit'],
     invitedIds: ['theo', 'nour', 'kit', 'jordyn'],
-    /** Guest-of-guest via bring-a-friend (host planning only) */
-    broughtIds: ['jordyn'],
+    /**
+     * Who invited whom (host planning only). Missing = host invited.
+     * ines was brought by Maya; jordyn was invited by Kit (not answered yet →
+     * "invited by Kit"; once going it would read "brought by Kit").
+     */
+    inviteByIds: {
+      ines: 'maya',
+      jordyn: 'kit'
+    },
     hostId: 'me',
     coHostIds: ['maya'],
     role: 'host',
@@ -393,31 +400,22 @@ export const WEEKLY_ACTIVITY = {
   ]
 };
 
+// The featured Home quiz. Ids match the J-names in the what-j-name plugin so a
+// finished result ("Jake") resolves to the right row. Friend distribution here
+// is placeholder demo data until the real "your version of Zack" leaderboard.
 export const QUIZ = {
-  id: 'road-trip',
-  title: 'Which road trip are you?',
-  description: 'Pick your vibe and see who matches.',
+  id: 'what-j-name',
+  title: 'Which "J" name are you?',
   comparable: true,
-  cover: { kind: 'emoji' as const, value: '🧭', bg: '#4D96FF' },
+  cover: { kind: 'color' as const, bg: '#101012' },
   results: [
-    {
-      id: 'coastal',
-      label: 'Coastal cruiser',
-      accent: 'teal' as const,
-      friendIds: ['maya', 'devon', 'ines']
-    },
-    {
-      id: 'mountain',
-      label: 'Mountain roamer',
-      accent: 'amber' as const,
-      friendIds: ['kit', 'nour']
-    },
-    {
-      id: 'desert',
-      label: 'Desert wanderer',
-      accent: 'coral' as const,
-      friendIds: ['theo']
-    }
+    { id: 'Justin', label: 'Justin', accent: 'pink' as const, friendIds: ['theo'] },
+    { id: 'Josh', label: 'Josh', accent: 'green' as const, friendIds: ['maya', 'ines'] },
+    { id: 'Joey', label: 'Joey', accent: 'amber' as const, friendIds: ['kit'] },
+    { id: 'James', label: 'James', accent: 'blue' as const, friendIds: ['nour'] },
+    { id: 'Jake', label: 'Jake', accent: 'coral' as const, friendIds: ['devon'] },
+    { id: 'Jared', label: 'Jared', accent: 'purple' as const, friendIds: ['jordyn'] },
+    { id: 'John', label: 'John', accent: 'teal' as const, friendIds: [] }
   ]
 };
 

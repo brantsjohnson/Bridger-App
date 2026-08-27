@@ -4,11 +4,16 @@
 // plus the storage state that drives the bar under the calendar.
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
-import { getStorageState, listStoryDays, type StorageState } from '../data/profile';
+import {
+  emptyStorageState,
+  getStorageState,
+  listStoryDays,
+  type StorageState
+} from '../data/profile';
 
 export function useStoryArchive() {
   const [days, setDays] = useState<Record<number, string>>({});
-  const [storage, setStorage] = useState<StorageState>({ usedPct: 0, plan: 'free' });
+  const [storage, setStorage] = useState<StorageState>(emptyStorageState);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async (month?: string) => {

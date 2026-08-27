@@ -4,7 +4,7 @@ import { ButtonSecondary, Chip } from '../../../../packages/ui';
 import { OnboardingStep } from '../../components/OnboardingStep';
 
 /**
- * 4 · The one place an upload is allowed. Stories stay capture-only.
+ * 5 · The one place an upload is allowed. Stories stay capture-only.
  * One house filter is applied either way, so every profile shares a look.
  */
 export function PhotoScreen({ onNext, onSkip }: {onNext?: () => void;onSkip?: () => void;}) {
@@ -12,9 +12,9 @@ export function PhotoScreen({ onNext, onSkip }: {onNext?: () => void;onSkip?: ()
 
   return (
     <OnboardingStep
-      step={4}
-      total={9}
-      purpose="One look, everyone. Your version of it."
+      step={5}
+      total={10}
+      purpose="Just you, for the people who already like you."
       ask="Add your photo"
       accent="pink"
       ctaDisabled={!source}

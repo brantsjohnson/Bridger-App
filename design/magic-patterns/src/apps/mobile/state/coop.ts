@@ -79,6 +79,6 @@ export const COOP_ANNOUNCEMENTS = [
 export const MEMBERSHIP = {
   since: 'March 2026',
   renews: 'March 2027',
-  dues: '$24 a year',
+  dues: '$72 a year',
   members: 12480
 };

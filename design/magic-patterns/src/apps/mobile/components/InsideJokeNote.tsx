@@ -1,4 +1,5 @@
 import React from 'react';
+import { PlusIcon } from 'lucide-react';
 import { InsideJoke } from '../../../packages/shared';
 import { ACCENTS, Avatar, cn } from '../../../packages/ui';
 import { personById } from '../state/mock-data';
@@ -156,9 +157,9 @@ export function AddNoteTile({
       
       <span
         aria-hidden="true"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-purple text-[18px] font-bold leading-none text-onaccent">
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-purple">
         
-        +
+        <PlusIcon className="h-4 w-4 text-white" strokeWidth={3} />
       </span>
       <span className="text-[13px] font-bold text-ink-soft">{label}</span>
     </button>);

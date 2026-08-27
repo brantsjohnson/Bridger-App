@@ -1,16 +1,17 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The event page for hosts and guests. Same layout either way: cover + title
-// on a clear surface (not a pastel tint), equal count tiles, details with the
-// date chip + Add to calendar next to when/where, assignments, then host-only
-// Introductions and Reminders at the bottom. Share lives only in the top-right.
-// Guests never see invited totals or guest caps.
+// The event page for hosts and guests. Same layout either way: cover, then
+// date square + title, host line, and wide going/invited count pills. Details
+// hold the bio, a live flip-clock countdown under When, where, and Add to
+// calendar. Hosts also get Introductions and Reminders at the bottom. Share
+// lives only in the top-right. Guests never see invited totals or guest caps.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, Share, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, Share, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   CalendarPlusIcon,
+  ClockIcon,
   HandCoinsIcon,
   MapPinIcon,
   ShareIcon,
@@ -23,7 +24,7 @@ import type {
   MeetSuggestion,
   Person
 } from '@bridger/shared';
-import { EVENTS, openSurface, trackProduct } from '@bridger/shared';
+import { EVENTS, formatRecurrenceLabel, openSurface, trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
   AnalyticsRegion,
@@ -33,6 +34,7 @@ import {
   ButtonSecondary,
   Card,
   CoverArt,
+  FlipCountdown,
   PixelHeading,
   Screen,
   ScreenBody,
@@ -44,7 +46,9 @@ import {
 } from '@bridger/ui';
 import { DetailAssignmentRow } from '../../components/event/DetailAssignmentRow';
 import { EventDateChip } from '../../components/event/EventDateChip';
+import { EventPhotoAlbum } from '../../components/event/EventPhotoAlbum';
 import { EventPeopleSheet } from '../../components/event/EventPeopleSheet';
+import { RecurrenceFields } from '../../components/event/create/RecurrenceFields';
 import {
   assignItem,
   getEvent,
@@ -91,7 +95,11 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [rsvp, setRsvp] = useState<'going' | 'cant' | null>(null);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Partial<EventItem>>({});
+  /** Host edit draft. recurrence null means "turn repeats off". */
+  type EventEditDraft = Omit<Partial<EventItem>, 'recurrence'> & {
+    recurrence?: EventItem['recurrence'] | null;
+  };
+  const [draft, setDraft] = useState<EventEditDraft>({});
   const [peopleOpen, setPeopleOpen] = useState(false);
   const [peopleTab, setPeopleTab] = useState<'going' | 'invited'>('going');
   const [liveMeet, setLiveMeet] = useState<MeetSuggestion[]>([]);
@@ -128,15 +136,41 @@ export default function EventDetailScreen() {
     setEvent(e);
   }
 
-  // THIS SECTION DOES: open the native share sheet. Only count a real share.
+  // THIS SECTION DOES: open the phone share sheet. On web without Share, copy the link.
   async function onShare() {
     if (!event) return;
     const url = shareLink(event.id);
+    const message = `${event.title} · ${event.day} ${event.time}\n${url}`;
+
+    // Web desktop often has no share sheet — copy the link instead of failing silently.
+    if (Platform.OS === 'web') {
+      const nav = typeof navigator !== 'undefined' ? navigator : undefined;
+      try {
+        if (nav && typeof nav.share === 'function') {
+          await nav.share({ title: event.title, text: message, url });
+          trackProduct('event_shared', { method: 'share_sheet' });
+          return;
+        }
+      } catch {
+        // User cancelled the web share sheet — do not fall through to copy.
+        return;
+      }
+      try {
+        if (nav?.clipboard?.writeText) {
+          await nav.clipboard.writeText(url);
+          Alert.alert('Link copied', 'Paste it anywhere to share this event.');
+          trackProduct('event_shared', { method: 'copy_link' });
+          return;
+        }
+      } catch {
+        // Clipboard blocked
+      }
+      Alert.alert('Could not share', `Copy this link:\n${url}`);
+      return;
+    }
+
     try {
-      const result = await Share.share({
-        message: `${event.title} · ${event.day} ${event.time}\n${url}`,
-        url
-      });
+      const result = await Share.share({ message, url });
       // OUTCOME: only fire when the OS says they shared (not dismiss/cancel).
       if (result.action === Share.sharedAction) {
         trackProduct('event_shared', { method: 'share_sheet' });
@@ -211,7 +245,8 @@ export default function EventDetailScreen() {
       chipInHandle: event.chipInHandle,
       chipInNote: event.chipInNote,
       allowFriendsToInvite: event.allowFriendsToInvite,
-      assignments: event.assignments?.map((a) => ({ ...a }))
+      assignments: event.assignments?.map((a) => ({ ...a })),
+      recurrence: event.recurrence
     });
     setEditing(true);
   }
@@ -230,15 +265,29 @@ export default function EventDetailScreen() {
       chipInHandle: draft.chipInHandle,
       chipInNote: draft.chipInNote,
       allowFriendsToInvite: draft.allowFriendsToInvite,
-      assignments: draft.assignments
+      assignments: draft.assignments,
+      // null clears a series back to a one-off.
+      recurrence: draft.recurrence ?? null
     });
     setEditing(false);
     await refresh();
   }
 
   const isHost = event?.role === 'host' || event?.hostId === ME_ID;
+  const isOutsider = event?.role === 'outsider' || !!event?.isOutsider;
+  // Invited / going always RSVP. Outsiders only when friends-can-invite is on.
+  const canRsvp =
+    !isHost &&
+    (event?.role === 'invited' ||
+      event?.role === 'going' ||
+      (isOutsider && !!event?.allowFriendsToInvite));
+  // Social counts stay off for locked shared-link viewers.
+  const showSocialCounts = !!event && !isOutsider;
   const onTheList =
-    isHost || rsvp === 'going' || event?.role === 'going' || event?.role === 'invited';
+    isHost ||
+    rsvp === 'going' ||
+    event?.role === 'going' ||
+    event?.role === 'invited';
 
   const host = event ? personById(event.hostId) : null;
   const coHosts = useMemo(
@@ -282,8 +331,15 @@ export default function EventDetailScreen() {
     return [...ids].map(personById);
   }, [event]);
 
-  const display = editing
-    ? { ...event!, ...draft, assignments: draft.assignments ?? event?.assignments }
+  // THIS SECTION DOES: merge the edit draft onto the live event for the form.
+  // Null recurrence in the draft means "off"; EventItem uses undefined for that.
+  const display: EventItem | null = editing
+    ? {
+        ...event!,
+        ...draft,
+        assignments: draft.assignments ?? event?.assignments,
+        recurrence: draft.recurrence ?? undefined
+      }
     : event;
 
   const accent = display?.accent ?? 'purple';
@@ -348,6 +404,7 @@ export default function EventDetailScreen() {
                 </View>
               </AnalyticsRegion>
               <View className="gap-3 bg-surface p-4">
+                {/* THIS SECTION DOES: date square + title sit together at the top */}
                 {editing ? (
                   <TextField
                     label="Title"
@@ -355,9 +412,23 @@ export default function EventDetailScreen() {
                     onChange={(title) => setDraft((d) => ({ ...d, title }))}
                   />
                 ) : (
-                  <Text className="font-sans-b text-[22px] leading-tight tracking-tight text-ink">
-                    {display.title}
-                  </Text>
+                  <View className="flex-row items-center gap-3">
+                    <AnalyticsRegion
+                      analyticsId={EVENTS.detail.date_chip}
+                      interactive={false}
+                    >
+                      <EventDateChip event={display} size="lg" />
+                    </AnalyticsRegion>
+                    <AnalyticsRegion
+                      analyticsId={EVENTS.detail.title_body}
+                      interactive={false}
+                      className="min-w-0 flex-1"
+                    >
+                      <Text className="font-sans-b text-[22px] leading-tight tracking-tight text-ink">
+                        {display.title}
+                      </Text>
+                    </AnalyticsRegion>
+                  </View>
                 )}
 
                 <View className="flex-row items-center gap-2">
@@ -379,7 +450,9 @@ export default function EventDetailScreen() {
                   </Text>
                 </View>
 
-                {/* PRIVACY: guests see friends going + to meet; host sees going / invited / brought */}
+                {/* PRIVACY: guests see friends going + to meet; host sees going / invited only.
+                    Outsiders (shared link, not on the list) never see these counts. */}
+                {showSocialCounts ? (
                 <View className="flex-row gap-2.5">
                   <CountButton
                     value={isHost ? display.goingIds.length : knownGoing.length}
@@ -405,18 +478,6 @@ export default function EventDetailScreen() {
                       }}
                     />
                   ) : null}
-                  {isHost && display.allowFriendsToInvite ? (
-                    <CountButton
-                      value={(display.broughtIds ?? []).length}
-                      label="brought"
-                      people={(display.broughtIds ?? []).map(personById)}
-                      analyticsId={EVENTS.host.brought_count}
-                      onPress={() => {
-                        setPeopleTab('invited');
-                        setPeopleOpen(true);
-                      }}
-                    />
-                  ) : null}
                   {!isHost && meet.length > 0 ? (
                     <CountButton
                       value={meet.length}
@@ -427,11 +488,16 @@ export default function EventDetailScreen() {
                     />
                   ) : null}
                 </View>
+                ) : isOutsider && !display.allowFriendsToInvite ? (
+                  <Text className="font-sans-sb text-[13px] text-ink-mute">
+                    Ask the host for an invite to see who is going and RSVP.
+                  </Text>
+                ) : null}
               </View>
             </View>
 
-            {/* --- RSVP (guests only) --- */}
-            {!isHost ? (
+            {/* --- RSVP (guests + open-invite link joiners) --- */}
+            {canRsvp ? (
               <View className="flex-row gap-2.5">
                 <ButtonSecondary
                   full
@@ -481,6 +547,21 @@ export default function EventDetailScreen() {
                       value={draft.time ?? ''}
                       onChange={(time) => setDraft((d) => ({ ...d, time }))}
                     />
+                    {/* --- REPEATS: same controls as create Details --- */}
+                    <RecurrenceFields
+                      repeats={!!draft.recurrence}
+                      recurrence={draft.recurrence ?? null}
+                      dayIso={draft.day ?? event?.day ?? ''}
+                      onChange={(patch) =>
+                        setDraft((d) => ({
+                          ...d,
+                          recurrence:
+                            patch.repeats === false || patch.recurrence === null
+                              ? null
+                              : (patch.recurrence ?? d.recurrence ?? null)
+                        }))
+                      }
+                    />
                     <TextField
                       label="Place"
                       value={draft.place ?? ''}
@@ -523,27 +604,40 @@ export default function EventDetailScreen() {
                     ) : null}
                     <View
                       className={cn(
-                        'gap-3',
+                        'gap-3.5',
                         display.bio ? 'border-t border-ink-line pt-3.5' : undefined
                       )}
                     >
-                      {/* When: date chip + day/time (same chip as the Events list) */}
-                      <View className="flex-row items-start gap-3">
-                        <EventDateChip event={display} />
-                        <View className="min-w-0 flex-1">
-                          <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
-                            When
+                      {/* When: clock icon + day/time + live flip-tile countdown */}
+                      <DetailRow
+                        iconBg="bg-blue/20"
+                        icon={
+                          <ClockIcon size={16} color={ACCENTS.blue.hex} strokeWidth={2.4} />
+                        }
+                        label="When"
+                      >
+                        <Text className="font-sans-b text-[14px] leading-snug text-ink">
+                          {display.day} at {display.time}
+                        </Text>
+                        {display.recurrenceLabel || display.recurrence ? (
+                          <Text className="mt-0.5 font-sans-sb text-[13px] text-ink-soft">
+                            {display.recurrenceLabel ??
+                              (display.recurrence
+                                ? formatRecurrenceLabel(display.recurrence)
+                                : '')}
                           </Text>
-                          <Text className="mt-0.5 font-sans-b text-[14px] leading-snug text-ink">
-                            {display.day} at {display.time}
-                          </Text>
-                          {display.countdown ? (
-                            <View className="mt-1 self-start">
-                              <Badge tone="neutral">{display.countdown}</Badge>
-                            </View>
-                          ) : null}
-                        </View>
-                      </View>
+                        ) : null}
+                        <AnalyticsRegion
+                          analyticsId={EVENTS.detail.countdown}
+                          interactive={false}
+                          className="mt-2"
+                        >
+                          <FlipCountdown
+                            startsAt={display.startsAt}
+                            label={display.countdown}
+                          />
+                        </AnalyticsRegion>
+                      </DetailRow>
 
                       <Pressable
                         onPress={withAnalyticsPress(EVENTS.detail.map, () => openMaps(display))}
@@ -571,21 +665,6 @@ export default function EventDetailScreen() {
                           ) : null}
                         </DetailRow>
                       </Pressable>
-
-                      {/* Add to calendar sits with when/where, not alone at the bottom */}
-                      <ButtonSecondary
-                        full
-                        size="md"
-                        tone="solid"
-                        icon={
-                          <CalendarPlusIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
-                        }
-                        onPress={() => void addEventToCalendar(display)}
-                        analyticsId={EVENTS.detail.add_to_calendar}
-                        accessibilityLabel="Add to calendar"
-                      >
-                        Add to calendar
-                      </ButtonSecondary>
 
                       {display.chipInAmount || display.chipInHandle ? (
                         <DetailRow
@@ -629,6 +708,21 @@ export default function EventDetailScreen() {
                           ) : null}
                         </DetailRow>
                       ) : null}
+
+                      {/* Add to calendar sits at the bottom of the details card */}
+                      <ButtonSecondary
+                        full
+                        size="md"
+                        tone="solid"
+                        icon={
+                          <CalendarPlusIcon size={16} color="#FFFFFF" strokeWidth={2.4} />
+                        }
+                        onPress={() => void addEventToCalendar(display)}
+                        analyticsId={EVENTS.detail.add_to_calendar}
+                        accessibilityLabel="Add to calendar"
+                      >
+                        Add to calendar
+                      </ButtonSecondary>
                     </View>
                   </>
                 )}
@@ -636,7 +730,8 @@ export default function EventDetailScreen() {
             </View>
 
             {/* --- ASSIGNMENTS --- */}
-            {(display.assignments && display.assignments.length > 0) || editing ? (
+            {!isOutsider &&
+            ((display.assignments && display.assignments.length > 0) || editing) ? (
               <View>
                 <PixelHeading size="md" className="mb-1.5">
                   Assignments
@@ -683,8 +778,11 @@ export default function EventDetailScreen() {
               </View>
             ) : null}
 
-            {/* --- WHO YOU SHOULD MEET (guests) --- */}
-            {!isHost && meet.length > 0 ? (
+            {/* --- PHOTO ALBUM (updates tagged to this event) --- */}
+            {!isOutsider && id ? <EventPhotoAlbum eventId={String(id)} /> : null}
+
+            {/* --- WHO YOU SHOULD MEET (guests on the list) --- */}
+            {!isHost && !isOutsider && meet.length > 0 ? (
               <View>
                 <PixelHeading size="md" className="mb-3">
                   Who you should meet
@@ -774,6 +872,10 @@ export default function EventDetailScreen() {
               invitedIds={display.invitedIds ?? []}
               coHostIds={display.coHostIds}
               showInvited={!!isHost}
+              showAttribution={
+                !!isHost && !!display.allowFriendsToInvite
+              }
+              inviteByIds={display.inviteByIds}
               title={isHost ? "Who's coming" : 'Friends going'}
               onClose={() => setPeopleOpen(false)}
             />
@@ -812,7 +914,7 @@ function IntroductionCard({ pair }: { pair: Introduction }) {
   );
 }
 
-/** Equal-width count tile — high contrast, no muted pastel fills */
+/** Wide count pill — big display numeral, avatar stack, chevron into the list */
 function CountButton({
   value,
   label,
@@ -831,17 +933,15 @@ function CountButton({
       onPress={withAnalyticsPress(analyticsId, onPress)}
       accessibilityRole="button"
       accessibilityLabel={`${value} ${label}`}
-      className="min-w-0 flex-1 flex-row items-center gap-2 rounded-card border border-ink bg-surface px-2.5 py-2.5 active:opacity-90"
+      className="min-w-0 flex-1 flex-row items-center gap-2 rounded-full border border-ink bg-surface px-3.5 py-3 active:opacity-90"
     >
-      <View className="min-w-0 flex-1">
-        <Text className="font-pixel text-[16px] leading-none text-ink">
-          {value}{' '}
-          <Text className="font-sans-b italic text-[13px] text-ink">{label}</Text>
-        </Text>
+      <View className="min-w-0 flex-1 flex-row items-center gap-2">
+        <Text className="font-pixel text-[28px] leading-none text-ink">{value}</Text>
+        <Text className="font-sans-b italic text-[14px] text-ink">{label}</Text>
         {people.length > 0 ? (
-          <View className="mt-1.5">
+          <View className="ml-auto">
             <AvatarStack
-              people={people.slice(0, 4).map((p) => ({
+              people={people.slice(0, 3).map((p) => ({
                 name: p.name,
                 emoji: p.emoji,
                 accent: p.accent,
@@ -851,7 +951,7 @@ function CountButton({
           </View>
         ) : null}
       </View>
-      <Text className="font-sans-b text-[12px] text-ink-mute">›</Text>
+      <Text className="font-sans-b text-[14px] text-ink-mute">›</Text>
     </Pressable>
   );
 }

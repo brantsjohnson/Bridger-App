@@ -10,7 +10,7 @@
 // Faces use dropped-in profile photos whenever we have one.
 // ============================================
 import React from 'react';
-import { Pressable, Share, Text, View } from 'react-native';
+import { Pressable, Share, Text, View, type ImageSourcePropType } from 'react-native';
 import { ArrowUpRightIcon, ChevronRightIcon, Share2Icon } from 'lucide-react-native';
 import { HOME, type Cover, type EventItem, type AppNotification } from '@bridger/shared';
 import {
@@ -27,9 +27,14 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { PersonAvatar } from '../PersonAvatar';
+import { QuizCoverCycler } from './QuizCoverCycler';
 import { meetSuggestionsForEvent } from '../../data/events';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { personById } from '../../data/people';
+
+/** Tailwind h-52 / h-28 in px (default 1rem = 16px). Matches QuizWidget banner heights. */
+const QUIZ_COVER_H_FULL = 208;
+const QUIZ_COVER_H_HALF = 112;
 import type { WidgetSize } from './HomeWidget';
 
 /** AvatarStack row with real photos when a demo pic exists for that person. */
@@ -75,6 +80,8 @@ type QuizData = {
   description?: string;
   comparable: boolean;
   cover?: Cover;
+  /** Faces the banner cross-fades through instead of a static cover. */
+  coverImages?: ImageSourcePropType[];
   results: Array<{
     id: string;
     label: string;
@@ -233,7 +240,7 @@ export function AlertsWidget({
   rows: NotifRow[];
   /** Tap one preview row → go to what that alert is about. */
   onOpen?: (item: NotifRow) => void;
-  /** See all → full Notifications page. */
+  /** Tap the card (or See all) → full Notifications page. */
   onSeeAll?: () => void;
 }) {
   // Home only cares about unread — once you've cleared them, say so.
@@ -242,8 +249,10 @@ export function AlertsWidget({
   const caughtUp = unread === 0;
 
   return (
+    // THIS SECTION DOES: the card is a plain shell. Each row is its own
+    // button, and "See all" is a separate button. Nesting those inside one
+    // big card button is illegal HTML on web (button cannot contain button).
     <View
-      accessibilityLabel="Notifications"
       className={cn(
         'w-full justify-between rounded-card border border-ink-line bg-surface p-4',
         // half: grow with the sibling "This week" card; full: natural height
@@ -304,12 +313,12 @@ export function AlertsWidget({
         )}
       </View>
 
-      {/* Analytics: open the full Notifications list. */}
+      {/* Opens the full Notifications page. Same destination the old card tap used. */}
       <Pressable
         onPress={withAnalyticsPress(HOME.notifications_preview.see_all, onSeeAll)}
         accessibilityRole="button"
         accessibilityLabel="See all notifications"
-        className="mt-3 active:opacity-90"
+        className="mt-3 self-start active:opacity-80"
       >
         <Text className="font-sans-b text-[11px] text-purple">See all</Text>
       </Pressable>
@@ -425,12 +434,24 @@ export function QuizWidget({
   const cover: Cover =
     quiz.cover ?? ({ kind: 'emoji', value: '🧭', bg: '#4D96FF' } as Cover);
 
+  // Face photos are portraits, so the cycling banner needs more height than a
+  // flat color/emoji cover or you only see a thin strip of forehead.
+  const cycling = Boolean(quiz.coverImages?.length);
+
   if (size === 'full') {
     if (!mine) {
       return (
         <Card className="overflow-hidden p-0">
-          <View className="h-24">
-            <CoverArt cover={cover} accent="blue" />
+          <View className={cycling ? 'relative h-52 w-full' : 'h-24 w-full'}>
+            {cycling ? (
+              <QuizCoverCycler
+                faces={quiz.coverImages!}
+                heightPx={QUIZ_COVER_H_FULL}
+                accessibilityLabel="J-name faces"
+              />
+            ) : (
+              <CoverArt cover={cover} accent="blue" />
+            )}
           </View>
           <View className="p-5">
             <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
@@ -490,20 +511,31 @@ export function QuizWidget({
         {quiz.comparable ? (
           <View>
             <View className="mb-2 flex-row items-center justify-between">
-              <Text className="font-sans-b text-[13px] text-ink">Who got who</Text>
+              <Text className="font-sans-b text-[13px] text-ink">
+                {quiz.id === 'what-j-name' ? 'Your versions' : 'Who got who'}
+              </Text>
               <Pressable onPress={() => onOpenResult(mine.id)}>
                 <Text className="font-sans-b text-[12px] text-purple">See more</Text>
               </Pressable>
             </View>
             <View className="gap-2.5">
-              {quiz.results.map((r) => (
+              {/* J-name board: top 3 by friend count; grows as more friends take it. */}
+              {(quiz.id === 'what-j-name'
+                ? [...quiz.results]
+                    .filter((r) => r.friendIds.length > 0)
+                    .sort((a, b) => b.friendIds.length - a.friendIds.length)
+                    .slice(0, 3)
+                : quiz.results
+              ).map((r) => (
                 <Pressable
                   key={r.id}
                   onPress={() => onOpenResult(r.id)}
                   className="w-full flex-row items-center gap-3 rounded-card border border-ink-line bg-surface px-4 py-3 active:opacity-90"
                 >
                   <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink" numberOfLines={1}>
-                    {r.label} · {r.friendIds.length}
+                    {quiz.id === 'what-j-name'
+                      ? `Your version of ${r.label}`
+                      : `${r.label} · ${r.friendIds.length}`}
                   </Text>
                   <AvatarStack people={faceStack(r.friendIds)} />
                 </Pressable>
@@ -524,15 +556,27 @@ export function QuizWidget({
       accessibilityRole="button"
       className="min-h-[140px] w-full overflow-hidden rounded-card active:opacity-90"
     >
-      <View className="h-14 shrink-0">
-        <CoverArt cover={cover} accent="purple" />
+      <View className={cycling ? 'relative h-28 w-full shrink-0' : 'h-14 w-full shrink-0'}>
+        {cycling ? (
+          <QuizCoverCycler
+            faces={quiz.coverImages!}
+            heightPx={QUIZ_COVER_H_HALF}
+            accessibilityLabel="J-name faces"
+          />
+        ) : (
+          <CoverArt cover={cover} accent="purple" />
+        )}
       </View>
       <View className="flex-1 justify-between bg-[#D5C2FF] p-4">
         <Text className="font-sans-b text-[13px] leading-snug text-onaccent">
           {resultId ? mine?.label ?? quiz.title : quiz.title}
         </Text>
         <Text className="mt-1 font-sans-b text-[11px] text-onaccent/75">
-          {resultId ? 'Who got who' : 'Take the quiz'}
+          {resultId
+            ? quiz.id === 'what-j-name'
+              ? 'Your versions'
+              : 'Who got who'
+            : 'Take the quiz'}
         </Text>
       </View>
     </Pressable>
@@ -566,7 +610,7 @@ export function CoopWidget({
           {member ? 'Member portal' : 'Join the co-op'}
         </Text>
         <Text className="font-sans-sb text-[12px] text-onaccent/75" numberOfLines={1}>
-          {member ? 'Votes, feedback, what we are building' : 'You are not the product · $24 a year'}
+          {member ? 'Votes, feedback, what we are building' : 'You are not the product · $72 a year'}
         </Text>
       </View>
       <ArrowUpRightIcon size={16} color="#1C1B16" strokeWidth={2.8} />

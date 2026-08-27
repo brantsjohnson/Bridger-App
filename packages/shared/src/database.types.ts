@@ -26,6 +26,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      jname_results: {
+        Row: {
+          user_id: string
+          j_name: string
+          percent: number
+          top_names: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          j_name: string
+          percent?: number
+          top_names?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          j_name?: string
+          percent?: number
+          top_names?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      jname_shares: {
+        Row: {
+          token: string
+          sharer_id: string
+          j_name: string
+          percent: number
+          created_at: string
+        }
+        Insert: {
+          token?: string
+          sharer_id: string
+          j_name: string
+          percent?: number
+          created_at?: string
+        }
+        Update: {
+          token?: string
+          sharer_id?: string
+          j_name?: string
+          percent?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      jname_referrals: {
+        Row: {
+          id: string
+          token: string
+          sharer_id: string
+          invited_user_id: string | null
+          anon_ref: string | null
+          opened_at: string
+          resolved_at: string | null
+        }
+        Insert: {
+          id?: string
+          token: string
+          sharer_id: string
+          invited_user_id?: string | null
+          anon_ref?: string | null
+          opened_at?: string
+          resolved_at?: string | null
+        }
+        Update: {
+          id?: string
+          token?: string
+          sharer_id?: string
+          invited_user_id?: string | null
+          anon_ref?: string | null
+          opened_at?: string
+          resolved_at?: string | null
+        }
+        Relationships: []
+      }
       activity_hearts: {
         Row: {
           created_at: string
@@ -112,6 +193,7 @@ export type Database = {
           live_quiz_slug: string | null
           themed_prompts: Json
           assistant: Json
+          storage: Json
           updated_at: string
         }
         Insert: {
@@ -120,6 +202,7 @@ export type Database = {
           live_quiz_slug?: string | null
           themed_prompts?: Json
           assistant?: Json
+          storage?: Json
           updated_at?: string
         }
         Update: {
@@ -128,6 +211,7 @@ export type Database = {
           live_quiz_slug?: string | null
           themed_prompts?: Json
           assistant?: Json
+          storage?: Json
           updated_at?: string
         }
         Relationships: []
@@ -139,6 +223,7 @@ export type Database = {
           status: string
           created_at: string
           closed_at: string | null
+          fill_state: Json
         }
         Insert: {
           id?: string
@@ -146,6 +231,7 @@ export type Database = {
           status?: string
           created_at?: string
           closed_at?: string | null
+          fill_state?: Json
         }
         Update: {
           id?: string
@@ -153,6 +239,7 @@ export type Database = {
           status?: string
           created_at?: string
           closed_at?: string | null
+          fill_state?: Json
         }
         Relationships: []
       }
@@ -164,6 +251,8 @@ export type Database = {
           content: string
           tool_name: string | null
           created_at: string
+          playbook_id: string | null
+          playbook_version: string | null
         }
         Insert: {
           id?: string
@@ -172,6 +261,8 @@ export type Database = {
           content: string
           tool_name?: string | null
           created_at?: string
+          playbook_id?: string | null
+          playbook_version?: string | null
         }
         Update: {
           id?: string
@@ -180,6 +271,8 @@ export type Database = {
           content?: string
           tool_name?: string | null
           created_at?: string
+          playbook_id?: string | null
+          playbook_version?: string | null
         }
         Relationships: []
       }
@@ -192,6 +285,8 @@ export type Database = {
           undo_payload: Json | null
           created_at: string
           undone_at: string | null
+          playbook_id: string | null
+          playbook_version: string | null
         }
         Insert: {
           id?: string
@@ -201,6 +296,8 @@ export type Database = {
           undo_payload?: Json | null
           created_at?: string
           undone_at?: string | null
+          playbook_id?: string | null
+          playbook_version?: string | null
         }
         Update: {
           id?: string
@@ -210,6 +307,8 @@ export type Database = {
           undo_payload?: Json | null
           created_at?: string
           undone_at?: string | null
+          playbook_id?: string | null
+          playbook_version?: string | null
         }
         Relationships: []
       }
@@ -276,6 +375,45 @@ export type Database = {
           status?: string
           created_at?: string
           resolved_at?: string | null
+        }
+        Relationships: []
+      }
+      assistant_scheduled_messages: {
+        Row: {
+          id: string
+          user_id: string
+          person_id: string
+          body: string
+          send_at: string
+          status: string
+          activity_id: string | null
+          created_at: string
+          cancelled_at: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          person_id: string
+          body: string
+          send_at: string
+          status?: string
+          activity_id?: string | null
+          created_at?: string
+          cancelled_at?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          person_id?: string
+          body?: string
+          send_at?: string
+          status?: string
+          activity_id?: string | null
+          created_at?: string
+          cancelled_at?: string | null
+          sent_at?: string | null
         }
         Relationships: []
       }
@@ -352,6 +490,165 @@ export type Database = {
           estimated_usd?: number
           subject_ref?: string
           created_at?: string
+        }
+        Relationships: []
+      }
+      ai_ops_alerts: {
+        Row: {
+          id: string
+          source: string
+          code: string
+          detail: string
+          job: string | null
+          resolved_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          source: string
+          code: string
+          detail?: string
+          job?: string | null
+          resolved_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          source?: string
+          code?: string
+          detail?: string
+          job?: string | null
+          resolved_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      billy_balances: {
+        Row: {
+          user_id: string
+          balance_usd: number
+          lifetime_granted_usd: number
+          lifetime_spent_usd: number
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          balance_usd?: number
+          lifetime_granted_usd?: number
+          lifetime_spent_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          balance_usd?: number
+          lifetime_granted_usd?: number
+          lifetime_spent_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      billy_config: {
+        Row: {
+          id: number
+          taste_grant_usd: number
+          plus_price_usd: number
+          plus_grant_usd: number
+          rollover_cap_multiplier: number
+          taste_rollover: boolean
+          min_balance_to_start_turn_usd: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          taste_grant_usd?: number
+          plus_price_usd?: number
+          plus_grant_usd?: number
+          rollover_cap_multiplier?: number
+          taste_rollover?: boolean
+          min_balance_to_start_turn_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          taste_grant_usd?: number
+          plus_price_usd?: number
+          plus_grant_usd?: number
+          rollover_cap_multiplier?: number
+          taste_rollover?: boolean
+          min_balance_to_start_turn_usd?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      billy_ledger: {
+        Row: {
+          id: string
+          user_id: string
+          kind: string
+          amount_usd: number
+          balance_after_usd: number
+          job: string | null
+          cost_log_id: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind: string
+          amount_usd: number
+          balance_after_usd: number
+          job?: string | null
+          cost_log_id?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          kind?: string
+          amount_usd?: number
+          balance_after_usd?: number
+          job?: string | null
+          cost_log_id?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      billy_subscriptions: {
+        Row: {
+          user_id: string
+          plan: string
+          status: string
+          current_period_start: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean
+          provider_ref: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          plan?: string
+          status?: string
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean
+          provider_ref?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          plan?: string
+          status?: string
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean
+          provider_ref?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -974,6 +1271,75 @@ export type Database = {
           },
         ]
       }
+      coop_promo_codes: {
+        Row: {
+          id: string
+          code: string
+          label: string
+          grant_months: number
+          max_redemptions: number
+          redeemed_count: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          label?: string
+          grant_months?: number
+          max_redemptions?: number
+          redeemed_count?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          label?: string
+          grant_months?: number
+          max_redemptions?: number
+          redeemed_count?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coop_promo_redemptions: {
+        Row: {
+          promo_code_id: string
+          user_id: string
+          redeemed_at: string
+        }
+        Insert: {
+          promo_code_id: string
+          user_id: string
+          redeemed_at?: string
+        }
+        Update: {
+          promo_code_id?: string
+          user_id?: string
+          redeemed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coop_promo_redemptions_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "coop_promo_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coop_promo_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coop_mission_principles: {
         Row: {
           id: string
@@ -1220,26 +1586,35 @@ export type Database = {
         Row: {
           enabled: boolean
           id: string
+          kind: string
           name: string
+          notes: string
           schedule: Json
           scope: Database["public"]["Enums"]["delight_scope"]
           slug: string | null
+          status: string
         }
         Insert: {
           enabled?: boolean
           id?: string
+          kind?: string
           name?: string
+          notes?: string
           schedule?: Json
           scope?: Database["public"]["Enums"]["delight_scope"]
           slug?: string | null
+          status?: string
         }
         Update: {
           enabled?: boolean
           id?: string
+          kind?: string
           name?: string
+          notes?: string
           schedule?: Json
           scope?: Database["public"]["Enums"]["delight_scope"]
           slug?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -1348,6 +1723,8 @@ export type Database = {
           created_at: string
           event_id: string
           id: string
+          /** Null = host invited this guest; else the attendee who invited them. */
+          invited_by: string | null
           status: Database["public"]["Enums"]["event_invite_status"]
           updated_at: string
           user_id: string
@@ -1358,6 +1735,7 @@ export type Database = {
           created_at?: string
           event_id: string
           id?: string
+          invited_by?: string | null
           status?: Database["public"]["Enums"]["event_invite_status"]
           updated_at?: string
           user_id: string
@@ -1368,6 +1746,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           id?: string
+          invited_by?: string | null
           status?: Database["public"]["Enums"]["event_invite_status"]
           updated_at?: string
           user_id?: string
@@ -1378,6 +1757,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -1451,6 +1837,8 @@ export type Database = {
           host_id: string
           id: string
           place: string | null
+          /** Repeat rule jsonb or null (one-off). */
+          recurrence: Json | null
           starts_at: string | null
           title: string
           updated_at: string
@@ -1468,6 +1856,7 @@ export type Database = {
           host_id: string
           id?: string
           place?: string | null
+          recurrence?: Json | null
           starts_at?: string | null
           title: string
           updated_at?: string
@@ -1485,6 +1874,7 @@ export type Database = {
           host_id?: string
           id?: string
           place?: string | null
+          recurrence?: Json | null
           starts_at?: string | null
           title?: string
           updated_at?: string
@@ -1785,6 +2175,197 @@ export type Database = {
           },
         ]
       }
+      music_connections: {
+        Row: {
+          access_expires_at: string | null
+          access_token_enc: string | null
+          connected_at: string
+          id: string
+          provider: string
+          provider_user_id: string | null
+          refresh_token_enc: string
+          scopes: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_expires_at?: string | null
+          access_token_enc?: string | null
+          connected_at?: string
+          id?: string
+          provider: string
+          provider_user_id?: string | null
+          refresh_token_enc: string
+          scopes?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_expires_at?: string | null
+          access_token_enc?: string | null
+          connected_at?: string
+          id?: string
+          provider?: string
+          provider_user_id?: string | null
+          refresh_token_enc?: string
+          scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      music_oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          provider: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          provider: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_oauth_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      music_picks: {
+        Row: {
+          album_name: string | null
+          apple_music_id: string | null
+          artist_name: string
+          artwork_url: string | null
+          created_at: string
+          id: string
+          isrc: string | null
+          kind: string
+          matchable: boolean
+          owner_id: string
+          preview_url: string | null
+          spotify_id: string | null
+          spotify_uri: string | null
+          title: string
+          updated_at: string
+          visible_to_tier: Database["public"]["Enums"]["tier"]
+        }
+        Insert: {
+          album_name?: string | null
+          apple_music_id?: string | null
+          artist_name?: string
+          artwork_url?: string | null
+          created_at?: string
+          id?: string
+          isrc?: string | null
+          kind: string
+          matchable?: boolean
+          owner_id: string
+          preview_url?: string | null
+          spotify_id?: string | null
+          spotify_uri?: string | null
+          title: string
+          updated_at?: string
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+        }
+        Update: {
+          album_name?: string | null
+          apple_music_id?: string | null
+          artist_name?: string
+          artwork_url?: string | null
+          created_at?: string
+          id?: string
+          isrc?: string | null
+          kind?: string
+          matchable?: boolean
+          owner_id?: string
+          preview_url?: string | null
+          spotify_id?: string | null
+          spotify_uri?: string | null
+          title?: string
+          updated_at?: string
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_picks_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      music_taste_artists: {
+        Row: {
+          artist_id: string
+          artist_name: string
+          artwork_url: string | null
+          id: string
+          matchable: boolean
+          owner_id: string
+          provider: string
+          rank: number | null
+          synced_at: string
+          visible_to_tier: Database["public"]["Enums"]["tier"]
+        }
+        Insert: {
+          artist_id: string
+          artist_name: string
+          artwork_url?: string | null
+          id?: string
+          matchable?: boolean
+          owner_id: string
+          provider: string
+          rank?: number | null
+          synced_at?: string
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+        }
+        Update: {
+          artist_id?: string
+          artist_name?: string
+          artwork_url?: string | null
+          id?: string
+          matchable?: boolean
+          owner_id?: string
+          provider?: string
+          rank?: number | null
+          synced_at?: string
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "music_taste_artists_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media: {
         Row: {
           created_at: string
@@ -1990,6 +2571,51 @@ export type Database = {
             foreignKeyName: "plan_state_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_greatest_hits: {
+        Row: {
+          after_module: string | null
+          created_at: string
+          id: string
+          media_id: string
+          owner_id: string
+          placement_index: number
+          visible_to_tier: Database["public"]["Enums"]["tier"]
+        }
+        Insert: {
+          after_module?: string | null
+          created_at?: string
+          id?: string
+          media_id: string
+          owner_id: string
+          placement_index: number
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+        }
+        Update: {
+          after_module?: string | null
+          created_at?: string
+          id?: string
+          media_id?: string
+          owner_id?: string
+          placement_index?: number
+          visible_to_tier?: Database["public"]["Enums"]["tier"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_greatest_hits_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_greatest_hits_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -2946,6 +3572,8 @@ export type Database = {
         Row: {
           discoverable: boolean
           assistant_enabled: boolean
+          always_view_original: boolean
+          delight_opt_ins: string[]
           home_city: string | null
           home_layout: Json | null
           locale: string | null
@@ -2953,6 +3581,10 @@ export type Database = {
           notif_prefs: Json
           onboarding_complete: boolean
           profile_presentation: Json | null
+          profile_custom_css: string | null
+          profile_custom_html: Json | null
+          profile_custom_code_status: string | null
+          profile_custom_code_sanitized_at: string | null
           theme: string | null
           updated_at: string
           user_id: string
@@ -2960,6 +3592,8 @@ export type Database = {
         Insert: {
           discoverable?: boolean
           assistant_enabled?: boolean
+          always_view_original?: boolean
+          delight_opt_ins?: string[]
           home_city?: string | null
           home_layout?: Json | null
           locale?: string | null
@@ -2967,6 +3601,10 @@ export type Database = {
           notif_prefs?: Json
           onboarding_complete?: boolean
           profile_presentation?: Json | null
+          profile_custom_css?: string | null
+          profile_custom_html?: Json | null
+          profile_custom_code_status?: string | null
+          profile_custom_code_sanitized_at?: string | null
           theme?: string | null
           updated_at?: string
           user_id: string
@@ -2974,6 +3612,8 @@ export type Database = {
         Update: {
           discoverable?: boolean
           assistant_enabled?: boolean
+          always_view_original?: boolean
+          delight_opt_ins?: string[]
           home_city?: string | null
           home_layout?: Json | null
           locale?: string | null
@@ -2981,6 +3621,10 @@ export type Database = {
           notif_prefs?: Json
           onboarding_complete?: boolean
           profile_presentation?: Json | null
+          profile_custom_css?: string | null
+          profile_custom_html?: Json | null
+          profile_custom_code_status?: string | null
+          profile_custom_code_sanitized_at?: string | null
           theme?: string | null
           updated_at?: string
           user_id?: string
@@ -3110,7 +3754,7 @@ export type Database = {
       made_via: "link" | "qr" | "add" | "suggestion"
       media_kind: "photo" | "video" | "audio"
       met_context: "event" | "place" | "mutual" | "qr" | "link"
-      payment_kind: "coop_dues"
+      payment_kind: "coop_dues" | "billy_plus"
       quiz_question_type: "single" | "multi"
       quiz_status: "live" | "draft" | "archived"
       reaction_kind: "circleVideo" | "text" | "sticker"
@@ -3255,7 +3899,7 @@ export const Constants = {
       made_via: ["link", "qr", "add", "suggestion"],
       media_kind: ["photo", "video", "audio"],
       met_context: ["event", "place", "mutual", "qr", "link"],
-      payment_kind: ["coop_dues"],
+      payment_kind: ["coop_dues", "billy_plus"],
       quiz_question_type: ["single", "multi"],
       quiz_status: ["live", "draft", "archived"],
       reaction_kind: ["circleVideo", "text", "sticker"],

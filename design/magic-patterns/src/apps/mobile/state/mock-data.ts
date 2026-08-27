@@ -175,13 +175,18 @@ export const EVENTS: EventItem[] = [
   time: '18:30',
   place: 'Rowan Park',
   address: '1400 NE Rowan Ave, shelter #3 (by the tennis courts)',
-  goingIds: ['maya', 'devon', 'ines'],
-  invitedIds: ['theo', 'nour', 'kit'],
+  goingIds: ['maya', 'devon', 'ines', 'kit'],
+  invitedIds: ['theo', 'nour', 'kit', 'jordyn'],
+  /** Who invited whom (null/missing = host). Host planning only. */
+  inviteByIds: {
+    ines: 'maya',
+    jordyn: 'kit'
+  },
   hostId: 'me',
   coHostIds: ['maya'],
   role: 'host',
   countdown: 'in 2 days',
-  bio: 'Pens, paper, no pressure. Bring whatever you draw with and we will sit at the picnic tables until the light goes. Total beginners very welcome — half of us cannot draw hands.',
+  bio: 'Pens, paper, no pressure. Bring a sketchbook if you have one.',
   bring: 'A sketchbook',
   chipInHandle: '@sandra-k',
   chipInAmount: '$5',

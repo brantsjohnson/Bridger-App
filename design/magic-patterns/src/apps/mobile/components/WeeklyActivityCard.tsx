@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronRightIcon } from 'lucide-react';
 import { ACCENTS, Avatar, cn } from '../../../packages/ui';
 import { WEEKLY_ACTIVITY, personById } from '../state/mock-data';

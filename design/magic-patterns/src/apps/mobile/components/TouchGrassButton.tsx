@@ -1,4 +1,3 @@
-import React from 'react';
 import { SproutIcon } from 'lucide-react';
 import { Avatar, cn } from '../../../packages/ui';
 import { GrassBurst } from './GrassBurst';

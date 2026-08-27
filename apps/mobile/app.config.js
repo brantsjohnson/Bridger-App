@@ -74,9 +74,11 @@ module.exports = ({ config }) => ({
     [
       'expo-splash-screen',
       {
-        image: './assets/images/splash-icon.png',
+        // App icon centered on black while fonts and demo state hydrate.
+        image: './assets/images/icon.png',
         resizeMode: 'contain',
-        backgroundColor: '#F4F1E7'
+        backgroundColor: '#000000',
+        imageWidth: 240
       }
     ],
     'expo-video',
@@ -110,6 +112,13 @@ module.exports = ({ config }) => ({
           "Bridger adds dates and reminders you confirm so you don't forget a friend's birthday or check-in."
       }
     ],
+    [
+      'expo-contacts',
+      {
+        contactsPermission:
+          'Bridger reads your contacts only when you tap Connect contacts or pick someone for an invite link, so you can text your personal invite. We never upload your contact list.'
+      }
+    ],
     // Saving a quiz result card to the camera roll (opt-in, in context, only
     // when you tap "Save image"). We never read your existing photos for this.
     [
@@ -120,6 +129,28 @@ module.exports = ({ config }) => ({
         savePhotosPermission:
           'Bridger saves your quiz result card to your photos so you can post it to your story.',
         isAccessMediaLocationEnabled: false
+      }
+    ],
+    // Choosing an existing photo for your profile picture (the one upload
+    // exception; stories stay capture-only). Asked in context, only when you
+    // tap "Upload" on the confirm-profile step.
+    [
+      'expo-image-picker',
+      {
+        photosPermission:
+          'Bridger opens your photos only when you tap Upload, so you can choose a profile picture.',
+        cameraPermission:
+          'Bridger uses your camera so you can take a profile picture during setup.'
+      }
+    ],
+    // Local reminders you opted into during onboarding (birthdays, life updates,
+    // people you should meet, hangouts, messages, reconnect nudges). No ad
+    // tracking; the OS permission dialog is shown in context after you choose.
+    [
+      'expo-notifications',
+      {
+        // Uses the default app icon for the small status-bar notification icon.
+        color: '#F4F1E7'
       }
     ],
     // The system share sheet, used to send your result image or link to apps

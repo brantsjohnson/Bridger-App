@@ -120,16 +120,22 @@ export function FriendRow({
   return (
     /*
       Avatar sits outside the row press target so tapping a story ring opens
-      their update, not their profile. In Edit mode the whole card is a plain
-      View so the parent pan gesture can drag it (Pressable would steal the drag).
+      their update, not their profile. The card itself is a View, not a button:
+      on web, accessibilityRole="button" becomes a real <button>, and HTML
+      forbids a button inside a button (that was the Friends-page overlay).
+      In Edit mode the row can be the one button (no nested avatar button).
     */
     <View
-      accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${person.name}, ${subtitle}` : person.name}
-      accessibilityHint={
+      accessibilityRole={editing ? 'button' : undefined}
+      accessibilityLabel={
         editing
-          ? 'Drag into another group, or tap to pick a circle'
-          : 'Opens profile'
+          ? subtitle
+            ? `${person.name}, ${subtitle}`
+            : person.name
+          : undefined
+      }
+      accessibilityHint={
+        editing ? 'Drag into another group, or tap to pick a circle' : undefined
       }
       className={cn(
         'min-h-[44px] flex-row items-center gap-3 rounded-2xl border px-3.5 py-3',

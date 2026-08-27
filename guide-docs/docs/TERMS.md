@@ -48,7 +48,9 @@
 - Bridger helps you stay close to people you choose (Friends tiers, Updates, Events, Touch Grass, quizzes, recap Friend Pod, Discover).
 - The **co-op** is optional membership for richer creation, named groups, and storage. Signup offers **Join the co-op** or **Free Lite**. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
-- During onboarding you may set a **connection style** preference (what you want Bridger to prioritize). That only shapes *your* Home and notification lean. It is not used to sell ads or to match you to strangers.
+- During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (humor, values, personality, hobbies, communication). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
+- Onboarding also asks a few optional, skippable "taste" questions (job, dream job, a song, your towns, a weekly highlight, a color, nights-out pacing). You choose the audience for each on the Privacy & Control screen, and nothing is required except your name.
+- The co-op join screen offers two paths: **invite 3 friends for free access** (with progress if you already shared some links during the contacts step; if all 3 are done, that invite CTA is hidden), or **join directly for a paid membership ($6/mo)** that shares profits. A limited free tier is always available, so joining is never required.
 
 ---
 
@@ -134,10 +136,10 @@
 - Do not spam, sell, or publicly post invite links for abuse. QR invites expire quickly; treat them like handing someone your phone number in person.
 - You cannot redeem your own invite. Report / block still apply after connect.
 
-### 7.6d Linked music (Spotify)
+### 7.6d Linked music (Spotify / Apple Music)
 
-- Linking Spotify is optional and is **not** how you sign into Bridger.
-- You must have the right to connect your Spotify account under Spotify’s terms. Bridger uses the link to help you pick tracks, show short previews when available, open tracks in Spotify/Apple Music, optionally save to your Spotify library, and (when you allow matchable taste) show shared artists with friends.
+- Linking Spotify or Apple Music is optional and is **not** how you sign into Bridger.
+- You must have the right to connect that account under Spotify’s or Apple’s terms. Bridger uses the link to help you pick tracks (Spotify catalog search today), show short previews when available, open tracks in Spotify/Apple Music, optionally save to your Spotify library, and (when you allow matchable taste) show shared artists with friends from synced listening taste.
 - Disconnect anytime in Settings; Bridger then deletes stored tokens and synced taste data. You remain responsible for content you choose to display from catalog picks (titles/artwork are UGC on your profile).
 
 ### 7.6c Profile and customization
@@ -231,6 +233,7 @@
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-27 | Apple Music link (optional): not Bridger login; MusicKit authorize; taste sync for shared artists; disconnect deletes tokens + taste; Apple Music / Spotify ToS apply to each link |
 | 2026-08-21 | Recap Friend Pod: background audio playback (locked phone / backgrounded app) with lock-screen controls; lock-screen shows friend first name + "Bridger · Weekly recap" only |
 | 2026-08-21 | Messages: contact card share + double-tap hearts (not sends); no Make a plan in-thread |
 | 2026-08-21 | Touch Grass send: Close / Friends only |
@@ -264,4 +267,5 @@
 | 2026-08-21 | J-name "your versions" board is friends-only (account required); alerts when someone opens your quiz link or a friend lands on one of your top J picks |
 | 2026-08-21 | Hobby bank includes optional culture / advocacy / wellness labels plus add-your-own; same visibility and matchable rules; none required |
 | 2026-08-19 | Product analytics opt-in in Settings; opt-out stops capture and purges the PostHog person |
+| 2026-08-27 | Onboarding invite progress carries into co-op: invite 3 friends CTA shows N/3 already invited, or drops when all 3 slots are filled |
 | 2026-08-05 | Initial scaffolding: UGC zero-tolerance clause, report/block, co-op $24 + period-end cancel + soft join, skippable membership, Touch Grass Events-only, Friend Pod on Friends, portal no names/tallies, chip-in peer links, PostHog not ads, AI deferred but reportable when live. |

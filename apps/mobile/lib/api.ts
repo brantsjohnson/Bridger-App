@@ -15,6 +15,30 @@ function apiBase(): string {
   return base;
 }
 
+/** Nest error with a stable `code` (e.g. billy_allowance_exhausted). */
+export class ApiHttpError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly body?: Record<string, unknown>;
+
+  constructor(
+    status: number,
+    path: string,
+    body?: Record<string, unknown>,
+    rawText?: string
+  ) {
+    const msg =
+      typeof body?.message === 'string'
+        ? body.message
+        : `API ${status} ${path}${rawText ? `: ${rawText.slice(0, 200)}` : ''}`;
+    super(msg);
+    this.name = 'ApiHttpError';
+    this.status = status;
+    this.code = typeof body?.code === 'string' ? body.code : undefined;
+    this.body = body;
+  }
+}
+
 /**
  * Fetch JSON from the Bridger API with the current auth token.
  * SECURITY: never put secrets in the client beyond the user's own session.
@@ -39,9 +63,13 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(
-      `API ${res.status} ${path}${text ? `: ${text.slice(0, 200)}` : ''}`
-    );
+    let body: Record<string, unknown> | undefined;
+    try {
+      body = text ? (JSON.parse(text) as Record<string, unknown>) : undefined;
+    } catch {
+      body = undefined;
+    }
+    throw new ApiHttpError(res.status, path, body, text);
   }
 
   // Some endpoints return 204 / empty body.

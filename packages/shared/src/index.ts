@@ -7,19 +7,26 @@ export * from './model/tier';
 export * from './model/person';
 export * from './model/story';
 export * from './model/event';
+export * from './model/event-recurrence';
 export * from './model/connection';
 export * from './model/cover';
 export * from './model/coop';
 export * from './coop/cost-model';
 export * from './coop/format-number';
 export * from './model/profile-theme';
+export * from './model/profile-presentation';
 export * from './model/profile-page';
+export * from './model/music';
 export * from './model/message';
 export * from './model/quiz';
+export * from './model/jname';
+export * from './model/disclosure';
 export * from './model/weekly-activity';
 export * from './model/delight';
 export * from './model/admin-config';
+export * from './model/demo-week';
 export * from './model/assistant';
+export * from './model/billy';
 export * from './model/matching';
 export * from './model/recap';
 export * from './model/not-found-hit';
@@ -30,6 +37,7 @@ export * from './model/notification';
 // always gets a real COOP binding. Do not also `export *` the same names first —
 // TypeScript emits `exports.COOP = void 0` which blocks star-reexports.
 export * from './analytics/types';
+export * from './analytics/sanitize';
 export * from './analytics/client';
 export {
   AUTH,
@@ -41,6 +49,11 @@ export {
   GRASS_SIGNAL_SHEET,
   DISCOVER,
   CONNECT_OVER,
+  BEHIND_THE_SCENES,
+  YOUR_FUNNY_BONE,
+  YOUR_VIBE,
+  THE_FRIEND_ZONE,
+  WHAT_GETS_YOU_GOING,
   FRIENDS,
   RECAP_RECORDER,
   RECAP_PLAYER,
@@ -59,13 +72,17 @@ export {
   NEW_MESSAGE_SHEET,
   REVEAL,
   QUIZ,
+  END_QUIZ_SHEET,
   ACTIVITY,
   ACTIVITY_CAPTURE,
   NOTIFICATIONS,
+  NEWS,
   NOT_FOUND,
   COOP,
   DELIGHT,
+  SEND_DELIGHT_SHEET,
   ASSISTANT,
+  INVITE_ACCESS,
   ADMIN,
   aid,
   parseAnalyticsId

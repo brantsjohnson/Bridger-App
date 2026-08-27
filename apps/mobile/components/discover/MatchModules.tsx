@@ -3,19 +3,21 @@
 // "Connect Over" at the top of Discover — short private modules that only feed
 // introductions (answers never appear on a profile). Each module is a big,
 // colored, rectangular card: emoji next to the title, a one-line description,
-// and a little "To do" / "Done" tag. On Discover we show a couple of cards with
-// a "See more" link that opens the full Connect Over screen; that screen reuses
-// this same component to show every module.
-// Analytics: opening one emits module_started; finishing emits module_completed
+// and a little "To do" / "Done" tag. Behind the Scenes, Your Vibe, The Friend
+// Zone, What Gets You Going, and Your Funny Bone have custom flows.
+// Analytics: opening emits module_started; finishing emits module_completed
 // (module id only — never answer text).
 // ============================================
 import React, { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRightIcon } from 'lucide-react-native';
-import { DISCOVER, trackProduct } from '@bridger/shared';
+import {
+  DISCOVER,
+  type DisclosureSaveInput,
+  trackProduct
+} from '@bridger/shared';
 import {
   ACCENTS,
-  ModuleFlow,
   Reveal,
   SectionTitle,
   Wiggle,
@@ -25,6 +27,31 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import type { MatchModule } from '../../data/discover';
+import {
+  saveAttachmentResult,
+  saveDisclosure,
+  saveHumorResult,
+  savePersonalityResult,
+  saveValuesResult
+} from '../../data/discover';
+import { AttachmentFlow } from '../../quizzes/discover/attachment/AttachmentFlow';
+import type { AttachmentScoreResult } from '../../quizzes/discover/attachment/score';
+import { DisclosureFlow } from '../../quizzes/discover/disclosure/DisclosureFlow';
+import { HumorFlow } from '../../quizzes/discover/humor/HumorFlow';
+import type { HumorScoreResult } from '../../quizzes/discover/humor/score';
+import { PersonalityFlow } from '../../quizzes/discover/personality/PersonalityFlow';
+import type { PersonalityScoreResult } from '../../quizzes/discover/personality/score';
+import { ValuesFlow } from '../../quizzes/discover/values/ValuesFlow';
+import type { ValuesScoreResult } from '../../quizzes/discover/values/score';
+
+/** Modules with a custom take UI (not ModuleFlow). */
+const CUSTOM_FLOWS = new Set([
+  'disclosure',
+  'personality',
+  'attachment',
+  'values',
+  'humor'
+]);
 
 export function MatchModules({
   modules,
@@ -75,15 +102,63 @@ export function MatchModules({
     trackProduct('module_started', { module: id });
   };
 
-  const finishModule = () => {
-    if (!active) return;
+  const finishDisclosure = async (input: DisclosureSaveInput) => {
+    await saveDisclosure(input);
     const started = startedAt.current;
     trackProduct('module_completed', {
-      module: active.id,
+      module: 'disclosure',
       time_to_complete_ms: started != null ? Date.now() - started : undefined
     });
     startedAt.current = null;
-    void onComplete(active.id);
+    void onComplete('disclosure');
+    setOpenId(null);
+  };
+
+  const finishPersonality = async (result: PersonalityScoreResult) => {
+    await savePersonalityResult(result);
+    const started = startedAt.current;
+    trackProduct('module_completed', {
+      module: 'personality',
+      time_to_complete_ms: started != null ? Date.now() - started : undefined
+    });
+    startedAt.current = null;
+    void onComplete('personality');
+    setOpenId(null);
+  };
+
+  const finishAttachment = async (result: AttachmentScoreResult) => {
+    await saveAttachmentResult(result);
+    const started = startedAt.current;
+    trackProduct('module_completed', {
+      module: 'attachment',
+      time_to_complete_ms: started != null ? Date.now() - started : undefined
+    });
+    startedAt.current = null;
+    void onComplete('attachment');
+    setOpenId(null);
+  };
+
+  const finishValues = async (result: ValuesScoreResult) => {
+    await saveValuesResult(result);
+    const started = startedAt.current;
+    trackProduct('module_completed', {
+      module: 'values',
+      time_to_complete_ms: started != null ? Date.now() - started : undefined
+    });
+    startedAt.current = null;
+    void onComplete('values');
+    setOpenId(null);
+  };
+
+  const finishHumor = async (result: HumorScoreResult) => {
+    await saveHumorResult(result);
+    const started = startedAt.current;
+    trackProduct('module_completed', {
+      module: 'humor',
+      time_to_complete_ms: started != null ? Date.now() - started : undefined
+    });
+    startedAt.current = null;
+    void onComplete('humor');
     setOpenId(null);
   };
 
@@ -128,18 +203,63 @@ export function MatchModules({
         </Pressable>
       ) : null}
 
-      {active ? (
-        <ModuleFlow
+      {active?.id === 'disclosure' ? (
+        <DisclosureFlow
           open
-          mode="private"
-          title={active.kind === 'quiz' ? `${active.title} · quiz` : active.title}
-          intro={active.blurb}
-          questions={active.questions}
+          parentScreen="discover"
           onClose={() => {
             startedAt.current = null;
             setOpenId(null);
           }}
-          onDone={finishModule}
+          onSave={finishDisclosure}
+        />
+      ) : null}
+
+      {active?.id === 'personality' ? (
+        <PersonalityFlow
+          open
+          parentScreen="discover"
+          onClose={() => {
+            startedAt.current = null;
+            setOpenId(null);
+          }}
+          onComplete={finishPersonality}
+        />
+      ) : null}
+
+      {active?.id === 'attachment' ? (
+        <AttachmentFlow
+          open
+          parentScreen="discover"
+          onClose={() => {
+            startedAt.current = null;
+            setOpenId(null);
+          }}
+          onComplete={finishAttachment}
+        />
+      ) : null}
+
+      {active?.id === 'values' ? (
+        <ValuesFlow
+          open
+          parentScreen="discover"
+          onClose={() => {
+            startedAt.current = null;
+            setOpenId(null);
+          }}
+          onComplete={finishValues}
+        />
+      ) : null}
+
+      {active?.id === 'humor' ? (
+        <HumorFlow
+          open
+          parentScreen="discover"
+          onClose={() => {
+            startedAt.current = null;
+            setOpenId(null);
+          }}
+          onComplete={finishHumor}
         />
       ) : null}
     </View>

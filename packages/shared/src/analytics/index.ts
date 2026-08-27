@@ -7,4 +7,5 @@
 
 export * from './types';
 export * from './ids';
+export * from './sanitize';
 export * from './client';

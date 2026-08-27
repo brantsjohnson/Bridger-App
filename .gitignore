@@ -33,6 +33,9 @@ apps/mobile/android/
 *.p12
 *.key
 *.mobileprovision
+google-services.json
+*-service-account*.json
+pc-api-*.json
 
 # --- SECURITY: environment files hold API keys — never commit them ---
 .env

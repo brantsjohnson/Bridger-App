@@ -10,14 +10,14 @@ A corollary: anyone can always view co-op members' richer content (their videos,
 
 ## Always free (connection + core)
 
-- Unlimited friends and acquaintances — the network grows for everyone; friend count is never capped.
+- Unlimited acquaintances. Friend count is capped at 30. Close friends is capped at 5.
 - Discover, friends-of-friends suggestions, the reveal — this is connection; it stays free.
 - Adding / accepting / tiering people; messages (the 5/day capped chat); touch grass; **answering** anyone's poll or question; quizzes; the Inside Jokes wall.
 - Photo + text updates (typed or voice-to-text); stickers; viewing everyone's content, including co-op video and custom profiles.
 - Attending events, and hosting small events (up to the base 35-guest cap).
 - Weekly recap (the AI summary — see §4).
 - The default profile everyone can read.
-- Three circles with caps: up to 10 close, 25 friends, unlimited acquaintances.
+- Three circles with caps: up to 5 close, 30 friends, unlimited acquaintances.
 
 ## The co-op unlocks
 
@@ -37,7 +37,7 @@ When a member and a friend have both been to the same place, their photos from t
 Why this gate and not another: asking your whole circle a question is a broadcast, and broadcasts are the part of a social network that costs real money to run. Nobody is ever stopped from replying to a friend.
 
 ### 2. Bigger circles + custom groups (flagship)
-Unlimited close & friends (free caps of 10 / 25 lift entirely). Custom named groups beyond the three tiers ("climbing crew," "college friends") to share updates with.
+25 Close and 125 Friends (free caps of 5 / 30). Custom named groups beyond the three tiers ("climbing crew," "college friends") to share updates with.
 
 Why this is the best lever: it charges for organization at scale, never for connection — acquaintances stay unlimited for everyone.
 
@@ -105,7 +105,7 @@ Enforced server-side by membership status; RLS + API checks gate creation (never
 ## Acceptance criteria
 
 - [ ] Connection is never gated: Discover, adding friends, unlimited acquaintances, messaging, attending events, and viewing all content are free.
-- [ ] Free circles cap at 10 close / 25 friends (acquaintances unlimited); co-op lifts caps and adds custom named groups.
+- [ ] Free circles cap at 5 close / 30 friends (acquaintances unlimited); co-op is 25 close / 125 friends and adds custom named groups.
 - [ ] Co-op members can personalize their profile; every viewer can switch any profile to the accessible default view.
 - [ ] Video updates and video reactions are a co-op capability; everyone can still view video.
 - [ ] Free users get a weekly recap; co-op members get daily recaps.

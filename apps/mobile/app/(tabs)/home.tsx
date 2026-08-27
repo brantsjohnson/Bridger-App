@@ -34,7 +34,7 @@ import {
   AnnouncementsCarousel,
   CoopAnnouncementCard
 } from '../../components/home/AnnouncementsCarousel';
-import { AssistantHomeCard } from '../../components/home/AssistantHomeCard';
+import { AgentWidget } from '../../components/assistant/AgentWidget';
 import { HomeWidget, type WidgetSize } from '../../components/home/HomeWidget';
 import {
   ActivityWidget,
@@ -52,6 +52,7 @@ import { fetchAssistantSettings } from '../../data/assistant';
 import { getHomeLayout, saveHomeLayout, clearStoryReplyNotifications } from '../../data/feed';
 import { startThreadWith } from '../../data/messages';
 import { isDemoMode } from '../../lib/demo';
+import { DevPreviewBar } from '../../components/home/DevPreviewBar';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
@@ -96,7 +97,7 @@ const TITLES: Record<WidgetKey, string> = {
 const DESCRIPTIONS: Record<WidgetKey, string> = {
   event: 'Everything happening in your group over the next few days, gathered in one spot.',
   alerts:
-    'New activity meant for you, like replies, invites, and requests. Tap See all to view everything.',
+    'New activity meant for you, like replies, invites, and requests. Tap the card (or See all) to view everything. Tap one row to open that item.',
   comingup: 'A look ahead at events and plans on the horizon so nothing sneaks up on you.',
   ask: 'Start a quick poll or question for your group and see what everyone thinks.',
   activity: "This week's group prompt. Join in and see what everyone else posted.",
@@ -132,7 +133,7 @@ export default function HomeScreen() {
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
-  // THIS SECTION DOES: show the Assistant card in Announcements only when opted in.
+  // THIS SECTION DOES: show the Bridge widget under Stories only when opted in.
   const [assistantOn, setAssistantOn] = useState(false);
   const nextEvent = events[0] ?? null;
   // Prefer a result already saved on the quiz payload (live complete).
@@ -395,6 +396,8 @@ export default function HomeScreen() {
       />
 
       <ScreenBody>
+        {isDemoMode() ? <DevPreviewBar /> : null}
+
         {announcements.length > 0 ? <AnnouncementsCarousel items={announcements} /> : null}
 
         <View>
@@ -476,8 +479,8 @@ export default function HomeScreen() {
               }}
             />
           )}
-          {/* Assistant doorway under Stories (only when Settings opt-in is on). */}
-          {assistantOn ? <AssistantHomeCard /> : null}
+          {/* Bridge widget under Stories (only when Settings opt-in is on). */}
+          {assistantOn ? <AgentWidget /> : null}
         </View>
 
         {empty ? (

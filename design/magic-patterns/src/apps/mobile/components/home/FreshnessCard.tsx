@@ -1,6 +1,6 @@
 import React from 'react';
 import { XIcon } from 'lucide-react';
-import { ButtonSecondary, cn } from '../../../../packages/ui';
+import { ButtonSecondary } from '../../../../packages/ui';
 
 /**
  * A single re-check when the profile looks stale. One question, announcement

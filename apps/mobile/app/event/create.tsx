@@ -125,17 +125,23 @@ export default function CreateEventScreen() {
           : undefined,
         chipInHandle: draft.chipInEnabled ? draft.chipInHandle || undefined : undefined,
         cover: draft.cover,
-        assignments: draft.assignments
+        assignments: draft.assignments,
+        // Only send a rule when Repeats is on (null clears / one-off).
+        recurrence: draft.repeats && draft.recurrence ? draft.recurrence : null
       };
       const event = await createEvent(input);
 
       // PRIVACY: booleans + counts only — never the title, bio, or address text.
+      // has_recurrence / recurrence_freq are enums only (never until/count prose).
       trackProduct('event_created', {
         has_cohost: draft.coHostIds.length > 0,
         has_chip_in: !!(draft.chipInEnabled && (draft.chipInHandle || draft.chipInAmount)),
         has_cover: !!draft.cover,
         assignment_count: draft.assignments.length,
-        invited_count: draft.invitedIds.length
+        invited_count: draft.invitedIds.length,
+        has_recurrence: !!(draft.repeats && draft.recurrence),
+        recurrence_freq:
+          draft.repeats && draft.recurrence ? draft.recurrence.freq : undefined
       });
       created.current = true;
       trackFlowCompleted('create_event', Date.now() - flowStartedAt.current, {

@@ -49,6 +49,8 @@ enforced at the row level — even a bug in the API can't leak a closer-tier fie
 | 0021 | `user_settings.onboarding_complete` |
 | 0022 | `connections.met_note` — Discover how-you-met freeform note |
 | 0023 | `events.cover` + `event_assignments` (+ RLS) |
+| 0038 | `event_invites.invited_by` — who invited each guest (null = host) |
+| 0039 | `events.recurrence` jsonb — optional weekly/monthly/yearly rule |
 
 ## Regenerating the TypeScript types
 

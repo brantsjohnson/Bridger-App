@@ -9,11 +9,12 @@
 import type {
   AssistantProposal,
   AssistantTurnResponse,
-  AssistantActivityItem
+  AssistantActivityItem,
+  BillyStatusDto
 } from '@bridger/shared';
 import { trackProduct } from '@bridger/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiFetch } from '../lib/api';
+import { apiFetch, ApiHttpError } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
 
 export type SettingsAssistantFlags = {
@@ -44,12 +45,25 @@ export async function fetchAssistantSettings(): Promise<SettingsAssistantFlags> 
       assistantVisible: true
     };
   }
-  const s = await apiFetch<SettingsAssistantFlags>('/me/settings');
-  return {
-    assistantEnabled: Boolean(s.assistantEnabled),
-    assistantEligible: Boolean(s.assistantEligible),
-    assistantVisible: Boolean(s.assistantVisible)
-  };
+  // THIS SECTION DOES: stay quiet when nobody is signed in (Welcome / Sign in).
+  // Hitting /me/settings without a token would crash the whole app.
+  try {
+    const s = await apiFetch<SettingsAssistantFlags>('/me/settings');
+    return {
+      assistantEnabled: Boolean(s.assistantEnabled),
+      assistantEligible: Boolean(s.assistantEligible),
+      assistantVisible: Boolean(s.assistantVisible)
+    };
+  } catch (err) {
+    if (err instanceof ApiHttpError && (err.status === 401 || err.status === 403)) {
+      return {
+        assistantEnabled: false,
+        assistantEligible: false,
+        assistantVisible: false
+      };
+    }
+    throw err;
+  }
 }
 
 export async function setAssistantEnabled(enabled: boolean): Promise<void> {
@@ -148,9 +162,14 @@ export async function assistantVoiceTurn(
   return res;
 }
 
-export async function confirmAssistantAct(proposalId: string) {
+export async function confirmAssistantAct(
+  proposalId: string,
+  /** Edits from DraftPreview / EventPreview before Nest runs the act. */
+  argsPatch?: Record<string, unknown>
+) {
   if (isDemoMode()) {
     void proposalId;
+    void argsPatch;
     trackProduct('assistant_action_confirmed', {});
     return { ok: true, handoff: null };
   }
@@ -164,10 +183,22 @@ export async function confirmAssistantAct(proposalId: string) {
       title?: string;
       date?: string;
       notes?: string;
+      sendAt?: string;
+      queued?: boolean;
+      sent?: boolean;
+      signalId?: string;
+      who?: string;
+      when?: unknown;
+      audience?: unknown;
+      mode?: string;
+      quizSlug?: string;
+      mediaId?: string;
+      target?: string;
     } | null;
+    activityId?: string;
   }>('/assistant/actions/confirm', {
     method: 'POST',
-    body: JSON.stringify({ proposalId })
+    body: JSON.stringify({ proposalId, argsPatch })
   });
   trackProduct('assistant_action_confirmed', {});
   return res;
@@ -198,6 +229,62 @@ export async function undoAssistantActivity(id: string): Promise<void> {
     body: '{}'
   });
   trackProduct('assistant_action_undone', {});
+}
+
+/** How much Billy time is left (USD of model cost). */
+export async function fetchBillyStatus(): Promise<BillyStatusDto | null> {
+  if (isDemoMode()) {
+    return {
+      plan: 'taste',
+      status: 'active',
+      balanceUsd: 0.5,
+      grantUsdPerMonth: 0.5,
+      rolloverCapUsd: 7,
+      periodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
+      plusPriceUsd: 5,
+      canStartTurn: true
+    };
+  }
+  try {
+    return await apiFetch<BillyStatusDto>('/assistant/billy/status');
+  } catch {
+    return null;
+  }
+}
+
+export async function startBillyPlusStub(): Promise<BillyStatusDto | null> {
+  if (isDemoMode()) {
+    trackProduct('billy_plus_started', { method: 'stub' });
+    return {
+      plan: 'plus',
+      status: 'active',
+      balanceUsd: 3.5,
+      grantUsdPerMonth: 3.5,
+      rolloverCapUsd: 7,
+      periodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
+      plusPriceUsd: 5,
+      canStartTurn: true
+    };
+  }
+  const res = await apiFetch<BillyStatusDto>('/assistant/billy/plus/stub', {
+    method: 'POST',
+    body: '{}'
+  });
+  trackProduct('billy_plus_started', { method: 'stub' });
+  return res;
+}
+
+export async function cancelBillyPlus(): Promise<BillyStatusDto | null> {
+  if (isDemoMode()) {
+    trackProduct('billy_plus_cancel_scheduled', {});
+    return null;
+  }
+  const res = await apiFetch<BillyStatusDto>('/assistant/billy/plus/cancel', {
+    method: 'POST',
+    body: '{}'
+  });
+  trackProduct('billy_plus_cancel_scheduled', {});
+  return res;
 }
 
 export type { AssistantProposal };

@@ -37,7 +37,7 @@ Events go to **PostHog** (self-hosted, or Cloud under a data-processing agreemen
 - **Product events:** the PostHog event **name = the product event** itself (`quiz_completed`, `friend_retiered`, `module_completed`…) with its state properties. → these are your funnels and retention drivers.
 - **Property naming:** lowercase `snake_case`, identical to the taxonomy, so PostHog funnels/breakdowns group cleanly. Never invent a property name that isn't in the taxonomy.
 - **Identity:** `distinct_id` = the opaque `user_ref` **only after consent**; otherwise anonymous. Never pass name/email/phone to `identify()` or as a property.
-- **Consent:** default to `opt_out_capturing()`; call `opt_in_capturing()` only when the user accepts (Settings toggle + ATT). Wire the deletion path so a deleted account's PostHog person is purged too.
+- **Consent:** product analytics is **on while signed in** (SDK starts quiet, then the session opts in). Demo and logged-out stay off. No Settings off-switch in the current build; no ATT (first-party, not cross-app tracking). Wire account deletion so a deleted account's PostHog person is purged too.
 - **Autocapture:** prefer our **explicit, structured events** (they carry semantic `screen.section.element` ids) as canonical. PostHog DOM autocapture may run as a web-only backstop but is not the source of truth — it can't see our ids or the native platforms.
 - **Keep code and taxonomy in lockstep:** IDs and event names live in a shared constants module generated from / mirrored to `ANALYTICS-TAXONOMY.md`, so a typo can't silently create a new event.
 

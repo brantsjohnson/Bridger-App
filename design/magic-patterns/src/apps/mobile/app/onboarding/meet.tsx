@@ -32,9 +32,9 @@ export function MeetScreen({ onNext, onSkip }: {onNext?: () => void;onSkip?: () 
 
   return (
     <OnboardingStep
-      step={6}
-      total={9}
-      purpose="Friends of your friends, never strangers."
+      step={7}
+      total={10}
+      purpose="It filled our feeds with strangers. Bridger only ever connects you through friends you already have."
       ask="Who should we introduce you to?"
       accent="green"
       onContinue={onNext}

@@ -1,4 +1,3 @@
-import React from 'react';
 import { SproutIcon, XIcon } from 'lucide-react';
 import { Avatar, cn } from '../../../packages/ui';
 import { personById } from '../state/mock-data';

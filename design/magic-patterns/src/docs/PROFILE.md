@@ -2,7 +2,7 @@
 
 Build doc for the Profile tab. Maps to `apps/mobile/app/(tabs)/profile.tsx`, the `profiles` / `attributes` / `permissions` modules, plus `stories`, and two new concerns (`quotes`, storage/retention) in `ARCHITECTURE.md`. Read that file first.
 
-Your Profile is three things at once: the **about-you card your friends see** (it populates the "About them" tab on your `person/[id]` in their app), your **archive**, and your **settings**. Top-level tabs: **Profile · Stories · Quotes · Settings**. The **Profile** tab is filled by bite-size **modules**, each answered one question per screen exactly like onboarding; the full question set lives in `PROFILE-QUESTIONS.md`. ("Quiz" is reserved for the shareable who-got-who quizzes.)
+Your Profile is three things at once: the **about-you card your friends see** (it populates the "About them" tab on your `person/[id]` in their app), your **archive**, and your **settings**. Top-level tabs: **Profile · Stories · Quotes · Settings**. The **Profile** tab is filled by bite-size **modules**, each answered one question per screen exactly like onboarding; the full question set lives in `PROFILE-MODULES.md`. ("Quiz" is reserved for the shareable who-got-who quizzes.)
 
 ---
 
@@ -26,7 +26,7 @@ The Profile tab renders these sections, populated by the modules:
 
 ### How it's filled — bite-size modules
 
-Filling is broken into **modules** (`PROFILE-QUESTIONS.md`), in this order: The basics, **Hobbies**, This or that, List of favs, Places traveled, Deeper questions, Custom notes. Rules:
+Filling is broken into **modules** (`PROFILE-MODULES.md`), in this order: The basics, **Hobbies**, This or that, List of favs, Places traveled, Deeper questions, Custom notes. Rules:
 
 - **Hobbies come near the top** — they're fast and fun to pick, so they get filled in "in a second" and give the profile immediate personality.
 - **All optional.** Fill any subset, in any order.
@@ -147,7 +147,7 @@ interface FriendNote { personId: string; note: string; }  // private, author-onl
 | Piece | Backend |
 |---|---|
 | Mandatory intro screen (once) | `profiles` (flag) |
-| Fill modules + question bank | `profiles` + question bank (see `PROFILE-QUESTIONS.md`) |
+| Fill modules + question bank | `profiles` + question bank (see `PROFILE-MODULES.md`) |
 | Module save / resume / cancel | `profiles` (draft state, discarded on cancel) |
 | Review & share (set-all + per-item) | `attributes` + `permissions` |
 | About card + fields | `profiles` + `attributes` |

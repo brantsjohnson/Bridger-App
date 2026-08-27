@@ -15,6 +15,11 @@ export type AnchoredChrome = (typeof ANCHORED_ORDER)[number];
  * Movable content modules in the native Spotify order (PROFILE.md §2).
  * Co-op Layout customize may reorder these; modules with data cannot be removed.
  */
+/**
+ * Spotify native order (PROFILE.md §2). Greatest hits are not a fixed
+ * section here; each photo inserts after a module via PhotoBlock.afterModule.
+ * `greatestHits` stays in the union for customize / legacy layout saves.
+ */
 export const MOVABLE_MODULE_ORDER = [
   'mutuals',
   'top5',
@@ -108,10 +113,70 @@ export interface ProfileCustomCode {
 
 /** Honest storage meter for co-op media (Settings → Storage & plan). */
 export interface StorageMeter {
-  userId: string;
+  userId?: string;
   usedBytes: number;
   includedBytes: number;
   overageBytes: number;
+}
+
+/** Fallback when admin_config.storage is missing (3 GB included). */
+export const DEFAULT_INCLUDED_STORAGE_GB = 3;
+
+/** Soft overage display price only. No real charge in this stub. */
+export const DEFAULT_OVERAGE_CENTS_PER_GB = 99;
+
+/** Free-tier story rolling window size used by the Stories bar. */
+export const FREE_STORY_STORAGE_BYTES = 500_000_000;
+
+/** Admin / constant shape for the storage meter. */
+export type StorageConfig = {
+  includedGb: number;
+  overageCentsPerGb: number;
+  /** Code tier stays off until an admin explicitly enables it. */
+  codeTier: 'off' | 'on';
+};
+
+export const DEFAULT_STORAGE_CONFIG: StorageConfig = {
+  includedGb: DEFAULT_INCLUDED_STORAGE_GB,
+  overageCentsPerGb: DEFAULT_OVERAGE_CENTS_PER_GB,
+  codeTier: 'off'
+};
+
+/** Turn GB into bytes for the meter. */
+export function includedBytesFromGb(gb: number): number {
+  return Math.max(0, Math.round(gb * 1024 * 1024 * 1024));
+}
+
+/** Short label like "1.2 GB" for Settings and the Stories bar. */
+export function formatStorageBytes(bytes: number): string {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1) return `${gb.toFixed(gb >= 10 ? 0 : 1)} GB`;
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1) return `${Math.round(mb)} MB`;
+  return `${Math.max(0, Math.round(bytes / 1024))} KB`;
+}
+
+/** Build used / included / overage numbers from raw byte counts. */
+export function buildStorageMeter(input: {
+  usedBytes: number;
+  includedBytes: number;
+}): StorageMeter {
+  const usedBytes = Math.max(0, Math.round(input.usedBytes));
+  const includedBytes = Math.max(0, Math.round(input.includedBytes));
+  const overageBytes = Math.max(0, usedBytes - includedBytes);
+  return { usedBytes, includedBytes, overageBytes };
+}
+
+/** Percent for the bar (0–100), capped so overage still reads as full. */
+export function storageUsedPct(meter: StorageMeter): number {
+  if (meter.includedBytes <= 0) return 0;
+  return Math.min(100, Math.round((meter.usedBytes / meter.includedBytes) * 100));
+}
+
+/** Soft overage copy. Shows a price; does not charge. */
+export function overagePriceLabel(centsPerGb: number): string {
+  const dollars = (Math.max(0, centsPerGb) / 100).toFixed(2);
+  return `$${dollars}/GB over your included amount (stub: not charged yet)`;
 }
 
 export type ProfileFont = 'clean' | 'serif' | 'pixel' | 'mono' | 'round';

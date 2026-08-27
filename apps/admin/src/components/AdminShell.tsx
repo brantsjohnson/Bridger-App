@@ -18,10 +18,14 @@ const NAV = [
   { to: '/coop', label: 'Co-op announcements' },
   { to: '/portal', label: 'Co-op portal', badgeKey: 'portal' as const },
   { to: '/members', label: 'Co-op members' },
+  { to: '/promo-codes', label: 'Auth codes' },
   { to: '/home-defaults', label: 'Home starting layout' },
   { to: '/prompts', label: 'Photo prompts' },
   { to: '/delights', label: 'Surprises' },
-  { to: '/broken-paths', label: 'Broken paths' }
+  { to: '/broken-paths', label: 'Broken paths' },
+  { to: '/integrations-health', label: 'API / integrations' },
+  { to: '/demo-week', label: 'Demo week' },
+  { to: '/billy', label: 'Billy / AI economics' }
 ] as const;
 
 export function AdminShell() {

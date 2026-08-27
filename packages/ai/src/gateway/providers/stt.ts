@@ -34,7 +34,7 @@ export async function callSpeechToText(
   });
 
   const file = await toFile(input.audio, input.filename, {
-    type: input.mimeType ?? 'audio/mpeg'
+    type: input.mimeType ?? mimeFromFilename(input.filename)
   });
 
   const result = await client.audio.transcriptions.create({
@@ -43,4 +43,15 @@ export async function callSpeechToText(
   });
 
   return { text: (result.text ?? '').trim() };
+}
+
+/** Guess audio MIME from the upload filename (web often sends .webm). */
+function mimeFromFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.webm')) return 'audio/webm';
+  if (lower.endsWith('.ogg')) return 'audio/ogg';
+  if (lower.endsWith('.wav')) return 'audio/wav';
+  if (lower.endsWith('.mp3')) return 'audio/mpeg';
+  if (lower.endsWith('.m4a') || lower.endsWith('.mp4')) return 'audio/mp4';
+  return 'audio/mpeg';
 }

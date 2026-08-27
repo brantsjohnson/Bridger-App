@@ -9,12 +9,16 @@ import { RequireAuth } from './components/RequireAuth';
 import { CoopAnnouncements } from './pages/CoopAnnouncements';
 import { CoopMembers } from './pages/CoopMembers';
 import { CoopPortal } from './pages/CoopPortal';
+import { PromoCodes } from './pages/PromoCodes';
 import { Delights } from './pages/Delights';
 import { HomeDefaultsPage } from './pages/HomeDefaults';
 import { Login } from './pages/Login';
 import { QuizEditor } from './pages/QuizEditor';
 import { QuizLive } from './pages/QuizLive';
 import { QuizRegistry } from './pages/QuizRegistry';
+import { BillyEconomics } from './pages/BillyEconomics';
+import { DemoWeekPage } from './pages/DemoWeek';
+import { IntegrationsHealth } from './pages/IntegrationsHealth';
 import { NotFoundHits } from './pages/NotFoundHits';
 import { ThemedPrompts } from './pages/ThemedPrompts';
 import { WeeklyActivity } from './pages/WeeklyActivity';
@@ -42,10 +46,14 @@ export function App() {
           <Route path="/coop" element={<CoopAnnouncements />} />
           <Route path="/portal" element={<CoopPortal />} />
           <Route path="/members" element={<CoopMembers />} />
+          <Route path="/promo-codes" element={<PromoCodes />} />
           <Route path="/home-defaults" element={<HomeDefaultsPage />} />
           <Route path="/prompts" element={<ThemedPrompts />} />
           <Route path="/delights" element={<Delights />} />
           <Route path="/broken-paths" element={<NotFoundHits />} />
+          <Route path="/integrations-health" element={<IntegrationsHealth />} />
+          <Route path="/billy" element={<BillyEconomics />} />
+          <Route path="/demo-week" element={<DemoWeekPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/quiz-live" replace />} />

@@ -4,7 +4,6 @@
 // background, Bridger mark centered, auth controls in the lower panel.
 // The live React Native screen is apps/mobile/app/(auth)/sign-in.tsx.
 // ============================================
-import React from 'react';
 import { ButtonPrimary, ButtonSecondary, PixelHeading, Screen } from '../../../../packages/ui';
 
 /** Branded Sign in — logo long-press unlocks demo in preview builds. */

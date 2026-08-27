@@ -3,8 +3,9 @@
 // "Add your recap": first you see all 5 questions (and that each answer is
 // 20 seconds), then you answer them one by one by voice, pick who hears it
 // (Close / Friends / Everyone), and Post. Each answer is recorded in-app
-// (no uploads from your library). When you post, the clips are uploaded and
-// stitched into the weekly podcast on the Friends tab.
+// (no uploads from your library). After you record, the big green button
+// PLAYS it back (Re-record is the separate way to try again). When you post,
+// the clips are uploaded and stitched into the weekly podcast on Friends.
 //
 // PERMISSIONS: the microphone is asked for HERE, the moment you tap record, with
 // a plain reason — never at app launch (store rule).
@@ -20,10 +21,12 @@ import {
   AudioModule,
   RecordingPresets,
   setAudioModeAsync,
+  useAudioPlayer,
+  useAudioPlayerStatus,
   useAudioRecorder,
   useAudioRecorderState
 } from 'expo-audio';
-import { CheckIcon, MicIcon, SquareIcon } from 'lucide-react-native';
+import { MicIcon, PauseIcon, PlayIcon, SquareIcon } from 'lucide-react-native';
 import type { RecapAudience } from '@bridger/shared';
 import {
   RECAP_RECORDER,
@@ -83,8 +86,22 @@ export function RecapRecorder({
   const completed = useRef(false);
 
   const total = questions.length;
-  const recorded = Boolean(clips[step]);
+  const clip = clips[step];
+  const recorded = Boolean(clip);
   const seconds = Math.min(MAX_SECONDS, Math.floor((recState.durationMillis ?? 0) / 1000));
+
+  // THIS SECTION DOES: play back the take you just recorded (same clip URI).
+  const player = useAudioPlayer(clip?.uri ? { uri: clip.uri } : null);
+  const playStatus = useAudioPlayerStatus(player);
+  const isPlaying = Boolean(playStatus.playing);
+
+  const stopPlayback = () => {
+    try {
+      if (player?.playing) player.pause();
+    } catch {
+      // player already torn down
+    }
+  };
 
   // Start the timed flow when the sheet opens; reset everything on close.
   useEffect(() => {
@@ -94,11 +111,13 @@ export function RecapRecorder({
       trackFlowStarted('take_recap', { parent_screen: 'friends' });
       return;
     }
+    stopPlayback();
     setPhase('preview');
     setStep(0);
     setClips({});
     setTier('friend');
     setPosting(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Auto-stop at the cap so nobody rambles past the limit.
@@ -109,7 +128,14 @@ export function RecapRecorder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, recState.isRecording]);
 
+  // Stop playback when you move to another question.
+  useEffect(() => {
+    stopPlayback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const start = async () => {
+    stopPlayback();
     // Ask for the mic in context, right when they try to record.
     const perm = await AudioModule.requestRecordingPermissionsAsync();
     if (!perm.granted) return;
@@ -121,6 +147,8 @@ export function RecapRecorder({
   const stop = async () => {
     if (!recState.isRecording) return;
     await recorder.stop();
+    // Hand the mic back so playback can use the speaker.
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
     const uri = recorder.uri;
     if (uri) {
       setClips((prev) => ({
@@ -130,7 +158,24 @@ export function RecapRecorder({
     }
   };
 
+  // THIS SECTION DOES: play or pause the current take (not start a new one).
+  const togglePlayback = () => {
+    if (!clip?.uri || !player) return;
+    if (isPlaying) {
+      player.pause();
+      return;
+    }
+    // Replay from the start so "tap to play" always hears the whole take.
+    try {
+      player.seekTo(0);
+    } catch {
+      // some platforms ignore seek before play
+    }
+    player.play();
+  };
+
   const rerecord = () => {
+    stopPlayback();
     setClips((prev) => {
       const next = { ...prev };
       delete next[step];
@@ -139,6 +184,7 @@ export function RecapRecorder({
   };
 
   const next = () => {
+    stopPlayback();
     trackFlowStep('take_recap', `q${step + 1}`, { parent_screen: 'friends' });
     if (step + 1 >= total) {
       setPhase('summary');
@@ -160,10 +206,10 @@ export function RecapRecorder({
       // Upload each recorded clip, then send the set with the chosen audience.
       const entries = Object.entries(clips);
       const answers = [] as Array<{ questionIndex: number; mediaId: string; duration: number }>;
-      for (const [idx, clip] of entries) {
+      for (const [idx, clipItem] of entries) {
         const questionIndex = Number(idx);
-        const mediaId = await uploadRecapClip(clip.uri, weekId, questionIndex);
-        answers.push({ questionIndex, mediaId, duration: clip.duration });
+        const mediaId = await uploadRecapClip(clipItem.uri, weekId, questionIndex);
+        answers.push({ questionIndex, mediaId, duration: clipItem.duration });
       }
       await postRecapAnswers({ audience: tier, answers });
 
@@ -186,10 +232,48 @@ export function RecapRecorder({
   const abandonStep =
     phase === 'preview' ? 'preview' : phase === 'summary' ? 'audience' : `q${step + 1}`;
 
+  // Big circle: record / stop / play / pause. Never re-record from the check.
+  const onMainPress = () => {
+    if (recState.isRecording) {
+      void stop();
+      return;
+    }
+    if (recorded) {
+      togglePlayback();
+      return;
+    }
+    void start();
+  };
+
+  const mainAnalyticsId = recState.isRecording
+    ? RECAP_RECORDER.record.stop
+    : recorded
+      ? isPlaying
+        ? RECAP_RECORDER.record.pause
+        : RECAP_RECORDER.record.play
+      : RECAP_RECORDER.record.start;
+
+  const mainLabel = recState.isRecording
+    ? 'Stop recording'
+    : recorded
+      ? isPlaying
+        ? 'Pause playback'
+        : 'Play recording'
+      : 'Record answer';
+
+  const statusLabel = recState.isRecording
+    ? `0:${String(seconds).padStart(2, '0')} · ${MAX_SECONDS}s max`
+    : recorded
+      ? isPlaying
+        ? 'Playing…'
+        : 'Tap to play'
+      : 'Tap to record';
+
   return (
     <Sheet
       open={open}
       onClose={() => {
+        stopPlayback();
         if (!completed.current && startedAt.current != null) {
           trackFlowAbandoned('take_recap', Date.now() - startedAt.current, abandonStep, {
             parent_screen: 'friends'
@@ -319,15 +403,11 @@ export function RecapRecorder({
 
           <View className="items-center">
             <Pressable
-              onPress={withAnalyticsPress(
-                recState.isRecording
-                  ? RECAP_RECORDER.record.stop
-                  : RECAP_RECORDER.record.start,
-                () => (recState.isRecording ? void stop() : void start()),
-                { analyticsProps: { method: 'voice' } }
-              )}
+              onPress={withAnalyticsPress(mainAnalyticsId, onMainPress, {
+                analyticsProps: { method: 'voice' }
+              })}
               accessibilityRole="button"
-              accessibilityLabel={recState.isRecording ? 'Stop recording' : 'Record answer'}
+              accessibilityLabel={mainLabel}
               className={cn(
                 'h-20 w-20 items-center justify-center rounded-full',
                 // Fixed near-black — bg-ink flips cream in dark mode and hides the white mic.
@@ -337,7 +417,11 @@ export function RecapRecorder({
               {recState.isRecording ? (
                 <SquareIcon size={26} color="#FFFFFF" strokeWidth={2.6} />
               ) : recorded ? (
-                <CheckIcon size={30} color="#FFFFFF" strokeWidth={3} />
+                isPlaying ? (
+                  <PauseIcon size={30} color="#FFFFFF" strokeWidth={2.6} />
+                ) : (
+                  <PlayIcon size={30} color="#FFFFFF" strokeWidth={2.6} />
+                )
               ) : (
                 <MicIcon size={30} color="#FFFFFF" strokeWidth={2.4} />
               )}
@@ -346,33 +430,36 @@ export function RecapRecorder({
               accessibilityLiveRegion="polite"
               className="mt-2.5 font-sans-b text-[12px] text-ink-mute"
             >
-              {recState.isRecording
-                ? `0:${String(seconds).padStart(2, '0')} · ${MAX_SECONDS}s max`
-                : recorded
-                  ? 'Recorded'
-                  : 'Tap to record'}
+              {statusLabel}
             </Text>
           </View>
 
+          {/*
+            Share the row with flex-1 wrappers. Two `full` (w-full) buttons in a
+            row each want 100% width and shove Next off the right edge.
+          */}
           <View className="flex-row gap-2.5">
             {recorded ? (
-              <ButtonSecondary
-                full
-                analyticsId={RECAP_RECORDER.record.rerecord}
-                onPress={rerecord}
-              >
-                Re-record
-              </ButtonSecondary>
+              <View className="min-w-0 flex-1">
+                <ButtonSecondary
+                  full
+                  analyticsId={RECAP_RECORDER.record.rerecord}
+                  onPress={rerecord}
+                >
+                  Re-record
+                </ButtonSecondary>
+              </View>
             ) : null}
-            {/* Metal primary — never a black solid that vanishes on the dark sheet. */}
-            <ButtonPrimary
-              full
-              disabled={!recorded}
-              analyticsId={RECAP_RECORDER.record.next}
-              onPress={next}
-            >
-              {step + 1 === total ? 'Done' : 'Next'}
-            </ButtonPrimary>
+            <View className="min-w-0 flex-1">
+              <ButtonPrimary
+                full
+                disabled={!recorded}
+                analyticsId={RECAP_RECORDER.record.next}
+                onPress={next}
+              >
+                {step + 1 === total ? 'Done' : 'Next'}
+              </ButtonPrimary>
+            </View>
           </View>
         </View>
       )}

@@ -9,12 +9,15 @@ import { QuizHost } from '../../quizzes/_host/QuizHost';
 
 export default function QuizSlugScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ slug: string }>();
-  const slug = typeof params.slug === 'string' ? params.slug : 'road-trip';
+  const params = useLocalSearchParams<{ slug: string | string[] }>();
+  // Expo Router can hand back a string or a one-item array; normalize it.
+  const raw = params.slug;
+  const slug = Array.isArray(raw) ? raw[0] : raw;
+  const resolved = typeof slug === 'string' && slug.length ? slug : 'what-j-name';
 
   return (
     <QuizHost
-      slug={slug}
+      slug={resolved}
       onClose={() => {
         if (router.canGoBack()) router.back();
         else router.replace('/home');

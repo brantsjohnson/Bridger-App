@@ -26,7 +26,8 @@ function whoToAudience(who: string): string {
   const key = who.toLowerCase();
   if (key.startsWith('close')) return 'close';
   if (key.startsWith('friend')) return 'friends';
-  return 'everyone';
+  // Unknown labels fall back to Friends, never Everyone.
+  return 'friends';
 }
 
 /** Turn the sheet's "when" label into the API window value. */

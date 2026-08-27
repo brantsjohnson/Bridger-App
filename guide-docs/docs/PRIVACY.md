@@ -47,20 +47,24 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - Sign-in via supported providers (e.g. Google; Sign in with Apple when Google is offered).
 - Profile basics collected in onboarding (name/display, and other basics per `ONBOARDING.md` / `PROFILE-MODULES.md`).
 - **Connection style (desire step):** during onboarding we may store opaque preference keys for what you want Bridger to prioritize (`frequency` / `depth` / `plans` / `commonality`) plus a named Home layout seed. **Why:** to arrange *your own* Home and lean notification defaults toward what you said. **Who sees it:** only Bridger systems acting for you (never other users, never matching embeddings, never ads). **How long:** until you change it or delete your account (hard-delete). Skippable; skipped desire defaults to a stay-close seed. Analytics may record the opaque keys only, never free-text rants.
+- **Friends-of-friends matching preference (new onboarding step):** you may pick what you want introductions based on, as opaque keys only (`humor` / `values` / `personality` / `hobbies` / `communication`). **Why:** to shape which friends-of-friends the matcher surfaces to *you*. **Who sees it:** only Bridger systems acting for you (never shown to other users as text). Skippable; hard-deleted with the account.
+- **Social battery (new onboarding step):** an optional number, 0 to 7+, of nights out you like in a normal week. **Why:** to pace how often Bridger nudges *you* toward plans. **Who sees it:** only your own pacing logic, never shown to others as a number. Skippable.
+- **Personal color (new onboarding step):** an optional accent color you pick to tint *your own* surfaces. Cosmetic only; no tracking value. Skippable.
 - Contact handles the user chooses to share with friends (e.g. on the contact card in Messages) are user-shared, not scraped.
 - **TODO (product):** list exact account fields currently stored (email, auth provider IDs, etc.) when Settings / auth is next touched.
 
 ### 3.1b Linked music accounts (Zone A secrets + Zone B picks)
 
-- You may **link Spotify** (Apple Music later) from Settings. This is **account linking**, not “sign in with Spotify.” Bridger login stays Google / Sign in with Apple.
-- Nest stores **encrypted** refresh/access tokens server-side (`music_connections`). Tokens are never shipped to the mobile client or used as Bridger auth.
+- You may **link Spotify or Apple Music** from Settings (or during onboarding). This is **account linking**, not “sign in with Spotify / Apple Music.” Bridger login stays Google / Sign in with Apple.
+- Nest stores **encrypted** refresh/access tokens (Spotify) or the MusicKit **music-user-token** (Apple Music) server-side (`music_connections`). Tokens are never shipped to the mobile client or used as Bridger auth.
 - Catalog picks (Listening, song of the week, favorites) store Spotify/Apple ids, titles, artwork, and optional `preview_url` with the same **who sees** + **matchable** rules as other profile facts (`music_picks`).
-- Top artists may be synced for “artists in common” on reveal / In common (`music_taste_artists` + matchable `music.artist.*` attributes). Disconnect deletes tokens and synced taste rows. Account deletion hard-deletes all of the above.
+- Top artists may be synced for “artists in common” on reveal / In common (`music_taste_artists` + matchable `music.artist.*` attributes). Spotify uses Spotify’s top-artists list (up to 50). Apple Music builds a ranked list from heavy rotation, recent plays, and library artists (up to 50). Disconnect deletes tokens and synced taste rows. Account deletion hard-deletes all of the above.
 - In-app play today is a short **preview** when Spotify provides one, plus Open in Spotify / Apple Music. Full-track streaming (Premium SDK) is not required for linking.
 
 ### 3.2 Profile attributes and quizzes (Zone B)
 
 - Hobbies, favorites, places, this-or-that, bucket list, deeper questions, Top 5, Current Obsession, life timeline, recommendations, goals, and quiz results tagged with **visibility** (`visibleToTier`) and a separate **`matchable`** flag.
+- **New onboarding "taste" facts:** current job, dream job, the song on repeat (typed, or pulled via a linked music account), hometown / current town / favorite place visited (**towns only, never a street address**), and a weekly recap highlight (typed **or** a 20 second voice memo). Each is optional/skippable, tagged with its own **visibility** on the Privacy & Control screen (Inner Circle / Friends / Friends of Friends), and hard-deleted with the account. The recap voice memo is your own capture; analytics record only that a recap was added and its length, never the audio or words.
 - The hobby bank includes optional culture, advocacy, and wellness labels you can pick (or add your own). Same who-sees and matchable rules as any other hobby. None of these are required.
 - Every fill module ends with (1) who can see the answers and (2) an explicit "use this to connect me in Discover?" ask. Visibility and matching are independent consents.
 - Sensitive About Me Deeper fields (identity / beliefs) default Close and are never bulk-matchable; each is listed individually in the matchable step.
@@ -104,16 +108,18 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 | Permission | Why we ask | If denied |
 |---|---|---|
 | Camera | Post Updates, video replies | Feature degrades; app still works |
-| Microphone | Video replies, recap voice answers, Assistant voice questions (opt-in) | Same |
+| Microphone | Video replies, recap voice answers (including the optional 20 second onboarding recap), Assistant voice questions (opt-in) | Same |
 | Photo library (read) | Profile photo only (upload exception) | User can skip / use capture |
 | Photo library (add only) | Save a quiz result card you made to your camera roll so you can post it to a story. Requested only when you tap "Save image"; add-only, we never read your existing photos for this. | Skip; you can still share the card straight to another app |
 | Notifications | Alerts for friends, Touch Grass, events, etc. | In-app activity still works |
-| Contacts | Optional friend-finding / invite (desired in onboarding; not required) | Skip; app works |
+| Contacts | Optional: when you tap **Connect contacts** (onboarding) or **Invite a friend** (demo-week access gate), Bridger asks permission to read contacts **on your device only** so you can pick someone to text your invite link. Onboarding also offers three separate **Invite via link** slots (Link 1 / 2 / 3). We never upload your address book. Counting an invite toward the co-op "invite 3 friends" progress means you opened SMS or completed the system share sheet from a slot, not that the friend joined yet. | Skip; you can still use the three link slots / system share sheet |
 | Location (coarse) | Optional "where you met"; future **Local map** (friend radar) will also need coarse, opt-in sharing when that feature ships. Discover currently shows only a Coming soon teaser and does **not** request location for the map. | Skip; app works |
 
 Purpose strings must stay accurate in `app.json` / store listings when permissions land.
 
 **Background audio (co-op weekly recap):** the recap Friend Pod player keeps playing when the app is backgrounded or the phone is locked, and shows standard lock-screen / Control Center playback controls. This uses the OS audio background mode (iOS) and a media-playback foreground service (Android); it does not collect any new data. The lock-screen "now playing" card shows only the current friend's first name plus a "Bridger · Weekly recap" label. Recap question text and answer audio content are deliberately kept off the lock screen. No location, no microphone, and no new permission is involved in playback (the microphone permission covers recording your own answer only).
+
+**Haptics (first-open intro + UI feedback):** the app can play short vibrations through the device's built-in haptics (via `expo-haptics`). The first-open CRT intro uses this to make typing, "screen wipe," glitch, and shut-off moments feel physical. Haptics collect no data, send nothing off the device, and use no location or microphone. On Android we use the OS haptic constants (no `VIBRATE` permission required); on iOS this is the standard Taptic Engine. Reduce Motion trims the intense bursts. There is no separate haptics permission prompt.
 
 ### 3.7 Analytics (PostHog)
 
@@ -164,7 +170,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - Run the core app: friends, Updates, Events, Messages (limited), Discover, quizzes, Touch Grass, recap Friend Pod, co-op portal.
 - Enforce tiers, blocks, and membership perks.
 - Send in-app (and later push) notifications the user has allowed.
-- **Random update nudges** (`story_prompt`): optional. When you turn the toggle on (capture screen or Settings → Notifications), Bridger may send about **1–3 prompts a day** at random times asking you to post an update. Tapping opens the in-app capture screen. Off by default; turn off anytime in the same places. No one else sees that you enabled this.
+- **Random update nudges** (`story_prompt`): optional. When you turn the toggle on (capture screen or Settings → Notifications), Bridger may send about **1–3 prompts a day** at random times asking you to post an update, including **one mid-party nudge** when you are hosting or going to a live event (skipped if you already posted 3 updates that day). Party nudges open capture with the event pre-tagged so the photo can land in that event's album. Tapping opens the in-app capture screen. Off by default; turn off anytime in the same places. No one else sees that you enabled this.
 - Improve the product via PostHog analytics (anonymous screen/button names; not ads, not sold).
 - Moderate reported content and enforce Terms.
 - Process membership payments when real IAP / card checkout ships.
@@ -236,6 +242,9 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-27 | Apple Music account link (MusicKit): encrypted music-user-token server-side; taste sync from heavy rotation / recent plays / library (up to 50 artists); Spotify top-artist sync raised to 50; disconnect / account delete hard-deletes tokens + taste |
+| 2026-08-25 | First-open experience replaced by a one-off CRT terminal intro (plays once per install, then sign-in). Adds `expo-haptics` for synchronized vibration; collects no data, no new permission (Android uses permission-free haptic constants), Reduce Motion trims the intense bursts. |
+| 2026-08-25 | Onboarding capture went live: profile-photo pick (camera/library via expo-image-picker, permission in context) uploads to the private `media` bucket then `PATCH /me { avatarMediaId }`; 20s recap voice memo (expo-audio) uploads to `media` and stores only the `mediaId` on the `weekly_recap` attribute; native notification permission (expo-notifications) asked once after the Notifications step, only if a nudge was chosen, denial never dead-ends |
 | 2026-08-21 | Messages: contact-card share (not a raw number); double-tap heart on a friend's bubble (id only, not a send); no Make a plan in-thread |
 | 2026-08-21 | Touch Grass send: Close / Friends only (acquaintances never get a signal) |
 | 2026-08-14 | Co-op vs Free Lite: circle caps 5/30 vs 25/125; named groups and extra place photos are co-op; viewing custom profiles and co-op video stays free |
@@ -268,4 +277,5 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 | 2026-08-21 | J-name leaderboard + alerts: friends grouped by J-name result ("your version of X"); top 3 on Home teaser, grows as friends take it; `jname_link_opened` / `jname_top_match` notifications (opaque ids + quiz slug only) |
 | 2026-08-21 | Co-op weekly recap background audio: playback continues when the app is backgrounded / phone locked, with lock-screen controls; iOS audio background mode + Android media foreground service; no new data collected; lock-screen shows friend first name + "Bridger · Weekly recap" only, never question/answer content |
 | 2026-08-19 | PostHog SDK wired: Settings opt-in (default off), no ATT, no session replay / geo-IP, opaque id after consent, person purge on opt-out and account delete |
+| 2026-08-27 | Onboarding contacts: Connect contacts (on-device) + three Invite via link slots; co-op invite CTA shows N/3 progress or hides when complete; share/SMS open counts toward progress, not friend join |
 | 2026-08-05 | Initial scaffolding seeded from shipped co-op portal, soft join, PostHog analytics rules, Touch Grass Events-only send, Friend Pod on Friends, quiz-without-AI, polls, profile customize MVP, hard-delete / zones promises. |

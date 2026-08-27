@@ -1,9 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Discover tab — friends of friends worth meeting. Opt-in gate first,
-// then private match modules, "Wants to connect" approvals, and Bridger's
-// picks (overlap-first cards). Synth grid behind everything. Data comes from
-// useDiscover so demo fixtures and the live API use the same screen.
+// then private match modules, "Wants to connect" approvals, Bridger's picks
+// (overlap-first cards), and a dormant Local map teaser (friend radar,
+// coming soon). Synth grid behind everything. Data comes from useDiscover
+// so demo fixtures and the live API use the same screen.
 // Analytics: surface=discover; cards and settings gear use DISCOVER.* IDs.
 // ============================================
 import React, { useEffect, useState } from 'react';
@@ -26,6 +27,7 @@ import { ConnectionDetail } from '../../components/discover/ConnectionDetail';
 import { DiscoverGate } from '../../components/discover/DiscoverGate';
 import { DiscoverSettingsSheet } from '../../components/discover/DiscoverSettingsSheet';
 import { MatchModules } from '../../components/discover/MatchModules';
+import { LocalMapTeaser } from '../../components/discover/LocalMapTeaser';
 import { SuggestionCard } from '../../components/discover/SuggestionCard';
 import { PersonAvatar } from '../../components/PersonAvatar';
 import type { Commonality } from '../../data/discover';
@@ -107,12 +109,14 @@ export default function DiscoverScreen() {
 
   if (view === 'gate' || !settings.discoverable) {
     return (
-      <DiscoverGate
-        onStart={() => {
-          void onSetDiscoverable(true);
-          setView('main');
-        }}
-      />
+      <Screen tone="intro">
+        <DiscoverGate
+          onStart={() => {
+            void onSetDiscoverable(true);
+            setView('main');
+          }}
+        />
+      </Screen>
     );
   }
 
@@ -177,9 +181,9 @@ export default function DiscoverScreen() {
             )}
             accessibilityRole="button"
             accessibilityLabel="Discover settings"
-            className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:bg-[#F1ECFF]"
+            className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-80"
           >
-            <SettingsIcon size={18} color={c.ink} strokeWidth={2.2} />
+            <SettingsIcon size={18} color={c.canvas} strokeWidth={2.2} />
           </Pressable>
         }
       />
@@ -280,6 +284,9 @@ export default function DiscoverScreen() {
             ))}
           </View>
         </View>
+
+        {/* Friend radar teaser — nearby map is planned, not live yet */}
+        <LocalMapTeaser />
       </ScreenBody>
 
       <DiscoverSettingsSheet

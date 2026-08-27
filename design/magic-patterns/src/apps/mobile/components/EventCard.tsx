@@ -1,4 +1,3 @@
-import React from 'react';
 import { EventItem } from '../../../packages/shared';
 import {
   AvatarStack,

@@ -1,4 +1,3 @@
-import React from 'react';
 import { LinkIcon, ScanLineIcon } from 'lucide-react';
 import { ButtonSecondary, Sheet } from '../../../packages/ui';
 import { QrBlock } from './ColdStart';
@@ -33,7 +32,7 @@ export function AddFriendSheet({
       <div className="space-y-4">
         <QrBlock />
         <p className="text-center text-[12px] font-semibold text-ink-mute">
-          Let them scan this
+          Scan this to add each other.
         </p>
         <ButtonSecondary
           full

@@ -35,6 +35,8 @@ export const AUTH = {
     brand_logo: aid('auth', 'sign_in', 'brand_logo'),
     google: aid('auth', 'sign_in', 'google'),
     apple: aid('auth', 'sign_in', 'apple'),
+    /** Subtle link under OAuth to reveal the email + password form. */
+    manual_link: aid('auth', 'sign_in', 'manual_link'),
     email: aid('auth', 'sign_in', 'email'),
     password: aid('auth', 'sign_in', 'password'),
     submit: aid('auth', 'sign_in', 'submit'),
@@ -44,8 +46,11 @@ export const AUTH = {
     page_title: aid('auth', 'sign_up', 'page_title'),
     google: aid('auth', 'sign_up', 'google'),
     apple: aid('auth', 'sign_up', 'apple'),
+    /** Subtle link under OAuth to reveal the email sign-up form. */
+    manual_link: aid('auth', 'sign_up', 'manual_link'),
     email: aid('auth', 'sign_up', 'email'),
     password: aid('auth', 'sign_up', 'password'),
+    confirm_password: aid('auth', 'sign_up', 'confirm_password'),
     submit: aid('auth', 'sign_up', 'submit'),
     switch_to_sign_in: aid('auth', 'sign_up', 'switch_to_sign_in')
   }
@@ -70,10 +75,51 @@ export const ONBOARDING = {
     first_input: aid('onboarding', 'name', 'first_input'),
     last_input: aid('onboarding', 'name', 'last_input')
   },
+  // Step 2 — confirm profile (name + photo on one screen).
+  confirm_profile: {
+    first_input: aid('onboarding', 'confirm_profile', 'first_input'),
+    last_input: aid('onboarding', 'confirm_profile', 'last_input'),
+    take: aid('onboarding', 'confirm_profile', 'take'),
+    upload: aid('onboarding', 'confirm_profile', 'upload'),
+    retake: aid('onboarding', 'confirm_profile', 'retake')
+  },
   groups: {
     invite: aid('onboarding', 'groups', 'invite'),
     /** dead — the three tier cards are explanatory, not tappable */
     tier_card: aid('onboarding', 'groups', 'tier_card')
+  },
+  // The four "the internet promised X" interstitials between steps.
+  stat: {
+    /** the little i icon / "Where this comes from" link that reveals sources */
+    info: aid('onboarding', 'stat', 'info'),
+    /** the "Let's try again" bridge button */
+    bridge: aid('onboarding', 'stat', 'bridge'),
+    /**
+     * DEPRECATED: the interactive hours picker was replaced by the life-bar
+     * visual. Keep the id so old events still resolve; do not emit new ones.
+     */
+    adjust: aid('onboarding', 'stat', 'adjust'),
+    /** dead — the animated visual body is not tappable */
+    visual: aid('onboarding', 'stat', 'visual'),
+    /** dead — the display-font headline is not tappable */
+    headline: aid('onboarding', 'stat', 'headline')
+  },
+  // Step 5 — connect contacts to find friends already here.
+  contacts: {
+    sync: aid('onboarding', 'contacts', 'sync'),
+    invite: aid('onboarding', 'contacts', 'invite'),
+    /** one of the three Link 1 / 2 / 3 slots (`slot`: 1|2|3) */
+    invite_slot: aid('onboarding', 'contacts', 'invite_slot'),
+    contact_row: aid('onboarding', 'contacts', 'contact_row'),
+    contacts_cancel: aid('onboarding', 'contacts', 'contacts_cancel'),
+    skip: aid('onboarding', 'contacts', 'skip')
+  },
+  // Step 7 — how you want friends-of-friends matched to you.
+  friends_of_friends: {
+    style: aid('onboarding', 'friends_of_friends', 'style'),
+    /** tap that turns every matching style on (or clears them all) */
+    all: aid('onboarding', 'friends_of_friends', 'all'),
+    skip: aid('onboarding', 'friends_of_friends', 'skip')
   },
   basics: {
     answer: aid('onboarding', 'basics', 'answer'),
@@ -92,20 +138,61 @@ export const ONBOARDING = {
     city_input: aid('onboarding', 'meet', 'city_input'),
     skip: aid('onboarding', 'meet', 'skip')
   },
+  // Step 10 — "Taste of Bridger" intro + its light sub-questions.
+  taste: {
+    start: aid('onboarding', 'taste', 'start'),
+    /** dead — the "what's coming up" preview list is not tappable */
+    preview_list: aid('onboarding', 'taste', 'preview_list'),
+    current_input: aid('onboarding', 'taste', 'current_input'),
+    dream_input: aid('onboarding', 'taste', 'dream_input'),
+    spotify: aid('onboarding', 'taste', 'spotify'),
+    apple: aid('onboarding', 'taste', 'apple'),
+    song_input: aid('onboarding', 'taste', 'song_input'),
+    nights_option: aid('onboarding', 'taste', 'nights_option'),
+    color_swatch: aid('onboarding', 'taste', 'color_swatch'),
+    hometown_input: aid('onboarding', 'taste', 'hometown_input'),
+    current_town_input: aid('onboarding', 'taste', 'current_town_input'),
+    favorite_place_input: aid('onboarding', 'taste', 'favorite_place_input'),
+    recap_record: aid('onboarding', 'taste', 'recap_record'),
+    recap_play: aid('onboarding', 'taste', 'recap_play'),
+    recap_type: aid('onboarding', 'taste', 'recap_type'),
+    skip: aid('onboarding', 'taste', 'skip')
+  },
   review: {
     row_audience: aid('onboarding', 'review', 'row_audience'),
-    set_all: aid('onboarding', 'review', 'set_all')
+    set_all: aid('onboarding', 'review', 'set_all'),
+    terms: aid('onboarding', 'review', 'terms'),
+    privacy_policy: aid('onboarding', 'review', 'privacy_policy')
   },
   coop: {
     join: aid('onboarding', 'coop', 'join'),
+    /** Option A — invite 3 friends for free access */
+    invite_free: aid('onboarding', 'coop', 'invite_free'),
+    /** Option B — join directly (paid membership) */
+    join_paid: aid('onboarding', 'coop', 'join_paid'),
     apple_pay: aid('onboarding', 'coop', 'apple_pay'),
     google_pay: aid('onboarding', 'coop', 'google_pay'),
     card: aid('onboarding', 'coop', 'card'),
-    use_free: aid('onboarding', 'coop', 'use_free')
+    use_free: aid('onboarding', 'coop', 'use_free'),
+    redeem_open: aid('onboarding', 'coop', 'redeem_open'),
+    redeem_input: aid('onboarding', 'coop', 'redeem_input'),
+    redeem_submit: aid('onboarding', 'coop', 'redeem_submit'),
+    /** dead — the 2x2 perks grid is not tappable */
+    perks_grid: aid('onboarding', 'coop', 'perks_grid')
   },
   welcome_in: {
-    lets_go: aid('onboarding', 'welcome_in', 'lets_go')
+    lets_go: aid('onboarding', 'welcome_in', 'lets_go'),
+    /** dead — the three "what happens next" cards are not tappable */
+    next_cards: aid('onboarding', 'welcome_in', 'next_cards')
   }
+} as const;
+
+// --- Demo week invite access gate ---
+export const INVITE_ACCESS = {
+  body: aid('invite_access', 'main', 'body'),
+  invite_button: aid('invite_access', 'main', 'invite_button'),
+  contact_row: aid('invite_access', 'contacts_sheet', 'contact_row'),
+  contacts_cancel: aid('invite_access', 'contacts_sheet', 'cancel')
 } as const;
 
 // --- Floating tab bar (global chrome) ---
@@ -131,6 +218,11 @@ export const HOME = {
     page_title: aid('home', 'top_nav', 'page_title'),
     profile_icon: aid('home', 'top_nav', 'profile_icon'),
     edit_layout: aid('home', 'top_nav', 'edit_layout')
+  },
+  /** Localhost / preview only: jump to CRT intro or onboarding from Home. */
+  dev_preview: {
+    crt_intro: aid('home', 'dev_preview', 'crt_intro'),
+    onboarding: aid('home', 'dev_preview', 'onboarding')
   },
   announcements: {
     carousel: aid('home', 'announcements', 'carousel'),
@@ -264,6 +356,7 @@ export const TOUCH_GRASS_SHEET = {
   who: {
     close: aid('touch_grass_sheet', 'who', 'close'),
     friends: aid('touch_grass_sheet', 'who', 'friends'),
+    /** Retired: Touch Grass no longer offers Everyone. Id kept so old events still group. */
     everyone: aid('touch_grass_sheet', 'who', 'everyone')
   },
   when: {
@@ -548,6 +641,9 @@ export const RECAP_RECORDER = {
   record: {
     start: aid('recap_recorder', 'record', 'start'),
     stop: aid('recap_recorder', 'record', 'stop'),
+    /** Play back the take you just recorded (before Next / Re-record). */
+    play: aid('recap_recorder', 'record', 'play'),
+    pause: aid('recap_recorder', 'record', 'pause'),
     rerecord: aid('recap_recorder', 'record', 'rerecord'),
     next: aid('recap_recorder', 'record', 'next')
   },
@@ -685,6 +781,15 @@ export const PROFILE = {
     continue: aid('profile', 'module', 'continue'),
     cancel: aid('profile', 'module', 'cancel'),
     hobby_select: aid('profile', 'module', 'hobby_select'),
+    /** Focus the hobbies search box. Never logs the query text. */
+    hobby_search: aid('profile', 'module', 'hobby_search'),
+    /** Dead: category title above a hobby group. */
+    hobby_category: aid('profile', 'module', 'hobby_category'),
+    hobby_add_own: aid('profile', 'module', 'hobby_add_own'),
+    hobby_custom_name: aid('profile', 'module', 'hobby_custom_name'),
+    hobby_custom_emoji: aid('profile', 'module', 'hobby_custom_emoji'),
+    hobby_custom_save: aid('profile', 'module', 'hobby_custom_save'),
+    hobby_custom_remove: aid('profile', 'module', 'hobby_custom_remove'),
     place_search: aid('profile', 'module', 'place_search'),
     place_result: aid('profile', 'module', 'place_result')
   },
@@ -752,6 +857,10 @@ export const PROFILE = {
     connect_spotify: aid('profile', 'settings', 'connect_spotify'),
     /** Disconnect Spotify after confirm. */
     disconnect_spotify: aid('profile', 'settings', 'disconnect_spotify'),
+    /** Connect Apple Music (account link, not Bridger login). */
+    connect_apple_music: aid('profile', 'settings', 'connect_apple_music'),
+    /** Disconnect Apple Music after confirm. */
+    disconnect_apple_music: aid('profile', 'settings', 'disconnect_apple_music'),
     /** Surprises section header (dead_click). */
     surprises_header: aid('profile', 'settings', 'surprises_header'),
     /** Demo/QA: queue emoji-bomb gift for yourself. */
@@ -903,6 +1012,10 @@ export const EVENTS = {
     date_chip: aid('events', 'detail', 'date_chip'),
     /** Flip-tile countdown under When (dead_click). */
     countdown: aid('events', 'detail', 'countdown'),
+    /** Photo album section header (dead_click). */
+    photo_album_header: aid('events', 'detail', 'photo_album_header'),
+    /** One photo tile in the event album. */
+    photo_album_tile: aid('events', 'detail', 'photo_album_tile'),
     details_body: aid('events', 'detail', 'details_body'),
     assignment_row: aid('events', 'detail', 'assignment_row'),
     assign_name: aid('events', 'detail', 'assign_name'),
@@ -1031,7 +1144,11 @@ export const STORY = {
     author: aid('story', 'viewer', 'author'),
     overflow: aid('story', 'viewer', 'overflow'),
     close: aid('story', 'viewer', 'close'),
-    caption_body: aid('story', 'viewer', 'caption_body')
+    caption_body: aid('story', 'viewer', 'caption_body'),
+    /** End-of-tray celebration body (dead-click). */
+    caught_up_body: aid('story', 'viewer', 'caught_up_body'),
+    /** Done / X on the "You're all caught up" screen. */
+    caught_up_done: aid('story', 'viewer', 'caught_up_done')
   },
   reaction_rail: {
     record: aid('story', 'reaction_rail', 'record'),
@@ -1122,7 +1239,11 @@ export const POST_COMPOSER = {
     /** Opt-in random update nudges (about 1–3 / day). */
     random_nudges_toggle: aid('post_composer', 'suggested', 'random_nudges_toggle'),
     /** Label beside the random-nudges toggle (dead-click). */
-    random_nudges_label: aid('post_composer', 'suggested', 'random_nudges_label')
+    random_nudges_label: aid('post_composer', 'suggested', 'random_nudges_label'),
+    /** Event tag row when opened from a party capture nudge (dead-click). */
+    event_tag_label: aid('post_composer', 'suggested', 'event_tag_label'),
+    /** Remove the pre-filled event tag before posting. */
+    event_tag_clear: aid('post_composer', 'suggested', 'event_tag_clear')
   },
   audience: {
     close: aid('post_composer', 'audience', 'close'),
@@ -1141,7 +1262,10 @@ export const POST_COMPOSER = {
 export const MESSAGES = {
   conversation: {
     bubble: aid('messages', 'conversation', 'bubble'),
+    /** Double-tap a friend's bubble to heart. Does not count as a send. */
+    heart: aid('messages', 'conversation', 'heart'),
     share_contact: aid('messages', 'conversation', 'share_contact'),
+    /** Retired: Make a plan left Messages. Id kept so old events still group. */
     make_a_plan: aid('messages', 'conversation', 'make_a_plan'),
     back: aid('messages', 'conversation', 'back'),
     maxed_notice: aid('messages', 'conversation', 'maxed_notice'),
@@ -1197,6 +1321,8 @@ export const REVEAL = {
     tier_choice: aid('reveal', 'flow', 'tier_choice'),
     /** optional short how-you-met note (Discover path, when there is no place) */
     meet_note: aid('reveal', 'flow', 'meet_note'),
+    /** tap "Add a note - optional" to open / close the box */
+    meet_note_toggle: aid('reveal', 'flow', 'meet_note_toggle'),
     continue: aid('reveal', 'flow', 'continue'),
     see_profile: aid('reveal', 'flow', 'see_profile'),
     /** tap the right half of a story screen to go forward */
@@ -1221,7 +1347,11 @@ export const QUIZ = {
     explain: aid('quiz', 'take', 'explain'),
     next: aid('quiz', 'take', 'next'),
     back: aid('quiz', 'take', 'back'),
-    progress: aid('quiz', 'take', 'progress')
+    progress: aid('quiz', 'take', 'progress'),
+    /** Question slab body (dead_click). */
+    question: aid('quiz', 'take', 'question'),
+    /** Commentary / quip body (dead_click). */
+    commentary: aid('quiz', 'take', 'commentary')
   },
   result: {
     label: aid('quiz', 'result', 'label'),
@@ -1230,6 +1360,14 @@ export const QUIZ = {
     see_more: aid('quiz', 'result', 'see_more'),
     done: aid('quiz', 'result', 'done')
   }
+} as const;
+
+/** Confirm sheet when Back is tapped mid-quiz. Own surface. */
+export const END_QUIZ_SHEET = {
+  body: aid('end_quiz_sheet', 'body', 'body'),
+  end: aid('end_quiz_sheet', 'actions', 'end'),
+  stay: aid('end_quiz_sheet', 'actions', 'stay'),
+  dismiss: aid('end_quiz_sheet', 'actions', 'dismiss')
 } as const;
 
 // --- Weekly activity collage (opened from Home activity card) ---
@@ -1370,7 +1508,10 @@ export const COOP = {
     join: aid('coop', 'benefits', 'join'),
     use_free: aid('coop', 'benefits', 'use_free'),
     open_portal: aid('coop', 'benefits', 'open_portal'),
-    hero: aid('coop', 'benefits', 'hero')
+    hero: aid('coop', 'benefits', 'hero'),
+    redeem_open: aid('coop', 'benefits', 'redeem_open'),
+    redeem_input: aid('coop', 'benefits', 'redeem_input'),
+    redeem_submit: aid('coop', 'benefits', 'redeem_submit')
   },
   portal: {
     info: aid('coop', 'portal', 'info'),
@@ -1462,6 +1603,7 @@ export const ADMIN = {
     coop: aid('admin', 'nav', 'coop'),
     portal: aid('admin', 'nav', 'portal'),
     members: aid('admin', 'nav', 'members'),
+    promo_codes: aid('admin', 'nav', 'promo_codes'),
     home_defaults: aid('admin', 'nav', 'home_defaults'),
     prompts: aid('admin', 'nav', 'prompts'),
     delights: aid('admin', 'nav', 'delights'),

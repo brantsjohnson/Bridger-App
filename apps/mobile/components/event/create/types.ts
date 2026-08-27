@@ -5,7 +5,7 @@
 // -> Preview, so nothing is lost between screens. Also lists the step order
 // and a starter draft with sensible defaults.
 // ============================================
-import type { Cover, EventAssignment } from '@bridger/shared';
+import type { Cover, EventAssignment, EventRecurrence } from '@bridger/shared';
 
 /** Everything the wizard collects before it becomes a real event. */
 export type CreateEventDraft = {
@@ -35,6 +35,10 @@ export type CreateEventDraft = {
   /** cover the host picked; unset means "use a random emoji at create time" */
   cover?: Cover;
   assignments: EventAssignment[];
+  /** Whether the host turned on repeating */
+  repeats: boolean;
+  /** Repeat rule when repeats is true */
+  recurrence: EventRecurrence | null;
 };
 
 /** The four steps, in order. Used for the progress dots + analytics step names. */
@@ -82,6 +86,8 @@ export function emptyDraft(): CreateEventDraft {
     guestCap: 35,
     invitedIds: [],
     cover: undefined,
-    assignments: []
+    assignments: [],
+    repeats: false,
+    recurrence: null
   };
 }

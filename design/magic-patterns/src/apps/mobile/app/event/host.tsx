@@ -86,31 +86,47 @@ export function EventHostScreen({
               
             </div>
             <div className="p-4">
-              <h2 className="text-[20px] font-bold tracking-tight text-ink">{event.title}</h2>
-              <p className="mt-1 text-[13px] font-semibold text-ink-soft">
+              {/* THIS SECTION DOES: date square + title read together at the top */}
+              <div className="flex items-center gap-3">
+                <span
+                  aria-label={event.day}
+                  className="flex h-14 w-14 shrink-0 flex-col items-center justify-center border-2 border-ink bg-surface"
+                >
+                  <span className="font-pixel text-[18px] leading-none text-ink">
+                    {event.day.split(/\s+/).find((p) => /^\d{1,2}$/.test(p)) ?? ''}
+                  </span>
+                  <span className="mt-0.5 text-[10px] font-bold uppercase text-ink-mute">
+                    {event.day.split(/\s+/)[0]}
+                  </span>
+                </span>
+                <h2 className="min-w-0 text-[22px] font-bold leading-tight tracking-tight text-ink">
+                  {event.title}
+                </h2>
+              </div>
+              <p className="mt-2 text-[13px] font-semibold text-ink-soft">
                 {event.day} · {event.time} · {event.place}
               </p>
-              {event.address &&
-              <p className="mt-1.5 flex items-start gap-1.5 text-[12px] font-semibold text-ink-mute">
+              {event.address ? (
+                <p className="mt-1.5 flex items-start gap-1.5 text-[12px] font-semibold text-ink-mute">
                   <MapPinIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2.4} />
                   {event.address}
                 </p>
-              }
+              ) : null}
 
-              {/* the counts open — a number alone never answers "who?" */}
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
+              {/* Two wide pills — brought attribution lives in the people sheet */}
+              <div className="mt-4 flex gap-2.5">
                 <CountButton
                   value={going.length}
                   label="going"
                   ids={event.goingIds}
-                  onClick={() => setPeople('going')} />
-                
+                  onClick={() => setPeople('going')}
+                />
                 <CountButton
                   value={invited.length}
                   label="invited"
                   ids={invited}
-                  onClick={() => setPeople('invited')} />
-                
+                  onClick={() => setPeople('invited')}
+                />
               </div>
             </div>
           </Card>
@@ -322,7 +338,10 @@ export function EventHostScreen({
         goingIds={event.goingIds}
         invitedIds={invited}
         coHostIds={event.coHostIds}
-        onClose={() => setPeople(null)} />
+        showAttribution={!!event.allowFriendsToInvite}
+        inviteByIds={event.inviteByIds}
+        onClose={() => setPeople(null)}
+      />
       
       <AddCoHostSheet
         open={coHostOpen}

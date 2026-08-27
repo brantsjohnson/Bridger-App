@@ -15,8 +15,8 @@ import { useThemeColors } from '../tokens';
 export type AudienceLevel = 'close' | 'friend' | 'everyone';
 
 const LEVELS: Array<{ id: AudienceLevel; label: string; sub: string }> = [
-  { id: 'close', label: 'Close', sub: '10 people' },
-  { id: 'friend', label: 'Friends', sub: '25 people' },
+  { id: 'close', label: 'Close', sub: 'Your closest people' },
+  { id: 'friend', label: 'Friends', sub: 'Friends circle' },
   { id: 'everyone', label: 'Everyone', sub: 'All your people' }
 ];
 

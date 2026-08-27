@@ -1,8 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// One shared destination for the header's profile-photo button. The tabs
-// layout fills this in (who you are + tap opens Profile), and every
-// ScreenHeader reads it so screens don't each rewire the same button.
+// One shared destination for the header's two chrome buttons — the profile
+// photo (now on the LEFT of the title) and the messages shortcut (top-RIGHT,
+// where the photo used to sit). The tabs layout fills these in once (who you
+// are + how to open Profile / Messages), and every ScreenHeader reads them so
+// screens don't each rewire the same buttons.
 // ============================================
 import React from 'react';
 import type { ImageSourcePropType } from 'react-native';
@@ -17,10 +19,12 @@ export type HeaderProfile = {
 };
 
 type ProfileLinkValue = {
-  /** who to show in the top-right circle */
+  /** who to show in the profile circle (now left of the title) */
   profile?: HeaderProfile;
   /** tap opens your Profile page */
   open?: () => void;
+  /** tap opens your Messages inbox (top-right header shortcut) */
+  openMessages?: () => void;
 };
 
 const ProfileLinkContext = React.createContext<ProfileLinkValue>({});
@@ -28,9 +32,13 @@ const ProfileLinkContext = React.createContext<ProfileLinkValue>({});
 export function ProfileLinkProvider({
   profile,
   open,
+  openMessages,
   children
 }: ProfileLinkValue & { children: React.ReactNode }) {
-  const value = React.useMemo(() => ({ profile, open }), [profile, open]);
+  const value = React.useMemo(
+    () => ({ profile, open, openMessages }),
+    [profile, open, openMessages]
+  );
   return <ProfileLinkContext.Provider value={value}>{children}</ProfileLinkContext.Provider>;
 }
 

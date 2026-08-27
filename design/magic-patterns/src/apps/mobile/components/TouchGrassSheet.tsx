@@ -1,7 +1,8 @@
 import React from 'react';
 import { ButtonSecondary, Sheet, TextField, cn } from '../../../packages/ui';
 
-const WHO = ['Close', 'Friends', 'Everyone'];
+// Close and Friends only. Acquaintances never get a Touch Grass blast.
+const WHO = ['Close', 'Friends'];
 const WHEN = ['Now', 'Tonight', 'This weekend'];
 
 /** Who to tell · when · what to do · send. Concentric groups, no view counts. */
