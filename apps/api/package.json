@@ -10,7 +10,7 @@
     "dev": "nest start --watch",
     "lint": "node ../../scripts/check-ai-sdk-imports.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npx --yes tsx src/quiz/score.spec.ts && npx --yes tsx src/matching/__tests__/matching-scorer.spec.ts"
+    "test": "npx --yes tsx src/quiz/score.spec.ts && npx --yes tsx src/matching/__tests__/matching-scorer.spec.ts && npx --yes tsx src/music/token-crypto.spec.ts && npx --yes tsx src/assistant/billy-billing.service.spec.ts && npx --yes tsx src/posthog/posthog.service.spec.ts"
   },
   "dependencies": {
     "@bridger/ai": "workspace:*",
@@ -30,6 +30,6 @@
     "@nestjs/schematics": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/node": "^20.11.18",
-    "typescript": "^5.5.4"
+    "typescript": "~6.0.3"
   }
 }

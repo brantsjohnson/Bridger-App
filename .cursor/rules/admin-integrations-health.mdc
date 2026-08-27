@@ -1,0 +1,31 @@
+---
+description: When adding outbound Nest APIs (Spotify, email, AI vendors, OAuth, etc.), register them on the admin integrations health checker in the same change.
+alwaysApply: true
+---
+
+# Admin integrations health gate
+
+Bridger's admin console has **API / integrations** (`apps/admin` → `/integrations-health`) backed by **`GET /admin/integrations/health`**.
+
+## When this applies
+
+Any task that adds or changes a Nest **outbound** dependency:
+
+- OAuth / account-link providers (Spotify, Apple Music, …)
+- AI vendors (Anthropic, OpenAI, …)
+- Email / SMS / push vendors (Resend, …)
+- Payment processors, maps, or other server-side HTTP APIs that need keys
+
+## Required in the same change
+
+1. Add a check in [`apps/api/src/admin/integrations-health.service.ts`](apps/api/src/admin/integrations-health.service.ts) (`checkAll`). Prefer:
+   - **config:** env present (never return the secret value)
+   - **live:** short timeout probe when safe (token endpoint, ping)
+2. Document the new check under `guide-docs/ADMIN.md` § API / integrations health.
+3. Keep public [`GET /health`](apps/api/src/health/health.controller.ts) shallow (App Runner liveness only).
+
+## Do not
+
+- Leak Client secrets, API keys, or tokens in the health JSON
+- Skip the admin checker because "we'll add monitoring later"
+- Put heavy dependency checks on the public `/health` path

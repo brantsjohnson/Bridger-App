@@ -59,18 +59,20 @@ export type MeetContext = 'just-met' | 'already-know';
 export interface FriendNote {
   id: string;
   personId: string;
-  kind: 'text' | 'date';
+  kind: 'text' | 'date' | 'check_in';
   body: string;
   /** date notes only */
   date?: string;
-  /** date notes only — reminds 1 week before and on the day */
+  /** date notes only. Reminds 1 week before and on the day */
   remind?: boolean;
+  /** check-in notes only. How often to nudge you */
+  cadence?: 'week' | 'biweek' | 'month';
 }
 
-/** Home's "Coming up" — a friend's shared birthday, or one of your date notes. */
+/** Home's "Coming up" — a friend's shared birthday, a date note, or a check-in. */
 export interface UpcomingItem {
   id: string;
-  kind: 'birthday' | 'note';
+  kind: 'birthday' | 'note' | 'check_in';
   label: string;
   when: string;
   personId: string;

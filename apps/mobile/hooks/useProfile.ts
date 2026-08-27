@@ -9,8 +9,10 @@ import type {
   FavoriteModule,
   ObsessionSquare,
   Person,
+  PhotoBlock,
   Top5Item
 } from '@bridger/shared';
+import { listUpcomingForProfile } from '../data/events';
 import { getMe } from '../data/people';
 import {
   getHobbyFollowUps,
@@ -20,6 +22,7 @@ import {
   listBlocked,
   listFavoriteModules,
   listFavs,
+  listGreatestHits,
   listHobbies,
   listObsession,
   listThisOrThat,
@@ -35,6 +38,7 @@ import {
   type ThisOrThatRow,
   type TravelPlace
 } from '../data/profile';
+import type { UpcomingEventRow } from '../components/profile/UpcomingEventsSection';
 
 export function useProfile() {
   const [header, setHeader] = useState<MyProfileHeader | null>(null);
@@ -46,6 +50,8 @@ export function useProfile() {
   const [top5, setTop5] = useState<Top5Item[]>([]);
   const [obsession, setObsession] = useState<ObsessionSquare[]>([]);
   const [favorites, setFavorites] = useState<FavoriteModule[]>([]);
+  const [greatestHits, setGreatestHits] = useState<PhotoBlock[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingEventRow[]>([]);
   const [hobbyFollowUps, setHobbyFollowUps] = useState<
     Record<string, { question: string; answer: string }>
   >({});
@@ -58,19 +64,22 @@ export function useProfile() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [h, ab, hob, fv, tot, pl, t5, ob, favMods, bl, intro] = await Promise.all([
-        getMyProfileHeader(),
-        listAboutFields(),
-        listHobbies(),
-        listFavs(),
-        listThisOrThat(),
-        listTravelPlaces(),
-        listTop5(),
-        listObsession(),
-        listFavoriteModules(true),
-        listBlocked(),
-        getProfileIntroSeen()
-      ]);
+      const [h, ab, hob, fv, tot, pl, t5, ob, favMods, gh, up, bl, intro] =
+        await Promise.all([
+          getMyProfileHeader(),
+          listAboutFields(),
+          listHobbies(),
+          listFavs(),
+          listThisOrThat(),
+          listTravelPlaces(),
+          listTop5(),
+          listObsession(),
+          listFavoriteModules(true),
+          listGreatestHits(),
+          listUpcomingForProfile('me'),
+          listBlocked(),
+          getProfileIntroSeen()
+        ]);
       setHeader(h);
       setAbout(ab);
       setHobbies(hob);
@@ -80,6 +89,8 @@ export function useProfile() {
       setTop5(t5);
       setObsession(ob);
       setFavorites(favMods);
+      setGreatestHits(gh);
+      setUpcoming(up);
       setHobbyFollowUps(getHobbyFollowUps());
       setBlocked(bl);
       setIntroSeen(intro);
@@ -117,6 +128,8 @@ export function useProfile() {
     top5,
     obsession,
     favorites,
+    greatestHits,
+    upcoming,
     hobbyFollowUps,
     blocked,
     introSeen,

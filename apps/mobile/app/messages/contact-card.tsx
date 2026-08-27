@@ -15,7 +15,7 @@ export default function ContactCardRoute() {
       onShareIntoThread={() => {
         Alert.alert(
           'Ready to share',
-          'Open a conversation and tap Share my number to send this card. It never counts against your daily cap.'
+          'Open a conversation and tap Share contact to send this card. It never counts against your daily cap.'
         );
       }}
     />

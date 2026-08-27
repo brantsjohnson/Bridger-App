@@ -20,11 +20,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeftIcon, LockIcon, XIcon } from 'lucide-react-native';
 import { trackClick, type Accent, type Tier } from '@bridger/shared';
 import { ButtonPrimary } from './Button';
+import { HobbyEmojiBurst, type HobbyBurstOrigin } from './HobbyEmojiBurst';
+import { HobbySelect, type HobbyOption } from './HobbySelect';
 import { ACCENTS, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
 import { withAnalyticsPress } from '../lib/analytics';
-
-export type HobbyOption = { id: string; label: string; emoji?: string };
 
 /** Minimal hit shape for placeSearch (caller supplies the geocoder). */
 export type GeocodeHit = {
@@ -146,6 +146,9 @@ export function ModuleFlow({
   const [answers, setAnswers] = useState<Record<string, ModuleAnswer>>({});
   const [visibility, setVisibility] = useState<ModuleVisibility>({});
   const [matchable, setMatchable] = useState<ModuleMatchable>({});
+  const [hobbyBursts, setHobbyBursts] = useState<
+    Array<{ key: number; emoji: string; origin: HobbyBurstOrigin }>
+  >([]);
 
   useEffect(() => {
     if (!open) {
@@ -154,6 +157,7 @@ export function ModuleFlow({
       setAnswers({});
       setVisibility({});
       setMatchable({});
+      setHobbyBursts([]);
     }
   }, [open, isPrivate]);
 
@@ -164,15 +168,22 @@ export function ModuleFlow({
     const picked = (answers[hobbySelectQ.id] as string[]) ?? [];
     return picked.map((id) => {
       const opt = hobbySelectQ.options.find((o) => o.id === id);
+      const customLabel = answers[`customLabel:${id}`];
+      const customEmoji = answers[`customEmoji:${id}`];
+      const label =
+        opt?.label ??
+        (typeof customLabel === 'string' ? customLabel : undefined);
       const ask =
         hobbySelectQ.followups[id] ??
-        (opt ? `Tell me more about ${opt.label}` : 'Tell me more');
+        (label ? `Tell me more about ${label}` : 'Tell me more');
       return {
         id: `followup:${id}`,
         ask,
         type: 'text' as const,
         placeholder: 'Optional',
-        emoji: opt?.emoji,
+        emoji:
+          opt?.emoji ??
+          (typeof customEmoji === 'string' ? customEmoji : undefined),
         hobbyId: id
       };
     });
@@ -286,10 +297,24 @@ export function ModuleFlow({
 
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose}>
-      <View
-        style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom }}
-        className="flex-1 bg-canvas"
-      >
+      <View className="flex-1 bg-canvas">
+        {/* THIS SECTION DOES: spray hobby emojis over the whole screen so they
+            line up with the tap (window coordinates), not the padded card. */}
+        {hobbyBursts.map((b) => (
+          <HobbyEmojiBurst
+            key={b.key}
+            play
+            emoji={b.emoji}
+            origin={b.origin}
+            onDone={() =>
+              setHobbyBursts((prev) => prev.filter((x) => x.key !== b.key))
+            }
+          />
+        ))}
+        <View
+          style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom }}
+          className="flex-1"
+        >
         {!started ? (
           <PrivacyGate
             title={title}
@@ -362,6 +387,12 @@ export function ModuleFlow({
                   searchPlaces={searchPlaces}
                   placeSearchAnalyticsId={placeSearchAnalyticsId}
                   placeResultAnalyticsId={placeResultAnalyticsId}
+                  onHobbyBurst={(emoji, origin) => {
+                    setHobbyBursts((prev) => [
+                      ...prev,
+                      { key: Date.now() + Math.random(), emoji, origin }
+                    ]);
+                  }}
                 />
               ) : null}
             </ScrollView>
@@ -399,6 +430,7 @@ export function ModuleFlow({
             </View>
           </>
         )}
+        </View>
       </View>
     </Modal>
   );
@@ -411,7 +443,8 @@ function QuestionBody({
   next,
   searchPlaces,
   placeSearchAnalyticsId,
-  placeResultAnalyticsId
+  placeResultAnalyticsId,
+  onHobbyBurst
 }: {
   q: ModuleQuestion | FollowupQuestion;
   answers: Record<string, ModuleAnswer>;
@@ -420,6 +453,7 @@ function QuestionBody({
   searchPlaces?: (query: string, signal?: AbortSignal) => Promise<GeocodeHit[]>;
   placeSearchAnalyticsId?: string;
   placeResultAnalyticsId?: string;
+  onHobbyBurst: (emoji: string, origin: HobbyBurstOrigin) => void;
 }) {
   const c = useThemeColors();
 
@@ -539,41 +573,13 @@ function QuestionBody({
         ) : null}
 
         {q.type === 'hobbySelect' ? (
-          <View className="flex-row flex-wrap gap-2">
-            {q.options.map((o) => {
-              const picked = ((answers[q.id] as string[]) ?? []).includes(o.id);
-              return (
-                <Pressable
-                  key={o.id}
-                  onPress={() => {
-                    const cur = (answers[q.id] as string[]) ?? [];
-                    set(q.id, picked ? cur.filter((x) => x !== o.id) : [...cur, o.id]);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: picked }}
-                  accessibilityLabel={o.label}
-                  className={cn(
-                    'min-h-[40px] flex-row items-center gap-1.5 rounded-full border px-3.5 py-2.5',
-                    picked ? 'border-ink bg-green' : 'border-ink-line bg-surface'
-                  )}
-                >
-                  {o.emoji ? (
-                    <Text accessible={false} className="text-[14px]">
-                      {o.emoji}
-                    </Text>
-                  ) : null}
-                  <Text
-                    className={cn(
-                      'font-sans-b text-[14px]',
-                      picked ? 'text-ink' : 'text-ink-soft'
-                    )}
-                  >
-                    {o.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+          <HobbySelect
+            questionId={q.id}
+            options={q.options}
+            selected={(answers[q.id] as string[]) ?? []}
+            onChange={set}
+            onBurst={onHobbyBurst}
+          />
         ) : null}
 
         {q.type === 'thisOrThat' ? (

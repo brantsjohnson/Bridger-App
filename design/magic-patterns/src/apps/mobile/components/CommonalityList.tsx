@@ -1,4 +1,3 @@
-import React from 'react';
 import { StarIcon } from 'lucide-react';
 import { ACCENTS, cn } from '../../../packages/ui';
 

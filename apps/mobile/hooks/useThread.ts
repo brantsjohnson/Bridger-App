@@ -1,15 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // React hook for one conversation. Loads the bubbles and remaining send
-// quota, and exposes send / share-contact / make-plan. Cap enforcement lives
+// quota, and exposes send / share-contact / heart. Cap enforcement lives
 // in the data layer so the UI just asks.
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
 import {
   getThread,
-  makePlan,
   sendMessage,
   shareContact,
+  toggleHeart,
   type ThreadDetail
 } from '../data/messages';
 import { clearStoryReplyNotifications } from '../data/feed';
@@ -51,11 +51,14 @@ export function useThread(threadId: string) {
     return next;
   }, [threadId]);
 
-  const onMakePlan = useCallback(async () => {
-    const next = await makePlan(threadId);
-    if (next) setThread(next);
-    return next;
-  }, [threadId]);
+  const onToggleHeart = useCallback(
+    async (bubbleId: string, method: 'double_tap' | 'a11y' = 'double_tap') => {
+      const next = await toggleHeart(threadId, bubbleId, method);
+      if (next) setThread(next);
+      return next;
+    },
+    [threadId]
+  );
 
   return {
     thread,
@@ -63,7 +66,7 @@ export function useThread(threadId: string) {
     refresh,
     onSend,
     onShareContact,
-    onMakePlan,
+    onToggleHeart,
     myLeft: thread?.myLeft ?? 0,
     theirLeft: thread?.theirLeft ?? 0,
     atCap: (thread?.myLeft ?? 0) <= 0

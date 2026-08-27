@@ -25,6 +25,7 @@ interface Quiz {
     mayInsertClarifiers: boolean;
     maxInsertedQuestions: number;     // hard cap so it can't run forever
     mayReorder: boolean;
+    adaptBelowConfidence: number;     // 0–1; AI adapts only when confidence is BELOW this
   };
 }
 
@@ -64,7 +65,9 @@ Runs *alongside* the quiz, per response. Its jobs:
 - **Judge confidence per dimension.** After each answer, does the accumulated signal clearly locate the person on each dimension, or is it muddy?
 - **Detect low-quality answering.** Flags patterns that make a score meaningless: **selecting every option**, **contradictory** picks, **low-information** answers, or explanations that undercut the selection ("I picked spontaneous but I plan everything").
 - **Read the explanations.** The free-text "why" is the richest signal — the moderator uses it to disambiguate ("selected both, but the why makes clear they lean planner").
-- **Adapt the quiz** (within `adaptationPolicy`): when a target dimension is unclear, it can **reword the next question**, **insert one clarifying question**, or **reorder** to pin down what's fuzzy — up to `maxInsertedQuestions`. Example: *"Spontaneity unclear → ask a concrete either/or: 'Trip next weekend — book tonight, or research for a week?'"*
+- **Adapt the quiz** (within `adaptationPolicy`): when a target dimension's confidence is **strictly below** `adaptBelowConfidence`, it can **reword the next question**, **insert one clarifying question**, or **reorder** to pin down what's fuzzy — up to `maxInsertedQuestions`. Example: *"Spontaneity unclear → ask a concrete either/or: 'Trip next weekend — book tonight, or research for a week?'"*
+- **Hands-off by default on well-authored quizzes.** Seed `adaptBelowConfidence` low enough that clear answers never trigger the AI (measurement quizzes start around `0.35`; use `1.0` to disable adaptation entirely). **Behind the Scenes (`disclosure`) has adaptation fully off** — sensitive intake, authored copy only, no clarifiers.
+- **ML tunes the threshold later.** Adaptation frequency + completion outcomes feed the quiz self-improvement loop (`MACHINE-LEARNING.md`); the floor can drift per quiz without rewriting questions.
 - **What it does NOT do:** assign or override the numeric scores. It sets a **confidence** per dimension and gathers better inputs; the rubric still computes the number.
 
 Every quiz's moderator gets **its own instructions** at authoring time — the goal and how much latitude it has. Same pattern for any module (a "Places" or "Favs" module could have a lighter moderator, or none).

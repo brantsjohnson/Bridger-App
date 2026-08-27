@@ -27,14 +27,14 @@ import { FREE_BENEFITS, MEMBER_BENEFITS } from '../../../../packages/shared';
  * Copy here never says "AI" and never uses a long dash.
  */
 const ALWAYS_FREE = [
-'Meet people in Discover',
+'Meet people in Discover, including the reveal',
 'Add anyone, unlimited acquaintances',
-'Messages, touch grass, quizzes',
+'Messages, Touch Grass, quizzes, Inside Jokes, Bucket list',
 'Answering any poll or question you are sent',
-'Photos, text, voice, stickers',
-'Watch every video, read every profile',
+'Post stories (photos, text, voice, stickers)',
+'Watch every story and video, view every profile',
 'Attend events, host up to 35',
-'Your weekly recap'];
+'Previous-week recap of stories'];
 
 
 const UNLOCKS: {
@@ -54,7 +54,7 @@ const UNLOCKS: {
 {
   key: 'circles',
   title: 'Bigger circles',
-  line: 'No caps, plus your own named groups.',
+  line: '25 Close, 125 Friends, plus named groups.',
   icon: <UsersIcon className="h-5 w-5" strokeWidth={2.4} />,
   accent: 'teal'
 },
@@ -75,7 +75,7 @@ const UNLOCKS: {
 {
   key: 'recaps',
   title: 'Daily recaps',
-  line: 'Every day, not just the week.',
+  line: 'Updated daily, not a week behind.',
   icon: <CalendarIcon className="h-5 w-5" strokeWidth={2.4} />,
   accent: 'amber'
 },
@@ -89,7 +89,7 @@ const UNLOCKS: {
 {
   key: 'events',
   title: 'Host up to 100',
-  line: 'Plus member activities and drops.',
+  line: 'Plus co-hosts, allergies, and assignments.',
   icon: <CalendarIcon className="h-5 w-5" strokeWidth={2.4} />,
   accent: 'pink'
 }];
@@ -125,7 +125,7 @@ export function CoopScreen({
               You're not the product.
             </p>
             <p className="mt-1.5 text-[14px] font-semibold text-onaccent/80">
-              {member ? 'Member since 2026 · renews Mar 2027' : '$24 a year · members keep it running'}
+              {member ? 'Member since 2026 · renews Mar 2027' : '$72 a year · members keep it running'}
             </p>
           </ColorCard>
         </Breathe>
@@ -177,7 +177,7 @@ export function CoopScreen({
           <section>
             <PixelHeading size="md">Your circles</PixelHeading>
             <p className="mb-3 mt-0.5 text-[13px] font-semibold text-ink-mute">
-              Acquaintances are unlimited for everyone.
+              Acquaintances are unlimited for everyone. Free Lite is 5 Close and 30 Friends.
             </p>
             <Card>
               <dl className="space-y-2.5">
@@ -239,7 +239,7 @@ export function CoopScreen({
                     </p>
                   </Card>
                   <ButtonPrimary full size="lg" onClick={onJoin}>
-                    Join · $24 a year
+                    Join · $72 a year
                   </ButtonPrimary>
                 </>
               }

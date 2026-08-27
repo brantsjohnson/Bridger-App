@@ -1,90 +1,116 @@
-# Bridger — Co-op Membership (benefits & tiering)
+# Bridger: Co-op Membership (benefits & tiering)
 
-What you get for joining the co-op, and — just as important — what stays free forever. This is the business model made concrete. Ties to `payments`, `coop`, `permissions`, and the membership record in `DATA.md`.
+What you get for joining the co-op, and what **Free Lite** keeps forever. Ties to `payments`, `coop`, `permissions`, and the membership record in `DATA.md`. Signup presents exactly **two** tiers (see `ONBOARDING.md`): **Join the co-op** or **Free Lite**. No ads tier.
 
 ---
 
 ## The principle: never pay to connect
 
-**Free covers everything about *reaching people*. The co-op covers richer *self-expression*, *organizing at scale*, and *expensive compute*.** If a gate would ever stop someone from meeting or talking to a person, it's the wrong gate. Connection is the mission; you don't tax the mission.
+Signup is two paths: **Join the co-op** ($72/year, about $6/month) or **Free Lite**. Both are ad-free. People should never have to pay to connect.
 
-A corollary: **anyone can always *view* co-op members' richer content** (their videos, their customized profiles). Membership changes what you can *create and organize*, not what you can *see* — so non-members are never walled off from the experience.
+**TLDR:** Co-op pays for more ways to express yourself, more access (named groups beyond the default three circles), and more storage.
+
+Free Lite covers everything about *reaching people*. The co-op covers richer *self-expression*, *organizing at scale*, and *expensive compute*. If a gate would ever stop someone from meeting or talking to a person, it is the wrong gate.
+
+A corollary: **anyone can always view co-op members' richer content** (their videos, their customized profiles). Membership changes what you can *create and organize*, not what you can *see*. Free Lite members are never walled off from the experience.
 
 ---
 
-## Always free (connection + core)
+## Two tiers (signup)
 
-- **Unlimited friends and acquaintances** — the network grows for everyone; friend *count* is never capped.
-- **Discover, friends-of-friends suggestions, the reveal** — this is connection; it stays free. (Not co-op-gated.)
-- **Adding / accepting / tiering people**; **messages** (the 5/day capped chat); **touch grass**; **answering polls & questions**; **quizzes**; **Inside Jokes**.
-- **Photo + text updates** (typed or voice-to-text); **stickers**; **viewing everyone's content**, including co-op video and custom profiles.
-- **Attending events**, and **hosting small events** (up to the base 35-guest cap).
-- **Weekly recap** (the AI summary — see below).
-- **The default profile** everyone can read.
-- **Three circles with caps:** up to **10 close**, **25 friends**, **unlimited acquaintances**.
+| Tier | What it is |
+|---|---|
+| **Join the co-op** | Paid membership (~$6/mo, display **$72/year**). Expression, bigger circles, storage, and host tools unlocked. No ads. |
+| **Free Lite** | All the essentials to stay connected. No ads. Story posting, **30-day rolling** history, smaller Close / Friends caps. |
+
+"Limited" on Free Lite means expression and scale only (storage window, circle size, video, recap cadence, host extras). It never means paywalled connection. Acquaintances stay unlimited for everyone.
+
+---
+
+## Always free (Free Lite)
+
+- **Unlimited acquaintances.** Friend count is capped at **30**. Close friends is capped at **5**.
+- **Discover**, friends-of-friends suggestions, and the **reveal** (what is in common).
+- **Adding, accepting, and basic grouping** of people (the three default circles).
+- **Messages** (the 5/day capped chat).
+- **Touch Grass**.
+- **Answering** polls and questions.
+- **Quizzes**.
+- **Inside Jokes** (posting on the wall).
+- **Bucket list**.
+- **Posting on their story** (photo, text, voice-to-text, stickers). Video posting is co-op.
+- **Watching everyone else's stories**, including videos posted by co-op members.
+- **Viewing custom profiles**.
+- **Attending events**, and **hosting small events** up to **35 guests**.
+- **Previous-week recap** of stories.
+- **Circles:** up to **5 Close**, **30 Friends**, unlimited Acquaintances.
+- **Rolling 30-day storage**.
+- **No ads** in the feed (or anywhere else).
+
+The default profile everyone can read stays free. Viewers can always switch a customized profile to the original/default view (`PROFILE-CUSTOMIZATION.md`).
 
 ---
 
 ## The co-op unlocks
 
-### 1. Profile personalization (flagship)
-Co-op members **customize their profile** — background image, colors/vibe, extra photos, and their own **custom widgets** — and **their friends see it the way they saved it**. Full spec: `PROFILE-CUSTOMIZATION.md`.
-- **Core widgets stay a fixed, ordered skeleton** — members insert custom widgets into the slots *between* them, never reordering the backbone, so every profile stays legible.
-- **Accessibility rule (non-negotiable):** every viewer can always switch a customized profile to the **original/default view**. Personalization can never make a profile unreadable. The default is one tap away, always.
+### 1. Profile personalization
+Background, colors/vibe, extra photos, custom widgets. Friends see it the way it is saved. Full spec: `PROFILE-CUSTOMIZATION.md`.
+- Core widgets stay a fixed, ordered skeleton. Members insert custom widgets into the slots between them, never reordering the backbone, so every profile stays legible.
+- **Accessibility (non-negotiable):** every viewer can always switch a customized profile to the original/default view.
 
-### 2. Bigger circles + custom groups (flagship)
-- **Unlimited close & friends** (free caps of 10 / 25 lift entirely).
-- **Custom named groups** beyond the three tiers ("climbing crew," "college friends") to share updates with. Free users have the three fixed tiers; co-op adds custom audiences.
-- *Why this is the best lever:* it charges for **organization at scale, never for connection** — acquaintances stay unlimited for everyone, so you can always add anyone.
+### 2. Bigger circles + custom groups
+- **25 Close** and **125 Friends**, plus named groups like "climbing crew."
+- Acquaintances stay unlimited for everyone.
+- Free Lite users have the three fixed tiers with the 5 / 30 caps. Co-op adds custom audiences.
+- Hitting a Close or Friends cap never blocks the connection. The person lands in Acquaintances (and Free Lite can be offered co-op).
 
-### 3. Video — the co-op superpower
-- **Video updates** on stories and **video (Marco-Polo) reactions** are a co-op capability. Free users post photos, text, voice-to-text, and stickers.
-- **Everyone can watch** co-op members' videos — viewing is never gated.
-- Pairs with unlimited storage (video is the storage-heavy, expensive format).
-- **Also media-expression:** co-op members can add **photos to places traveled**, and shared places surface both people's photos in In-common ("you've both been to France") — see `PROFILE.md`.
-- *(Open choice: if gating all video feels too cold for the free tier, keep short video reactions free and reserve longer/story video for co-op.)*
+### 3. Video
+- **Post video updates** and **video (Marco Polo) reactions**. Everyone can still watch them, or see them if they share a video response.
+- Free Lite users post photos, text, voice-to-text, and stickers.
 
-### 4. Daily AI recaps
-- **Free = weekly recap; co-op = daily recaps** (a couple of sentences per day, richer). Same privacy rule either way: built only from the user's words + transcripts, never their photos (see `STORIES.md` / `DATA.md`).
-- This protects the core loop for everyone while making the expensive daily granularity the perk — and it's the main compute-cost lever.
+### 4. Extra photos on places traveled
+- Co-op members can add additional photos on places traveled. Shared places can show both people's photos in In common.
 
-### 5. Unlimited storage
-- **Free = rolling 30-day** media retention; **co-op = unlimited** (keep everything). (As previously specced.)
+### 5. Daily recaps
+- Free Lite = previous-week recap of stories.
+- Co-op = **updated daily recaps**, so it is not a week behind.
+- Same privacy either way: built only from the user's words + transcripts, never their photos (`STORIES.md` / `DATA.md`).
 
-### 6. Event hosting at scale
-- Hosting is **free up to 35 guests**; **co-op raises the cap to 100** (and unlocks premium host tools). Hosting itself is never gated — only scale is.
+### 6. Unlimited storage
+- Free Lite = rolling 30-day window.
+- Co-op = keep everything.
 
-### 7. Special activities / bonus content
-- Member-only activities, challenges, and drops the organizer hosts from the admin console.
+### 7. Bigger event hosting + premium host tools
+- Guest cap goes from **35 to 100**.
+- **Premium host tools (co-op):** co-hosts, collect allergies, assignments.
+- Hosting itself is never gated. Only scale and those extra host features are gated for co-op members.
 
-### 8. Create polls & questions ("Ask the group")
-- **Creating** a poll or asking the group a question is a co-op feature; **answering is always free.** (Keeps a fun broadcast-y tool as a member perk without gating anyone's ability to respond.)
+### 8. Create polls & "Ask the group"
+- **Creating** is a co-op feature. **Answering stays free.**
 
-### 9. The point
-- You're **not the product**. The co-op is how Bridger stays a tool for you instead of an ad machine. That's the real "benefit" — and it's why the pitch lands at signup (`ONBOARDING.md`).
+### 9. Co-op portal
+- Ideas, beta votes, mission, and the **how much will this feature cost** portal.
+- Anyone can **read** this page. Only members can **participate**.
+- Vote tallies stay off the member portal (admin only). Comments appear as "A member."
+
+### 10. The point
+You are not the product. The co-op is how Bridger stays a tool for you instead of an ad machine. Free Lite and co-op are both ad-free.
 
 ---
 
 ## Payment
 
-- **One membership (annual dues) unlocks all of the above.** Recommended: **retire standalone micro-purchases** (e.g. the old $2/mo storage add-on) in favor of the single co-op story — cleaner narrative, and it avoids reintroducing the transactional feel. Storage, video, circles, etc. are **co-op benefits, not separate SKUs**.
-- Runs through `payments`; membership is recorded in `coop_memberships` (`DATA.md`).
-- **Governance lives in the co-op portal** (`complete/COOP-PORTAL.md`) — ideas, beta votes, mission support, open books + cost simulator. Display price **$24/year**. Public to view; member to participate. Vote tallies stay off the portal (admin only).
-- **Cancel is period-end.** Scheduling cancel keeps member perks until `dues_paid_through`. After that date, membership reconciles to free and story storage returns to rolling ~30 days (posts older than about a month roll off). Quiet manage screen: `/coop/portal/manage`.
+- **Annual co-op dues** unlock all of the above. Display price **$72/year** (about $6/mo). Storage, video, circles, hosting scale, and host tools are **co-op benefits**, not separate micro-SKUs.
+- **Exception, Billy+:** the opt-in relationship assistant (Billy) is metered separately. Co-op members who enable Billy get a small taste allowance (~$0.50/mo of model cost). **Billy+** (~$5/mo) grants more Billy time with capped rollover. See `AGENT.md`. Ambient AI (recaps, quiz moderator, embeddings) stays in the co-op / platform budget, not Billy balances.
+- Runs through `payments` (`coop_dues` and `billy_plus`); membership is recorded in `coop_memberships` (`DATA.md`).
+- **Governance lives in the co-op portal** (`complete/COOP-PORTAL.md`).
+- **Cancel is period-end.** You keep member perks until you are paid through (`dues_paid_through`), then you drop back to Free Lite (including the 30-day storage window). Quiet manage screen: `/coop/portal/manage`.
 
 ---
 
 ## What is NOT gated (guardrails)
 
-Never behind the co-op: meeting people (Discover), adding friends, unlimited acquaintances, messaging, attending events, viewing anyone's content, the weekly recap, and a readable default profile. **Connection and consumption are always free.**
-
----
-
-## Open decisions (for the founder)
-
-1. **Video:** all video co-op, or keep short video reactions free? (Recommendation: all video co-op, unless the free tier feels too cold.)
-2. **Summaries:** confirm weekly-free / daily-co-op (recommended) vs. summaries fully free.
-3. **Standalone purchases:** confirm co-op-only (recommended) vs. keeping a low-commitment storage add-on.
+Never behind the co-op: meeting people (Discover), adding friends, unlimited acquaintances, messaging, attending events, viewing anyone's content (including co-op video and custom profiles), answering polls, Inside Jokes, Bucket list, posting photo/text stories, the weekly recap, and a readable default profile. **Connection and consumption are always free on Free Lite.** Neither tier shows ads.
 
 ---
 
@@ -92,13 +118,17 @@ Never behind the co-op: meeting people (Discover), adding friends, unlimited acq
 
 ```ts
 interface CoopBenefits {
-  personalization: boolean;        // widgets/photos/backgrounds/colors
-  circleCaps: { close: number; friends: number; acquaintances: 'unlimited' };  // free: 10/25/∞
+  personalization: boolean;        // widgets/photos/background/colors
+  circleCaps: { close: number; friends: number; acquaintances: 'unlimited' };
+  // Free Lite: 5 / 30 / ∞ · co-op: 25 / 125 / ∞
   customGroups: boolean;
   video: boolean;                  // post video + video reactions
+  placePhotos: boolean;            // extra photos on places traveled
   summaryCadence: 'weekly' | 'daily';
   storage: 'rolling30' | 'unlimited';
-  eventGuestCap: number;           // free 35 / co-op 100
+  eventGuestCap: number;           // Free Lite 35 / co-op 100
+  premiumHostTools: boolean;       // co-hosts, collect allergies, assignments
+  askTheGroup: boolean;
 }
 ```
 Enforced server-side by membership status; RLS + API checks gate creation (never viewing).
@@ -107,11 +137,23 @@ Enforced server-side by membership status; RLS + API checks gate creation (never
 
 ## Acceptance criteria
 
-- [ ] Connection is never gated: Discover, adding friends, unlimited acquaintances, messaging, attending events, and viewing all content are free.
-- [ ] Free circles cap at 10 close / 25 friends (acquaintances unlimited); co-op lifts caps and adds custom named groups.
+- [ ] Signup offers exactly two tiers: Join the co-op or Free Lite (no ads tier).
+- [ ] Connection is never gated: Discover, adding friends, unlimited acquaintances, messaging, attending events, and viewing all content are free on Free Lite.
+- [ ] Free Lite circles cap at 5 Close / 30 Friends (Acquaintances unlimited); co-op is 25 Close / 125 Friends plus custom named groups. Hitting a cap never blocks the connection.
 - [ ] Co-op members can personalize their profile; every viewer can switch any profile to the accessible default view.
 - [ ] Video updates and video reactions are a co-op capability; everyone can still view video.
-- [ ] Free users get a weekly recap; co-op members get daily recaps (same word-only privacy rule).
-- [ ] Free storage is rolling 30-day; co-op is unlimited.
-- [ ] Hosting is free up to 35 guests; co-op raises the cap to 100.
-- [ ] One annual membership unlocks all co-op benefits; no separate SKUs (recommended).
+- [ ] Free Lite users get a previous-week recap; co-op members get daily recaps (same word-only privacy rule).
+- [ ] Free Lite storage is rolling 30-day; co-op is unlimited.
+- [ ] Hosting is free up to 35 guests on Free Lite; co-op raises the cap to 100 and unlocks co-hosts, allergy collection, and assignments.
+- [ ] Creating polls / Ask the group is co-op; answering is free.
+- [ ] Portal is public to read, member to participate, including the feature-cost page.
+- [ ] One annual membership ($72/yr display, about $6/mo) unlocks all co-op benefits; Billy+ is the only intentional add-on SKU.
+- [ ] Neither Free Lite nor co-op shows ads in the feed.
+
+---
+
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-08-14 | Caps: Free Lite 5 Close / 30 Friends; co-op 25 Close / 125 Friends (not unlimited). Bucket list + Inside Jokes posting called out as free. Host extras (co-hosts, allergies, assignments) are co-op. Daily recaps vs previous-week recap. Video viewing stays free. |

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Share2Icon } from 'lucide-react';
 import { ACCENTS, Avatar, ButtonSecondary, cn } from '../../../packages/ui';
 import { QUIZ, personById } from '../state/mock-data';

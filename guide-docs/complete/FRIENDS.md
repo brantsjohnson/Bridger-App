@@ -41,7 +41,7 @@ Friends is intentionally the simplest tab: it is the roster of people you're **a
 - **Header** — "Friends" + an `Add` button (opens the add-friend sheet).
 - **Search slot** — a search bar reserved at the top, above the roster, gated by `searchEnabled`. Off now → not rendered (no placeholder, no label). On → live people search.
 - **Tier sections** — Close friends, Friends, Acquaintances, each with a live count. Order is fixed (closest first).
-- **Circle caps (free vs co-op).** Free members can hold up to **10 Close friends** and **25 Friends**; **Acquaintances are unlimited** (so connection is never capped). **Co-op members lift the close/friends caps entirely and can create custom named groups** ("climbing crew," etc.) beyond the three tiers. See `COOP.md`. When a free member hits a cap, adding to that circle prompts a co-op upsell — never blocks the connection itself (the person just lands in Acquaintances).
+- **Circle caps (free vs co-op).** Free Lite can hold up to **5 Close friends** and **30 Friends**; **Acquaintances are unlimited** (so connection is never capped). **Co-op members get 25 Close and 125 Friends, plus custom named groups** ("climbing crew," etc.) beyond the three tiers. See `COOP.md`. When someone hits a cap, adding to that circle never blocks the connection itself (the person just lands in Acquaintances). Free Lite can be offered co-op.
 - **Row** — filtered avatar, name, and a drag handle (⠿). Tap the row → that person's profile (`person/[id]`). Use the handle to move them between tiers.
 - **Birthday treatment** — on a friend's **birthday**, their row goes festive: a **cake icon + sparkle** and a soft tint so it's unmissable (subtle in the days just before, full on the day). Only for friends who've shared their birthday with your tier. The week-ahead heads-up is a "Coming up" card in Home's announcements carousel (`HOME.md`).
 - **Tiering** — drag a row into another section, or long-press → "Move to…". Writes through `tiers`; the same tier that gates visibility everywhere else in the app. This is the only place tiers are re-sorted in bulk.
@@ -152,7 +152,7 @@ Net effect: the quiz is both a fun artifact and the on-ramp, and the payoff surf
 
 - [ ] Friends shows only confirmed connections — never pending requests.
 - [ ] People are grouped by tier (Close friends, Friends, Acquaintances), closest first, with counts.
-- [ ] Free members cap at 10 Close / 25 Friends (Acquaintances unlimited); hitting a cap prompts co-op, never blocks the connection. Co-op lifts caps and adds custom named groups.
+- [ ] Free Lite caps at 5 Close / 30 Friends (Acquaintances unlimited); co-op is 25 Close / 125 Friends plus custom named groups. Hitting a cap never blocks the connection (they land in Acquaintances).
 - [ ] Empty tiers are hidden; no zero-count headers.
 - [ ] A row can be moved to another tier via drag handle or long-press menu, writing through `tiers`.
 - [ ] Tapping a row opens that person's profile.

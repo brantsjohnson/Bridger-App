@@ -49,6 +49,7 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 |---|---|---|---|
 | `story_reply` | "{Name} replied to your story" | Your story replies while live; Messages thread after expiry | `/story/me?comments=1` (live) · `/messages/{threadId}` (expired) |
 | `story_reply_elsewhere` | "{Name} replied to your comment" | That person's update, comments open | `/story/{authorId}?comments=1` |
+| `story_prompt` | "Time to post an update" or "📸 Don't forget to capture the mems" (mid-party) | Capture / Your story composer | `/story/capture` or `/story/capture?eventId={eventId}` |
 | `connect_request` | "{Name} wants to connect" | Discover → Wants to connect | `/(tabs)/discover` (focus request when `requestId` present) |
 | `mutual_connection` | "{A} and {B} connected — through you" | Discover (communal payoff) | `/(tabs)/discover` |
 | `touch_grass_signal` | "{Name} is free tonight" | Their live signal (Events / Home strip) | `/(tabs)/events` (signal focused when `signalId` present) |
@@ -56,20 +57,24 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 | `birthday` | "{Name}'s birthday is Friday" | Their profile | `/person/{personId}` |
 | `custom_date` | "{Name}'s graduation · in 1 week" | Their profile | `/person/{personId}` |
 | `friend_check_in` | "Check in with {Name}?" | Their profile (your private notes) | `/person/{personId}` |
-| `event_invite` | "{Name} invited you" | Event detail | `/event/{eventId}` |
+| `event_invite` | "{Name} invited you" (host or attendee when friends-can-invite) | Event detail | `/event/{eventId}` |
 | `event_reminder` | "Starts in 2 hours" | Event detail | `/event/{eventId}` |
 | `rsvp_going` | "{Name} is going" | Event detail | `/event/{eventId}` |
 | `event_assignment` | "You're on drinks" / assignment change | Event detail (assignments) | `/event/{eventId}` |
 | `event_introduction` | Someone at an event you should meet | Event detail (introductions / meet) | `/event/{eventId}` |
 | `poll_activity` | "{Name} posted a poll" / "{Name} answered your poll" | Home Ask-the-group / poll results | `/(tabs)/home` (ask widget; open results when `pollId` present) |
 | `quiz_share` | "{Name} shared a quiz with you" | That quiz | `/quiz/{slug}` |
+| `jname_link_opened` | "{Name} opened your quiz link" / "Someone opened your quiz link" | Your J-name quiz result / board | `/quiz/what-j-name` |
+| `jname_top_match` | "{Name} got {J-name} — one of your top picks" | Your J-name quiz result / board | `/quiz/what-j-name` |
 | `recap_reaction` | "reacted 🔥 to {Name}'s recap" | Weekly recap player | `/recap` |
 | `inside_joke` | "{Name} tagged you in a joke" | Inside Jokes (their / your wall) | `/person/{personId}` (Inside Jokes tab) or Friends wall |
 | `message` | "{Name} sent a message" | That conversation | `/messages/{threadId}` |
 | `coop_announcement` | Co-op vote / books / call | `/coop/portal` | Public portal hub (join CTAs on write actions) |
 
 Ops (not user push): new portal ideas email `COOP_IDEA_REVIEW_EMAIL` + admin **Co-op portal** queue.
+Ops (not user push): Anthropic/OpenAI hard-limit or 429 → admin **Billy / AI economics** `ai_ops_alerts` banner (optional founder email later; users see soft "Billy unavailable", not a top-up CTA).
 | `activity_live` | "Band Tee Week is live" | Weekly activity collage | Activity route from `HOME.md` / `ADMIN.md` |
+| `delight_gift` | "{Name} emoji-bombed you" | Home (DelightHost plays the gift overlay) | `/(tabs)/home` |
 
 **Fallback:** unknown `kind`, missing ids, or expired target → Notifications page (`/notifications`).
 
@@ -83,6 +88,7 @@ Every notification (in-app + push) carries:
 type NotificationKind =
   | 'story_reply'
   | 'story_reply_elsewhere'
+  | 'story_prompt'
   | 'connect_request'
   | 'mutual_connection'
   | 'touch_grass_signal'
@@ -97,11 +103,14 @@ type NotificationKind =
   | 'event_introduction'
   | 'poll_activity'
   | 'quiz_share'
+  | 'jname_link_opened'
+  | 'jname_top_match'
   | 'recap_reaction'
   | 'inside_joke'
   | 'message'
   | 'coop_announcement'
-  | 'activity_live';
+  | 'activity_live'
+  | 'delight_gift';
 
 type AppNotification = {
   id: string;
@@ -231,12 +240,14 @@ Settings shows one row per `kind` (not a bucket like "Events"). Section headers 
 | `story_reply` | Replies to your update | close | yes | **no** (replies row) | on |
 | `story_reply_elsewhere` | Replies to your comments | close | yes | yes | on |
 | `recap_reaction` | Recap reactions | close | yes | yes | on |
+| `story_prompt` | Random update nudges (1–3 / day) | — | no | **no** (push / Notifications page) | **off** |
 | `birthday` | Birthdays | birthdays | yes | yes | on |
 | `custom_date` | Saved dates | birthdays | yes | yes | on |
 | `friend_check_in` | Check-in nudges | birthdays | yes | yes | on |
 | `mutual_connection` | Friends connecting through you | moments | no | yes | off |
 | `inside_joke` | Inside jokes | moments | yes | yes | off |
 | `activity_live` | Weekly activities | moments | no | yes | off |
+| `delight_gift` | Surprises from friends | moments | yes | yes | on |
 | `event_invite` | Event invites | events | yes | yes | off |
 | `event_reminder` | Event reminders | events | no | yes | off |
 | `rsvp_going` | RSVP updates | events | yes | yes | off |
@@ -248,6 +259,8 @@ Settings shows one row per `kind` (not a bucket like "Events"). Section headers 
 | `message` | Messages | — | yes | yes | on |
 | `poll_activity` | Poll activity | — | yes | yes | on |
 | `quiz_share` | Quizzes shared with you | — | yes | yes | on |
+| `jname_link_opened` | Quiz link opens | — | yes | yes | on |
+| `jname_top_match` | Friend matched your J pick | — | yes | yes | on |
 | `coop_announcement` | Co-op | — | no | yes | on |
 
 Canonical list: `NOTIFICATION_KIND_PREFS` in `@bridger/shared` (must stay in lockstep with this table).

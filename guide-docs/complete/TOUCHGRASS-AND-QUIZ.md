@@ -13,13 +13,13 @@ Self-contained. Two behaviors Magic Patterns kept missing. Keep UI copy minimal 
 - Lives prominently on the **Events page** (where plans happen). It is **not** on Home.
 
 **Tap → quick sheet**
-1. **Who to tell** — Close friends / Friends / Everyone. Concentric: Friends includes Close; Everyone includes all three.
+1. **Who to tell** — Close / Friends only. Concentric: Friends includes Close. Acquaintances never get a Touch Grass signal.
 2. **When** — Now / Tonight / This weekend.
 3. **Why (short line)** — "grab food + walk?" — so friends know what they're saying yes to.
 4. **Send signal** (green button).
 
 **On send**
-- Everyone in the chosen group gets a **notification**.
+- Everyone in the chosen circle (Close, or Friends which includes Close) gets a **notification**.
 - Your signal shows for them: on **Events** below the button, and on **Home** as a card in the announcements carousel.
 - **No view counts** anywhere.
 

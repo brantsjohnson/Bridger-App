@@ -8,14 +8,12 @@ import type { ProfileModuleId as SharedModuleId, Tier } from '@bridger/shared';
 import { OBSESSION_PROMPTS, SENSITIVE_ABOUT_KEYS } from '@bridger/shared';
 import type { ModuleQuestion } from '@bridger/ui';
 import {
-  ALL_HOBBIES,
   FAV_ITEMS,
-  HOBBY_EMOJI,
   HOBBY_FOLLOWUP_QUESTIONS,
   PERSONAL_QUESTIONS,
   PLACE_QUESTIONS,
   THIS_OR_THAT_PROMPTS,
-  hobbyId
+  catalogHobbyOptions
 } from './fixtures/profile-questions';
 
 /** Includes legacy short ids so older call sites still typecheck during migration. */
@@ -158,10 +156,7 @@ export const PROFILE_MODULES: ProfileModule[] = [
         ask: 'Select your hobbies',
         type: 'hobbySelect',
         emoji: '🎛',
-        options: ALL_HOBBIES.map((label) => {
-          const id = hobbyId(label);
-          return { id, label, emoji: HOBBY_EMOJI[id] ?? '✨' };
-        }),
+        options: catalogHobbyOptions(),
         followups: HOBBY_FOLLOWUP_QUESTIONS
       }
     ]

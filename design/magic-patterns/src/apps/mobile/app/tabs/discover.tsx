@@ -20,6 +20,7 @@ import {
 '../../../../packages/ui';
 import { ConnectionMap } from '../../components/ConnectionMap';
 import { CommonalityList } from '../../components/CommonalityList';
+import { LocalMapTeaser } from '../../components/discover/LocalMapTeaser';
 import { MatchModules } from '../../components/discover/MatchModules';
 import { COMMONALITIES, REQUESTS, SUGGESTIONS, personById } from '../../state/mock-data';
 
@@ -47,7 +48,11 @@ export function DiscoverScreen({
   const [sources, setSources] = React.useState({ aboutMe: true, onboardingQuiz: true, discoverMe: false });
 
   if (view === 'gate') {
-    return <DiscoverGate onStart={() => setView('main')} />;
+    return (
+      <Screen tone="intro">
+        <DiscoverGate onStart={() => setView('main')} />
+      </Screen>
+    );
   }
 
   if (view === 'detail' && selected) {
@@ -230,6 +235,10 @@ export function DiscoverScreen({
           </section>
         </Breathe>
 
+        <Breathe>
+          <LocalMapTeaser />
+        </Breathe>
+
       </ScreenBody>
 
       <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Discover settings">
@@ -299,16 +308,16 @@ export function DiscoverScreen({
 
 }
 
-/** The intro gate — black and white, wireframe globe on a perspective grid. */
+/** The intro gate — black canvas, wireframe globe on a perspective grid. */
 function DiscoverGate({ onStart }: {onStart: () => void;}) {
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-white">
+    <div className="relative flex h-full flex-col overflow-hidden bg-black">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
           className="absolute -inset-x-24 bottom-0 h-1/2 animate-drift"
           style={{
             backgroundImage:
-            'linear-gradient(to right, rgba(28,27,22,0.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(28,27,22,0.35) 1px, transparent 1px)',
+            'linear-gradient(to right, rgba(255,255,255,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.22) 1px, transparent 1px)',
             backgroundSize: '38px 38px',
             transform: 'perspective(220px) rotateX(62deg)',
             transformOrigin: 'bottom',
@@ -319,10 +328,10 @@ function DiscoverGate({ onStart }: {onStart: () => void;}) {
 
       <div className="relative flex flex-1 flex-col items-center justify-center px-7 text-center">
         <Globe />
-        <PixelHeading as="h1" size="lg" className="mt-8">
+        <PixelHeading as="h1" size="lg" className="mt-8 text-white">
           Making friends as an adult is hard.
         </PixelHeading>
-        <p className="mt-4 max-w-[280px] text-[15px] font-semibold leading-snug text-ink-soft">
+        <p className="mt-4 max-w-[280px] text-[15px] font-semibold leading-snug text-white/80">
           Bridger introduces you to the friends of friends worth knowing.
         </p>
       </div>
@@ -331,7 +340,7 @@ function DiscoverGate({ onStart }: {onStart: () => void;}) {
         <ButtonPrimary full onClick={onStart}>
           Get started
         </ButtonPrimary>
-        <p className="mt-3 text-center text-[12px] font-semibold text-ink-mute">
+        <p className="mt-3 text-center text-[12px] font-semibold text-white/60">
           You choose what you share.
         </p>
       </div>
@@ -341,7 +350,7 @@ function DiscoverGate({ onStart }: {onStart: () => void;}) {
 
 function Globe() {
   return (
-    <svg viewBox="0 0 120 120" className="h-32 w-32 text-ink" role="img" aria-label="Wireframe globe">
+    <svg viewBox="0 0 120 120" className="h-32 w-32 text-white" role="img" aria-label="Wireframe globe">
       <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" strokeWidth="1.5" />
       {[14, 28, 40].map((r) =>
       <ellipse key={r} cx="60" cy="60" rx={r} ry="46" fill="none" stroke="currentColor" strokeWidth="1" />
@@ -377,9 +386,6 @@ function ConnectionDetail({
           <div className="flex flex-col items-center text-center">
             <Avatar name={person.name} emoji={person.emoji} accent={person.accent} size="xl" />
             <h2 className="mt-3 text-[20px] font-bold tracking-tight text-ink">{person.name}</h2>
-            <p className="text-[13px] font-semibold text-ink-mute">
-              via {via.name} · {person.label}
-            </p>
 
             <div className="mt-4 flex w-full gap-2.5">
               <ButtonSecondary

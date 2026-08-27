@@ -67,6 +67,7 @@ The line between "this app gets me" and "this app is watching me" is **provenanc
 - **Bridge suggestions** get choosier about reciprocal quads that actually convert.
 - **Event "to meet"** picks improve from attendance outcomes.
 - **Quizzes** self-improve: questions with chronic low confidence / heavy adaptation get flagged in admin for rewrite (the moderator's telemetry is the quiz's QA).
+- **Adaptation threshold:** each quiz's `adaptBelowConfidence` starts authored (measurement quizzes ~0.35; disclosure = off / `1.0`). Over time, tune the floor per quiz from `quiz_adapted` rate + completion / confidence lift so well-authored quizzes stay mostly AI-free and muddy ones get help sooner.
 - **Freshness** learns per-category staleness priors (hobbies churn; hometowns don't).
 - **Weights/thresholds** drift toward what produces Close friendships in *this* community, not a generic one.
 

@@ -14,6 +14,7 @@
 // ============================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Image,
   LayoutChangeEvent,
   Pressable,
   ScrollView,
@@ -28,7 +29,6 @@ import {
 } from 'expo-audio';
 import {
   PauseIcon,
-  PlayIcon,
   SkipBackIcon,
   SkipForwardIcon
 } from 'lucide-react-native';
@@ -54,11 +54,17 @@ import { pushNotification } from '../../data/feed';
 import { isDemoMode } from '../../lib/demo';
 import { sendRecapReaction } from '../../data/pod';
 import { personById } from '../../data/people';
+import { useColorScheme } from '@/components/useColorScheme';
 import { EMOJI_STICKERS } from '../../data/stickers';
 import { RecapPulse } from './RecapPulse';
 
 const SPEEDS = [1, 1.3, 1.5, 2] as const;
 type Speed = (typeof SPEEDS)[number];
+
+/** Pixel-art play buttons (transparent PNG) — light and dark theme variants. */
+const RECAP_PLAY_LIGHT = require('../../assets/recap/play-light.png');
+const RECAP_PLAY_DARK = require('../../assets/recap/play-dark.png');
+const RECAP_PLAY_SIZE = 64;
 
 const FILTERS: Array<{ key: RecapAudience; label: string }> = [
   { key: 'close', label: 'Close' },
@@ -92,6 +98,9 @@ export function RecapPlayer({
   onClose?: () => void;
 }) {
   const c = useThemeColors();
+  const colorScheme = useColorScheme();
+  const playButtonSource =
+    colorScheme === 'dark' ? RECAP_PLAY_DARK : RECAP_PLAY_LIGHT;
   // Make the photo the hero: about 60% of the screen width, capped so it never
   // gets silly-big on a tablet or the web build.
   const { width } = useWindowDimensions();
@@ -440,16 +449,18 @@ export function RecapPlayer({
                   onPress={toggle}
                   accessibilityRole="button"
                   accessibilityLabel={status.playing ? 'Pause' : 'Play'}
-                  className="h-16 w-16 items-center justify-center rounded-full bg-[#1C1B16]"
+                  className="h-16 w-16 items-center justify-center"
                 >
                   {status.playing ? (
-                    <PauseIcon size={28} color="#FFFFFF" strokeWidth={2.4} />
+                    <View className="h-16 w-16 items-center justify-center rounded-full bg-[#1C1B16]">
+                      <PauseIcon size={28} color="#FFFFFF" strokeWidth={2.4} />
+                    </View>
                   ) : (
-                    <PlayIcon
-                      size={28}
-                      color="#FFFFFF"
-                      strokeWidth={2.4}
-                      style={{ marginLeft: 2 }}
+                    <Image
+                      source={playButtonSource}
+                      accessibilityIgnoresInvertColors
+                      style={{ width: RECAP_PLAY_SIZE, height: RECAP_PLAY_SIZE }}
+                      resizeMode="contain"
                     />
                   )}
                 </Pressable>

@@ -10,32 +10,40 @@ export interface CoopBenefits {
   customGroups: boolean;
   /** posting video updates and video reactions. Viewing is never gated. */
   video: boolean;
+  /** extra photos on places traveled (can show up in In common) */
+  placePhotos: boolean;
   summaryCadence: 'weekly' | 'daily';
   storage: 'rolling30' | 'unlimited';
   eventGuestCap: number;
+  /** co-hosts, collect allergies, assignments. Hosting itself is never gated. */
+  premiumHostTools: boolean;
   /** creating polls and open questions for your friends. Answering is never gated. */
   askTheGroup: boolean;
 }
 
 export const FREE_BENEFITS: CoopBenefits = {
   personalization: false,
-  circleCaps: { close: 10, friends: 25, acquaintances: 'unlimited' },
+  circleCaps: { close: 5, friends: 30, acquaintances: 'unlimited' },
   customGroups: false,
   video: false,
+  placePhotos: false,
   summaryCadence: 'weekly',
   storage: 'rolling30',
   eventGuestCap: 35,
+  premiumHostTools: false,
   askTheGroup: false
 };
 
 export const MEMBER_BENEFITS: CoopBenefits = {
   personalization: true,
-  circleCaps: { close: Infinity, friends: Infinity, acquaintances: 'unlimited' },
+  circleCaps: { close: 25, friends: 125, acquaintances: 'unlimited' },
   customGroups: true,
   video: true,
+  placePhotos: true,
   summaryCadence: 'daily',
   storage: 'unlimited',
   eventGuestCap: 100,
+  premiumHostTools: true,
   askTheGroup: true
 };
 
@@ -57,6 +65,39 @@ export interface CoopMembership {
    * Mobile emits coop_left on this read; not set on hard leave or cancel schedule.
    */
   endedThisRead?: boolean;
+}
+
+/**
+ * Result of redeeming a promo / auth code for a free year of co-op.
+ * `membership` is the updated membership; `grantMonths` is how long was granted.
+ */
+export interface CoopPromoRedeemResult {
+  ok: true;
+  grantMonths: number;
+  membership: CoopMembership;
+}
+
+/**
+ * A promo / auth code as the admin console sees it. `code` is shown so the
+ * operator can copy and hand it out; `remaining` is how many uses are left.
+ */
+export interface CoopPromoCode {
+  id: string;
+  code: string;
+  label: string;
+  grantMonths: number;
+  maxRedemptions: number;
+  redeemedCount: number;
+  remaining: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One person's redemption of a code (admin view). Opaque user id only. */
+export interface CoopPromoRedemption {
+  userId: string;
+  redeemedAt: string;
 }
 
 /** One public idea / proposal in the member portal. PRIVACY: no author names. */

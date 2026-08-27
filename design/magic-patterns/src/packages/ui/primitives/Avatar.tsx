@@ -1,4 +1,3 @@
-import React from 'react';
 import { Accent } from '../../shared';
 import { ACCENTS, cn } from '../tokens';
 

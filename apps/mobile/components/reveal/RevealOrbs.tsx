@@ -30,7 +30,8 @@ const R = 70; // circle radius
 const CY = H / 2;
 const LEFT_CX = 108; // your circle center x
 const RIGHT_CX = 192; // their circle center x
-const FACE = 96; // xl avatar diameter
+/** Faces match the color circles (diameter = 2R), not the smaller xl avatar. */
+const FACE = R * 2;
 
 // --- COLORS: your yellow + their green, mixing to orange in the middle ---
 const YELLOW = '#FFD400';
@@ -128,7 +129,13 @@ export function RevealOrbs({ me, them, label }: Props) {
             transform: [{ translateX: meX }]
           }}
         >
-          <Avatar name={me.name} emoji={me.emoji} accent={me.accent} personId={me.id} size="xl" />
+          <Avatar
+            name={me.name}
+            emoji={me.emoji}
+            accent={me.accent}
+            personId={me.id}
+            diameter={FACE}
+          />
         </Animated.View>
 
         {/* Their face — floats in from the right, sits on their circle */}
@@ -142,7 +149,13 @@ export function RevealOrbs({ me, them, label }: Props) {
             transform: [{ translateX: themX }]
           }}
         >
-          <Avatar name={them.name} emoji={them.emoji} accent={them.accent} personId={them.id} size="xl" />
+          <Avatar
+            name={them.name}
+            emoji={them.emoji}
+            accent={them.accent}
+            personId={them.id}
+            diameter={FACE}
+          />
         </Animated.View>
       </View>
     </AnalyticsRegion>

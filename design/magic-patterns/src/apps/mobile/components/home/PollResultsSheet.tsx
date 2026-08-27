@@ -1,4 +1,3 @@
-import React from 'react';
 import { Avatar, Sheet, cn } from '../../../../packages/ui';
 import { HomePoll } from '../../state/pod';
 import { ME, personById } from '../../state/mock-data';

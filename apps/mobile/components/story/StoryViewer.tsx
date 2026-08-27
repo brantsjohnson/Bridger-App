@@ -5,8 +5,8 @@
 // record) on the right, floating
 // reply balloons, and the Catch-Up peek. Tap left = previous, center = pause,
 // right = next. When the last post ends, we either open the next friend in the
-// tray sequence or close back to where you came from (profile stays closed if
-// Catch-Up is open). Respects reduce-motion via SegmentedProgress.
+// tray sequence or show "You're all caught up" with confetti. Catch-Up stays
+// parked at the peek while swapping friends. Respects reduce-motion.
 // ============================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -45,6 +45,7 @@ import { CatchUpPanel } from './CatchUpPanel';
 import { CircleRecorder } from './CircleRecorder';
 import { CommentSheet } from './CommentSheet';
 import { FloatingReactions } from './FloatingReactions';
+import { StoriesCaughtUp } from './StoriesCaughtUp';
 import { StickerStudio } from './StickerStudio';
 import { StickerTray } from './StickerTray';
 
@@ -59,10 +60,10 @@ type Props = {
   startCommentsOpen?: boolean;
   /**
    * Ordered author ids from the Home tray. When this author's posts finish,
-   * we move to the next id. Empty / single means "close when done".
+   * we move to the next id. Empty / single means "all caught up when done".
    */
   sequence?: string[];
-  /** Opened from a profile / friend page — close when their posts end. */
+  /** Opened from a profile / friend page — celebrate then close when done. */
   fromProfile?: boolean;
   /** Move to another author in the sequence (Home tray). */
   onAdvanceAuthor?: (nextAuthorId: string) => void;
@@ -95,6 +96,8 @@ export function StoryViewer({
   const [catchUpOpen, setCatchUpOpen] = useState(startCatchUpOpen);
   const [commentsOpen, setCommentsOpen] = useState(startCommentsOpen);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Shown after the last friend in the tray (or a lone author) is finished.
+  const [allCaughtUp, setAllCaughtUp] = useState(false);
   // The three reply tools: the emoji strip, the make-a-sticker camera, and the
   // 10-second round recorder. Any of them open holds the story still.
   const [trayOpen, setTrayOpen] = useState(false);
@@ -112,6 +115,18 @@ export function StoryViewer({
   useEffect(() => {
     setUserPaused(false);
   }, [index, authorId]);
+
+  // Keep Catch-Up collapsed when moving to the next friend — never carry an
+  // expanded sheet across authors (that looked like it "opened then closed").
+  // Skip the first mount so ?catchup=1 deep links still open the sheet.
+  const skipCatchUpReset = React.useRef(true);
+  useEffect(() => {
+    if (skipCatchUpReset.current) {
+      skipCatchUpReset.current = false;
+      return;
+    }
+    setCatchUpOpen(false);
+  }, [authorId]);
 
   // --- SENDING A STICKER: one path for both the standard emoji and your own ---
   const sendSticker = async (input: {
@@ -147,14 +162,15 @@ export function StoryViewer({
     return () => dismissSurface('story');
   }, []);
 
-  // --- END OF THIS AUTHOR: next in tray sequence, or close back home/profile ---
+  // --- END OF THIS AUTHOR: next in tray sequence, or "all caught up" ---
   // Catch-Up open = stay put (do not dismiss under the sheet).
   const handleExhausted = useCallback(() => {
     if (catchUpOpen) return;
     // Finished every post for this person → ring off + move to back of tray
     markStorySeen(authorId);
     if (fromProfile) {
-      onClose?.();
+      // One friend's profile: celebrate then close (Done on the end screen).
+      setAllCaughtUp(true);
       return;
     }
     const seq = sequence.length ? sequence : [authorId];
@@ -164,8 +180,8 @@ export function StoryViewer({
       onAdvanceAuthor(nextId);
       return;
     }
-    onClose?.();
-  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor, onClose]);
+    setAllCaughtUp(true);
+  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor]);
 
   const handleNext = useCallback(() => {
     const result = goNext();
@@ -230,6 +246,11 @@ export function StoryViewer({
     const t = setTimeout(() => handleNext(), POST_MS);
     return () => clearTimeout(t);
   }, [index, paused, post, handleNext, isVideo]);
+
+  // End of the tray: celebrate instead of snapping straight back to Home.
+  if (allCaughtUp) {
+    return <StoriesCaughtUp onDone={() => onClose?.()} />;
+  }
 
   if (loading || !post) {
     return (

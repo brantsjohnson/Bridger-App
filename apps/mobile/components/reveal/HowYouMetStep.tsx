@@ -7,16 +7,17 @@
 // "Already know" optionally shows Close / Friends / Acquaintances buckets.
 //
 // Discover connects usually have no place to save (unless you also share an
-// event). In that case we offer a short note instead of pushing a coarse place.
+// event). In that case a centered "Add a note - optional" tap opens a short
+// box (no card around the label).
 // In-person / QR keeps the "Record where you met" checkbox (default on).
 //
 // Colors are fixed (not theme tokens) so dark mode cannot flip this step into
 // cream-on-cream. PRIVACY: place is neighborhood-scale only; note text never
 // goes into analytics.
 // ============================================
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { CheckIcon, HandshakeIcon, MapPinIcon, UsersIcon } from 'lucide-react-native';
+import { CheckIcon, ChevronDownIcon, HandshakeIcon, MapPinIcon, UsersIcon } from 'lucide-react-native';
 import { REVEAL, TIER_LABEL, trackUi, type MeetContext, type Tier } from '@bridger/shared';
 import { cn, withAnalyticsPress } from '@bridger/ui';
 import { ROSTER_TIERS } from '../../data/friends';
@@ -78,6 +79,15 @@ export function HowYouMetStep({
   onMeetNote,
   viaDiscover
 }: Props) {
+  const noteRef = useRef<TextInput>(null);
+  const [noteOpen, setNoteOpen] = useState(meetNote.trim().length > 0);
+
+  useEffect(() => {
+    if (!noteOpen) return;
+    const t = setTimeout(() => noteRef.current?.focus(), 80);
+    return () => clearTimeout(t);
+  }, [noteOpen]);
+
   const options: Array<{
     value: MeetContext;
     label: string;
@@ -214,39 +224,58 @@ export function HowYouMetStep({
         In-person / QR keeps the place checkbox.
       */}
       {viaDiscover ? (
-        <View
-          className="rounded-2xl border p-4"
-          style={{ borderColor: CARD_BORDER, backgroundColor: CARD_FILL }}
-        >
-          <Text className="font-sans-b text-[15px]" style={{ color: ON_DARK }}>
-            Add a note
-          </Text>
-          <Text className="mt-1 font-sans-md text-[12px]" style={{ color: ON_DARK_MUTE }}>
-            Optional · a tiny thing about how you connected · only you two see it
-          </Text>
-          <TextInput
-            value={meetNote}
-            onChangeText={(t) => onMeetNote(t.slice(0, NOTE_MAX))}
-            onBlur={() => {
-              // Analytics: they left a note — never the text itself.
-              if (meetNote.trim().length > 0) {
-                trackUi('click', REVEAL.flow.meet_note);
-              }
-            }}
-            placeholder="e.g. met through a hiking group"
-            placeholderTextColor={ON_DARK_MUTE}
-            maxLength={NOTE_MAX}
-            accessibilityLabel="How you met note"
-            className="mt-3 min-h-[48px] rounded-2xl border px-3.5 py-3 font-sans-sb text-[14px]"
-            style={{
-              borderColor: CARD_BORDER,
-              color: ON_DARK,
-              backgroundColor: 'rgba(245, 240, 230, 0.06)'
-            }}
-          />
-          <Text className="mt-1.5 text-right font-sans-md text-[11px]" style={{ color: ON_DARK_MUTE }}>
-            {meetNote.length}/{NOTE_MAX}
-          </Text>
+        <View className="items-center pt-1">
+          {/* THIS SECTION DOES: a centered tap opens the note. No box around the label. */}
+          <Pressable
+            onPress={withAnalyticsPress(REVEAL.flow.meet_note_toggle, () =>
+              setNoteOpen((v) => !v)
+            )}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: noteOpen }}
+            accessibilityLabel="Add a note, optional"
+            className="min-h-[44px] flex-row items-center justify-center gap-1.5 px-2"
+          >
+            <Text className="text-center font-sans-b text-[15px]" style={{ color: ON_DARK }}>
+              Add a note - optional
+            </Text>
+            <ChevronDownIcon
+              size={18}
+              color={ON_DARK}
+              strokeWidth={2.4}
+              style={{ transform: [{ rotate: noteOpen ? '180deg' : '0deg' }] }}
+            />
+          </Pressable>
+          {noteOpen ? (
+            <View className="mt-1 w-full">
+              <TextInput
+                ref={noteRef}
+                value={meetNote}
+                onChangeText={(t) => onMeetNote(t.slice(0, NOTE_MAX))}
+                onBlur={() => {
+                  // Analytics: they left a note — never the text itself.
+                  if (meetNote.trim().length > 0) {
+                    trackUi('click', REVEAL.flow.meet_note);
+                  }
+                }}
+                placeholder="e.g. met through a hiking group"
+                placeholderTextColor={ON_DARK_MUTE}
+                maxLength={NOTE_MAX}
+                accessibilityLabel="How you met note"
+                className="min-h-[48px] rounded-2xl border px-3.5 py-3 font-sans-sb text-[14px]"
+                style={{
+                  borderColor: CARD_BORDER,
+                  color: ON_DARK,
+                  backgroundColor: 'rgba(245, 240, 230, 0.06)'
+                }}
+              />
+              <Text
+                className="mt-1.5 text-right font-sans-md text-[11px]"
+                style={{ color: ON_DARK_MUTE }}
+              >
+                {meetNote.length}/{NOTE_MAX}
+              </Text>
+            </View>
+          ) : null}
         </View>
       ) : (
         <View

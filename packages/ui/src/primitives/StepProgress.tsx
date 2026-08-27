@@ -18,9 +18,17 @@ type Props = {
   /** matches the step's color so the bar reads as part of the room */
   accent?: Accent;
   className?: string;
+  /** Pastel wash screens (onboarding): step count stays dark for contrast. */
+  onColorWash?: boolean;
 };
 
-export function StepProgress({ step, total, accent = 'purple', className }: Props) {
+export function StepProgress({
+  step,
+  total,
+  accent = 'purple',
+  className,
+  onColorWash
+}: Props) {
   const token = ACCENTS[accent];
   const pct = Math.min(100, Math.max(0, (step / total) * 100));
   const width = useRef(new Animated.Value(pct)).current;
@@ -55,7 +63,12 @@ export function StepProgress({ step, total, accent = 'purple', className }: Prop
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: total, now: step }}
     >
-      <View className="h-2 flex-1 overflow-hidden rounded-full bg-ink/10">
+      <View
+        className={cn(
+          'h-2 flex-1 overflow-hidden rounded-full',
+          onColorWash ? 'bg-onaccent/15' : 'bg-ink/10'
+        )}
+      >
         <Animated.View
           className={cn('h-full rounded-full', token.bg)}
           style={{
@@ -67,7 +80,13 @@ export function StepProgress({ step, total, accent = 'purple', className }: Prop
         />
       </View>
       {/* pixel "3/9" label kept tiny so it never competes with the question */}
-      <Text className="font-pixel text-[12px] text-ink-soft" accessible={false}>
+      <Text
+        className={cn(
+          'font-pixel text-[12px]',
+          onColorWash ? 'text-onaccent/70' : 'text-ink-soft'
+        )}
+        accessible={false}
+      >
         {step}/{total}
       </Text>
     </View>

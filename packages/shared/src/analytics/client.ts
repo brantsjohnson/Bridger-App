@@ -1,12 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The one place every screen and UI primitive talks to for analytics. It
-// defaults to opted-out (no tracking until the user consents), keeps a light
+// starts quiet until the app opts in for a signed-in session, keeps a light
 // surface clock so we can stamp interaction order + hesitation, and forwards
-// events to whatever sink you register (PostHog later). PRIVACY: never put
-// names, emails, message text, or other content in properties.
+// events to whatever sink you register (PostHog). PRIVACY: never put names,
+// emails, message text, or other content in properties. Demo and logged-out
+// stay off.
 // ============================================
 import { parseAnalyticsId } from './ids';
+import { sanitizeAnalyticsProps } from './sanitize';
 import type {
   AnalyticsBaseProps,
   AnalyticsProductEvent,
@@ -50,8 +52,10 @@ export function configureAnalyticsContext(ctx: {
 }
 
 /**
- * PRIVACY: consent is off by default. Call optInAnalytics only after the user
- * accepts (Settings toggle + ATT). Until then we never call the sink.
+ * PRIVACY: starts quiet. The app calls optInAnalytics for signed-in sessions
+ * (product analytics is on by default while signed in; demo stays off).
+ * We do not use Apple ATT: this is first-party product analytics, not
+ * cross-app tracking.
  */
 export function optInAnalytics(): void {
   consented = true;
@@ -93,7 +97,12 @@ function stamp(extra?: AnalyticsBaseProps): AnalyticsBaseProps {
 
 function emit(event: string, properties: AnalyticsBaseProps): void {
   if (!consented || !sink) return;
-  sink.capture(event, stamp(properties));
+  sink.capture(event, sanitizeAnalyticsProps(stamp(properties)));
+}
+
+/** Push any queued events (call this before opt-out so the last event lands). */
+export async function flushAnalytics(): Promise<void> {
+  await sink?.flush?.();
 }
 
 /** Mark a screen or sheet as the active surface (for interaction order). */

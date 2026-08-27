@@ -137,7 +137,7 @@ export type TravelPlace = {
   year?: string;
   /** PRIVACY: who can see this place */
   tier?: Tier;
-  /** Optional tags from PROFILE-QUESTIONS Module 3 */
+  /** Optional tags from PROFILE-MODULES Module 3 */
   tags?: TravelPlaceTag[];
 };
 

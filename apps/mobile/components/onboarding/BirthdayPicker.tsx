@@ -66,12 +66,15 @@ export function BirthdayPicker({
   value,
   onChange,
   onComplete,
+  onColorWash = false,
   analyticsId
 }: {
   value: string;
   onChange: (value: string) => void;
   /** called only after they confirm "Is this right?" */
   onComplete?: () => void;
+  /** Pastel onboarding wash: breadcrumbs and decade labels stay dark for contrast. */
+  onColorWash?: boolean;
   analyticsId: string;
 }) {
   const initial = useMemo(() => parse(value), [value]);
@@ -130,7 +133,7 @@ export function BirthdayPicker({
   const formatted = format(parts);
 
   return (
-    <View className="gap-3">
+    <View className="min-h-0 flex-1 gap-3">
       {/* Breadcrumb: shows what's chosen and lets you jump back up a level */}
       {stage !== 'confirm' ? (
         <View className="flex-row items-center gap-1.5">
@@ -138,31 +141,39 @@ export function BirthdayPicker({
             label={parts.year != null ? String(parts.year) : 'Year'}
             active={stage === 'year'}
             onPress={() => setStage('year')}
+            onColorWash={onColorWash}
           />
-          <Sep />
+          <Sep onColorWash={onColorWash} />
           <Crumb
             label={parts.monthIndex != null ? MONTHS[parts.monthIndex] : 'Month'}
             active={stage === 'month'}
             disabled={parts.year == null}
             onPress={() => parts.year != null && setStage('month')}
+            onColorWash={onColorWash}
           />
-          <Sep />
+          <Sep onColorWash={onColorWash} />
           <Crumb
             label={parts.day != null ? String(parts.day) : 'Day'}
             active={stage === 'day'}
             disabled={parts.monthIndex == null}
             onPress={() => parts.monthIndex != null && setStage('day')}
+            onColorWash={onColorWash}
           />
         </View>
       ) : null}
 
-      {/* --- YEAR: decades, 5 tiles per row --- */}
+      {/* --- YEAR: decades, 5 tiles per row — scroll fills the body on onboarding --- */}
       {stage === 'year' ? (
-        <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-          <View className="gap-4">
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <View className="gap-4 pb-2">
             {decades.map((decade) => (
               <View key={decade.label} className="gap-2">
-                <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
+                <Text
+                  className={cn(
+                    'font-sans-b text-[11px] tracking-wide',
+                    onColorWash ? 'text-onaccent/70' : 'text-ink-mute'
+                  )}
+                >
                   {decade.label}
                 </Text>
                 <TileGrid cols={5}>
@@ -184,7 +195,8 @@ export function BirthdayPicker({
 
       {/* --- MONTH: 3 per row --- */}
       {stage === 'month' ? (
-        <TileGrid cols={3}>
+        <View className="min-h-0 flex-1 justify-center">
+          <TileGrid cols={3}>
           {MONTHS.map((mo, i) => (
             <Tile
               key={mo}
@@ -195,11 +207,13 @@ export function BirthdayPicker({
             />
           ))}
         </TileGrid>
+        </View>
       ) : null}
 
       {/* --- DAY: 7 per row (week-style) --- */}
       {stage === 'day' && parts.year != null && parts.monthIndex != null ? (
-        <TileGrid cols={7}>
+        <View className="min-h-0 flex-1 justify-center">
+          <TileGrid cols={7}>
           {Array.from({ length: daysInMonth(parts.year, parts.monthIndex) }, (_, i) => i + 1).map(
             (d) => (
               <Tile
@@ -212,11 +226,13 @@ export function BirthdayPicker({
             )
           )}
         </TileGrid>
+        </View>
       ) : null}
 
-      {/* --- CONFIRM: "Is this right?" before we save and move on --- */}
+      {/* --- CONFIRM: "Is this right?" — only way forward on this step --- */}
       {stage === 'confirm' && formatted ? (
-        <View className="gap-4 rounded-2xl border border-ink-line bg-surface px-5 py-6">
+        <View className="min-h-0 flex-1 justify-center">
+          <View className="gap-4 rounded-2xl border border-ink-line bg-surface px-5 py-6">
           <Text className="text-center font-sans-b text-[13px] text-ink-mute">Is this right?</Text>
           <Text
             accessibilityRole="header"
@@ -243,6 +259,7 @@ export function BirthdayPicker({
             >
               No, change it
             </ButtonSecondary>
+          </View>
           </View>
         </View>
       ) : null}
@@ -320,12 +337,14 @@ function Crumb({
   label,
   active,
   disabled = false,
-  onPress
+  onPress,
+  onColorWash = false
 }: {
   label: string;
   active: boolean;
   disabled?: boolean;
   onPress: () => void;
+  onColorWash?: boolean;
 }) {
   return (
     <Pressable
@@ -336,18 +355,28 @@ function Crumb({
       accessibilityLabel={label}
       className={cn(
         'rounded-full px-3 py-1',
-        active ? 'bg-ink' : 'bg-ink/5',
+        active ? 'bg-ink' : onColorWash ? 'bg-onaccent/10' : 'bg-ink/5',
         disabled && 'opacity-40'
       )}
     >
-      {/* text-canvas stays opposite of bg-ink when the theme flips */}
-      <Text className={cn('font-sans-b text-[12px]', active ? 'text-canvas' : 'text-ink-soft')}>
+      <Text
+        className={cn(
+          'font-sans-b text-[12px]',
+          active ? 'text-canvas' : onColorWash ? 'text-onaccent/80' : 'text-ink-soft'
+        )}
+      >
         {label}
       </Text>
     </Pressable>
   );
 }
 
-function Sep() {
-  return <Text className="font-sans-b text-[12px] text-ink-mute">›</Text>;
+function Sep({ onColorWash = false }: { onColorWash?: boolean }) {
+  return (
+    <Text
+      className={cn('font-sans-b text-[12px]', onColorWash ? 'text-onaccent/50' : 'text-ink-mute')}
+    >
+      ›
+    </Text>
+  );
 }

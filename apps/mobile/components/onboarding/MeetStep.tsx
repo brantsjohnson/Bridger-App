@@ -16,6 +16,7 @@ import type { Accent } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
 import { ACCENTS, Card, TextField, cn, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
+import { WASH_MUTED } from './onboarding-wash';
 import type { MeetScope } from '../../data/onboarding';
 
 const SHAPES = [
@@ -143,13 +144,14 @@ export function MeetStep({
         {scope === 'near' ? (
           <View className="gap-1.5">
             <TextField
+              labelTone="onaccent"
               label="Your city"
               value={city}
               onChange={onCity}
               placeholder="Portland, OR"
               analyticsId={ONBOARDING.meet.city_input}
             />
-            <Text className="px-1 font-sans-sb text-[12px] text-ink-mute">
+            <Text className={cn('px-1 font-sans-sb text-[12px]', WASH_MUTED)}>
               Same-city matching is coming soon. Tell us your city and we'll turn it on for you.
             </Text>
           </View>

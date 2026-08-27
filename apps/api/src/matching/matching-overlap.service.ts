@@ -69,14 +69,18 @@ export class MatchingOverlapService {
       const t = theirs.get(fp);
       if (!t) continue;
       const w = await this.idf.weightForKey(m.key);
+      const musicArtist = m.key.startsWith('music.artist.');
       overlaps.push({
         kind: kindFromLayer(m.layer),
-        title: `You both ${m.label}`,
+        title: musicArtist
+          ? `You both love ${m.label}`
+          : `You both ${m.label}`,
         pairedAnswers:
           m.detail && t.detail
             ? { yours: m.detail, theirs: t.detail }
             : undefined,
-        w
+        // Shared music artists are conversation gold — nudge weight slightly up.
+        w: musicArtist ? w * 1.15 : w
       });
     }
     overlaps.sort((a, b) => b.w - a.w);
@@ -141,7 +145,11 @@ export class MatchingOverlapService {
       if (rank === 0 || rank > need) continue;
       const label = labelOf(row.key, row.value);
       const detail = detailOf(row.value);
-      out.set(`${row.key}::${label}`, {
+      // Music artists: match on the artist name so Spotify ↔ Apple Music can overlap.
+      const fp = row.key.startsWith('music.artist.')
+        ? `music.artist::${label.toLowerCase()}`
+        : `${row.key}::${label}`;
+      out.set(fp, {
         key: row.key,
         label,
         layer: row.layer,

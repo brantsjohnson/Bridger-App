@@ -7,6 +7,11 @@ import {
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold
 } from '@expo-google-fonts/plus-jakarta-sans';
+import { BigShouldersDisplay_900Black } from '@expo-google-fonts/big-shoulders-display';
+import { Jersey20_400Regular } from '@expo-google-fonts/jersey-20';
+import { Jersey25_400Regular } from '@expo-google-fonts/jersey-25';
+import { AnonymousPro_700Bold } from '@expo-google-fonts/anonymous-pro';
+import { Antonio_700Bold } from '@expo-google-fonts/antonio';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DarkTheme,
@@ -19,7 +24,7 @@ import {
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
@@ -32,13 +37,23 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { WELCOME_SEEN_KEY } from '../content/welcome';
 import { getProfilePhoto } from '../data/fixtures/demo-media';
 import { getOnboardingComplete, isOnboardingCompleteCached } from '../data/onboarding';
+import { getInviteAccess, hydrateDemoAccess } from '../data/access';
 import { DelightHost } from '../delight/_host/DelightHost';
 import { bootstrapAnalytics } from '../lib/analytics-bootstrap';
-import { hydrateDemoMode, isDemoMode } from '../lib/demo';
+import { syncAnalyticsSession } from '../lib/analytics-consent';
+import {
+  disableDemoMode,
+  getDevPreview,
+  hydrateDemoMode,
+  isDemoMode
+} from '../lib/demo';
+import { resolveJnameReferral } from '../lib/jname-api';
+import { takePendingReferral } from '../lib/jname-referral';
 import { recordRoutePath } from '../lib/route-trail';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
 import { BridgeLiveProvider, useBridgeLive } from '../providers/bridge-live-provider';
 import { BillyVoiceProvider, useBillyVoice } from '../providers/billy-voice-provider';
+import { PartyCapturePromptSync } from '../components/story/PartyCapturePromptSync';
 import { AgentIsland } from '../components/assistant/AgentIsland';
 import { fetchAssistantSettings } from '../data/assistant';
 
@@ -53,6 +68,10 @@ registerAvatarPhotoResolver(getProfilePhoto);
 // black "Something went wrong" page. Missing routes still use +not-found.tsx.
 export { AppErrorBoundary as ErrorBoundary } from '../components/AppErrorBoundary';
 
+// App icon splash shown while fonts load and demo state hydrate (matches native splash).
+const BOOT_ICON = require('../assets/images/icon.png');
+const BOOT_ICON_SIZE = 240;
+
 export const unstable_settings = {
   initialRouteName: '(tabs)'
 };
@@ -63,14 +82,23 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   // --- FONTS: the retro pixel header font + the clean body font (all weights).
   //     The app waits for these before showing anything, so text never "pops"
-  //     from a fallback font to the real one. ---
+  //     from a fallback font to the real one.
+  //     The last five are the collage-poster fonts used by the "What J-name are
+  //     you?" result card (the image people save to their photos). They are
+  //     loaded here, once, because the saved PNG has to look identical every
+  //     time and a half-loaded font would ruin it. ---
   const [loaded, error] = useFonts({
     FeloniaPixel: require('../assets/fonts/FeloniaPixel.otf'),
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold
+    PlusJakartaSans_800ExtraBold,
+    BigShouldersDisplay_900Black,
+    Jersey20_400Regular,
+    Jersey25_400Regular,
+    AnonymousPro_700Bold,
+    Antonio_700Bold
   });
   // THIS SECTION DOES: read the saved demo flag before the auth gate runs.
   const [demoReady, setDemoReady] = useState(false);
@@ -81,7 +109,14 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    void hydrateDemoMode().finally(() => setDemoReady(true));
+    void (async () => {
+      await hydrateDemoMode();
+      // LOCAL PREVIEW: leave any leftover long-press demo so Welcome can play.
+      if (process.env.EXPO_PUBLIC_FORCE_WELCOME === '1') {
+        await disableDemoMode();
+      }
+      setDemoReady(true);
+    })();
   }, []);
 
   useEffect(() => {
@@ -91,7 +126,24 @@ export default function RootLayout() {
   }, [loaded, demoReady]);
 
   if (!loaded || !demoReady) {
-    return null;
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#000000',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+        accessibilityIgnoresInvertColors
+      >
+        <Image
+          source={BOOT_ICON}
+          resizeMode="contain"
+          style={{ width: BOOT_ICON_SIZE, height: BOOT_ICON_SIZE }}
+          accessibilityIgnoresInvertColors
+        />
+      </View>
+    );
   }
 
   // --- Everything below can now ask "who is logged in?" via useAuth() ---
@@ -119,46 +171,86 @@ function useProtectedRoute() {
   const router = useRouter();
   const [welcomeReady, setWelcomeReady] = useState(false);
   const [seenWelcome, setSeenWelcome] = useState(true);
-  // Onboarding gate: has this account finished the new-user run?
   const [onbReady, setOnbReady] = useState(false);
   const [onbComplete, setOnbComplete] = useState(true);
+  const [accessReady, setAccessReady] = useState(false);
+  const [accessGranted, setAccessGranted] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(WELCOME_SEEN_KEY).then((v) => {
-      setSeenWelcome(v === '1');
-      setWelcomeReady(true);
-    });
-    getOnboardingComplete().then((done) => {
+    void (async () => {
+      await hydrateDemoAccess();
+      if (process.env.EXPO_PUBLIC_FORCE_WELCOME === '1') {
+        await AsyncStorage.removeItem(WELCOME_SEEN_KEY);
+        setSeenWelcome(false);
+        setWelcomeReady(true);
+      } else {
+        const v = await AsyncStorage.getItem(WELCOME_SEEN_KEY);
+        setSeenWelcome(v === '1');
+        setWelcomeReady(true);
+      }
+      const done = await getOnboardingComplete();
       setOnbComplete(done);
       setOnbReady(true);
-    });
+      setAccessReady(true);
+    })();
   }, []);
 
   useEffect(() => {
-    if (loading || !welcomeReady || !onbReady) return;
+    if (!session?.user?.id) {
+      setAccessGranted(true);
+      return;
+    }
+    void (async () => {
+      const done = isOnboardingCompleteCached() || (await getOnboardingComplete());
+      if (!done) {
+        setAccessGranted(true);
+        return;
+      }
+      try {
+        const access = await getInviteAccess();
+        setAccessGranted(access.accessGranted);
+      } catch {
+        setAccessGranted(true);
+      }
+    })();
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (loading || !welcomeReady || !onbReady || !accessReady) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
-    // Prefer the synchronous cache so the moment welcome-in sets the flag, the
-    // gate lets the person into the app instead of bouncing them back.
+    const inInviteAccess = segments[0] === 'invite-access';
+    if (segments[0] === 'q') return;
     const done = isOnboardingCompleteCached() || onbComplete;
 
-    // Demo mode: preview onboarding once (until the device flag is set), then
-    // jump straight into the app tabs (no real login).
     if (isDemoMode()) {
-      if (!done && !inOnboarding) {
+      const preview = getDevPreview();
+      // Dev preview: stay on CRT intro / sign-in or onboarding instead of Home.
+      if (preview === 'crt' && inAuthGroup) return;
+      if (preview === 'onboarding' && inOnboarding) return;
+
+      // In demo we trust the synchronous cache only, so the "onboard" bypass
+      // (which just reset the flag) starts the run instead of bouncing to Home.
+      const demoDone = isOnboardingCompleteCached();
+      if (!demoDone && !inOnboarding) {
         router.replace('/onboarding');
         return;
       }
-      if (done && (inAuthGroup || inOnboarding)) {
+      if (demoDone && !accessGranted && !inInviteAccess) {
+        router.replace('/invite-access');
+        return;
+      }
+      if (demoDone && accessGranted && inInviteAccess) {
+        router.replace('/home');
+        return;
+      }
+      if (demoDone && (inAuthGroup || inOnboarding)) {
         router.replace('/home');
       }
       return;
     }
 
     if (!session) {
-      // First open: send people into Welcome. Once they are already inside the
-      // auth group (Welcome → Create account → Sign in), leave them alone so we
-      // don't bounce them back mid-flow.
       if (!seenWelcome && !inAuthGroup) {
         router.replace('/welcome');
         return;
@@ -169,16 +261,56 @@ function useProtectedRoute() {
       return;
     }
 
-    // Signed in but hasn't finished onboarding -> send them through the front door.
     if (!done && !inOnboarding) {
       router.replace('/onboarding');
       return;
     }
-    // Signed in, onboarded, sitting on an auth/onboarding screen -> into the app.
-    if (done && (inAuthGroup || inOnboarding)) {
+    if (done && !accessGranted && !inInviteAccess) {
+      router.replace('/invite-access');
+      return;
+    }
+    if (done && accessGranted && inInviteAccess) {
+      router.replace('/home');
+      return;
+    }
+    if (done && accessGranted && (inAuthGroup || inOnboarding)) {
       router.replace('/home');
     }
-  }, [session, loading, segments, router, welcomeReady, seenWelcome, onbReady, onbComplete]);
+  }, [
+    session,
+    loading,
+    segments,
+    router,
+    welcomeReady,
+    seenWelcome,
+    onbReady,
+    onbComplete,
+    accessReady,
+    accessGranted
+  ]);
+}
+
+function AnalyticsSessionSync() {
+  const { user } = useAuth();
+  useEffect(() => {
+    void syncAnalyticsSession(user?.id ?? null);
+  }, [user?.id]);
+  return null;
+}
+
+// THIS SECTION DOES: once someone is signed in, if they arrived by opening a
+// friend's shared J-name link before making an account, connect them to that
+// friend now (then forget the link). No-op when there is nothing pending.
+function JnameReferralSync() {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user?.id) return;
+    void (async () => {
+      const token = await takePendingReferral();
+      if (token) await resolveJnameReferral({ token });
+    })();
+  }, [user?.id]);
+  return null;
 }
 
 function RootLayoutNav() {
@@ -188,13 +320,20 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {/* Restore this account's analytics choice (off until they opt in). */}
+      <AnalyticsSessionSync />
+      {/* Connect a fresh signup to the friend whose shared link brought them. */}
+      <JnameReferralSync />
+      {/* Mid-party capture nudges when Random update nudges are on. */}
+      <PartyCapturePromptSync />
       {/* Delight gifts mount above navigation so they can play on any screen. */}
       <DelightHost />
-      <View className="flex-1">
+      <View className={colorScheme === 'dark' ? 'dark flex-1' : 'flex-1'}>
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
+          <Stack.Screen name="invite-access" options={{ headerShown: false }} />
           <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="discover/connect-over" options={{ headerShown: false }} />
           <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
@@ -220,6 +359,8 @@ function RootLayoutNav() {
             name="quiz/[slug]"
             options={{ headerShown: false, presentation: 'fullScreenModal' }}
           />
+          {/* Public shared J-name result (opens in app if installed, else web). */}
+          <Stack.Screen name="q/[token]" options={{ headerShown: false }} />
           <Stack.Screen name="recap/index" options={{ headerShown: false }} />
           <Stack.Screen name="activity/index" options={{ headerShown: false }} />
           <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
@@ -251,18 +392,28 @@ function RootLayoutNav() {
 function BridgeIslandHost() {
   const pathname = usePathname();
   const router = useRouter();
+  const { session } = useAuth();
   const { enabled, status, line, setEnabled } = useBridgeLive();
   const { hearing, liveTranscript, cancelListening } = useBillyVoice();
 
   useEffect(() => {
+    // No session yet (Welcome / Sign in): Billy stays off. Don't call the API.
+    if (!session) {
+      setEnabled(false);
+      return;
+    }
     let cancelled = false;
-    void fetchAssistantSettings().then((s) => {
-      if (!cancelled) setEnabled(Boolean(s.assistantEnabled));
-    });
+    void fetchAssistantSettings()
+      .then((s) => {
+        if (!cancelled) setEnabled(Boolean(s.assistantEnabled));
+      })
+      .catch(() => {
+        if (!cancelled) setEnabled(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [setEnabled]);
+  }, [session, setEnabled]);
 
   const onHome =
     pathname === '/home' ||

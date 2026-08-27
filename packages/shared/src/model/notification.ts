@@ -11,6 +11,8 @@
 export type NotificationKind =
   | 'story_reply'
   | 'story_reply_elsewhere'
+  /** Opt-in: random "time to post" nudges, about 1–3 times a day */
+  | 'story_prompt'
   | 'connect_request'
   | 'mutual_connection'
   | 'touch_grass_signal'
@@ -27,11 +29,17 @@ export type NotificationKind =
   | 'event_introduction'
   | 'poll_activity'
   | 'quiz_share'
+  /** A friend opened your shared J-name quiz link */
+  | 'jname_link_opened'
+  /** A friend got a J-name that was in your top 3 picks */
+  | 'jname_top_match'
   | 'recap_reaction'
   | 'inside_joke'
   | 'message'
   | 'coop_announcement'
-  | 'activity_live';
+  | 'activity_live'
+  /** Optional gift delighter waiting to play (e.g. emoji bomb). */
+  | 'delight_gift';
 
 /** Opaque ids that deep-link a tap to the right screen. Only set what the kind needs. */
 export type NotificationTarget = {
@@ -106,9 +114,15 @@ export type NotificationKindPref = {
   section: string;
   /**
    * When set, turning this onboarding chip on enables this kind.
-   * Onboarding chips: close · birthdays · moments · events
+   * Onboarding chips: birthdays · life_updates · meet · activities · messages · reconnect
    */
-  onboardingGroup?: 'close' | 'birthdays' | 'moments' | 'events';
+  onboardingGroup?:
+    | 'birthdays'
+    | 'life_updates'
+    | 'meet'
+    | 'activities'
+    | 'messages'
+    | 'reconnect';
   /**
    * When true, push also requires the actor's circle toggle (Close / Friends /
    * Acquaintances). Co-op and similar system notes skip the circle check.
@@ -132,7 +146,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Replies to your update',
     description: 'Someone replied on your story',
     section: 'Updates & replies',
-    onboardingGroup: 'close',
+    onboardingGroup: 'life_updates',
     circleGated: true,
     homePreview: false,
     defaultOn: true
@@ -142,7 +156,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Replies to your comments',
     description: 'Someone replied where you left a comment or video',
     section: 'Updates & replies',
-    onboardingGroup: 'close',
+    onboardingGroup: 'life_updates',
     circleGated: true,
     homePreview: true,
     defaultOn: true
@@ -152,10 +166,20 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Recap reactions',
     description: 'Someone reacted to a weekly recap',
     section: 'Updates & replies',
-    onboardingGroup: 'close',
+    onboardingGroup: 'life_updates',
     circleGated: true,
     homePreview: true,
     defaultOn: true
+  },
+  {
+    kind: 'story_prompt',
+    label: 'Random update nudges',
+    description:
+      'Surprise taps about 1–3 times a day, including one mid-party nudge to capture mems when you are at an event',
+    section: 'Updates & replies',
+    circleGated: false,
+    homePreview: false,
+    defaultOn: false
   },
   // --- Birthdays & dates ---
   {
@@ -183,7 +207,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Check-in nudges',
     description: 'Occasional reminders to check in with someone (only you see these)',
     section: 'Birthdays & dates',
-    onboardingGroup: 'birthdays',
+    onboardingGroup: 'reconnect',
     circleGated: true,
     homePreview: true,
     defaultOn: true
@@ -194,7 +218,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Friends connecting through you',
     description: 'Two of your friends connected via you',
     section: 'Big moments',
-    onboardingGroup: 'moments',
+    onboardingGroup: 'meet',
     circleGated: false,
     homePreview: true,
     defaultOn: false
@@ -204,7 +228,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Inside jokes',
     description: 'Someone tagged you in a joke',
     section: 'Big moments',
-    onboardingGroup: 'moments',
+    onboardingGroup: 'life_updates',
     circleGated: true,
     homePreview: true,
     defaultOn: false
@@ -214,10 +238,20 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Weekly activities',
     description: 'A themed week goes live',
     section: 'Big moments',
-    onboardingGroup: 'moments',
+    onboardingGroup: 'activities',
     circleGated: false,
     homePreview: true,
     defaultOn: false
+  },
+  {
+    kind: 'delight_gift',
+    label: 'Surprises from friends',
+    description: 'A friend sent you a fun surprise (like an emoji bomb)',
+    section: 'Big moments',
+    onboardingGroup: 'life_updates',
+    circleGated: true,
+    homePreview: true,
+    defaultOn: true
   },
   // --- Events ---
   {
@@ -225,7 +259,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Event invites',
     description: "You're invited to an event",
     section: 'Events',
-    onboardingGroup: 'events',
+    onboardingGroup: 'activities',
     circleGated: true,
     homePreview: true,
     defaultOn: false
@@ -235,7 +269,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Event reminders',
     description: '2 days / 2 hours before something you are going to',
     section: 'Events',
-    onboardingGroup: 'events',
+    onboardingGroup: 'activities',
     circleGated: false,
     homePreview: true,
     defaultOn: false
@@ -245,7 +279,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'RSVP updates',
     description: 'Someone is going to an event you care about',
     section: 'Events',
-    onboardingGroup: 'events',
+    onboardingGroup: 'activities',
     circleGated: true,
     homePreview: true,
     defaultOn: false
@@ -255,7 +289,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Event assignments',
     description: "You're on an item, or an assignment changed",
     section: 'Events',
-    onboardingGroup: 'events',
+    onboardingGroup: 'activities',
     circleGated: false,
     homePreview: true,
     defaultOn: false
@@ -265,7 +299,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Event introductions',
     description: 'Someone at an event Bridger thinks you should meet',
     section: 'Events',
-    onboardingGroup: 'events',
+    onboardingGroup: 'meet',
     circleGated: false,
     homePreview: true,
     defaultOn: true
@@ -276,15 +310,17 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Touch Grass signals',
     description: 'A friend is free / touching grass',
     section: 'Also available',
+    onboardingGroup: 'activities',
     circleGated: true,
     homePreview: true,
     defaultOn: true
   },
   {
     kind: 'touch_grass_im_in',
-    label: "Touch Grass — I'm in",
+    label: "Touch Grass, I'm in",
     description: 'Someone said they are in on your signal',
     section: 'Also available',
+    onboardingGroup: 'activities',
     circleGated: true,
     homePreview: true,
     defaultOn: true
@@ -294,6 +330,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Connection requests',
     description: 'Someone wants to connect through a mutual',
     section: 'Also available',
+    onboardingGroup: 'meet',
     circleGated: false,
     homePreview: true,
     defaultOn: true
@@ -303,6 +340,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Messages',
     description: 'New chats in Bridger Messages',
     section: 'Also available',
+    onboardingGroup: 'messages',
     circleGated: true,
     homePreview: true,
     defaultOn: true
@@ -312,6 +350,7 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     label: 'Poll activity',
     description: 'A friend posted a poll or answered yours',
     section: 'Also available',
+    onboardingGroup: 'life_updates',
     circleGated: true,
     homePreview: true,
     defaultOn: true
@@ -320,6 +359,24 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     kind: 'quiz_share',
     label: 'Quizzes shared with you',
     description: 'A friend shared a quiz',
+    section: 'Also available',
+    circleGated: true,
+    homePreview: true,
+    defaultOn: true
+  },
+  {
+    kind: 'jname_link_opened',
+    label: 'Quiz link opens',
+    description: 'Someone opened the J-name quiz link you shared',
+    section: 'Also available',
+    circleGated: true,
+    homePreview: true,
+    defaultOn: true
+  },
+  {
+    kind: 'jname_top_match',
+    label: 'Friend matched your J pick',
+    description: 'A friend got a J-name that was in your top 3',
     section: 'Also available',
     circleGated: true,
     homePreview: true,
@@ -338,13 +395,15 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
 
 /** Coarse chips on the onboarding "What should we nudge you about?" step. */
 export const ONBOARDING_NOTIFICATION_GROUPS: Array<{
-  id: 'close' | 'birthdays' | 'moments' | 'events';
+  id: 'birthdays' | 'life_updates' | 'meet' | 'activities' | 'messages' | 'reconnect';
   label: string;
 }> = [
-  { id: 'close', label: "Close friends' updates" },
-  { id: 'birthdays', label: 'Birthdays & dates' },
-  { id: 'moments', label: 'Big moments' },
-  { id: 'events', label: 'Events' }
+  { id: 'birthdays', label: 'Birthdays' },
+  { id: 'life_updates', label: 'Life updates' },
+  { id: 'meet', label: 'Friends you should meet' },
+  { id: 'activities', label: 'Activities & Hangouts' },
+  { id: 'messages', label: 'Direct Messages' },
+  { id: 'reconnect', label: 'Reconnect reminders' }
 ];
 
 /** Full prefs blob stored for Settings + push gating. */
@@ -380,10 +439,14 @@ export const NOTIFICATION_PAGE_FILTERS: Array<{
 const KIND_TO_PAGE: Record<NotificationKind, NotificationPageFilter | null> = {
   story_reply: 'home',
   story_reply_elsewhere: 'home',
+  story_prompt: 'home',
   recap_reaction: 'home',
   poll_activity: 'home',
   activity_live: 'home',
+  delight_gift: 'home',
   quiz_share: 'home',
+  jname_link_opened: 'home',
+  jname_top_match: 'home',
   birthday: 'home',
   custom_date: 'home',
   friend_check_in: 'home',

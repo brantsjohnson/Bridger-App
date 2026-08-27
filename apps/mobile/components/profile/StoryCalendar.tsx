@@ -150,14 +150,28 @@ export function StoryCalendar({
       >
         {storage.plan === 'coop' ? (
           <>
-            <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-soft">
-              Storage
-            </Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-soft">
+                Storage
+              </Text>
+              <Text
+                className={cn(
+                  'font-sans-b text-[12px]',
+                  usedPct >= 100 ? 'text-coral' : 'text-ink-mute'
+                )}
+              >
+                {storage.usedPct}% used
+              </Text>
+            </View>
             <Text className="mt-1 font-sans-b text-[15px] text-ink">
-              Members keep everything
+              {storage.label || 'Co-op included storage'}
             </Text>
-            <Text className="mt-1 font-sans-md text-[12px] text-ink-mute">
-              No 30-day roll-off on your story media.
+            <View className="mt-2.5">
+              <StorageBar usedPct={usedPct} showMeta={false} />
+            </View>
+            <Text className="mt-2 font-sans-md text-[12px] text-ink-mute">
+              {storage.overagePriceLabel ??
+                'No 30-day roll-off. Overage is opt-in with price shown first.'}
             </Text>
           </>
         ) : (

@@ -26,7 +26,8 @@
     "openai": "^4.86.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
+    "@types/node": "^20.11.18",
+    "typescript": "~6.0.3",
     "vitest": "^2.1.0"
   }
 }

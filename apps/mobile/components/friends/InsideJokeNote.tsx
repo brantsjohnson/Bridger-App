@@ -8,10 +8,10 @@
 // ============================================
 import React, { useState } from 'react';
 import { Platform, Pressable, Text, View, type ViewStyle } from 'react-native';
+import { PlusIcon } from 'lucide-react-native';
 import type { InsideJoke } from '@bridger/shared';
 import {
   ACCENTS,
-  AnalyticsRegion,
   Avatar,
   cn,
   useThemeColors,
@@ -26,14 +26,16 @@ const FOLD = 22;
 export function InsideJokeNote({
   joke,
   index = 0,
-  analyticsId,
-  noteBodyAnalyticsId
+  analyticsId
 }: {
   joke: InsideJoke;
   index?: number;
   /** Interactive flip (tap → meta). */
   analyticsId?: string;
-  /** Dead-click target on the quote body. */
+  /**
+   * Callers may still pass this. The quote lives inside the flip button, so
+   * we cannot wrap it in a second Pressable (web forbids button-in-button).
+   */
   noteBodyAnalyticsId?: string;
 }) {
   const token = ACCENTS[joke.accent];
@@ -133,12 +135,17 @@ export function InsideJokeNote({
           </View>
         ) : (
           <>
-            {/* Quote body — measured as dead_click when someone taps expecting more */}
-            <AnalyticsRegion analyticsId={noteBodyAnalyticsId} interactive={false}>
-              <Text className={cn('font-sans-b text-[14px] leading-snug', token.text)}>
-                “{joke.text}”
-              </Text>
-            </AnalyticsRegion>
+            {/*
+              Quote is plain text, not AnalyticsRegion. That helper is a
+              Pressable, and nesting it here made web put <button> inside
+              <button>. The flip Pressable already records the tap.
+            */}
+            <Text
+              accessible={false}
+              className={cn('font-sans-b text-[14px] leading-snug', token.text)}
+            >
+              “{joke.text}”
+            </Text>
             <View className="mt-2.5 flex-row items-center gap-2 pr-5">
               {quoted ? (
                 <Avatar
@@ -204,7 +211,8 @@ export function AddNoteTile({
       )}
     >
       <View className="h-8 w-8 items-center justify-center rounded-full bg-purple">
-        <Text className="font-sans-b text-[18px] leading-none text-white">+</Text>
+        {/* Icon + (not a Text "+") so font metrics cannot shove it off-center. */}
+        <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
       </View>
       <Text className="text-center font-sans-b text-[13px] text-ink-soft">{label}</Text>
     </Pressable>

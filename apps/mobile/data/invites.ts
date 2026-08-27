@@ -12,6 +12,7 @@
 import * as Crypto from 'expo-crypto';
 import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
+import { bumpDemoFriendCount, markDemoJoinedViaInvite } from './access';
 
 export type InviteKind = 'link' | 'qr';
 
@@ -74,6 +75,11 @@ async function createDemoInvite(kind: InviteKind, ownerId: string): Promise<Invi
  */
 export async function createShareInvite(): Promise<InvitePayload> {
   if (isDemoMode()) {
+    const { getInviteAccess } = await import('./access');
+    const access = await getInviteAccess();
+    if (access.demoWeekActive && !access.canInvite) {
+      throw new Error('Invites are paused during the demo.');
+    }
     return createDemoInvite('link', 'me');
   }
   const res = await apiFetch<{ token: string; url: string }>(
@@ -158,6 +164,8 @@ export async function redeemInvite(
     }
     // One-shot QR tokens, matching live delete-on-redeem.
     if (row.kind === 'qr') demoInvites.delete(token);
+    await markDemoJoinedViaInvite();
+    await bumpDemoFriendCount();
     return { personId: row.ownerId, method: kind };
   }
 

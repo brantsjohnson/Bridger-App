@@ -5,6 +5,7 @@
 // co-op Greatest hits. The page is composed from attributes; this file
 // is the typed "view model" both own and friend profiles share.
 // ============================================
+import type { MusicPlayable } from './music';
 import { Tier } from './tier';
 
 /** Analytics + ModuleFlow ids for every fill-out module (PROFILE-MODULES.md). */
@@ -63,6 +64,8 @@ export interface ObsessionSquare {
   order: number;
   visibleToTier: Tier;
   matchable?: boolean;
+  /** When prompt is Listening…, optional catalog fields for preview / open. */
+  music?: MusicPlayable;
 }
 
 /** One About-me field on the expanded grid. */
@@ -89,9 +92,13 @@ export interface FavoriteModule {
 /** Co-op Greatest hits photo block, insertable between sections. */
 export interface PhotoBlock {
   id: string;
+  /** media row id (Bridger-hosted only) */
   assetId: string;
+  /** short-lived signed URL for display (server fills; never store long-term) */
+  url?: string;
   /** which movable module this sits after (layout slot) */
   afterModule?: string;
+  /** placement index 0..2 (max three slots) */
   order: number;
   visibleToTier: Tier;
 }

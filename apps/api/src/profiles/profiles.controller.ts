@@ -8,8 +8,13 @@
 //   PATCH /me/profile           - save any of those (partial save).
 //   GET  /me/settings           - your switches (discoverable, meet scope,
 //                                 home city, notification prefs, onboarded?).
-//   PATCH /me/settings          - save meet scope / home city / discoverable.
+//   PATCH /me/settings          - save meet scope / home city / discoverable /
+//                                 always-view-original.
+//   PATCH /me/settings/presentation - co-op Theme + Layout skin (or clear).
 //   PATCH /me/notification-prefs- save which nudges you want (onboarding step).
+//   GET  /me/greatest-hits      - your co-op Greatest hits slots (≤3).
+//   PUT  /me/greatest-hits      - replace slots (co-op only).
+//   DELETE /me/greatest-hits/:id- remove one slot + its media (co-op only).
 //   GET  /people/:id/profile    - another person's card, filtered to only what
 //                                 your tier is allowed to see (and nothing if
 //                                 either of you blocked the other).
@@ -17,25 +22,29 @@
 // STORAGE NOTE: name + avatar live on `user_identity`; city + switches live on
 // `user_settings`; bio and the "currently" song/book are stored as `attributes`
 // under fixed keys (bio, currently_song, currently_book) so they carry their
-// own visibility like every other fact.
+// own visibility like every other fact. Greatest hits live in
+// `profile_greatest_hits` (Bridger-hosted media only).
 // ============================================
 import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
+  Put,
   UseGuards
 } from '@nestjs/common';
-import type { Json } from '@bridger/shared';
+import type { Json, Tier } from '@bridger/shared';
+import { normalizeProfilePresentation } from '@bridger/shared';
 import { AssistantGateService } from '../assistant/assistant-gate.service';
+import { BillyBillingService } from '../assistant/billy-billing.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
 import { RequireCoopMemberGuard } from '../coop/require-coop-member.guard';
 import { SupabaseService } from '../supabase/supabase.service';
-
-type Tier = 'none' | 'acquaintance' | 'friend' | 'close';
+import { GreatestHitsService } from './greatest-hits.service';
 
 /** Tier strength, so "can this viewer see a friend-level fact?" is one compare. */
 const TIER_RANK: Record<Tier, number> = {
@@ -45,25 +54,50 @@ const TIER_RANK: Record<Tier, number> = {
   close: 3
 };
 
-/** Presentation is token-only so custom pages cannot inject CSS or unsafe URLs. */
-const PROFILE_ACCENTS = new Set([
-  'purple',
-  'coral',
-  'teal',
-  'amber',
-  'pink',
-  'blue',
-  'green'
-]);
-const PROFILE_BACKGROUNDS = new Set(['default', 'eggshell', 'ink', 'grid']);
-
 @Controller()
 @UseGuards(SupabaseAuthGuard)
 export class ProfilesController {
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly assistantGate: AssistantGateService
+    private readonly assistantGate: AssistantGateService,
+    private readonly billyBilling: BillyBillingService,
+    private readonly greatestHits: GreatestHitsService
   ) {}
+
+  // --- READ your Greatest hits (co-op slots; empty if none) ---
+  @Get('me/greatest-hits')
+  async getMyGreatestHits(@CurrentUser() user: AuthUser) {
+    return this.greatestHits.listMine(user.id);
+  }
+
+  // --- REPLACE Greatest hits (co-op only; ≤3 Bridger-hosted photos) ---
+  @Put('me/greatest-hits')
+  @UseGuards(RequireCoopMemberGuard)
+  async putMyGreatestHits(
+    @CurrentUser() user: AuthUser,
+    @Body()
+    body: {
+      slots?: Array<{
+        mediaId: string;
+        placementIndex: number;
+        afterModule?: string | null;
+        visibleToTier?: Tier;
+      }>;
+    }
+  ) {
+    return this.greatestHits.replaceMine(user.id, body?.slots ?? []);
+  }
+
+  // --- REMOVE one Greatest hits slot (and its media) ---
+  @Delete('me/greatest-hits/:id')
+  @UseGuards(RequireCoopMemberGuard)
+  async deleteMyGreatestHit(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string
+  ) {
+    await this.greatestHits.removeMine(user.id, id);
+    return { ok: true };
+  }
 
   // --- READ your own card header ---
   @Get('me/profile')
@@ -136,12 +170,20 @@ export class ProfilesController {
     const { data } = await this.supabase.admin
       .from('user_settings')
       .select(
-        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation, assistant_enabled'
+        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins'
       )
       .eq('user_id', user.id)
       .maybeSingle();
 
     const assistant = await this.assistantGate.visibility(user.id);
+
+    // Normalize older accent/background-only saves into the Phase B shape.
+    const rawPresentation = data?.profile_presentation ?? null;
+    const normalized = normalizeProfilePresentation(rawPresentation);
+    const profilePresentation =
+      normalized.ok && normalized.value !== null
+        ? normalized.value
+        : rawPresentation;
 
     return {
       discoverable: data?.discoverable ?? true,
@@ -149,10 +191,14 @@ export class ProfilesController {
       homeCity: data?.home_city ?? '',
       notifPrefs: data?.notif_prefs ?? {},
       onboardingComplete: data?.onboarding_complete ?? false,
-      profilePresentation: data?.profile_presentation ?? null,
+      profilePresentation,
+      alwaysViewOriginal: data?.always_view_original ?? false,
       assistantEnabled: assistant.assistantEnabled,
       assistantEligible: assistant.assistantEligible,
-      assistantVisible: assistant.assistantVisible
+      assistantVisible: assistant.assistantVisible,
+      delightOptIns: Array.isArray(data?.delight_opt_ins)
+        ? data.delight_opt_ins
+        : []
     };
   }
 
@@ -166,12 +212,19 @@ export class ProfilesController {
       homeCity?: string;
       discoverable?: boolean;
       assistantEnabled?: boolean;
+      /** Standing preference: always render others' profiles as original. */
+      alwaysViewOriginal?: boolean;
+      /** Opt-in standalone delighter slugs. */
+      delightOptIns?: string[];
     }
   ) {
     const patch: Record<string, unknown> = { user_id: user.id };
     if (body?.meetScope) patch.meet_scope = body.meetScope;
     if (typeof body?.homeCity === 'string') patch.home_city = body.homeCity.trim();
     if (typeof body?.discoverable === 'boolean') patch.discoverable = body.discoverable;
+    if (typeof body?.alwaysViewOriginal === 'boolean') {
+      patch.always_view_original = body.alwaysViewOriginal;
+    }
     if (typeof body?.assistantEnabled === 'boolean') {
       // Only eligible users may turn Assistant on.
       if (body.assistantEnabled && !(await this.assistantGate.isEligible(user.id))) {
@@ -179,35 +232,60 @@ export class ProfilesController {
       }
       patch.assistant_enabled = body.assistantEnabled;
     }
+    if (Array.isArray(body?.delightOptIns)) {
+      // Keep only slugs that are live opt-in standalones.
+      const { data: allowed, error: aErr } = await this.supabase.admin
+        .from('delights')
+        .select('slug')
+        .eq('status', 'live')
+        .eq('kind', 'standalone')
+        .eq('scope', 'opt-in')
+        .eq('enabled', true);
+      if (aErr) throw aErr;
+      const allow = new Set(
+        (allowed ?? []).map((d) => d.slug).filter((s): s is string => !!s)
+      );
+      patch.delight_opt_ins = body.delightOptIns
+        .filter((s) => typeof s === 'string' && allow.has(s))
+        .slice(0, 40);
+    }
 
     const { error } = await this.supabase.admin
       .from('user_settings')
       // Cast: the patch is built dynamically from optional fields.
       .upsert(patch as never, { onConflict: 'user_id' });
     if (error) throw error;
+    // THIS SECTION DOES: start Billy taste allowance when they turn Billy on.
+    if (body?.assistantEnabled === true) {
+      await this.billyBilling.ensureTasteSubscription(user.id);
+    }
     return { ok: true };
   }
 
-  // --- CO-OP CUSTOMIZE: save approved presentation tokens, or clear to original. ---
+  // --- CO-OP CUSTOMIZE: save Theme + Layout presentation, or clear to original. ---
+  // SECURITY: token/allowlist only. Code-tier CSS/HTML columns stay null (flag OFF).
   @Patch('me/settings/presentation')
   @UseGuards(RequireCoopMemberGuard)
   async patchPresentation(
     @CurrentUser() user: AuthUser,
     @Body()
     body: {
-      presentation?: { accent?: string; background?: string } | null;
+      presentation?: unknown | null;
     }
   ) {
+    // null = clear to original; object = Theme + Layout; missing body is invalid.
+    if (!('presentation' in (body ?? {}))) {
+      throw new BadRequestException('presentation is required (object or null)');
+    }
     const presentation = body?.presentation;
     let stored: Json | null = null;
 
     if (presentation !== null) {
-      const accent = presentation?.accent ?? 'purple';
-      const background = presentation?.background ?? 'default';
-      if (!PROFILE_ACCENTS.has(accent) || !PROFILE_BACKGROUNDS.has(background)) {
-        throw new BadRequestException('Choose an approved profile style');
+      const normalized = normalizeProfilePresentation(presentation);
+      if (!normalized.ok) {
+        throw new BadRequestException(normalized.error);
       }
-      stored = { accent, background };
+      stored = (normalized.value ?? null) as Json | null;
     }
 
     const { error } = await this.supabase.admin
@@ -291,6 +369,13 @@ export class ProfilesController {
       return need !== 'none' && rank >= TIER_RANK[need];
     });
 
+    // THIS SECTION DOES: attach tier-visible Greatest hits for the friend card.
+    const greatestHits = await this.greatestHits.listForViewer(
+      ownerId,
+      viewer.id,
+      viewerTier
+    );
+
     return {
       id: ownerId,
       name: identity?.display_name ?? '',
@@ -304,7 +389,8 @@ export class ProfilesController {
         visibleToTier: a.visible_to_tier,
         matchable: a.matchable,
         updatedAt: a.updated_at
-      }))
+      })),
+      greatestHits
     };
   }
 

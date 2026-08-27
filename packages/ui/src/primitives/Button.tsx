@@ -110,8 +110,13 @@ export function ButtonSecondary({
   accessibilityLabel,
   analyticsId,
   interactive = true,
-  analyticsProps
-}: ButtonProps & { tone?: 'outline' | 'solid' | 'ghost' | 'positive' | 'light' | 'destructive' }) {
+  analyticsProps,
+  /** Ghost on a pastel onboarding wash — label stays dark in dark mode. */
+  onColorWash = false
+}: ButtonProps & {
+  tone?: 'outline' | 'solid' | 'ghost' | 'positive' | 'light' | 'destructive';
+  onColorWash?: boolean;
+}) {
   const inert = disabled || loading;
   const c = useThemeColors();
 
@@ -138,7 +143,9 @@ export function ButtonSecondary({
         ? 'text-coral'
         : tone === 'light'
           ? 'text-[#1C1B16]'
-          : 'text-ink';
+          : tone === 'ghost' && onColorWash
+            ? 'text-onaccent/75'
+            : 'text-ink';
   const spinnerColor =
     tone === 'solid' || tone === 'positive'
       ? '#FFFFFF'

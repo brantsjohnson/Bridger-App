@@ -72,6 +72,11 @@ export default function MessagesScreen() {
       <ScreenHeader
         title="Messages"
         analyticsSurface="messages"
+        // Messages now opens from the header shortcut, so give it a way back.
+        onBack={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/home');
+        }}
         trailing={
           <Pressable
             onPress={withAnalyticsPress(MESSAGES.top_nav.new_message, () =>
@@ -79,9 +84,9 @@ export default function MessagesScreen() {
             )}
             accessibilityRole="button"
             accessibilityLabel="New message"
-            className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:bg-[#F1ECFF]"
+            className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-80"
           >
-            <SquarePenIcon size={18} color={c.ink} strokeWidth={2.2} />
+            <SquarePenIcon size={18} color={c.canvas} strokeWidth={2.2} />
           </Pressable>
         }
       />

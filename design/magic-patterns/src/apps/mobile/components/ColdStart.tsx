@@ -1,4 +1,3 @@
-import React from 'react';
 import { LinkIcon, QrCodeIcon, ScanLineIcon } from 'lucide-react';
 import { ButtonSecondary, Card, PixelHeading } from '../../../packages/ui';
 

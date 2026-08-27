@@ -30,7 +30,7 @@ When in doubt: fewer words.
 
 ## Navigation
 
-- **Floating tab bar** — a **detached, rounded pill** (inset from the bottom edge with margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Messages · Events · Discover. Active = filled circle in that tab's color (**Home teal · Friends coral · Messages blue · Events touch-grass green · Discover amber**); inactive = muted icon. A small **matching-color dot** marks a tab with something new. Not a full-width bottom bar flush to the edge. **Hidden on your own Profile** (Profile opens from the header photo, so nothing in the pill would be selected).
+- **Floating tab bar** — a **detached, elongated capsule** (inset from the edges with a little margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Events · Discover · News. Active = filled **elongated pill** in that tab's color (**Home teal · Friends coral · Events touch-grass green · Discover amber · News purple**); inactive = muted icon. A small **matching-color dot** marks a tab with something new. Not a flush full-width bar. **Hidden on your own Profile** (Profile opens from the header photo, so nothing in the pill would be selected).
 - **Header:** pixel screen title on the left. **Top-right slot is your profile photo circle** — tap opens Profile (Profile is not in the floating pill). **No notification bell** — notifications live in the feed + a dedicated page (below).
 
 ---
@@ -46,7 +46,14 @@ One line each; keep them dumb and reusable.
 | `MultiSelectTiles` | tappable icon/image tiles, multi-select with checks |
 | `VisibilityReviewRow` | answer + per-row audience (All/Close/Friends) + set-all |
 | `MeetLocationStep` | friends-of-friends promise + nearby/anywhere + city-only input |
-| `ProfileCustomizeEditor` | co-op: background + vibe colors + core widgets locked in order with add-widget insert slots (see `PROFILE-CUSTOMIZATION.md`) |
+| `ProfileCustomizeEditor` | co-op: Theme + Layout anchored header + movable modules (not a fixed skeleton); see `PROFILE-CUSTOMIZATION.md` |
+| `AgentWidget` | Home Billy entry: compact chat/voice widget under Stories for opted-in users (`AGENT.md`; design in `design/magic-patterns/.../assistant/`) |
+| `AgentScreen` | Full-screen Billy session from Settings or expanding the widget (`AGENT.md`) |
+| `AgentIsland` | Compact live Billy session when the user leaves Home mid-conversation (`AGENT.md`) |
+| `DraftPreview` | Inline artifact card for message drafts (incl. scheduled) filling live before confirm (`AGENT.md` / `AGENT-SCOPE.md`) |
+| `EventPreviewCard` | One fixed event-template preview before Billy `draft_event` opens create-event (`AGENT.md`) |
+| `BridgeMark` | Small Billy brand mark for widget/island chrome (`AGENT.md`) |
+| `VoiceWave` | Voice-activity waveform for Billy listen/speak states (`AGENT.md`) |
 | `ViewOriginalToggle` | persistent control to view a customized profile's default page |
 | `ButtonPrimary` | metallic beveled CTA |
 | `ButtonSecondary` | flat pill, hairline border |
@@ -98,6 +105,7 @@ One line each; keep them dumb and reusable.
 | `RecapPlayer` | audio player; speaker photo + name pop-up, current question, progress dots (see `RECAP-PODCAST.md`) |
 | `RecapRecorder` | record audio answers to 5 questions, pick audience, post |
 | `NetworkMap` | clean node/edge friend map (neoclassical) |
+| `LocalMapTeaser` | Discover dormant "Local map · Coming soon" friend-radar preview under People to meet |
 | `TravelMap` | places-traveled two-view: stylized SVG world (country fills + coral pins at lat/lng) + swipe to scrollable list; co-op photos per place (see `PROFILE.md`) |
 | `SharedPlacePhotos` | in-common: a shared place with both people's photos side by side (co-op) |
 | `ThisOrThatColumns` | two columns in rows; chosen side highlighted, other dimmed; tappable; A/B/**both** |
@@ -106,6 +114,8 @@ One line each; keep them dumb and reusable.
 | `SuggestionCard` | leads with shared thread (headline) + name (subtitle) + mutual as connection ("you both know {friend}") + shared chips + interest color; marked as Bridger's pick; spotlight variant for top match (see `DISCOVER.md`) |
 | `RevealProgressBars` | 3 story-style segments for the connection reveal |
 | `EmptyState` | icon + short line + action |
+
+**Delighters (optional fun):** there is no Magic Patterns delight kit yet. Code lives under `apps/mobile/delight/` (`effects/` for reusable motion, `plugins/` for host-mounted surprises). See `DELIGHT.md` + `apps/mobile/delight/CATALOG.md`. Do not invent delighter UI inside random feature folders.
 
 ---
 

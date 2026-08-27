@@ -159,7 +159,7 @@ export default function CoopCostScreen() {
 
         <SectionTitle
           title="Sustainability simulator"
-          description="Play with member count, dues, and usage to see break-even. Default dues are $24/year. This is a planning tool, not a vote."
+          description="Play with member count, dues, and usage to see break-even. Default dues are $72/year. This is a planning tool, not a vote."
           infoAnalyticsId={COOP.cost.sim_info}
           parentScreen="coop"
           section="cost"

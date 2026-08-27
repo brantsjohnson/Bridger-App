@@ -18,6 +18,7 @@ import { buildCostLogEntry, type AiCostLogEntry } from './cost-log';
 import { contentHash } from './idempotency';
 import { callAnthropic } from './providers/anthropic';
 import { callOpenAiEmbed } from './providers/openai-embed';
+import { classifyProviderError } from './provider-errors';
 import { callSpeechToText } from './providers/stt';
 import { ScrubError, scrubPayload } from './scrub';
 import { validateJobOutput } from './validate-output';
@@ -225,10 +226,18 @@ async function runLlm(
         contentHash: hash,
         cost
       };
-    } catch {
+    } catch (err) {
       anthropicBreaker.recordFailure();
+      const classified = classifyProviderError(err);
+      if (attempt === 0 && classified.kind === 'other') continue;
+      if (classified.kind === 'rate_limit' || classified.kind === 'billing') {
+        return {
+          status: 'fail_silent',
+          reason: `provider_failed:${classified.kind}`
+        };
+      }
       if (attempt === 0) continue;
-      return { status: 'fail_silent', reason: 'provider_failed' };
+      return { status: 'fail_silent', reason: 'provider_failed:other' };
     }
   }
 

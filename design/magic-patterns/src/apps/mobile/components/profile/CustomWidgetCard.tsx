@@ -1,4 +1,3 @@
-import React from 'react';
 import { LinkIcon } from 'lucide-react';
 import { CustomWidget } from '../../../../packages/shared';
 import { ACCENTS, cn } from '../../../../packages/ui';

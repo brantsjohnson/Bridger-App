@@ -10,7 +10,7 @@
 // PRIVACY: place is coarse only; analytics never gets place text or names.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { XIcon } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +31,7 @@ import { RevealOrbs } from '../../components/reveal/RevealOrbs';
 import { RevealProgressBars } from '../../components/reveal/RevealProgressBars';
 import { useReveal } from '../../hooks/useReveal';
 import { personExists } from '../../data/people';
+import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { reportNotFoundHit } from '../../lib/route-trail';
 
 type Frame = 'met' | 'strongest' | 'others' | 'close';
@@ -43,6 +44,9 @@ const REVEAL_MUTE = 'rgba(245, 240, 230, 0.55)';
 export default function RevealRoute() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: windowW } = useWindowDimensions();
+  // Meet screen: a large real photo, sized to the window so it stays big on phone and web.
+  const meetFace = Math.round(Math.min(200, Math.max(156, windowW * 0.46)));
   const params = useLocalSearchParams<{ id: string; via?: string }>();
   const personId = typeof params.id === 'string' ? params.id : 'nour';
   const viaId = typeof params.via === 'string' ? params.via : undefined;
@@ -170,7 +174,13 @@ export default function RevealRoute() {
         {isStory ? (
           <View className="flex-row items-center gap-3 px-5">
             <View className="flex-1">
-              <RevealProgressBars active={progressActive} />
+              <RevealProgressBars
+                active={progressActive}
+                onComplete={() => {
+                  if (frame === 'close') return;
+                  void advance();
+                }}
+              />
             </View>
             <Pressable
               onPress={withAnalyticsPress(REVEAL.flow.close, goSeeProfile)}
@@ -186,8 +196,9 @@ export default function RevealRoute() {
         ) : null}
 
         <ScreenBody className="pb-4 pt-6">
-          {/* via chip — who connects you */}
-          {viaName ? (
+          {/* THIS SECTION DOES: How-you-met keeps via + a large real photo +
+              their name. The Venn screen hides all of this so the circles lead. */}
+          {frame !== 'strongest' && viaName ? (
             <Text
               className="mb-3 text-center font-sans-md text-[13px]"
               style={{ color: REVEAL_MUTE }}
@@ -196,26 +207,46 @@ export default function RevealRoute() {
             </Text>
           ) : null}
 
-          <View className="items-center">
-            <Avatar
-              name={payload.person.name}
-              emoji={payload.person.emoji}
-              accent={payload.person.accent}
-              personId={payload.person.id}
-              size="xl"
-            />
-            <Text
-              className="mt-4 text-center font-pixel text-[21px] leading-[25px]"
-              style={{ color: REVEAL_FG }}
-            >
-              {payload.person.name}
-            </Text>
-          </View>
+          {frame === 'met' ? (
+            <View className="items-center">
+              <Avatar
+                name={payload.person.name}
+                emoji={payload.person.emoji}
+                accent={payload.person.accent}
+                personId={payload.person.id}
+                photo={getProfilePhoto(payload.person.id)}
+                diameter={meetFace}
+              />
+              <Text
+                className="mt-4 text-center font-pixel text-[21px] leading-[25px]"
+                style={{ color: REVEAL_FG }}
+              >
+                {payload.person.name}
+              </Text>
+            </View>
+          ) : frame !== 'strongest' ? (
+            <View className="items-center">
+              <Avatar
+                name={payload.person.name}
+                emoji={payload.person.emoji}
+                accent={payload.person.accent}
+                personId={payload.person.id}
+                photo={getProfilePhoto(payload.person.id)}
+                size="xl"
+              />
+              <Text
+                className="mt-4 text-center font-pixel text-[21px] leading-[25px]"
+                style={{ color: REVEAL_FG }}
+              >
+                {payload.person.name}
+              </Text>
+            </View>
+          ) : null}
 
           {frame === 'met' ? (
-            <View className="mt-8">
+            <View className="mt-7">
               <Text
-                className="mb-4 text-center font-pixel text-[21px] leading-[25px]"
+                className="mb-5 text-center font-pixel text-[32px] leading-[36px]"
                 style={{ color: REVEAL_FG }}
               >
                 How did you two meet?
@@ -305,23 +336,15 @@ export default function RevealRoute() {
 
         <View className="px-5" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
           {frame === 'met' ? (
-            <>
-              <ButtonPrimary
-                full
-                disabled={!canContinue}
-                analyticsId={REVEAL.flow.continue}
-                onPress={() => void advance()}
-                accessibilityLabel="Continue"
-              >
-                Continue
-              </ButtonPrimary>
-              <Text
-                className="mt-2 text-center font-sans-md text-[12px]"
-                style={{ color: REVEAL_MUTE }}
-              >
-                next · what you have in common
-              </Text>
-            </>
+            <ButtonPrimary
+              full
+              disabled={!canContinue}
+              analyticsId={REVEAL.flow.continue}
+              onPress={() => void advance()}
+              accessibilityLabel="Continue"
+            >
+              Continue
+            </ButtonPrimary>
           ) : frame === 'close' ? (
             <ButtonPrimary
               full

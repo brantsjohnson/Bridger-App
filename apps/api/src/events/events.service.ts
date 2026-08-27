@@ -5,7 +5,9 @@
 // and FoF invite suggestions stay empty until matching ships.
 //
 // SECURITY: service-role bypasses RLS — every read re-checks host / co-host /
-// invite. Caps: free 35, co-op 100. Hosting is never paywalled.
+// invite. Shared-link viewers without an invite get a basics-only outsider
+// payload (no guest list). They may RSVP only when allow_friends_invite is on.
+// Caps: free 35, co-op 100. Hosting is never paywalled.
 // PRIVACY: address only for host/co-host/invitees; allergies host-only;
 // chip-in is a plain handle we never process (PAYMENT: peer-to-peer only).
 // ============================================
@@ -20,8 +22,13 @@ import type {
   Cover,
   EventAssignment,
   EventItem,
+  EventRecurrence,
   EventRole,
   MeetSuggestion
+} from '@bridger/shared';
+import {
+  formatRecurrenceLabel,
+  normalizeRecurrence
 } from '@bridger/shared';
 import { accentForId, isBlocked } from '../common/visibility';
 import { CoopService } from '../coop/coop.service';
@@ -63,6 +70,7 @@ type EventRow = {
   allow_friends_invite: boolean;
   cap: number;
   cover: CoverStored | null;
+  recurrence: EventRecurrence | null;
   created_at: string;
 };
 
@@ -71,6 +79,8 @@ type InviteRow = {
   event_id: string;
   user_id: string;
   status: 'going' | 'cant' | 'invited';
+  /** Null = host invited; else the attendee who invited this guest. */
+  invited_by: string | null;
   allergies_optin: boolean;
   allergies_text: string | null;
 };
@@ -101,6 +111,8 @@ export type CreateEventBody = {
   chipInNote?: string;
   cover?: Cover | { kind: 'photo'; mediaId: string; bannerText?: string };
   assignments?: Array<{ label: string } | EventAssignment>;
+  /** Optional repeat rule. Null/omit = one-off. */
+  recurrence?: EventRecurrence | null;
 };
 
 export type PatchEventBody = {
@@ -118,6 +130,7 @@ export type PatchEventBody = {
   allowFriendsToInvite?: boolean;
   cap?: number;
   coHostIds?: string[];
+  recurrence?: EventRecurrence | null;
 };
 
 @Injectable()
@@ -282,8 +295,50 @@ export class EventsService {
     invite: InviteRow | undefined
   ): EventRole {
     if (this.isEditor(event, userId)) return 'host';
-    if (invite?.status === 'going') return 'going';
+    if (!invite) return 'outsider';
+    if (invite.status === 'going') return 'going';
     return 'invited';
+  }
+
+  /**
+   * Shared-link viewer who is not on the invite list. Basics only — never
+   * goingIds, address, assignments, or chip-in handles. They can RSVP Going
+   * only when allow_friends_invite is on.
+   */
+  private async toOutsiderDto(event: EventRow): Promise<EventItem> {
+    const { day, time } = this.formatDayTime(event.starts_at);
+    const cover = await this.toCoverDto(event.cover);
+    const emoji =
+      cover?.kind === 'emoji' ? cover.value : cover?.kind === 'photo' ? '📸' : '🎉';
+
+    return {
+      id: event.id,
+      title: event.title,
+      emoji,
+      cover,
+      accent: accentForId(event.id),
+      day,
+      time,
+      place: event.place ?? '',
+      goingIds: [],
+      hostId: event.host_id,
+      coHostIds: event.co_host_ids?.length ? event.co_host_ids : undefined,
+      role: 'outsider',
+      isOutsider: true,
+      going: false,
+      countdown: this.countdownLabel(event.starts_at),
+      startsAt: event.starts_at ? new Date(event.starts_at).getTime() : undefined,
+      bio: event.bio ?? undefined,
+      allowFriendsToInvite: event.allow_friends_invite,
+      cap: event.cap,
+      recurrence: event.recurrence ?? undefined,
+      recurrenceLabel: event.recurrence
+        ? formatRecurrenceLabel(
+            event.recurrence,
+            event.starts_at ? new Date(event.starts_at) : undefined
+          )
+        : undefined
+    };
   }
 
   private async toEventDto(
@@ -294,8 +349,9 @@ export class EventsService {
   ): Promise<EventItem> {
     const myInvite = invites.find((i) => i.user_id === viewerId);
     const editor = this.isEditor(event, viewerId);
+    // Shared link: not on the list → basics-only outsider payload (never 403).
     if (!editor && !myInvite) {
-      throw new ForbiddenException('Not allowed');
+      return this.toOutsiderDto(event);
     }
 
     const goingIds = invites
@@ -331,9 +387,19 @@ export class EventsService {
             .filter((i) => i.user_id !== event.host_id)
             .map((i) => i.user_id)
         : undefined,
+      // Host-only: who invited each guest (omit host-invited people).
+      inviteByIds: editor
+        ? invites.reduce<Record<string, string>>((acc, i) => {
+            if (i.invited_by && i.user_id !== event.host_id) {
+              acc[i.user_id] = i.invited_by;
+            }
+            return acc;
+          }, {})
+        : undefined,
       hostId: event.host_id,
       coHostIds: event.co_host_ids?.length ? event.co_host_ids : undefined,
       role,
+      isOutsider: false,
       going: role === 'going' || role === 'host',
       countdown: this.countdownLabel(event.starts_at),
       startsAt: event.starts_at ? new Date(event.starts_at).getTime() : undefined,
@@ -346,8 +412,29 @@ export class EventsService {
         label: a.label,
         assigneeId: a.assignee_id ?? undefined,
         done: a.done
-      }))
+      })),
+      recurrence: event.recurrence ?? undefined,
+      recurrenceLabel: event.recurrence
+        ? formatRecurrenceLabel(
+            event.recurrence,
+            event.starts_at ? new Date(event.starts_at) : undefined
+          )
+        : undefined
     };
+  }
+
+  /** Validate and normalize a recurrence payload, or null to clear. */
+  private parseRecurrence(
+    raw: EventRecurrence | null | undefined
+  ): EventRecurrence | null {
+    if (raw == null) return null;
+    try {
+      return normalizeRecurrence(raw);
+    } catch (e) {
+      throw new BadRequestException(
+        e instanceof Error ? e.message : 'Invalid recurrence'
+      );
+    }
   }
 
   private async loadBundle(eventId: string): Promise<{
@@ -358,7 +445,7 @@ export class EventsService {
     const { data: event, error } = await this.supabase.admin
       .from('events')
       .select(
-        'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, created_at'
+        'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, recurrence, created_at'
       )
       .eq('id', eventId)
       .maybeSingle();
@@ -367,7 +454,9 @@ export class EventsService {
 
     const { data: invites, error: iErr } = await this.supabase.admin
       .from('event_invites')
-      .select('id, event_id, user_id, status, allergies_optin, allergies_text')
+      .select(
+        'id, event_id, user_id, status, invited_by, allergies_optin, allergies_text'
+      )
       .eq('event_id', eventId);
     if (iErr) throw iErr;
 
@@ -435,7 +524,7 @@ export class EventsService {
     const { data: events, error } = await this.supabase.admin
       .from('events')
       .select(
-        'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, created_at'
+        'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, recurrence, created_at'
       )
       .in('id', ids)
       .order('starts_at', { ascending: true, nullsFirst: false });
@@ -454,6 +543,30 @@ export class EventsService {
       );
     }
     return out;
+  }
+
+  /**
+   * Upcoming on a profile (PROFILE.md §6).
+   * Own page (subject === viewer): events the viewer is hosting or going to.
+   * Friend page: events the *viewer* is invited to where the subject is
+   * hosting or going. Never invents guest totals.
+   */
+  async listUpcomingWithPerson(
+    viewerId: string,
+    subjectId: string
+  ): Promise<EventItem[]> {
+    const all = await this.list(viewerId);
+    const isSelf = viewerId === subjectId;
+
+    return all.filter((e) => {
+      if (isSelf) {
+        return e.role === 'host' || e.role === 'going';
+      }
+      // Viewer must already be on the event (list only returns those).
+      const subjectHosting = e.hostId === subjectId;
+      const subjectGoing = e.goingIds.includes(subjectId);
+      return subjectHosting || subjectGoing;
+    });
   }
 
   // --- create ---
@@ -519,6 +632,7 @@ export class EventsService {
     }
 
     const chipIn = this.toChipInJson(body);
+    const recurrence = this.parseRecurrence(body.recurrence);
 
     const { data: event, error } = await this.supabase.admin
       .from('events')
@@ -533,24 +647,38 @@ export class EventsService {
         chip_in: chipIn as never,
         allow_friends_invite: !!body.allowFriendsToInvite,
         cap,
-        cover: cover as never
+        cover: cover as never,
+        recurrence: recurrence as never
       })
       .select(
-        'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, created_at'
+        'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, recurrence, created_at'
       )
       .single();
     if (error) throw error;
 
-    // Host as going so list queries are uniform.
+    // Host as going so list queries are uniform. invited_by null = host invite.
     const inviteRows: Array<{
       event_id: string;
       user_id: string;
       status: 'going' | 'invited';
-    }> = [{ event_id: event.id, user_id: userId, status: 'going' }];
+      invited_by: string | null;
+    }> = [
+      {
+        event_id: event.id,
+        user_id: userId,
+        status: 'going',
+        invited_by: null
+      }
+    ];
 
     for (const id of invitedIds) {
       if (await isBlocked(this.supabase, userId, id)) continue;
-      inviteRows.push({ event_id: event.id, user_id: id, status: 'invited' });
+      inviteRows.push({
+        event_id: event.id,
+        user_id: id,
+        status: 'invited',
+        invited_by: null
+      });
     }
 
     const { error: invErr } = await this.supabase.admin
@@ -634,6 +762,9 @@ export class EventsService {
     if (typeof body.allowFriendsToInvite === 'boolean') {
       patch.allow_friends_invite = body.allowFriendsToInvite;
     }
+    if ('recurrence' in body) {
+      patch.recurrence = this.parseRecurrence(body.recurrence);
+    }
     if (typeof body.cap === 'number') {
       if (body.cap > max) {
         throw new BadRequestException(`Guest cap max is ${max}`);
@@ -674,6 +805,84 @@ export class EventsService {
     return this.toEventDto(next.event, userId, next.invites, next.assignments);
   }
 
+  // --- Invite more guests (host, or going attendee when friends-can-invite) ---
+
+  /**
+   * Add people to the invite list. Host/co-host invites leave invited_by null.
+   * Attendee invites (when allow_friends_invite) set invited_by to the inviter
+   * so the host people sheet can attribute "invited by" / "brought by".
+   */
+  async inviteGuests(
+    userId: string,
+    eventId: string,
+    userIds: string[]
+  ): Promise<EventItem> {
+    const bundle = await this.loadBundle(eventId);
+    const editor = this.isEditor(bundle.event, userId);
+    const myInvite = bundle.invites.find((i) => i.user_id === userId);
+    const going =
+      editor || myInvite?.status === 'going' || bundle.event.host_id === userId;
+
+    if (!going) {
+      throw new ForbiddenException('Only people going can invite');
+    }
+    if (!editor && !bundle.event.allow_friends_invite) {
+      throw new ForbiddenException('Friends cannot invite on this event');
+    }
+
+    const existing = new Set(bundle.invites.map((i) => i.user_id));
+    existing.add(bundle.event.host_id);
+
+    const toAdd: string[] = [];
+    for (const raw of userIds ?? []) {
+      const id = (raw || '').trim();
+      if (!id || existing.has(id) || id === userId) continue;
+      if (await isBlocked(this.supabase, userId, id)) continue;
+      if (editor) {
+        await this.assertConnected(userId, id);
+      } else {
+        await this.assertConnected(userId, id);
+      }
+      toAdd.push(id);
+      existing.add(id);
+    }
+
+    if (toAdd.length) {
+      const headcount =
+        new Set([
+          ...bundle.invites.map((i) => i.user_id),
+          bundle.event.host_id,
+          ...toAdd
+        ]).size;
+      if (headcount > bundle.event.cap) {
+        throw new BadRequestException('Event is at capacity');
+      }
+
+      const rows = toAdd.map((id) => ({
+        event_id: eventId,
+        user_id: id,
+        status: 'invited' as const,
+        // Null when host/co-host invites; otherwise the going attendee.
+        invited_by: editor ? null : userId
+      }));
+      const { error } = await this.supabase.admin
+        .from('event_invites')
+        .insert(rows);
+      if (error) throw error;
+
+      for (const id of toAdd) {
+        await this.supabase.admin.from('notifications').insert({
+          user_id: id,
+          kind: 'event_invite',
+          payload: { event_id: eventId, from: userId } as never
+        });
+      }
+    }
+
+    const next = await this.loadBundle(eventId);
+    return this.toEventDto(next.event, userId, next.invites, next.assignments);
+  }
+
   // --- RSVP ---
 
   async rsvp(
@@ -691,8 +900,11 @@ export class EventsService {
     }
 
     const existing = bundle.invites.find((i) => i.user_id === userId);
+    // Shared-link join: only when the host turned on friends-can-invite.
     if (!existing && !this.isEditor(bundle.event, userId)) {
-      throw new ForbiddenException('Not invited');
+      if (!bundle.event.allow_friends_invite) {
+        throw new ForbiddenException('Not invited');
+      }
     }
 
     if (body.status === 'going') {
@@ -708,6 +920,8 @@ export class EventsService {
       event_id: eventId,
       user_id: userId,
       status: body.status,
+      // Link join has no Bridger inviter — host list shows them without a tag.
+      invited_by: existing?.invited_by ?? null,
       allergies_optin: allergiesOptIn,
       allergies_text: allergiesOptIn
         ? (body.allergiesText ?? '').trim() || null

@@ -9,6 +9,7 @@ import { TouchGrassService } from './touchgrass.service';
 
 @Module({
   controllers: [TouchGrassController],
-  providers: [TouchGrassService, SupabaseAuthGuard]
+  providers: [TouchGrassService, SupabaseAuthGuard],
+  exports: [TouchGrassService]
 })
 export class TouchGrassModule {}

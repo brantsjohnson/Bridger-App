@@ -29,13 +29,26 @@ export interface QuizDimension {
   label: string;
 }
 
-/** How far the AI moderator may adapt this quiz. */
+/**
+ * How far the AI moderator may adapt this quiz.
+ *
+ * AI stays hands-off until confidence drops BELOW `adaptBelowConfidence`.
+ * Well-authored quizzes start with a low threshold (or 1.0 = never adapt) so
+ * the rubric runs first; ML may tune the threshold later from adaptation
+ * outcomes (see QUIZ-ENGINE.md / MACHINE-LEARNING.md).
+ */
 export interface AdaptationPolicy {
   mayReword: boolean;
   mayInsertClarifiers: boolean;
   /** Hard cap so the quiz cannot loop forever. */
   maxInsertedQuestions: number;
   mayReorder: boolean;
+  /**
+   * Only suggest rewords / clarifiers when a dimension's confidence is
+   * strictly below this (0–1). High values = less AI. Use `1` to disable
+   * adaptation even if may* flags are true.
+   */
+  adaptBelowConfidence: number;
 }
 
 /**

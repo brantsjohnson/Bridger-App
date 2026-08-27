@@ -63,8 +63,14 @@ RESEND_API_KEY, COOP_IDEA_REVIEW_EMAIL
 COOP_ADMIN_USERNAMES, COOP_ADMIN_EMAILS, ADMIN_API_KEY
 # Crypto (email hashing / encryption, per existing portal)
 EMAIL_HMAC_KEY, EMAIL_ENCRYPTION_KEY
+# Product analytics (PostHog Cloud; host is configurable for EU / self-host)
+POSTHOG_HOST, POSTHOG_PROJECT_ID, POSTHOG_PERSONAL_API_KEY
+# Optional override if REST API host differs from ingest host
+# POSTHOG_API_HOST
 ```
-Client env (public): `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_API_URL`.
+Client env (public): `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_POSTHOG_KEY`, `EXPO_PUBLIC_POSTHOG_HOST`.
+
+The PostHog **project** key (`phc_...`) is write-only and may live in the app. The **personal** API key stays on the Nest server so we can purge a person on opt-out / account delete. Capture is off until the person opts in under Settings.
 
 ---
 
@@ -118,6 +124,50 @@ Repo pieces live under `apps/mobile`: `eas.json` (build profiles), `app.config.t
 7. On Sign in: long-press the Bridger logo → confirm → walk the fake-data demo (preview / development builds only).
 
 **Local unlock without a store build:** set `EXPO_PUBLIC_DEMO_UNLOCK=1` in `apps/mobile/.env` (see `.env.example`). `EXPO_PUBLIC_DEMO_MODE=1` still forces demo on at launch for localhost.
+
+---
+
+## Play Console / EAS (Android ship checklist)
+
+You do **not** need an Android phone to open Play Console, create the app, or upload the first build. EAS builds the Android App Bundle (`.aab`) in the cloud. Play Console is the Google equivalent of App Store Connect. Internal testing is the Google equivalent of TestFlight internal.
+
+Repo pieces live under `apps/mobile`: `eas.json` (Android submit goes to the **internal** track as a **draft** until we flip it), `app.config.js` (package `social.bridger.app`). No Google service-account JSON belongs in git.
+
+**Profiles**
+
+| Profile | Who gets it | Demo long-press (`EXPO_PUBLIC_DEMO_UNLOCK`) |
+|---|---|---|
+| `development` | Dev client / emulator | on |
+| `preview` | Internal testing (friends / you) | on |
+| `production` | Play Store listing | **off** for now |
+
+**Your account steps (do once, in a browser)**
+
+1. Create a [Google Play Developer](https://play.google.com/apps/publish/signup/) account ($25 one-time). Use the company Google account if we have one; a **personal** account created after Nov 2023 cannot go public until a closed test with **12 opted-in testers for 14 continuous days**. An **organization** account skips that tester gate. Identity verification is required either way.
+2. In [Play Console](https://play.google.com/console) → **Create app**. Name: Bridger. Default language: English (US). App or game: App. Free. Confirm the declarations.
+3. Package name must stay **`social.bridger.app`** (already in `app.config.js`). Do not change it after the first upload. Google registers it to this developer account.
+4. Complete the dashboard checklist far enough to unlock testing: store listing (short + full description, 512×512 icon, feature graphic 1024×500, phone screenshots), **Privacy policy URL**, Data safety form, Content rating questionnaire, Target audience, News app declaration (we have a News tab: answer honestly), Ads declaration (**no ads**).
+5. Create a Google Cloud **service account** and invite it into Play Console so EAS can upload for you. Follow Expo's [creating a Google Service Account key](https://expo.fyi/creating-google-service-account) guide. Upload the JSON to Expo (project → Credentials → Android → Google Service Account Key). **Never commit that JSON.**
+6. First Android build (EAS creates the upload keystore; keep it on Expo, not in git):  
+   `pnpm --filter @bridger/mobile eas:build:android:preview`  
+   or `cd apps/mobile && npx eas-cli build -p android --profile preview`.
+7. First submit lands on **internal testing** as a **draft** (see `eas.json` → `submit.*.android`):  
+   `pnpm --filter @bridger/mobile eas:submit:android`  
+   or `npx eas-cli submit -p android --latest`. Then in Play Console, finish the draft release so testers can install from the opt-in link.
+8. Add yourself (and later friends) as **internal testers**. They install from the Play Store opt-in link on a real Android device. You can also use Play Console **Pre-launch report** (Google runs the `.aab` on their devices) without owning a phone.
+9. Before a **public** listing, if this is a new personal developer account: run **closed testing** with at least 12 opted-in testers for 14 continuous days, then apply for production access from the Play Console dashboard.
+
+**Testing without an Android phone**
+
+- **Mac emulator:** install Android Studio, create a Pixel virtual device, run `pnpm --filter @bridger/mobile android` (Expo Go / dev client) or install a preview **APK** from EAS (set `android.buildType` to `apk` only for that local/emulator install; Play Console still needs an `.aab`).
+- **Play Console Pre-launch report:** after the first `.aab` upload, Google crawls the app on real devices and posts screenshots + crash logs.
+- **Internal testing link:** send to anyone with an Android phone. They do not need to sideload.
+
+**Do not**
+
+- Put `google-services.json` or the Play service-account key in the repo.
+- Change `android.package` after the first Play upload.
+- Submit an `.apk` to Play. New apps must be an Android App Bundle (`.aab`). The `preview` / `production` profiles already set `buildType: app-bundle`.
 
 ---
 

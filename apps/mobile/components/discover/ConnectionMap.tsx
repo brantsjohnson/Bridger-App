@@ -5,23 +5,29 @@
 // arc underneath is the suggested intro (you do not know them yet). Caption
 // says who connects you in plain words.
 //
-// The dashed arc measures its container width and redraws, so it always spans
-// from You to them when the card is narrow or wide (half-width Home widgets,
-// full Discover detail, web resize).
+// Faces and the arc both follow the card width, so a narrow phone, a wide
+// web pane, or a resize never clips the last person or leaves the dashed
+// intro short. No caption under the map: the faces and dashed line say it.
 // ============================================
-import React, { useState } from 'react';
-import { Text, View, type LayoutChangeEvent } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import type { Person } from '@bridger/shared';
 import { useThemeColors } from '@bridger/ui';
 import { PersonAvatar } from '../PersonAvatar';
 import { getMe } from '../../data/people';
 
-/** Matches PersonAvatar size="xl" (h-24) so the arc ends under each face. */
-const AVATAR_XL = 96;
-/** Same horizontal inset as the avatar row's px-1. */
-const ROW_PAD = 4;
-const ARC_HEIGHT = 40;
+/** PersonAvatar size="xl" face (h-24). */
+const FACE_XL = 96;
+/** Story ring adds 3px on each side around an xl face. */
+const RING = 6;
+/** Design size of one column when there is room (face + ring). */
+const COL_XL = FACE_XL + RING;
+/** Smallest column we will shrink to so names stay readable. */
+const COL_MIN = 52;
+/** Shortest solid friendship bar between two faces. */
+const GAP_MIN = 12;
+const NODE_COUNT = 3;
 
 export function ConnectionMap({
   person,
@@ -31,11 +37,14 @@ export function ConnectionMap({
   via: Person;
 }) {
   const c = useThemeColors();
+  const { width: windowW } = useWindowDimensions();
   const me = getMe();
   const viaFirst = via.name.split(' ')[0];
   const themFirst = person.name.split(' ')[0];
-  // Width of the map body — used to draw a dashed arc that fits this card.
-  const [arcWidth, setArcWidth] = useState(0);
+
+  // Guess the row width before the first layout (page pad 20 + card pad 12, both sides).
+  const guessedRow = Math.max(180, windowW - 40 - 24);
+  const [rowW, setRowW] = useState(guessedRow);
 
   const nodes: Array<{ key: string; label: string; person: Person }> = [
     { key: 'me', label: 'You', person: me },
@@ -43,51 +52,68 @@ export function ConnectionMap({
     { key: person.id, label: themFirst, person }
   ];
 
-  function onArcLayout(e: LayoutChangeEvent) {
+  // THIS SECTION DOES: pick a face size that fits three people plus two bars in this card.
+  const col = useMemo(() => {
+    const maxCol = (rowW - GAP_MIN * (NODE_COUNT - 1)) / NODE_COUNT;
+    return Math.round(Math.min(COL_XL, Math.max(COL_MIN, maxCol)));
+  }, [rowW]);
+  const scale = col / COL_XL;
+  const arcH = Math.round(28 + scale * 14);
+
+  function onRowLayout(e: LayoutChangeEvent) {
     const next = Math.round(e.nativeEvent.layout.width);
-    if (next > 0 && next !== arcWidth) setArcWidth(next);
+    if (next > 0 && next !== rowW) setRowW(next);
   }
 
-  // Endpoints sit under the centers of You and them (outer avatars).
-  const inset = ROW_PAD + AVATAR_XL / 2;
+  // THIS SECTION DOES: put the dashed intro under You and them, using the
+  // same column math as the faces (You is first, them is last).
+  const leftX = col / 2;
+  const rightX = rowW - col / 2;
+  const midX = rowW / 2;
   const arcPath =
-    arcWidth > inset * 2
-      ? `M ${inset} 8 Q ${arcWidth / 2} 36 ${arcWidth - inset} 8`
-      : null;
+    rightX - leftX > 16 ? `M ${leftX} 8 Q ${midX} ${arcH - 6} ${rightX} 8` : null;
 
   return (
     <View
-      className="overflow-hidden rounded-2xl border border-ink-line bg-surface px-3 pb-4 pt-5"
+      className="rounded-2xl border border-ink-line bg-surface px-3 pb-4 pt-5"
       accessibilityLabel={`Connected through ${viaFirst}`}
     >
-      {/* Profile photos in a row, with solid friendship lines between them */}
-      <View className="flex-row items-center justify-between px-1">
+      {/* Profile photos in a row, sized to this card, with solid friendship lines */}
+      <View className="flex-row items-center justify-between" onLayout={onRowLayout}>
         {nodes.map((n, i) => (
           <React.Fragment key={n.key}>
             {i > 0 ? (
               <View
                 accessible={false}
-                className="mx-1 h-[3px] min-w-[12px] flex-1 rounded-full"
+                className="mx-1 h-[3px] min-w-[8px] flex-1 rounded-full"
                 style={{ backgroundColor: c.ink }}
               />
             ) : null}
-            <View className="items-center gap-2">
-              <PersonAvatar id={n.person.id} size="xl" />
-              <Text className="font-sans-b text-[12px] text-ink">{n.label}</Text>
+            <View className="items-center gap-1.5" style={{ width: col }}>
+              {/* Clip the scaled xl avatar into this column so rings never spill. */}
+              <View
+                className="items-center justify-center overflow-hidden"
+                style={{ width: col, height: col }}
+              >
+                <View style={{ transform: [{ scale }] }}>
+                  <PersonAvatar id={n.person.id} size="xl" />
+                </View>
+              </View>
+              <Text
+                numberOfLines={1}
+                className="w-full text-center font-sans-b text-[12px] text-ink"
+              >
+                {n.label}
+              </Text>
             </View>
           </React.Fragment>
         ))}
       </View>
 
       {/* Dashed teal arc = the intro you do not have yet (You ↔ them) */}
-      <View
-        className="mt-1 w-full"
-        style={{ height: ARC_HEIGHT }}
-        accessible={false}
-        onLayout={onArcLayout}
-      >
+      <View className="mt-1 w-full" style={{ height: arcH }} accessible={false}>
         {arcPath ? (
-          <Svg width={arcWidth} height={ARC_HEIGHT}>
+          <Svg width="100%" height={arcH} viewBox={`0 0 ${rowW} ${arcH}`}>
             <Path
               d={arcPath}
               stroke="#00B3A6"
@@ -101,12 +127,6 @@ export function ConnectionMap({
         ) : null}
       </View>
 
-      <Text className="mt-0.5 text-center font-sans-sb text-[12px] leading-snug text-ink">
-        Connected through {viaFirst}
-      </Text>
-      <Text className="mt-0.5 text-center font-sans-md text-[11px] text-ink-mute">
-        Dashed line is the new intro
-      </Text>
     </View>
   );
 }

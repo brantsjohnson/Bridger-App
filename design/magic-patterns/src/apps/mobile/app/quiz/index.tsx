@@ -17,63 +17,137 @@ import {
 '../../../../packages/ui';
 import { QUIZ, personById } from '../../state/mock-data';
 
-/** Answer the questions, land on a result. */
+const NAVY = '#001146';
+const INK = '#1C1B16';
+/** Same accent cycle as the live take so options read as different. */
+const TILE_LOOKS = [
+  { bg: ACCENTS.purple.hex, fg: '#FFFFFF' },
+  { bg: ACCENTS.coral.hex, fg: INK },
+  { bg: ACCENTS.teal.hex, fg: INK },
+  { bg: ACCENTS.amber.hex, fg: INK },
+  { bg: ACCENTS.pink.hex, fg: '#FFFFFF' },
+  { bg: ACCENTS.blue.hex, fg: '#FFFFFF' },
+  { bg: ACCENTS.green.hex, fg: INK }
+];
+
+/** Geometric brutalist take: navy question, colored answer blocks. */
 export function QuizTakeScreen({
   onBack,
   onDone
-
-
-
 }: {onBack?: () => void;onDone?: (resultId: string) => void;}) {
   const [index, setIndex] = React.useState(0);
   const [picks, setPicks] = React.useState<Record<string, string>>({});
   const question = QUIZ.questions[index];
   const last = index === QUIZ.questions.length - 1;
+  const options = question.options;
 
   const pick = (option: string) => {
     setPicks((p) => ({ ...p, [question.id]: option }));
     if (!last) window.setTimeout(() => setIndex((i) => i + 1), 200);
+    else onDone?.('coastal');
   };
 
   return (
-    <Screen>
-      <ScreenHeader title="Quiz" onBack={onBack} />
-      <ScreenBody>
-        <Breathe>
-          <StepProgress step={index + 1} total={QUIZ.questions.length} />
-        </Breathe>
-
-        <Breathe>
-          <Card className="mt-5">
-            <p className="text-[17px] font-bold leading-snug tracking-tight text-ink">
-              {question.text}
-            </p>
-            <div className="mt-4 space-y-2.5">
-              {question.options.map((o) =>
-              <ButtonSecondary
-                key={o}
-                full
-                size="lg"
-                tone={picks[question.id] === o ? 'solid' : 'outline'}
-                onClick={() => pick(o)}>
-                
-                  {o}
-                </ButtonSecondary>
-              )}
-            </div>
-          </Card>
-        </Breathe>
-      </ScreenBody>
-
-      {last && picks[question.id] &&
-      <div className="px-5 pb-7 pt-3">
-          <ButtonPrimary full onClick={() => onDone?.('coastal')}>
-            See result
-          </ButtonPrimary>
+    <Screen tone="plain" className="bg-white">
+      <div className="flex h-full flex-col bg-white px-2 pb-2 pt-3">
+        <div className="mb-2 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="End quiz"
+            className="flex h-11 w-11 items-center justify-center"
+            style={{ color: NAVY }}
+          >
+            <span className="text-[28px] font-bold leading-none">×</span>
+          </button>
         </div>
-      }
+        <div
+          className="mb-2 flex min-h-[140px] flex-[0.85] items-center justify-center px-5"
+          style={{ backgroundColor: NAVY }}
+        >
+          <p className="text-center text-[28px] font-bold leading-tight text-white">
+            {question.text}
+          </p>
+        </div>
+        <div className="flex flex-1 flex-col gap-2">
+          {options.length === 2 ?
+          options.map((o, i) =>
+          <button
+            key={o}
+            type="button"
+            onClick={() => pick(o)}
+            className="flex min-h-[88px] flex-1 items-center justify-center px-3 text-center text-[20px] font-bold"
+            style={{
+              backgroundColor: TILE_LOOKS[i % TILE_LOOKS.length].bg,
+              color: TILE_LOOKS[i % TILE_LOOKS.length].fg
+            }}>
+            
+                {o}
+              </button>
+          ) :
+
+          <div className="grid flex-1 grid-cols-2 gap-2">
+              {options.map((o, i) =>
+            <button
+              key={o}
+              type="button"
+              onClick={() => pick(o)}
+              className="flex min-h-[88px] items-center justify-center px-3 text-center text-[18px] font-bold"
+              style={{
+                backgroundColor: TILE_LOOKS[i % TILE_LOOKS.length].bg,
+                color: TILE_LOOKS[i % TILE_LOOKS.length].fg
+              }}>
+              
+                    {o}
+                  </button>
+            )}
+            </div>
+          }
+        </div>
+      </div>
     </Screen>);
 
+}
+
+const COMMENTARY_YELLOW = '#FFC21A';
+
+/** Yellow commentary beat: free-standing line, X top-right, Continue at the bottom. */
+export function QuizCommentaryScreen({
+  text = 'Oof. Not a great start…',
+  onClose,
+  onNext
+}: {text?: string;onClose?: () => void;onNext?: () => void;}) {
+  return (
+    <Screen tone="plain" className="bg-white">
+      <div
+        className="flex h-full flex-col px-2 pb-3 pt-3"
+        style={{ backgroundColor: COMMENTARY_YELLOW }}
+      >
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="End quiz"
+            className="flex h-11 w-11 items-center justify-center"
+            style={{ color: NAVY }}
+          >
+            <span className="text-[28px] font-bold leading-none">×</span>
+          </button>
+        </div>
+        <div className="flex flex-1 items-center justify-center px-7">
+          <p
+            className="text-center text-[28px] font-bold leading-tight"
+            style={{ color: NAVY }}
+          >
+            {text}
+          </p>
+        </div>
+        <ButtonPrimary full size="lg" onClick={onNext}>
+          Continue
+        </ButtonPrimary>
+      </div>
+    </Screen>
+  );
 }
 
 /** Full breakdown for one result: who got it, and how you compare. */

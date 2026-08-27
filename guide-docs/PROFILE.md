@@ -57,6 +57,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 │                                           │
 │   Profile   Stories   Jokes   Bucket   ⚙  │  tab bar (⚙ own profile only)
 ├───────────────────────────────────────────┤
+│  Mutuals (avatar row)                     │  you both know…
 │  ┌─ widget box ─────────────────────────┐ │  every section is a clear container
 │  │ TOP 5                                │ │
 │  │  1 ▢ Twin sister…                    │ │
@@ -65,6 +66,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 │  │ ABOUT ME  bio preview…          ⌄    │ │  collapsed: bio (or city); open →
 │  │  bio · square profile photo · grid   │ │  bio first, then photo, then fields
 │  └──────────────────────────────────────┘ │
+│  Upcoming events (viewer-invited)         │
 │  ┌─ widget box ─────────────────────────┐ │
 │  │ CURRENT OBSESSION                    │ │
 │  │  ┌────┐ ┌────┐                       │ │
@@ -79,7 +81,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 └───────────────────────────────────────────┘
 ```
 
-The order is the Spotify order. Each content section sits in a **widget box**. Own **Edit** enters rearrange mode (up/down on boxes + pencil to edit that box's contents); **Customize look** opens co-op theme. Co-op **Greatest hits** photos (§9) can sit between sections. Customization rules live in `PROFILE-CUSTOMIZATION.md`; **"View original"** always returns this native layout.
+The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → …). Each content section sits in a **widget box**. Own **Edit** enters rearrange mode (up/down on boxes + pencil to edit that box's contents); **Customize look** opens co-op theme. Co-op **Greatest hits** photos (§9) can sit between sections. Customization rules live in `PROFILE-CUSTOMIZATION.md`; **"View original"** always returns this native layout.
 
 ---
 
@@ -164,6 +166,8 @@ Under About me, surface **events the *viewer* has been invited to** with this pe
 ## 7 · Current Obsession (who you are *today*)
 
 Spotify's **Artist Pick + Popular Releases**, combined. A grid of **squares**, each a "right now" statement with a picture or emoji (empty → an emoji stands in). The whole point, in the founder's words: *this tells people who you are today, not five years ago.*
+
+**Listening + music link:** Settings → **Spotify** or **Apple Music** links a music account (not Bridger login). **Listening track** picks a catalog song via Spotify search (`music_picks.listening_now`). Friend/viewer can play a ~30s preview when Spotify provides `preview_url`, open in Spotify/Apple Music, or add to their Spotify library if they are linked. Synced top artists (up to 50 per provider) can surface in reveal / In common.
 
 ```
 CURRENT OBSESSION

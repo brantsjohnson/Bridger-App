@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The sheet that opens from Touch Grass: who to tell, when, optional note,
+// The sheet that opens from Touch Grass: who to tell (Close / Friends only), when, optional note,
 // then Send signal. Concentric groups only — no view counts.
 // Analytics: own surface touch_grass_sheet; flow touch_grass_send; send emits
 // touch_grass_sent with audience/when/has_why (never the free-text note).
@@ -24,13 +24,13 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 
-const WHO = ['Close', 'Friends', 'Everyone'] as const;
+// Close and Friends only. Acquaintances never get a Touch Grass blast.
+const WHO = ['Close', 'Friends'] as const;
 const WHEN = ['Now', 'Tonight', 'This weekend'] as const;
 
 const WHO_ID: Record<(typeof WHO)[number], string> = {
   Close: TOUCH_GRASS_SHEET.who.close,
-  Friends: TOUCH_GRASS_SHEET.who.friends,
-  Everyone: TOUCH_GRASS_SHEET.who.everyone
+  Friends: TOUCH_GRASS_SHEET.who.friends
 };
 
 const WHEN_ID: Record<(typeof WHEN)[number], string> = {
@@ -42,8 +42,7 @@ const WHEN_ID: Record<(typeof WHEN)[number], string> = {
 /** Map UI labels to product-event property values (no free text). */
 const WHO_AUDIENCE: Record<(typeof WHO)[number], string> = {
   Close: 'close',
-  Friends: 'friends',
-  Everyone: 'everyone'
+  Friends: 'friends'
 };
 
 const WHEN_VALUE: Record<(typeof WHEN)[number], string> = {

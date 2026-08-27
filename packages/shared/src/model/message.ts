@@ -59,8 +59,12 @@ export interface Message {
   /** Optional phone lifted for a tappable affordance after decrypt */
   phone?: string;
   createdAt: string;
-  /** false for Share contact, Make a plan, and story-reply mirrors — they do not burn a slot */
+  /** false for Share contact, story-reply mirrors, and hearts — they do not burn a slot */
   countsAgainstCap: boolean;
+  /** You hearted this friend's bubble (double-tap). Never a sent message. */
+  heartedByMe?: boolean;
+  /** They hearted one of your bubbles. Display only. */
+  heartedByThem?: boolean;
 }
 
 /** Inbox row + open thread state for one friend. */

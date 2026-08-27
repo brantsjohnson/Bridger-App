@@ -47,6 +47,8 @@ export type AnalyticsMethod =
   | 'dropdown'
   | 'hover'
   | 'tap'
+  | 'double_tap'
+  | 'a11y'
   | 'google'
   | 'apple'
   | 'email';
@@ -59,6 +61,8 @@ export type AnalyticsProductEvent =
   | 'quiz_adapted'
   | 'quiz_abandoned'
   | 'quiz_completed'
+  /** Shared a quiz result: method = image | link | save_image (never result text) */
+  | 'quiz_shared'
   | 'delight_gifted'
   | 'delight_played'
   | 'activity_posted'
@@ -86,8 +90,17 @@ export type AnalyticsProductEvent =
   | 'friend_note_deleted'
   /** soft check-in nudge fired for the author */
   | 'friend_check_in_reminded'
+  /**
+   * Invite link shared via SMS compose or OS share sheet (confirmed, not the tap).
+   * Never names/phones. Props: method sms|share, context, optional slot 1|2|3.
+   */
+  | 'invite_link_shared'
   | 'story_posted'
+  /** Mid-party capture nudge fired (story_prompt pref on, under daily cap). */
+  | 'party_capture_prompt_sent'
   | 'response_posted'
+  /** Finished every update in the Home tray (or a lone author) and saw the end screen */
+  | 'stories_caught_up'
   /** someone made their own sticker (no image data — just that they made one) */
   | 'sticker_created'
   | 'touch_grass_sent'
@@ -126,8 +139,10 @@ export type AnalyticsProductEvent =
   /** Layout order of movable modules saved on customize. */
   | 'profile_layout_saved'
   | 'connection_revealed'
-  /** soft or paid join — never receipt / PII */
+  /** soft or paid join — never receipt / PII. method includes 'promo' for auth codes. */
   | 'coop_joined'
+  /** Redeemed a promo / auth code for a free year. Never logs the code string. */
+  | 'coop_promo_redeemed'
   | 'coop_left'
   /** scheduled leave; perks stay until paid-through */
   | 'coop_cancel_scheduled'
@@ -138,6 +153,8 @@ export type AnalyticsProductEvent =
   /** Person left runtime demo from Settings. */
   | 'demo_mode_left'
   | 'message_sent'
+  /** Double-tap heart on a friend's bubble. Never counts as a sent message. */
+  | 'message_hearted'
   | 'contact_shared'
   /** unmatched route or broken connection path — path trail goes to admin */
   | 'screen_not_found'
@@ -165,7 +182,11 @@ export type AnalyticsProductEvent =
   /** Added a friend's track to the viewer's Spotify library/playlist. */
   | 'music_saved_to_library'
   /** Synced top artists for overlap (server-confirmed). */
-  | 'music_taste_synced';
+  | 'music_taste_synced'
+  /** Person turned product analytics on in Settings (after confirm). */
+  | 'analytics_opted_in'
+  /** Person turned product analytics off in Settings (fires before capture stops). */
+  | 'analytics_opted_out';
 
 /** Shared properties stamped on every event. */
 export type AnalyticsBaseProps = {
@@ -204,4 +225,6 @@ export type AnalyticsSink = {
   reset?: () => void;
   optIn?: () => void;
   optOut?: () => void;
+  /** Push queued events now (used right before opt-out / person purge). */
+  flush?: () => void | Promise<void>;
 };

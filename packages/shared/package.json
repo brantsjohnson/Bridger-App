@@ -18,9 +18,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "npx --yes tsx src/analytics/sanitize.spec.ts"
   },
   "devDependencies": {
-    "typescript": "^5.5.4"
+    "typescript": "~6.0.3"
   }
 }

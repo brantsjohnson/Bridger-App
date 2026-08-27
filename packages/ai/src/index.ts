@@ -30,6 +30,11 @@ export type {
   AiConfigStore,
   AiCostLogEntry
 } from './gateway';
+export {
+  classifyProviderError,
+  type ClassifiedProviderError,
+  type ProviderErrorKind
+} from './gateway/provider-errors';
 
 export { getPrompt } from './prompts';
 export {
@@ -42,6 +47,18 @@ export {
   agentQuery,
   agentReasoning
 } from './prompts';
+
+// Bridge playbooks: per-task manuals injected into personal_agent prompts.
+export {
+  loadPlaybook,
+  playbookForIntent,
+  listPlaybookIds,
+  parsePlaybookVersion,
+  clearPlaybookCache,
+  ALL_PLAYBOOK_IDS,
+  INTENT_TO_PLAYBOOK
+} from './playbooks';
+export type { PlaybookId, PlaybookDocument } from './playbooks';
 
 export {
   normalizeAttribute,

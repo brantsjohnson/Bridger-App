@@ -20,7 +20,8 @@ import {
   trackClick,
   trackProduct,
   trackUi,
-  type CatchUpItem
+  type CatchUpItem,
+  type MusicPlayable
 } from '@bridger/shared';
 import {
   ACCENTS,
@@ -34,11 +35,25 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import type { WeekDay } from '../../data/stories';
+import { MusicTrackActions } from '../music/MusicTrackActions';
+import {
+  getPlayingPreviewUrl,
+  subscribeMusicPreview,
+  toggleMusicPreview
+} from '../../lib/music-preview';
 
 const PEEK_PX = 172;
 
 type Currently = {
-  listening: { title: string; artist: string; emoji: string };
+  listening: {
+    title: string;
+    artist: string;
+    emoji: string;
+    previewUrl?: string | null;
+    spotifyId?: string | null;
+    spotifyUri?: string | null;
+    artworkUrl?: string | null;
+  };
   reading: { title: string; author: string; emoji: string };
 };
 
@@ -67,11 +82,22 @@ export function CatchUpPanel({
   const c = useThemeColors();
   const translateY = useRef(new Animated.Value(0)).current;
   const [sheetH, setSheetH] = useState(0);
+  // Hide until we know the peek offset — otherwise the sheet paints fully
+  // open for one frame, then springs shut (the flash when swapping authors).
+  const [positioned, setPositioned] = useState(false);
+  const positionedRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (!sheetH) return;
     const closedY = Math.max(0, sheetH - PEEK_PX);
+    // First layout: jump straight to open or peek. No spring from "open".
+    if (!positionedRef.current) {
+      positionedRef.current = true;
+      translateY.setValue(open ? 0 : closedY);
+      setPositioned(true);
+      return;
+    }
     Animated.spring(translateY, {
       toValue: open ? 0 : closedY,
       useNativeDriver: true,
@@ -85,6 +111,11 @@ export function CatchUpPanel({
   useEffect(() => {
     if (!open) scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [open]);
+
+  // New friend in the tray: reset the peek to the top of their Catch-Up.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [authorName]);
 
   return (
     <View pointerEvents="box-none" className="absolute inset-0 z-50 justify-end">
@@ -100,7 +131,11 @@ export function CatchUpPanel({
 
         <Animated.View
           onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
-          style={{ transform: [{ translateY }], height: '88%' }}
+          style={{
+            transform: [{ translateY }],
+            height: '88%',
+            opacity: positioned ? 1 : 0
+          }}
         >
           {/*
             The panel background lives on this plain View, not the Animated.View
@@ -342,56 +377,110 @@ function SettledRow({ item }: { item: CatchUpItem }) {
 }
 
 function CurrentlyCard({ currently }: { currently: Currently }) {
-  const cells = [
-    {
-      label: 'Listening',
-      emoji: currently.listening.emoji,
-      title: currently.listening.title,
-      sub: currently.listening.artist,
-      tint: 'bg-blue'
-    },
-    {
-      label: 'Reading',
-      emoji: currently.reading.emoji,
-      title: currently.reading.title,
-      sub: currently.reading.author,
-      tint: 'bg-amber'
-    }
-  ];
+  const [playingUrl, setPlayingUrl] = useState<string | null>(getPlayingPreviewUrl());
+  const [sheetTrack, setSheetTrack] = useState<MusicPlayable | null>(null);
+  const previewUrl = currently.listening.previewUrl ?? null;
+  const playing = !!previewUrl && playingUrl === previewUrl;
+
+  useEffect(() => subscribeMusicPreview(setPlayingUrl), []);
+
+  const listeningPlayable: MusicPlayable | null =
+    currently.listening.title || currently.listening.spotifyId
+      ? {
+          title: currently.listening.title,
+          artistName: currently.listening.artist,
+          previewUrl: currently.listening.previewUrl,
+          spotifyId: currently.listening.spotifyId,
+          spotifyUri: currently.listening.spotifyUri,
+          artworkUrl: currently.listening.artworkUrl
+        }
+      : null;
 
   return (
-    /*
-      Fixed near-black cells + white type. bg-ink would flip cream in dark mode
-      and wipe out text-white.
-    */
-    <View className="flex-row gap-px overflow-hidden rounded-2xl bg-[#151515]">
-      {cells.map((cell) => (
-        <View
-          key={cell.label}
+    <>
+      {/*
+        Fixed near-black cells + white type. bg-ink would flip cream in dark mode
+        and wipe out text-white.
+      */}
+      <View className="flex-row gap-px overflow-hidden rounded-2xl bg-[#151515]">
+        <Pressable
+          onPress={withAnalyticsPress(CATCH_UP.currently.listening, () => {
+            if (listeningPlayable) setSheetTrack(listeningPlayable);
+          })}
+          accessibilityRole="button"
+          accessibilityLabel={`Listening ${currently.listening.title} by ${currently.listening.artist}`}
           className="min-w-0 flex-1 flex-row items-center gap-2.5 bg-[#1C1B16] px-3 py-2.5"
         >
           <View
             accessible={false}
-            className={cn(
-              'h-9 w-9 shrink-0 items-center justify-center rounded-md',
-              cell.tint
-            )}
+            className="h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue"
           >
-            <Text className="text-[17px]">{cell.emoji}</Text>
+            <Text className="text-[17px]">{currently.listening.emoji}</Text>
           </View>
           <View className="min-w-0 flex-1">
             <Text className="font-sans-b text-[9px] uppercase tracking-wide text-white/50">
-              {cell.label}
+              Listening
             </Text>
             <Text numberOfLines={1} className="font-sans-b text-[13px] leading-tight text-white">
-              {cell.title}
+              {currently.listening.title}
             </Text>
             <Text numberOfLines={1} className="font-sans-sb text-[11px] text-white/60">
-              {cell.sub}
+              {currently.listening.artist}
             </Text>
           </View>
-        </View>
-      ))}
-    </View>
+          {previewUrl || currently.listening.spotifyId ? (
+            <Pressable
+              onPress={withAnalyticsPress(CATCH_UP.currently.preview_play, () => {
+                if (previewUrl) {
+                  void toggleMusicPreview(previewUrl).then((on) => {
+                    if (on) trackProduct('music_preview_played', { method: 'tap' });
+                  });
+                } else if (listeningPlayable) {
+                  setSheetTrack(listeningPlayable);
+                }
+              })}
+              accessibilityRole="button"
+              accessibilityLabel={
+                playing
+                  ? `Pause preview of ${currently.listening.title}`
+                  : `Play preview of ${currently.listening.title}`
+              }
+              hitSlop={8}
+              className="h-11 w-11 items-center justify-center rounded-full bg-white/15"
+            >
+              <Text className="text-[14px] text-white">{playing ? '❚❚' : '▶'}</Text>
+            </Pressable>
+          ) : null}
+        </Pressable>
+
+        <AnalyticsRegion analyticsId={CATCH_UP.currently.reading} interactive={false}>
+          <View className="min-w-0 flex-1 flex-row items-center gap-2.5 bg-[#1C1B16] px-3 py-2.5">
+            <View
+              accessible={false}
+              className="h-9 w-9 shrink-0 items-center justify-center rounded-md bg-amber"
+            >
+              <Text className="text-[17px]">{currently.reading.emoji}</Text>
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text className="font-sans-b text-[9px] uppercase tracking-wide text-white/50">
+                Reading
+              </Text>
+              <Text numberOfLines={1} className="font-sans-b text-[13px] leading-tight text-white">
+                {currently.reading.title}
+              </Text>
+              <Text numberOfLines={1} className="font-sans-sb text-[11px] text-white/60">
+                {currently.reading.author}
+              </Text>
+            </View>
+          </View>
+        </AnalyticsRegion>
+      </View>
+
+      <MusicTrackActions
+        track={sheetTrack}
+        visible={!!sheetTrack}
+        onClose={() => setSheetTrack(null)}
+      />
+    </>
   );
 }

@@ -12,7 +12,7 @@ import type {
   Introduction,
   MeetSuggestion
 } from '@bridger/shared';
-import { trackProduct } from '@bridger/shared';
+import { formatRecurrenceLabel, trackProduct } from '@bridger/shared';
 import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
 import { uploadMedia } from '../lib/media-upload';
@@ -53,17 +53,40 @@ function demoStartsAt(e: EventItem): number | undefined {
 }
 
 /** In-memory calendar for demo mode (so create / RSVP stick for the session). */
-let demoEvents: EventItem[] = FIXTURE_EVENTS.map((e) => ({
-  ...e,
-  goingIds: [...e.goingIds],
-  startsAt: demoStartsAt(e)
-}));
+let demoEvents: EventItem[] = [
+  ...FIXTURE_EVENTS.map((e) => ({
+    ...e,
+    goingIds: [...e.goingIds],
+    startsAt: demoStartsAt(e)
+  })),
+  // Demo-only live party so mid-event capture nudges can be tested.
+  {
+    id: 'e-live',
+    title: 'House hang',
+    emoji: '🎉',
+    cover: { kind: 'emoji', value: '🎉', bg: '#7F77DD' },
+    accent: 'purple',
+    day: 'Tonight',
+    time: '20:00',
+    place: "Maya's",
+    address: '42 Oak St',
+    bio: 'Chill night — snacks, music, and mems.',
+    goingIds: ['maya', 'kit', 'me'],
+    invitedIds: ['devon'],
+    hostId: 'maya',
+    role: 'going',
+    going: true,
+    startsAt: Date.now() - 45 * 60 * 1000,
+    cap: 35
+  }
+];
 
 function cloneEvent(e: EventItem): EventItem {
   return {
     ...e,
     goingIds: [...e.goingIds],
     invitedIds: e.invitedIds ? [...e.invitedIds] : undefined,
+    inviteByIds: e.inviteByIds ? { ...e.inviteByIds } : undefined,
     broughtIds: e.broughtIds ? [...e.broughtIds] : undefined,
     coHostIds: e.coHostIds ? [...e.coHostIds] : undefined,
     assignments: e.assignments ? e.assignments.map((a) => ({ ...a })) : undefined
@@ -80,6 +103,63 @@ export async function listEvents(): Promise<EventItem[]> {
     return cloneEvents();
   }
   return apiFetch<EventItem[]>('/events');
+}
+
+/**
+ * Upcoming rows for a profile card (PROFILE.md §6).
+ * Own page (subjectId omitted or "me"): events you are hosting or going to.
+ * Friend page: events you are invited to where the subject is hosting or going.
+ */
+export async function listUpcomingForProfile(subjectId?: string): Promise<
+  Array<{ id: string; title: string; whenLabel: string; rsvpLabel?: string }>
+> {
+  const me = 'me';
+  const subject = subjectId && subjectId !== me ? subjectId : me;
+
+  const toRow = (e: EventItem) => ({
+    id: e.id,
+    title: e.title,
+    whenLabel: [e.day, e.time].filter(Boolean).join(' · ') || e.countdown || 'Soon',
+    rsvpLabel:
+      e.role === 'host'
+        ? 'Hosting'
+        : e.role === 'going'
+          ? 'Going'
+          : e.role === 'invited'
+            ? 'Invited'
+            : undefined
+  });
+
+  if (!isDemoMode()) {
+    const rows = await apiFetch<EventItem[]>(
+      `/events/upcoming-with/${encodeURIComponent(subject === me ? 'me' : subject)}`
+    );
+    return rows.map(toRow);
+  }
+
+  const events = await listEvents();
+  const isOwn = subject === me;
+  const filtered = events.filter((e) => {
+    if (isOwn) {
+      return (
+        e.role === 'host' ||
+        e.role === 'going' ||
+        e.hostId === me ||
+        e.goingIds.includes(me)
+      );
+    }
+    const viewerOnEvent =
+      e.hostId === me ||
+      e.goingIds.includes(me) ||
+      (e.invitedIds ?? []).includes(me) ||
+      e.role === 'host' ||
+      e.role === 'going' ||
+      e.role === 'invited';
+    const subjectOnEvent = e.hostId === subject || e.goingIds.includes(subject);
+    return viewerOnEvent && subjectOnEvent;
+  });
+
+  return filtered.map(toRow);
 }
 
 export type CreateEventInput = {
@@ -103,6 +183,8 @@ export type CreateEventInput = {
   cover?: Cover | { kind: 'photo'; uri: string; bannerText?: string };
   /** the Assignments sign-up list */
   assignments?: EventAssignment[];
+  /** Repeat rule, or null for a one-off */
+  recurrence?: EventItem['recurrence'] | null;
 };
 
 /** Create an event. Demo: prepends to the local list. Live: POST /events. */
@@ -125,6 +207,7 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
       bio: input.bio,
       goingIds: ['me'],
       invitedIds: input.invitedIds ?? [],
+      inviteByIds: {},
       coHostIds: input.coHostIds ?? [],
       hostId: 'me',
       role: 'host',
@@ -134,10 +217,18 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
       chipInAmount: input.chipInAmount,
       chipInMethod: input.chipInMethod,
       chipInHandle: input.chipInHandle,
-      assignments: input.assignments ?? []
+      assignments: input.assignments ?? [],
+      recurrence: input.recurrence ?? undefined,
+      recurrenceLabel: input.recurrence
+        ? formatRecurrenceLabel(input.recurrence)
+        : undefined
     };
     demoEvents = [event, ...demoEvents];
     void scheduleAssignmentReminders(event.id);
+    // OUTCOME: each host invite is a confirmed guest invite (never names).
+    for (const _id of input.invitedIds ?? []) {
+      trackProduct('event_guest_invited', { via: 'host' });
+    }
     return cloneEvent(event);
   }
 
@@ -164,7 +255,7 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
     coverPayload = randomEmojiCover();
   }
 
-  return apiFetch<EventItem>('/events', {
+  const created = await apiFetch<EventItem>('/events', {
     method: 'POST',
     body: JSON.stringify({
       title: input.title,
@@ -182,9 +273,15 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
       chipInHandle: input.chipInHandle,
       chipInNote: input.chipInNote,
       cover: coverPayload,
-      assignments: (input.assignments ?? []).map((a) => ({ label: a.label }))
+      assignments: (input.assignments ?? []).map((a) => ({ label: a.label })),
+      recurrence: input.recurrence ?? null
     })
   });
+  // OUTCOME: each host invite confirmed by the server (never names).
+  for (const _id of input.invitedIds ?? []) {
+    trackProduct('event_guest_invited', { via: 'host' });
+  }
+  return created;
 }
 
 /** Open one event for the detail / share page. */
@@ -198,6 +295,80 @@ export async function getEvent(id: string): Promise<EventItem | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Invite more people to an event. Host invites have no invited_by tag.
+ * When friends-can-invite is on, a going attendee can invite too — those rows
+ * store the inviter so the host list can say "invited by Jade" / "brought by Sam".
+ * OUTCOME: fires event_guest_invited per new guest (via host|attendee, never names).
+ */
+export async function inviteGuests(
+  eventId: string,
+  userIds: string[]
+): Promise<EventItem | null> {
+  const ids = Array.from(new Set(userIds.filter(Boolean)));
+  if (!ids.length) return getEvent(eventId);
+
+  if (isDemoMode()) {
+    const me = 'me';
+    const event = demoEvents.find((e) => e.id === eventId);
+    if (!event) return null;
+    const isHost = event.hostId === me || (event.coHostIds ?? []).includes(me);
+    const isGoing = event.goingIds.includes(me) || isHost;
+    if (!isGoing) return cloneEvent(event);
+    if (!isHost && !event.allowFriendsToInvite) return cloneEvent(event);
+
+    const invited = new Set(event.invitedIds ?? []);
+    const inviteBy = { ...(event.inviteByIds ?? {}) };
+    let added = 0;
+    for (const id of ids) {
+      if (id === me || id === event.hostId) continue;
+      if (invited.has(id) || event.goingIds.includes(id)) continue;
+      invited.add(id);
+      if (!isHost) inviteBy[id] = me;
+      added += 1;
+      trackProduct('event_guest_invited', { via: isHost ? 'host' : 'attendee' });
+    }
+    if (added === 0) return cloneEvent(event);
+    demoEvents = demoEvents.map((e) =>
+      e.id === eventId
+        ? {
+            ...e,
+            invitedIds: [...invited],
+            inviteByIds: inviteBy
+          }
+        : e
+    );
+    const updated = demoEvents.find((e) => e.id === eventId);
+    return updated ? cloneEvent(updated) : null;
+  }
+
+  const before = await getEvent(eventId);
+  const updated = await apiFetch<EventItem>(
+    `/events/${encodeURIComponent(eventId)}/invite`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ userIds: ids })
+    }
+  );
+  // OUTCOME: confirmed invites only (never names). Hosts can diff invitedIds;
+  // attendees do not receive the invite list, so we count requested ids as
+  // attendee invites after a successful write.
+  if (updated.role === 'host') {
+    const prior = new Set(before?.invitedIds ?? []);
+    for (const id of updated.invitedIds ?? []) {
+      if (prior.has(id)) continue;
+      trackProduct('event_guest_invited', {
+        via: updated.inviteByIds?.[id] ? 'attendee' : 'host'
+      });
+    }
+  } else {
+    for (const _id of ids) {
+      trackProduct('event_guest_invited', { via: 'attendee' });
+    }
+  }
+  return updated;
 }
 
 /**
@@ -293,7 +464,7 @@ export async function scheduleAssignmentReminders(eventId: string): Promise<void
   void eventId;
 }
 
-/** RSVP on an invite. Demo updates local role; live POSTs the RSVP. */
+/** RSVP on an invite (or open join when friends-can-invite). Demo updates local role. */
 export async function rsvpEvent(
   id: string,
   status: 'going' | 'cant',
@@ -303,12 +474,27 @@ export async function rsvpEvent(
     demoEvents = demoEvents.map((e) => {
       if (e.id !== id) return e;
       if (status === 'going') {
+        // Outsider can only join when the host allowed friends to invite.
+        if (e.role === 'outsider' && !e.allowFriendsToInvite) return e;
         const goingIds = e.goingIds.includes('me')
           ? e.goingIds
           : [...e.goingIds, 'me'];
-        return { ...e, role: 'going' as const, goingIds, going: true };
+        return {
+          ...e,
+          role: 'going' as const,
+          goingIds,
+          going: true,
+          isOutsider: false
+        };
       }
-      return { ...e, role: 'invited' as const, going: false };
+      // Can't make it — leave the list of people going.
+      const goingIds = e.goingIds.filter((pid) => pid !== 'me');
+      return {
+        ...e,
+        role: e.role === 'outsider' ? ('outsider' as const) : ('invited' as const),
+        goingIds,
+        going: false
+      };
     });
     return demoEvents.find((e) => e.id === id) ?? null;
   }
@@ -417,7 +603,10 @@ export type UpdateEventInput = Partial<
     | 'remindDay'
     | 'remindHours'
   >
->;
+> & {
+  /** Repeat rule; null clears back to a one-off */
+  recurrence?: EventItem['recurrence'] | null;
+};
 
 export async function updateEvent(
   eventId: string,
@@ -426,11 +615,14 @@ export async function updateEvent(
   if (isDemoMode()) {
     demoEvents = demoEvents.map((e) => {
       if (e.id !== eventId) return e;
+      const nextRecurrence =
+        'recurrence' in patch ? patch.recurrence : e.recurrence;
       return {
         ...e,
         ...patch,
         goingIds: [...e.goingIds],
         invitedIds: e.invitedIds ? [...e.invitedIds] : undefined,
+        inviteByIds: e.inviteByIds ? { ...e.inviteByIds } : undefined,
         broughtIds: e.broughtIds ? [...e.broughtIds] : undefined,
         coHostIds: patch.coHostIds
           ? [...patch.coHostIds]
@@ -441,7 +633,11 @@ export async function updateEvent(
           ? patch.assignments.map((a) => ({ ...a }))
           : e.assignments
             ? e.assignments.map((a) => ({ ...a }))
-            : undefined
+            : undefined,
+        recurrence: nextRecurrence ?? undefined,
+        recurrenceLabel: nextRecurrence
+          ? formatRecurrenceLabel(nextRecurrence)
+          : undefined
       };
     });
     const updated = demoEvents.find((e) => e.id === eventId);

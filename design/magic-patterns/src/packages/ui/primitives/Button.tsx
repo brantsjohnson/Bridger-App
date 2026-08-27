@@ -83,7 +83,7 @@ export function ButtonSecondary({
   type = 'button',
   tone = 'outline',
   className
-}: ButtonProps & {tone?: 'outline' | 'solid' | 'ghost' | 'positive';}) {
+}: ButtonProps & {tone?: 'outline' | 'solid' | 'ghost' | 'positive' | 'light';}) {
   const inert = disabled || loading;
   return (
     <button
@@ -100,6 +100,7 @@ export function ButtonSecondary({
         tone === 'solid' && 'bg-ink text-white hover:bg-ink-soft',
         tone === 'ghost' && 'text-ink hover:bg-[#F1ECFF]',
         tone === 'positive' && 'bg-success text-white hover:bg-[#268C4B]',
+        tone === 'light' && 'border border-ink-line bg-white text-ink hover:bg-[#F1ECFF]',
         inert && 'cursor-not-allowed opacity-40',
         className
       )}>

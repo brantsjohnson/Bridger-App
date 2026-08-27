@@ -16,6 +16,7 @@ import type { Accent } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
 import { ACCENTS, AnalyticsRegion, ButtonSecondary, Card, cn } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
+import { WASH_BODY } from './onboarding-wash';
 
 /** Each circle owns a color here and everywhere tiers appear later. */
 const CIRCLES: { label: string; line: string; accent: Accent }[] = [
@@ -72,7 +73,7 @@ export function GroupsStep({
           </View>
         </AnalyticsRegion>
 
-        <Text className="px-1 font-sans-sb text-[13px] leading-snug text-ink-soft">
+        <Text className={cn('px-1 font-sans-sb text-[13px] leading-snug', WASH_BODY)}>
           You decide what each circle sees. So invite a best friend to start —
           Bridger is empty until someone you know is here.
         </Text>
@@ -86,7 +87,7 @@ export function GroupsStep({
           onPress={onInvite}
           accessibilityLabel="Invite a best friend"
         >
-          {invited ? 'Invite sent' : 'Invite a best friend'}
+          {invited ? 'Invite sent' : 'Invite a friend to get access'}
         </ButtonSecondary>
       </View>
     </OnboardingStep>

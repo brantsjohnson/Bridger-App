@@ -1,7 +1,16 @@
 import { Accent } from './person';
 import { Cover } from './cover';
+import type { EventRecurrence } from './event-recurrence';
 
-export type EventRole = 'host' | 'going' | 'invited';
+export type { EventRecurrence } from './event-recurrence';
+export {
+  assertRecurrence,
+  formatRecurrenceLabel,
+  normalizeRecurrence,
+  isoWeekday
+} from './event-recurrence';
+
+export type EventRole = 'host' | 'going' | 'invited' | 'outsider';
 
 /**
  * One Assignments line on an event. The host adds the label (e.g. "chips");
@@ -29,6 +38,10 @@ export interface EventItem {
   place: string;
   /** the street address — only shown to people who are going or invited */
   address?: string;
+  /**
+   * People marked going. Empty for outsiders (shared-link viewers not on the
+   * list) so locked events never leak a guest list.
+   */
   goingIds: string[];
   invitedIds?: string[];
   hostId: string;
@@ -36,6 +49,11 @@ export interface EventItem {
   coHostIds?: string[];
   role: EventRole;
   going?: boolean;
+  /**
+   * True when the viewer opened a shared link but is not on the invite list.
+   * Prefer checking role === 'outsider'. Kept for older clients.
+   */
+  isOutsider?: boolean;
   /** "in 2 days" — the rough version, for screen readers and fallbacks */
   countdown?: string;
   /**
@@ -56,8 +74,15 @@ export interface EventItem {
   /** default 35; beyond this is a paid expansion / co-op benefit */
   cap?: number;
   /**
-   * People who joined via a friend's invite (bring-a-friend), not the host's
-   * original invite list. Host-only planning count — never shown to guests.
+   * Who invited each guest (personId → inviter personId). Missing / unset means
+   * the host invited them. Host-only planning data — never shown to guests.
+   * Powers "invited by Jade" / "brought by Sam" lines in the people sheet when
+   * allowFriendsToInvite is on.
+   */
+  inviteByIds?: Record<string, string>;
+  /**
+   * @deprecated Prefer inviteByIds. Kept for older fixtures / clients: people
+   * who joined via a friend's invite (bring-a-friend), not the host's list.
    */
   broughtIds?: string[];
   /** Host reminder: ping guests 2 days before */
@@ -66,6 +91,10 @@ export interface EventItem {
   remindHours?: boolean;
   /** Assignments sign-up list (optional) */
   assignments?: EventAssignment[];
+  /** How this event repeats. Unset = one-off. */
+  recurrence?: EventRecurrence;
+  /** Short UI label, e.g. "Every Monday". */
+  recurrenceLabel?: string;
 }
 
 export interface MeetSuggestion {

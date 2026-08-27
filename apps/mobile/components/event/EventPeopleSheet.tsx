@@ -2,6 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // Opens when you tap "N going" or "N invited" on an event. Hosts get both
 // tabs; guests only see the friends-going list (no invited totals — vanity).
+// When friends-can-invite is on, each row can show who invited that person
+// ("invited by Jade" / "brought by Sam"). Host-invited people get no tag.
 // Analytics: event_people_sheet.*; never logs names.
 // ============================================
 import React, { useEffect, useState } from 'react';
@@ -12,6 +14,21 @@ import { personById } from '../../data/people';
 
 type Tab = 'going' | 'invited';
 
+/** Build the short attribution line for one guest (host view only). */
+function attributionLine(
+  personId: string,
+  inviteByIds: Record<string, string> | undefined,
+  goingIds: string[]
+): string | undefined {
+  const inviterId = inviteByIds?.[personId];
+  if (!inviterId) return undefined;
+  const inviter = personById(inviterId);
+  const first = inviter.name.split(' ')[0] || inviter.name;
+  // Going + invited-by-someone = they were brought; still invited = not yet answered.
+  if (goingIds.includes(personId)) return `Brought by ${first}`;
+  return `Invited by ${first}`;
+}
+
 export function EventPeopleSheet({
   open,
   initialTab = 'going',
@@ -20,6 +37,13 @@ export function EventPeopleSheet({
   coHostIds = [],
   /** When false, hide the Invited tab (guest view). */
   showInvited = true,
+  /**
+   * When true and inviteByIds is set, show who invited each person.
+   * Off when the host disabled friends-can-invite (everyone is host-invited).
+   */
+  showAttribution = false,
+  /** personId → who invited them (host-invited people are omitted). */
+  inviteByIds,
   title = "Who's coming",
   onClose
 }: {
@@ -29,6 +53,8 @@ export function EventPeopleSheet({
   invitedIds: string[];
   coHostIds?: string[];
   showInvited?: boolean;
+  showAttribution?: boolean;
+  inviteByIds?: Record<string, string>;
   title?: string;
   onClose: () => void;
 }) {
@@ -108,6 +134,18 @@ export function EventPeopleSheet({
               const p = personById(id);
               const isCoHost = coHostIds.includes(id);
               const answered = goingIds.includes(id);
+              const attr =
+                showAttribution
+                  ? attributionLine(id, inviteByIds, goingIds)
+                  : undefined;
+              // Prefer attribution over mutuals when friends-can-invite is on.
+              const sublabel =
+                attr ??
+                (p.tier === 'none'
+                  ? 'Worth meeting'
+                  : p.mutuals
+                    ? `${p.mutuals} mutual friends`
+                    : undefined);
               return (
                 <ListRow
                   key={id}
@@ -121,13 +159,7 @@ export function EventPeopleSheet({
                     />
                   }
                   label={p.name}
-                  sublabel={
-                    p.tier === 'none'
-                      ? 'Worth meeting'
-                      : p.mutuals
-                        ? `${p.mutuals} mutual friends`
-                        : undefined
-                  }
+                  sublabel={sublabel}
                   analyticsId={EVENTS.people_sheet.row}
                   interactive={false}
                   action={

@@ -4,7 +4,7 @@
 // Catch-Up sheet, and replies for the current post. Screens call this instead
 // of touching fixtures or the API directly.
 // ============================================
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CatchUpItem, Reaction, StoryPost } from '@bridger/shared';
 import { personById } from '../data/people';
 import {
@@ -23,6 +23,8 @@ export function useStoryViewer(authorId: string) {
   const [catchUp, setCatchUp] = useState<CatchUpBundle | null>(null);
   const [replies, setReplies] = useState<Reaction[]>([]);
   const [loading, setLoading] = useState(true);
+  // After the first successful load, later author swaps keep the UI up.
+  const hasLoadedRef = useRef(false);
 
   const resolvedId = authorId === 'mine' ? 'me' : authorId;
   const author = personById(resolvedId);
@@ -39,13 +41,16 @@ export function useStoryViewer(authorId: string) {
   }, []);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    // First open blanks the screen. Swapping to the next friend in the tray
+    // keeps the player up so Catch-Up stays parked at the peek (no remount flash).
+    if (!hasLoadedRef.current) setLoading(true);
     try {
       const list = await listPosts(resolvedId);
       setPosts(list);
       setIndex(0);
       await refreshCatchUp();
       if (list[0]) await refreshReplies(list[0].id);
+      hasLoadedRef.current = true;
     } finally {
       setLoading(false);
     }

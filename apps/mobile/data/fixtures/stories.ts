@@ -24,7 +24,15 @@ export type WeekDay = {
 
 /** Currently listening / reading — shared with Profile Currently in spirit. */
 export const STORY_CURRENTLY = {
-  listening: { title: 'Blue Rev', artist: 'Alvvays', emoji: '💿' },
+  listening: {
+    title: 'Blue Rev',
+    artist: 'Alvvays',
+    emoji: '💿',
+    previewUrl: null as string | null,
+    spotifyId: null as string | null,
+    spotifyUri: null as string | null,
+    artworkUrl: null as string | null
+  },
   reading: { title: 'Piranesi', author: 'Susanna Clarke', emoji: '📖' }
 };
 

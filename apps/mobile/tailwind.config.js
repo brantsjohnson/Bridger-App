@@ -69,14 +69,17 @@ module.exports = {
       },
       // --- Fonts. React Native needs a separate family per weight, so body copy
       //     has explicit weight families (sans, sans-md, sans-sb, sans-b, sans-xb).
-      //     "pixel" is the single retro header font. ---
+      //     "pixel" is the single retro header font.
+      //     "display" is Big Shoulders Display, used ONLY on the four onboarding
+      //     reality-check screens (StatScreen). Do not spread it elsewhere. ---
       fontFamily: {
         sans: ['PlusJakartaSans_400Regular', 'system-ui', 'sans-serif'],
         'sans-md': ['PlusJakartaSans_500Medium'],
         'sans-sb': ['PlusJakartaSans_600SemiBold'],
         'sans-b': ['PlusJakartaSans_700Bold'],
         'sans-xb': ['PlusJakartaSans_800ExtraBold'],
-        pixel: ['FeloniaPixel', 'Courier New', 'monospace']
+        pixel: ['FeloniaPixel', 'Courier New', 'monospace'],
+        display: ['BigShouldersDisplay_900Black']
       },
       borderRadius: {
         card: '20px',

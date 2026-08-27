@@ -9,34 +9,58 @@
   reflected here.
 
   WHERE IT LIVES: next to app.json so the iOS build and this manifest stay
-  together. When we adopt the Expo config approach we can mirror these values
-  into app.json's `ios.privacyManifests`; until then this file is the source.
+  together. Expo also mirrors these values in app.config.js under
+  ios.privacyManifests. Keep the two in sync.
 
-  STATUS: draft skeleton. We fill it in as features land (per guide-rules
-  section 8). It currently declares the honest baseline: we do NOT do ad
-  tracking. PostHog (our first-party, consented product analytics) is NOT
-  cross-app tracking, so NSPrivacyTracking stays false; we still list the
-  data types PostHog and the app collect under NSPrivacyCollectedDataTypes
-  as we wire them.
+  STATUS: PostHog product analytics is wired. It is first-party, opt-in,
+  and not Apple "tracking" (no ads, no IDFA, no cross-app linking), so
+  NSPrivacyTracking stays false.
   ============================================================
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- TRACKING: we do not track users across other companies' apps/sites. Keep false. -->
   <key>NSPrivacyTracking</key>
   <false/>
 
-  <!-- TRACKING DOMAINS: only used if NSPrivacyTracking is true. Stays empty for us. -->
   <key>NSPrivacyTrackingDomains</key>
   <array/>
 
-  <!-- COLLECTED DATA: fill in as we wire real collection (e.g. PostHog product-analytics events, account data). Must match the App Store data-safety label. -->
   <key>NSPrivacyCollectedDataTypes</key>
-  <array/>
+  <array>
+    <dict>
+      <key>NSPrivacyCollectedDataType</key>
+      <string>NSPrivacyCollectedDataTypeProductInteraction</string>
+      <key>NSPrivacyCollectedDataTypeLinked</key>
+      <true/>
+      <key>NSPrivacyCollectedDataTypeTracking</key>
+      <false/>
+      <key>NSPrivacyCollectedDataTypePurposes</key>
+      <array>
+        <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+        <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+      </array>
+    </dict>
+  </array>
 
-  <!-- REQUIRED-REASON APIs: fill in the system APIs we call and their approved reason codes (e.g. file timestamp, UserDefaults) as they appear in the build. -->
   <key>NSPrivacyAccessedAPITypes</key>
-  <array/>
+  <array>
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>CA92.1</string>
+      </array>
+    </dict>
+    <dict>
+      <key>NSPrivacyAccessedAPIType</key>
+      <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+      <key>NSPrivacyAccessedAPITypeReasons</key>
+      <array>
+        <string>C617.1</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

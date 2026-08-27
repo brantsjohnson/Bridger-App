@@ -146,7 +146,9 @@ The lane is part of the per-job config — a job cannot switch lanes at runtime,
 | Model/provider down | Surface hides (no summary, no adaptation); app fully usable |
 | Invalid JSON twice | Same as down — fail silent, log for spot-check |
 | Grounding check fails | Summary suppressed (never "best effort" prose about someone's life) |
-| Budget exceeded | Job auto-disables + admin alert; nothing degrades loudly |
+| Budget exceeded (org job) | Job auto-disables + admin alert; ambient surfaces fail silent |
+| Billy user allowance exhausted | HTTP 402 `billy_allowance_exhausted`; user sees refresh / Billy+ CTA (not an org outage) |
+| Vendor 429 / hard limit | HTTP 503 `billy_vendor_outage` for Billy; `ai_ops_alerts` for admin; do not tell users to top up |
 | Scrubber rejects payload | Call never leaves the building; bug ticket, not a user error |
 
 - **Cost model:** the gateway's per-call log (tokens × price, by job) rolls into a monthly per-job dashboard in admin and the co-op economics view. Rule of thumb: embeddings and fast-tier jobs are pennies; watch jobs 3, 4, and 11 — they're the spend.

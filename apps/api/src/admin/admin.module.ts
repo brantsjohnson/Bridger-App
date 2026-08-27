@@ -9,9 +9,11 @@ import { AiModule } from '../ai/ai.module';
 import { AssistantModule } from '../assistant/assistant.module';
 import { CoopModule } from '../coop/coop.module';
 import { MatchingModule } from '../matching/matching.module';
+import { PosthogModule } from '../posthog/posthog.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { IntegrationsHealthService } from './integrations-health.service';
 
 @Module({
   imports: [
@@ -20,10 +22,11 @@ import { AdminService } from './admin.service';
     CoopModule,
     AiModule,
     AssistantModule,
-    MatchingModule
+    MatchingModule,
+    PosthogModule
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, IntegrationsHealthService],
   exports: [AdminService]
 })
 export class AdminModule {}

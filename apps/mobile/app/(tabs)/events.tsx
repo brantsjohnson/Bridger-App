@@ -1,15 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Events tab — ported from Magic Patterns. Top: Touch Grass (send you're
-// free), with a "Touch grass" title that explains who shows up beneath the
-// button, then friends' signals under it. Then your calendar by role
-// (Hosting / Going / Invited) and a Community "coming soon" slot. Data comes
-// from hooks so demo fixtures and the live API use the same screen.
-// Analytics: surface=events; create / event cards / Touch Grass use EVENTS.*.
+// The Events tab. First visit shows a marketing gate that explains what Events
+// is for. "Explore Events" opens the normal tab (Touch Grass + calendar) —
+// it does not force you to create right away. Header + still opens create.
+// After you explore once (or host once), the gate does not come back.
+// Analytics: surface=events; create / event cards / Touch Grass / gate use EVENTS.*.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PlusIcon } from 'lucide-react-native';
 import type { EventRole, GrassSignal } from '@bridger/shared';
 import { EVENTS, HOME, openSurface, trackProduct } from '@bridger/shared';
@@ -24,6 +24,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { EventCard } from '../../components/EventCard';
+import { EventsGate } from '../../components/event/EventsGate';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { GrassSignalSheet } from '../../components/GrassSignalSheet';
 import { TouchGrassButton } from '../../components/TouchGrassButton';
@@ -31,6 +32,14 @@ import { TouchGrassSheet } from '../../components/TouchGrassSheet';
 import { startThreadWith } from '../../data/messages';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
+
+/** Set EXPO_PUBLIC_FORCE_EVENTS_GATE=1 to preview the gate even with host fixtures. */
+const FORCE_EVENTS_GATE =
+  process.env.EXPO_PUBLIC_FORCE_EVENTS_GATE === '1' ||
+  process.env.EXPO_PUBLIC_FORCE_EVENTS_GATE === 'true';
+
+/** Saved on device so Explore Events only has to be tapped once. */
+const EVENTS_GATE_EXPLORED_KEY = 'bridger.eventsGateExplored';
 
 const SECTIONS: Array<{
   role: EventRole;
@@ -71,182 +80,222 @@ export default function EventsScreen() {
   const [rsvp, setRsvp] = useState<Record<string, 'going' | 'cant'>>({});
   const [grassOpen, setGrassOpen] = useState(false);
   const [openSignal, setOpenSignal] = useState<GrassSignal | null>(null);
+  /** null = still reading device storage; then true/false for Explore once. */
+  const [gateExplored, setGateExplored] = useState<boolean | null>(null);
 
   // Mark Events as the active analytics surface.
   useEffect(() => {
     openSurface('events');
   }, []);
 
+  // THIS SECTION DOES: remember if they already tapped Explore Events.
+  useEffect(() => {
+    void AsyncStorage.getItem(EVENTS_GATE_EXPLORED_KEY).then((v) => {
+      setGateExplored(v === '1');
+    });
+  }, []);
+
+  // THIS SECTION DOES: show the marketing gate until they explore or host once.
+  // FORCE only ignores "already hosted" so QA can preview the gate. Once they
+  // tap Explore Events, the list must show (FORCE must not pin them on the gate).
+  const everHosted = events.some((e) => e.role === 'host');
+  const showGate =
+    gateExplored !== true &&
+    (FORCE_EVENTS_GATE || (gateExplored === false && !everHosted));
+
   const empty = events.length === 0 && signals.length === 0 && !myLive;
+  const goCreate = () => router.push('/event/create');
+
+  // THIS SECTION DOES: leave the gate and land on the normal Events list.
+  // Delay the swap slightly so this same tap cannot land on a section-info
+  // bubble on the list (that popup is easy to mistake for settings).
+  const exploreEvents = () => {
+    void AsyncStorage.setItem(EVENTS_GATE_EXPLORED_KEY, '1');
+    setTimeout(() => setGateExplored(true), 200);
+  };
 
   return (
-    <Screen tone="canvas">
+    <Screen tone={showGate ? 'intro' : 'canvas'}>
       <ScreenHeader
         title="Events"
         titleAnalyticsId={EVENTS.list.page_title}
         profileAnalyticsId={EVENTS.list.profile_icon}
+        messagesAnalyticsId={EVENTS.list.messages_icon}
         trailing={
           <Pressable
-            onPress={withAnalyticsPress(EVENTS.list.create, () => router.push('/event/create'))}
+            onPress={withAnalyticsPress(EVENTS.list.create, goCreate)}
             accessibilityRole="button"
             accessibilityLabel="Create event"
-            className="h-10 w-10 items-center justify-center rounded-full border border-ink-line bg-surface active:opacity-90"
+            className={
+              showGate
+                ? 'h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 active:opacity-90'
+                : 'h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90'
+            }
           >
-            <PlusIcon size={18} color={c.ink} strokeWidth={2.6} />
+            <PlusIcon size={18} color={showGate ? '#FFFFFF' : c.canvas} strokeWidth={2.6} />
           </Pressable>
         }
       />
 
-      <ScreenBody>
-        {/* Touch grass title explains the button + who appears underneath */}
-        <View>
-          <SectionTitle
-            title="Touch grass"
-            description="Tap the button to tell your circle you're free. Friends who are also free show up right here."
-            infoAnalyticsId={EVENTS.touch_grass.info}
-            parentScreen="events"
-            section="touch_grass"
-            className="mb-2"
-          />
-          {/* Always the big green button — never swap it for the thin live strip. */}
-          <TouchGrassButton
-            live={!!myLive}
-            inIds={myLive?.inIds ?? []}
-            onOpen={() => setGrassOpen(true)}
-            onEnd={myLive ? () => void onEndMine() : undefined}
-          />
-
-          {signals.length > 0 ? (
-            <View className="mt-3 gap-2.5">
-              {signals.map((s, i) => (
-                <FreeSignalCard
-                  key={s.id}
-                  signal={s}
-                  burstOnMount={false}
-                  analyticsIds={{
-                    card:
-                      i === 0
-                        ? EVENTS.touch_grass.featured_signal
-                        : EVENTS.touch_grass.signal_row,
-                    imIn: HOME.announcements.touch_grass_im_in,
-                    details: HOME.announcements.touch_grass_details,
-                    dismiss: HOME.announcements.touch_grass_dismiss
-                  }}
-                  onOpen={() => setOpenSignal(s)}
-                  onJoined={() => {
-                    void onJoin(s.id);
-                    void (async () => {
-                      const id = await startThreadWith(s.personId);
-                      router.push({
-                        pathname: '/messages/[id]',
-                        params: { id, seed: "I'm in" }
-                      });
-                    })();
-                  }}
-                  onDismiss={() => void onDismiss(s.id)}
-                />
-              ))}
-            </View>
-          ) : null}
-        </View>
-
-        {empty ? (
-          <View className="mt-7">
-            <EmptyState
-              emoji="📅"
-              line="Nothing on the calendar. Host something small, even two people counts."
-              action={
-                <ButtonSecondary
-                  size="sm"
-                  tone="solid"
-                  analyticsId={EVENTS.list.create}
-                  onPress={() => router.push('/event/create')}
-                >
-                  Create an event
-                </ButtonSecondary>
-              }
-            />
-          </View>
-        ) : null}
-
-        {SECTIONS.map(({ role, label, description, section, infoAnalyticsId }) => {
-          const list = events.filter((e) => e.role === role);
-          if (list.length === 0) return null;
-          return (
-            <View key={role} className="mt-7">
+      <ScreenBody key={showGate ? 'events-gate' : 'events-list'}>
+        {gateExplored === null && !FORCE_EVENTS_GATE && !everHosted ? null : showGate ? (
+          <EventsGate onExplore={exploreEvents} />
+        ) : (
+          <>
+            {/* Touch grass title explains the button + who appears underneath */}
+            <View>
               <SectionTitle
-                title={label}
-                description={description}
-                infoAnalyticsId={infoAnalyticsId}
+                title="Touch grass"
+                description="Tap the button to tell your circle you're free. Friends who are also free show up right here."
+                infoAnalyticsId={EVENTS.touch_grass.info}
                 parentScreen="events"
-                section={section}
+                section="touch_grass"
                 className="mb-2"
               />
-              <View className="gap-3">
-                {list.map((e) => (
-                  <EventCard
-                    key={e.id}
-                    event={e}
-                    rsvp={rsvp[e.id]}
-                    onRsvp={(id, status) => {
-                      setRsvp((p) => ({ ...p, [id]: status }));
-                      void onRsvp(id, status);
-                      // Product outcome for the RSVP (separate from the button click).
-                      trackProduct(status === 'going' ? 'rsvp_going' : 'rsvp_cant');
-                    }}
-                    onOpen={() => router.push(`/event/${e.id}`)}
-                  />
-                ))}
-              </View>
-            </View>
-          );
-        })}
+              {/* Always the big green button — never swap it for the thin live strip. */}
+              <TouchGrassButton
+                live={!!myLive}
+                inIds={myLive?.inIds ?? []}
+                onOpen={() => setGrassOpen(true)}
+                onEnd={myLive ? () => void onEndMine() : undefined}
+              />
 
-        <View className="mt-7">
-          <SectionTitle
-            title="Community"
-            description="Public events around you. Coming soon."
-            infoAnalyticsId={EVENTS.community.info}
-            parentScreen="events"
-            section="community"
-            className="mb-2"
-          />
-          <EmptyState emoji="🏘️" line="Coming soon." />
-        </View>
+              {signals.length > 0 ? (
+                <View className="mt-3 gap-2.5">
+                  {signals.map((s, i) => (
+                    <FreeSignalCard
+                      key={s.id}
+                      signal={s}
+                      burstOnMount={false}
+                      analyticsIds={{
+                        card:
+                          i === 0
+                            ? EVENTS.touch_grass.featured_signal
+                            : EVENTS.touch_grass.signal_row,
+                        imIn: HOME.announcements.touch_grass_im_in,
+                        details: HOME.announcements.touch_grass_details,
+                        dismiss: HOME.announcements.touch_grass_dismiss
+                      }}
+                      onOpen={() => setOpenSignal(s)}
+                      onJoined={() => {
+                        void onJoin(s.id);
+                        void (async () => {
+                          const id = await startThreadWith(s.personId);
+                          router.push({
+                            pathname: '/messages/[id]',
+                            params: { id, seed: "I'm in" }
+                          });
+                        })();
+                      }}
+                      onDismiss={() => void onDismiss(s.id)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            {empty ? (
+              <View className="mt-7">
+                <EmptyState
+                  emoji="📅"
+                  line="Nothing on the calendar. Host something small, even two people counts."
+                  action={
+                    <ButtonSecondary
+                      size="sm"
+                      tone="solid"
+                      analyticsId={EVENTS.list.create}
+                      onPress={goCreate}
+                    >
+                      Create an event
+                    </ButtonSecondary>
+                  }
+                />
+              </View>
+            ) : null}
+
+            {SECTIONS.map(({ role, label, description, section, infoAnalyticsId }) => {
+              const list = events.filter((e) => e.role === role);
+              if (list.length === 0) return null;
+              return (
+                <View key={role} className="mt-7">
+                  <SectionTitle
+                    title={label}
+                    description={description}
+                    infoAnalyticsId={infoAnalyticsId}
+                    parentScreen="events"
+                    section={section}
+                    className="mb-2"
+                  />
+                  <View className="gap-3">
+                    {list.map((e) => (
+                      <EventCard
+                        key={e.id}
+                        event={e}
+                        rsvp={rsvp[e.id]}
+                        onRsvp={(id, status) => {
+                          setRsvp((p) => ({ ...p, [id]: status }));
+                          void onRsvp(id, status);
+                          trackProduct(status === 'going' ? 'rsvp_going' : 'rsvp_cant');
+                        }}
+                        onOpen={() => router.push(`/event/${e.id}`)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              );
+            })}
+
+            <View className="mt-7">
+              <SectionTitle
+                title="Community"
+                description="Public events around you. Coming soon."
+                infoAnalyticsId={EVENTS.community.info}
+                parentScreen="events"
+                section="community"
+                className="mb-2"
+              />
+              <EmptyState emoji="🏘️" line="Coming soon." />
+            </View>
+          </>
+        )}
       </ScreenBody>
 
-      <TouchGrassSheet
-        open={grassOpen}
-        parentScreen="events"
-        onClose={() => setGrassOpen(false)}
-        onSend={(input) => {
-          void onSend(input);
-          setGrassOpen(false);
-        }}
-      />
-      <GrassSignalSheet
-        signal={openSignal}
-        parentScreen="events"
-        onClose={() => setOpenSignal(null)}
-        onDecline={(id) => void onDismiss(id)}
-        onJoin={() => {
-          if (openSignal) {
-            const personId = openSignal.personId;
-            void onJoin(openSignal.id);
-            trackProduct('touch_grass_answered');
-            setOpenSignal(null);
-            void (async () => {
-              const id = await startThreadWith(personId);
-              router.push({
-                pathname: '/messages/[id]',
-                params: { id, seed: "I'm in" }
-              });
-            })();
-            return;
-          }
-          setOpenSignal(null);
-        }}
-      />
+      {!showGate ? (
+        <>
+          <TouchGrassSheet
+            open={grassOpen}
+            parentScreen="events"
+            onClose={() => setGrassOpen(false)}
+            onSend={(input) => {
+              void onSend(input);
+              setGrassOpen(false);
+            }}
+          />
+          <GrassSignalSheet
+            signal={openSignal}
+            parentScreen="events"
+            onClose={() => setOpenSignal(null)}
+            onDecline={(id) => void onDismiss(id)}
+            onJoin={() => {
+              if (openSignal) {
+                const personId = openSignal.personId;
+                void onJoin(openSignal.id);
+                trackProduct('touch_grass_answered');
+                setOpenSignal(null);
+                void (async () => {
+                  const id = await startThreadWith(personId);
+                  router.push({
+                    pathname: '/messages/[id]',
+                    params: { id, seed: "I'm in" }
+                  });
+                })();
+                return;
+              }
+              setOpenSignal(null);
+            }}
+          />
+        </>
+      ) : null}
     </Screen>
   );
 }

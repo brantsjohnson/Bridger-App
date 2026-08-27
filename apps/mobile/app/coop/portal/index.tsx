@@ -74,7 +74,7 @@ export default function CoopPortalHub() {
     void getPortalOverview()
       .then(setOverview)
       .catch(() =>
-        setOverview({ member: false, members: 0, dues: '$24/year' })
+        setOverview({ member: false, members: 0, dues: '$72/year' })
       );
   }, []);
 
@@ -197,7 +197,7 @@ export default function CoopPortalHub() {
                 onPress={() => router.push('/coop')}
                 accessibilityLabel="Join the co-op"
               >
-                Join · $24 a year
+                Join · $72 a year
               </ButtonPrimary>
             </View>
           ) : (

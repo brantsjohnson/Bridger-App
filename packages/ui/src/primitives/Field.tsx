@@ -26,6 +26,8 @@ type TextFieldProps = {
   accessibilityLabel?: string;
   /** called when the user presses Enter / Done on the keyboard */
   onSubmitEditing?: () => void;
+  /** On onboarding color washes, labels use dark onaccent type (pastel bg stays light in dark mode). */
+  labelTone?: 'default' | 'onaccent';
 } & Pick<AnalyticsProps, 'analyticsId'>;
 
 export function TextField({
@@ -39,13 +41,18 @@ export function TextField({
   autoComplete,
   accessibilityLabel,
   analyticsId,
-  onSubmitEditing
+  onSubmitEditing,
+  labelTone = 'default'
 }: TextFieldProps) {
   const c = useThemeColors();
+  const labelClass =
+    labelTone === 'onaccent'
+      ? 'mb-1.5 font-sans-b text-[12px] text-onaccent/80'
+      : 'mb-1.5 font-sans-b text-[12px] text-ink-soft';
 
   return (
     <View className="w-full">
-      {label ? <Text className="mb-1.5 font-sans-b text-[12px] text-ink-soft">{label}</Text> : null}
+      {label ? <Text className={labelClass}>{label}</Text> : null}
       <View
         className={cn(
           'rounded-2xl border bg-canvas-raised px-4',

@@ -14,6 +14,7 @@ import type {
   CoopIdeaComment,
   CoopMembership,
   CoopMissionPrinciple,
+  CoopPromoRedeemResult,
   CoopRole
 } from '@bridger/shared';
 import { trackProduct } from '@bridger/shared';
@@ -80,6 +81,38 @@ export async function joinCoop(method: DuesMethod = 'soft'): Promise<CoopMembers
   });
   trackProduct('coop_joined', { method });
   return membership;
+}
+
+/**
+ * Redeem an auth / promo code for a free year of co-op (no payment). The server
+ * checks the code, grants membership, and records that this user used it. We
+ * emit coop_promo_redeemed + coop_joined only after the server confirms — never
+ * on the tap. The code text itself is never sent to analytics.
+ */
+export async function redeemPromoCode(
+  code: string
+): Promise<CoopPromoRedeemResult> {
+  if (isDemoMode()) {
+    // Demo accepts the seeded code so the flow can be tried without a server.
+    if (code.trim().toUpperCase() !== 'BRIDGER-FREE-YEAR') {
+      throw new Error('That code is not valid.');
+    }
+    demoMember = true;
+    demoCancelAtPeriodEnd = false;
+    trackProduct('coop_promo_redeemed', { method: 'promo' });
+    trackProduct('coop_joined', { method: 'promo' });
+    return { ok: true, grantMonths: 12, membership: await getMembership() };
+  }
+  const result = await apiFetch<CoopPromoRedeemResult>(
+    '/coop/membership/redeem',
+    {
+      method: 'POST',
+      body: JSON.stringify({ code })
+    }
+  );
+  trackProduct('coop_promo_redeemed', { method: 'promo' });
+  trackProduct('coop_joined', { method: 'promo' });
+  return result;
 }
 
 /** Immediate leave (legacy). Prefer cancelMembership for product UX. */

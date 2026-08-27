@@ -5,6 +5,7 @@ import {
   AudiencePicker,
   ButtonPrimary,
   ButtonSecondary,
+  Toggle,
   cn } from
 '../../../../packages/ui';
 import { THEMED_PROMPTS } from '../../state/mock-data';
@@ -19,6 +20,8 @@ export function StoryCaptureScreen({ onClose }: {onClose?: () => void;}) {
   const [overlay, setOverlay] = React.useState('');
   const [audience, setAudience] = React.useState<AudienceLevel>('friend');
   const [group, setGroup] = React.useState<string | null>(null);
+  /** Opt-in: random update nudges about 1–3 times a day. */
+  const [randomNudges, setRandomNudges] = React.useState(false);
   const holdTimer = React.useRef<number | null>(null);
 
   const startHold = () => {
@@ -135,6 +138,22 @@ export function StoryCaptureScreen({ onClose }: {onClose?: () => void;}) {
               <span className="text-[11px] font-bold">{t.label}</span>
             </button>
           )}
+        </div>
+
+        {/* Opt-in surprise "time to post" nudges (about 1–3 a day) */}
+        <div className="mt-3 flex items-center gap-3 rounded-card bg-white px-3 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold text-ink">Random update nudges</p>
+            <p className="mt-0.5 text-[11px] font-medium leading-snug text-ink-soft">
+              About 1–3 surprise taps a day. Opens this screen when it is time to
+              post.
+            </p>
+          </div>
+          <Toggle
+            checked={randomNudges}
+            onChange={setRandomNudges}
+            label="Random update nudges, about 1 to 3 a day"
+          />
         </div>
       </div>
 

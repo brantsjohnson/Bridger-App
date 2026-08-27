@@ -1,4 +1,3 @@
-import React from 'react';
 import { Accent } from '../../../../packages/shared';
 import { ColorCard } from '../../../../packages/ui';
 import { OnboardingStep } from '../../components/OnboardingStep';
@@ -18,8 +17,8 @@ export function PrivacyScreen({ onNext }: {onNext?: () => void;}) {
   return (
     <OnboardingStep
       step={1}
-      total={9}
-      purpose="Privacy is crucial, and it's yours."
+      total={10}
+      purpose="It watched everything and asked for nothing. Here, your privacy is yours."
       ask="How this works"
       cta="I understand"
       accent="blue"

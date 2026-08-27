@@ -5,11 +5,13 @@
 // so you can answer that person directly.
 // ============================================
 import React, { useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native';
+import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import { PlayIcon, VideoIcon } from 'lucide-react-native';
 import { CATCH_UP, type Accent, type Reaction } from '@bridger/shared';
-import { Avatar, withAnalyticsPress } from '@bridger/ui';
+import { withAnalyticsPress } from '@bridger/ui';
+import { getDemoReplyPoster, getProfilePhoto } from '../../data/fixtures/demo-media';
+import { PersonAvatar } from '../PersonAvatar';
 
 type Props = {
   reaction: Reaction;
@@ -25,7 +27,14 @@ export function ReplyRow({ reaction, name, emoji, accent, onReply }: Props) {
 
   return (
     <View className="flex-row items-start gap-3">
-      <Avatar name={name} emoji={emoji} accent={accent} personId={reaction.authorId} size="sm" />
+      {/* THIS SECTION DOES: show their real face (same photo lookup as Home chips) */}
+      <PersonAvatar
+        id={reaction.authorId}
+        name={name}
+        emoji={emoji}
+        accent={accent}
+        size="sm"
+      />
       <View className="min-w-0 flex-1">
         <Text className="font-sans-b text-[13px] text-ink">
           {first}{' '}
@@ -50,6 +59,10 @@ export function ReplyRow({ reaction, name, emoji, accent, onReply }: Props) {
         {reaction.kind === 'circleVideo' ? (
           <CircleVideoReply
             uri={reaction.videoUri}
+            media={reaction.videoMedia}
+            poster={
+              getDemoReplyPoster(reaction.authorId) ?? getProfilePhoto(reaction.authorId)
+            }
             seconds={reaction.videoSeconds}
             name={first}
           />
@@ -73,27 +86,57 @@ export function ReplyRow({ reaction, name, emoji, accent, onReply }: Props) {
 
 /**
  * A round video reply in the thread. It sits still until you tap it, then
- * plays in place — the same circle it was recorded in. Older demo replies have
- * no clip attached, so those just show the video badge.
+ * plays in place — the same circle it was recorded in.
+ * Prefers a real clip (bundled demo media or a recorded URI). If somehow
+ * there is still no clip, we show their photo with a play badge so the row
+ * never collapses to an empty purple icon.
  */
 function CircleVideoReply({
   uri,
+  media,
+  poster,
   seconds,
   name
 }: {
   uri?: string;
+  media?: ImageSourcePropType;
+  poster?: ImageSourcePropType;
   seconds?: number;
   name: string;
 }) {
   const [playing, setPlaying] = useState(false);
-  const player = useVideoPlayer(uri ?? null, (p) => {
+  // Bundled require()'d assets work the same way as story videos.
+  const source: VideoSource | null = media
+    ? (media as VideoSource)
+    : uri
+      ? { uri }
+      : null;
+  const player = useVideoPlayer(source, (p) => {
     p.loop = false;
   });
 
-  if (!uri) {
+  // THIS SECTION DOES: when there is no clip, show their picture + a play badge
+  if (!source) {
     return (
-      <View className="mt-1 h-14 w-14 items-center justify-center rounded-full border-2 border-ink bg-purple">
-        <VideoIcon size={20} color="#FFFFFF" strokeWidth={2.4} />
+      <View
+        accessibilityLabel={`${name}'s video reply`}
+        className="mt-1 h-14 w-14 overflow-hidden rounded-full border-2 border-ink"
+      >
+        {poster ? (
+          <Image
+            source={poster}
+            accessibilityIgnoresInvertColors
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View className="h-full w-full items-center justify-center bg-purple">
+            <VideoIcon size={20} color="#FFFFFF" strokeWidth={2.4} />
+          </View>
+        )}
+        <View className="absolute inset-0 items-center justify-center bg-ink/30">
+          <PlayIcon size={18} color="#FFFFFF" strokeWidth={2.6} fill="#FFFFFF" />
+        </View>
       </View>
     );
   }
@@ -120,13 +163,31 @@ function CircleVideoReply({
       }
       className="mt-1 h-20 w-20 overflow-hidden rounded-full border-2 border-ink"
     >
-      <VideoView
-        player={player}
-        style={{ width: '100%', height: '100%' }}
-        contentFit="cover"
-        nativeControls={false}
-        accessibilityIgnoresInvertColors
-      />
+      {/*
+        THIS SECTION DOES: show the still photo until they tap play.
+        On web, VideoView is opaque even before the first frame, so it would
+        hide the picture if we kept it mounted the whole time.
+      */}
+      {playing ? (
+        <VideoView
+          player={player}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="cover"
+          nativeControls={false}
+          accessibilityIgnoresInvertColors
+        />
+      ) : poster ? (
+        <Image
+          source={poster}
+          accessibilityIgnoresInvertColors
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="h-full w-full items-center justify-center bg-purple">
+          <VideoIcon size={22} color="#FFFFFF" strokeWidth={2.4} />
+        </View>
+      )}
       {!playing ? (
         <View className="absolute inset-0 items-center justify-center bg-ink/30">
           <PlayIcon size={22} color="#FFFFFF" strokeWidth={2.6} fill="#FFFFFF" />

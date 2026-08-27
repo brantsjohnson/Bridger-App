@@ -34,15 +34,19 @@ import {
 } from '../../data/assistant';
 import { getMembership } from '../../data/coop';
 import {
+  EMOJI_BOMB_LIVE,
   __demoQueueTrigger,
   resolveEmojiBombId
 } from '../../data/delight';
 import {
+  disconnectAppleMusic,
   disconnectSpotify,
   fetchMusicStatus,
   syncTopArtists
 } from '../../data/music';
 import { disableDemoMode, isDemoMode } from '../../lib/demo';
+import { useAuth } from '../../providers/auth-provider';
+import { connectAppleMusicAccount } from '../../lib/apple-music-connect';
 import { connectSpotifyAccount } from '../../lib/spotify-connect';
 import { DelightErrorBoundary } from '../../delight/_host/DelightErrorBoundary';
 import { EmojiRain } from '../../delight/effects/emoji-rain';
@@ -60,6 +64,7 @@ export function ProfileSettings({
   onSignOut: () => void;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
   const scheme = useColorScheme();
   /** a standing preference for other people's pages — never your own */
   const [preferOriginal, setPreferOriginal] = useState(false);
@@ -68,9 +73,11 @@ export function ProfileSettings({
   const [billyStatus, setBillyStatus] = useState<BillyStatusDto | null>(null);
   const [spotifyOn, setSpotifyOn] = useState(false);
   const [spotifyBusy, setSpotifyBusy] = useState(false);
+  const [appleOn, setAppleOn] = useState(false);
+  const [appleBusy, setAppleBusy] = useState(false);
   const [rainPreview, setRainPreview] = useState(false);
-  // THIS SECTION DOES: stop a slow Settings load from flipping the toggle back off
-  // after you already switched it (Settings unmounts when you leave the tab).
+  // THIS SECTION DOES: stop a slow Settings load from flipping the Billy toggle
+  // back off after you already switched it (Settings unmounts when you leave).
   const assistantTouched = useRef(false);
 
   useEffect(() => {
@@ -91,12 +98,15 @@ export function ProfileSettings({
       }
     });
     void fetchMusicStatus().then((s) => {
-      if (!cancelled) setSpotifyOn(s.spotify);
+      if (!cancelled) {
+        setSpotifyOn(s.spotify);
+        setAppleOn(s.appleMusic);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.id]);
 
   // THIS SECTION DOES: link or unlink Spotify (account link, not Bridger login).
   const onSpotifyRow = () => {
@@ -145,6 +155,58 @@ export function ProfileSettings({
       })
       .catch(() => Alert.alert('Could not link Spotify', 'Try again in a moment.'))
       .finally(() => setSpotifyBusy(false));
+  };
+
+  // THIS SECTION DOES: link or unlink Apple Music (account link, not Bridger login).
+  const onAppleRow = () => {
+    if (appleBusy) return;
+    if (appleOn) {
+      Alert.alert(
+        'Disconnect Apple Music?',
+        'Removes the link and synced top artists. Your Bridger login is unchanged.',
+        [
+          { text: 'Keep linked', style: 'cancel' },
+          {
+            text: 'Disconnect',
+            style: 'destructive',
+            onPress: () => {
+              setAppleBusy(true);
+              void disconnectAppleMusic()
+                .then(() => {
+                  setAppleOn(false);
+                  trackProduct('music_disconnected', { method: 'apple_music' });
+                })
+                .catch(() => Alert.alert('Could not disconnect', 'Try again in a moment.'))
+                .finally(() => setAppleBusy(false));
+            }
+          }
+        ]
+      );
+      return;
+    }
+    setAppleBusy(true);
+    void connectAppleMusicAccount()
+      .then(async (r) => {
+        if (r.cancelled) return;
+        if (!r.ok) {
+          Alert.alert('Could not link Apple Music', r.error ?? 'Try again.');
+          return;
+        }
+        setAppleOn(true);
+        trackProduct('music_connected', { method: 'apple_music' });
+        try {
+          await syncTopArtists();
+          trackProduct('music_taste_synced', { method: 'apple_music' });
+        } catch {
+          // connect still succeeded
+        }
+        Alert.alert(
+          'Apple Music linked',
+          'We can use artists you listen to a lot for shared taste with friends.'
+        );
+      })
+      .catch(() => Alert.alert('Could not link Apple Music', 'Try again in a moment.'))
+      .finally(() => setAppleBusy(false));
   };
   /** blocking is reversible, and undoing it lives here */
   const [blockedOpen, setBlockedOpen] = useState(false);
@@ -195,8 +257,25 @@ export function ProfileSettings({
         }
       />
       <ListRow
+        label="Apple Music"
+        sublabel={
+          appleBusy
+            ? 'Working…'
+            : appleOn
+              ? 'Connected · tap to disconnect'
+              : 'Connect to find shared artists from your listening'
+        }
+        onPress={onAppleRow}
+        trailing="chevron"
+        analyticsId={
+          appleOn
+            ? PROFILE.settings.disconnect_apple_music
+            : PROFILE.settings.connect_apple_music
+        }
+      />
+      <ListRow
         label="Listening track"
-        sublabel="Song of the moment from Spotify search"
+        sublabel="Song of the moment (search Spotify catalog)"
         onPress={() => router.push('/music/listening')}
         trailing="chevron"
         analyticsId={PROFILE.music.pick_save}
@@ -412,44 +491,50 @@ export function ProfileSettings({
         analyticsId={PROFILE.settings.blocked_people}
       />
 
-      {/* THIS SECTION DOES: Surprises / delighters previews (demo-friendly). */}
-      <AnalyticsRegion
-        analyticsId={PROFILE.settings.surprises_header}
-        interactive={false}
-      >
-        <Text className="mt-2 px-1 font-pixel text-[12px] text-ink">Surprises</Text>
-      </AnalyticsRegion>
-      <ListRow
-        label="Preview emoji rain"
-        sublabel="Reusable delighter effect (safe to tap)"
-        trailing="chevron"
-        onPress={() => setRainPreview(true)}
-        analyticsId={PROFILE.settings.preview_emoji_rain}
-      />
-      {isDemoMode() ? (
-        <ListRow
-          label="Play emoji bomb"
-          sublabel="Queues a gift for you on next Home paint"
-          trailing="chevron"
-          onPress={() => {
-            void resolveEmojiBombId().then((id) => {
-              __demoQueueTrigger({
-                id: `dt-demo-${Date.now()}`,
-                delightId: id ?? 'delight-emoji-bomb',
-                delightSlug: 'emoji-bomb',
-                fromUserId: 'demo-friend',
-                toUserId: 'me',
-                played: false,
-                fromName: 'Priya'
-              });
-              Alert.alert(
-                'Queued',
-                'The emoji bomb should play over the app in a moment.'
-              );
-            });
-          }}
-          analyticsId={PROFILE.settings.play_emoji_bomb}
-        />
+      {/* Surprises stay in code; emoji-bomb is parked so these rows stay hidden. */}
+      {EMOJI_BOMB_LIVE ? (
+        <>
+          <AnalyticsRegion
+            analyticsId={PROFILE.settings.surprises_header}
+            interactive={false}
+          >
+            <Text className="mt-2 px-1 font-pixel text-[12px] text-ink">
+              Surprises
+            </Text>
+          </AnalyticsRegion>
+          <ListRow
+            label="Preview emoji rain"
+            sublabel="Reusable delighter effect (safe to tap)"
+            trailing="chevron"
+            onPress={() => setRainPreview(true)}
+            analyticsId={PROFILE.settings.preview_emoji_rain}
+          />
+          {isDemoMode() ? (
+            <ListRow
+              label="Play emoji bomb"
+              sublabel="Queues a gift for you on next Home paint"
+              trailing="chevron"
+              onPress={() => {
+                void resolveEmojiBombId().then((id) => {
+                  __demoQueueTrigger({
+                    id: `dt-demo-${Date.now()}`,
+                    delightId: id ?? 'delight-emoji-bomb',
+                    delightSlug: 'emoji-bomb',
+                    fromUserId: 'demo-friend',
+                    toUserId: 'me',
+                    played: false,
+                    fromName: 'Priya'
+                  });
+                  Alert.alert(
+                    'Queued',
+                    'The emoji bomb should play over the app in a moment.'
+                  );
+                });
+              }}
+              analyticsId={PROFILE.settings.play_emoji_bomb}
+            />
+          ) : null}
+        </>
       ) : null}
       {isDemoMode() ? (
         <ListRow

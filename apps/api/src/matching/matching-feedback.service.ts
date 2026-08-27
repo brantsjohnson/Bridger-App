@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import {
   MATCHING_LABEL_WEIGHTS,
   MATCHING_SEED_KNOBS,
+  normalizePairFeaturesSnapshot,
   type MatchingOutcome,
   type MatchingSurface,
   type PairFeaturesSnapshot
@@ -31,46 +32,24 @@ export class MatchingFeedbackService {
     snapshot?: PairFeaturesSnapshot;
   }) {
     const [opaque_a, opaque_b] = sortedPair(opts.userA, opts.userB);
-    let snapshot = opts.snapshot;
+    let raw = opts.snapshot;
 
-    if (!snapshot && opts.suggestionId) {
+    // THIS SECTION DOES: pull the frozen snapshot from the suggestion row when
+    // the caller only has a suggestion id (e.g. dismiss / later outcomes).
+    if (!raw && opts.suggestionId) {
       const { data } = await this.supabase.admin
         .from('matching_suggestions')
         .select('feature_snapshot')
         .eq('id', opts.suggestionId)
         .maybeSingle();
-      snapshot = (data?.feature_snapshot ?? undefined) as
+      raw = (data?.feature_snapshot ?? undefined) as
         | PairFeaturesSnapshot
         | undefined;
     }
 
-    if (!snapshot) {
-      // Minimal placeholder so block/remove still train as hard negatives.
-      snapshot = {
-        features: {
-          quiz_alignment: 0,
-          embedding_similarity: 0,
-          shared_attributes: 0,
-          moderator_notes_affinity: 0,
-          mutual_warmth: 0,
-          context_fit: 0
-        },
-        contribs: {
-          quiz_alignment: 0,
-          embedding_similarity: 0,
-          shared_attributes: 0,
-          moderator_notes_affinity: 0,
-          mutual_warmth: 0,
-          context_fit: 0
-        },
-        score: 0,
-        evidenceGatePassed: false,
-        sharedQuizIds: [],
-        sharedAttributeCount: 0,
-        isExploration: false,
-        configVersion: 0
-      };
-    }
+    // THIS SECTION DOES: always write all six feature values + contribs
+    // (missing keys become 0). Empty placeholder covers block/remove hard negatives.
+    const snapshot = normalizePairFeaturesSnapshot(raw);
 
     if (opts.outcome === 'blocked') {
       await this.supabase.admin

@@ -1,0 +1,1728 @@
+{
+  "quiz_id": "what_j_name_are_you",
+  "title": "Which \"J\" name are you?",
+  "version": "1.0",
+  "selection_rules": {
+    "default": {
+      "type": "single_select",
+      "min": 1,
+      "max": 1
+    },
+    "best_friends": {
+      "type": "multi_select",
+      "min": 3,
+      "max": 3
+    }
+  },
+  "visual_key": {
+    "question": "navy_brutalist_slab",
+    "answers": "navy_brutalist_blocks_2up",
+    "canvas": "solid_white_no_grid",
+    "j_percentage_answer": "same_navy_block",
+    "non_j_percentage_answer": "same_navy_block",
+    "response_interstitial": "navy_brutalist_message",
+    "instruction_commentary": "navy_brutalist_message"
+  },
+  "scoring": {
+    "j_percentage": {
+      "description": "Measures how J-coded the user is based on the dark-purple answers in Parts 1 and 2.",
+      "point_rule": {
+        "dark_purple_answer": 1,
+        "light_pink_answer": 0
+      },
+      "denominator_rule": "Only scorable questions the user actually encounters count toward the denominator.",
+      "formula": "round(100 * j_percentage_points / j_percentage_max_points_encountered)",
+      "range": [
+        0,
+        100
+      ]
+    },
+    "j_name": {
+      "description": "Determines which specific J-name the user is most like from the eight Part 4 questions.",
+      "point_rule": "Each Part 4 answer gives +1 to its mapped J-name.",
+      "tie_breaker": {
+        "primary": "If tied, use the answer to Part 4 Question 8 (Where’s your pad at?) if its J-name is among the tied leaders.",
+        "fallback": "If still tied, compare Questions 7 through 1 in reverse order; the first answer whose J-name is among the tied leaders wins."
+      }
+    },
+    "friend_type": {
+      "description": "Hidden friend classification calculated from the same eight Part 4 answers.",
+      "point_rule": "Each listed friend signal gets +1. Some answers intentionally score two different friend types.",
+      "friend_types": {
+        "Brad": "Will help you move",
+        "Connor": "Will make a lot of money",
+        "Austin": "Has a boat",
+        "Mike": "Can still call in 10 years",
+        "Ed": "Went to Harvard",
+        "Wyatt": "Keeps the bro code",
+        "Adam": "His place has a pool",
+        "Paul": "Enjoys the gym",
+        "Zack": "Spontaneous AF"
+      },
+      "balance": "Each friend type appears as a scoring opportunity exactly 7 times across Part 4.",
+      "tie_breaker": "If friend scores tie, compare Questions 8 through 1 in reverse order and use the most recent answer that contains exactly one of the tied friend types. If none resolves it, select randomly among the tied leaders.",
+      "validated_opportunity_counts": {
+        "Adam": 7,
+        "Austin": 7,
+        "Brad": 7,
+        "Connor": 7,
+        "Ed": 7,
+        "Mike": 7,
+        "Paul": 7,
+        "Wyatt": 7,
+        "Zack": 7
+      }
+    },
+    "selected_best_friends": {
+      "description": "The three friends selected by the user are stored separately from the hidden friend_type score.",
+      "use": "Used later to compare/share quiz results and identify which real friend best matches each selected archetype."
+    }
+  },
+  "flow": [
+    {
+      "id": "intro",
+      "type": "screen",
+      "style": "instruction_commentary",
+      "text": "Ok... are you ready to come to terms with your J-ness?"
+    },
+    {
+      "id": "q_gender",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "What’s your gender?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "man",
+          "text": "A man",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "Oof. Not a great start...",
+          "emojis": [
+            "👨🏻"
+          ]
+        },
+        {
+          "id": "not_man",
+          "text": "Not a man",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Okay starting out pretty good",
+          "emojis": [
+            "💅",
+            "✨"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_extra_brain",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Do you have an extra part of your brain?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "yes",
+          "text": "Yes because I am so smart",
+          "image": "extra_brain",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "Yikes. That’s not possible sooo *making notes*",
+          "emojis": [
+            "🧠",
+            "➕"
+          ]
+        },
+        {
+          "id": "normal_brain",
+          "text": "No I have the normal parts of my brain.",
+          "image": "normal_brain",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "You’re so smart. Don’t discount yourself.",
+          "emojis": [
+            "🧠",
+            "👍"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_monkey_brain",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Is your brain driven by a monkey? (It could hypothetically happen)",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "insulting",
+          "text": "That’s insulting to me.",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "Are you in denial?",
+          "emojis": [
+            "😤",
+            "🧠"
+          ]
+        },
+        {
+          "id": "hope_monkey",
+          "text": "I hope a monkey is running the show up there sometimes.",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Props for honesty.",
+          "emojis": [
+            "🐒",
+            "🎮",
+            "🧠"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_ruined_world",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Have you ruined half the world’s life?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "sorry",
+          "text": "I have... (And I’m sorry about it)",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "Man... 4 billion people. Fuuuu",
+          "emojis": [
+            "😔",
+            "🌎"
+          ]
+        },
+        {
+          "id": "blessed",
+          "text": "I have BLESSED half the world’s life.",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "This could go either way.",
+          "emojis": [
+            "😇",
+            "🌎",
+            "✨"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_bad_day",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Have you ever had a bad day?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "all_the_time",
+          "text": "All the time",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Oh babes. ❤️ You keep hanging in there, ok?",
+          "emojis": [
+            "😭"
+          ]
+        },
+        {
+          "id": "occasionally",
+          "text": "Occassionally",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Honestly, wish I could say that.",
+          "emojis": [
+            "😕"
+          ]
+        },
+        {
+          "id": "works_out",
+          "text": "Things just kinda work out for me",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "Use that privilege for good diva.",
+          "emojis": [
+            "😎",
+            "🍀"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_button_ups",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Do you own a lot of button up shirts?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "many",
+          "text": "YEAH! So many white and blue ones! How did you know.",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "I could end the quiz now...",
+          "emojis": [
+            "👔"
+          ]
+        },
+        {
+          "id": "who_doesnt",
+          "text": "Only cause.. like who doesn’t",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "You’re so right",
+          "emojis": [
+            "👔",
+            "🤷"
+          ]
+        },
+        {
+          "id": "never",
+          "text": "Couldn’t catch me dead.",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Is that a challenge?",
+          "emojis": [
+            "🚫",
+            "👔"
+          ]
+        },
+        {
+          "id": "nudist",
+          "text": "I’m a nudist actually.",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "appreciate the honesty. You do you.",
+          "emojis": [
+            "🍑",
+            "☀️"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_gay",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Are you gay?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "super",
+          "text": "Super",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Sadly that doesn’t help me actually.",
+          "next": "q_vocal_fry",
+          "emojis": [
+            "🏳️‍🌈",
+            "✨"
+          ]
+        },
+        {
+          "id": "nope",
+          "text": "Nope",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "next": "q_sure_gay",
+          "emojis": [
+            "🙅‍♂️"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_sure_gay",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Hmmm are you sure? Like sure sure?",
+      "selection": "single_select",
+      "conditional": "Only shown if q_gay = nope",
+      "answers": [
+        {
+          "id": "maybe",
+          "text": "Ya know... maybe there’s something but IDK",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Welcome to the team, fam.",
+          "next": "q_vocal_fry",
+          "emojis": [
+            "🤔",
+            "🌈"
+          ]
+        },
+        {
+          "id": "straight_arrow",
+          "text": "Yeah, I am as straight as an arrow.",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "👀",
+          "next": "q_vocal_fry",
+          "emojis": [
+            "🏹",
+            "📏"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_vocal_fry",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Do people use a lot of vocal fry around you?",
+      "selection": "single_select",
+      "answers": [
+        {
+          "id": "no_idea",
+          "text": "I have no idea.",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Wake up and pay attention",
+          "next": "rapid_fire_intro",
+          "emojis": [
+            "🤷",
+            "❓"
+          ]
+        },
+        {
+          "id": "what_is_vocal_fry",
+          "text": "What’s vocal fry?",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "response": "That’s super telling. Thank u.",
+          "next": "rapid_fire_intro",
+          "emojis": [
+            "🍳",
+            "❓"
+          ]
+        },
+        {
+          "id": "yeah_they_do",
+          "text": "Yeahhhh they do.",
+          "style": "dark_purple",
+          "score": {
+            "j_percentage": 1
+          },
+          "next": "q_you_use_vocal_fry",
+          "emojis": [
+            "💅",
+            "🗣️"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q_you_use_vocal_fry",
+      "part": 1,
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Is it because YOU use a lot of vocal fry??",
+      "selection": "single_select",
+      "conditional": "Only shown if q_vocal_fry = yeah_they_do",
+      "answers": [
+        {
+          "id": "yeah",
+          "text": "Iiiiiiooooó yeahhhh",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "Thaaankew soo muaccch",
+          "next": "rapid_fire_intro",
+          "emojis": [
+            "💅",
+            "🗣️",
+            "✨"
+          ]
+        },
+        {
+          "id": "fifth",
+          "text": "I plead the 5th",
+          "style": "light_pink",
+          "score": {
+            "j_percentage": 0
+          },
+          "response": "So you’re guilty?",
+          "next": "rapid_fire_intro",
+          "emojis": [
+            "🤐",
+            "⚖️"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rapid_fire_intro",
+      "part": 2,
+      "type": "instruction",
+      "style": "green_oval",
+      "text": "Now to ask some medical questions. Rapid fire."
+    }
+  ],
+  "rapid_fire": [
+    {
+      "id": "sports",
+      "text": "Do you like sports?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "yes_emojis": [
+        "🏈",
+        "🏀"
+      ],
+      "no_emojis": [
+        "📚",
+        "🛋️"
+      ]
+    },
+    {
+      "id": "parents_dumb",
+      "text": "Are your parents kinda dumb?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "yes_emojis": [
+        "🧬",
+        "🤦"
+      ],
+      "no_emojis": [
+        "🧠",
+        "🏆"
+      ]
+    },
+    {
+      "id": "beer",
+      "text": "Do you wanna beer?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "yes_emojis": [
+        "🍺",
+        "👍"
+      ],
+      "no_emojis": [
+        "🚫",
+        "🍺"
+      ]
+    },
+    {
+      "id": "watched_game",
+      "text": "Did you watch the game?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "yes_emojis": [
+        "📺",
+        "🏈"
+      ],
+      "no_emojis": [
+        "❓",
+        "🏈"
+      ]
+    },
+    {
+      "id": "gym_shorts",
+      "text": "Do you wear 5\" gym shorts?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "yes_emojis": [
+        "🩳",
+        "🦵"
+      ],
+      "no_emojis": [
+        "👖"
+      ]
+    },
+    {
+      "id": "potty_mouth",
+      "text": "Do you have a little bit of a potty mouth?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "yes_emojis": [
+        "🤬",
+        "🫢"
+      ],
+      "no_emojis": [
+        "😇",
+        "🧼"
+      ]
+    },
+    {
+      "id": "j_name_start",
+      "text": "Does your name start with J?",
+      "yes_style": "dark_purple",
+      "no_style": "light_pink",
+      "yes_score": 1,
+      "no_score": 0,
+      "response": "How do I know if you’re telling the truth???",
+      "yes_emojis": [
+        "🇯",
+        "🅹"
+      ],
+      "no_emojis": [
+        "🚫",
+        "🇯"
+      ]
+    }
+  ],
+  "part3": {
+    "intro": {
+      "type": "instruction",
+      "style": "green_oval",
+      "text": "Now part 3 of 4 (You’re so close bb)"
+    },
+    "best_friends": {
+      "id": "best_friends",
+      "type": "question",
+      "style": "light_green_rectangle",
+      "text": "Pick who your top 3 best friends:",
+      "selection": {
+        "type": "multi_select",
+        "min": 3,
+        "max": 3
+      },
+      "layout": {
+        "type": "grid",
+        "rows": 3,
+        "columns": 3
+      },
+      "options": [
+        {
+          "id": "Brad",
+          "label": "Brad",
+          "subtitle": "Will help you move",
+          "emojis": [
+            "🛻",
+            "📦",
+            "💪"
+          ]
+        },
+        {
+          "id": "Connor",
+          "label": "Connor",
+          "subtitle": "Will make a lot of money",
+          "emojis": [
+            "💼",
+            "📈",
+            "💰"
+          ]
+        },
+        {
+          "id": "Austin",
+          "label": "Austin",
+          "subtitle": "Has a boat",
+          "emojis": [
+            "🛥️",
+            "😎"
+          ]
+        },
+        {
+          "id": "Mike",
+          "label": "Mike",
+          "subtitle": "Can still call in 10 years",
+          "emojis": [
+            "📞",
+            "🤝"
+          ]
+        },
+        {
+          "id": "Ed",
+          "label": "Ed",
+          "subtitle": "Went to Harvard",
+          "emojis": [
+            "🎓",
+            "📚"
+          ]
+        },
+        {
+          "id": "Wyatt",
+          "label": "Wyatt",
+          "subtitle": "Keeps the bro code",
+          "emojis": [
+            "🤝",
+            "🤐"
+          ]
+        },
+        {
+          "id": "Adam",
+          "label": "Adam",
+          "subtitle": "His place has a pool",
+          "emojis": [
+            "🏠",
+            "🏊"
+          ]
+        },
+        {
+          "id": "Paul",
+          "label": "Paul",
+          "subtitle": "Enjoys the gym",
+          "emojis": [
+            "🏋️",
+            "💪"
+          ]
+        },
+        {
+          "id": "Zack",
+          "label": "Zack",
+          "subtitle": "Spontaneous AF",
+          "emojis": [
+            "🎲",
+            "🔥"
+          ]
+        }
+      ],
+      "store_as": "selected_best_friends"
+    },
+    "response": {
+      "type": "response_interstitial",
+      "style": "yellow_oval",
+      "text": "Nice."
+    },
+    "next_instruction": {
+      "type": "instruction",
+      "style": "green_oval",
+      "text": "This next part is 80% of your score so don’t screw it up.",
+      "note": "Display copy. The specific J-name is determined from Part 4; the J-percentage is calculated from dark-purple scoring answers in Parts 1 and 2."
+    }
+  },
+  "part4": {
+    "type": "j_name_and_friend_classifier",
+    "selection": "single_select",
+    "questions": [
+      {
+        "id": "phone_lock_screen",
+        "text": "What’s your phone lock screen?",
+        "answers": [
+          {
+            "text": "Your dream car",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Austin",
+              "Paul"
+            ],
+            "emojis": [
+              "🏎️",
+              "🔥"
+            ]
+          },
+          {
+            "text": "Something in nature",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🏔️",
+              "🌲"
+            ]
+          },
+          {
+            "text": "Default iPhone wallpaper",
+            "j_name": "James",
+            "friend_signals": [
+              "Connor"
+            ],
+            "emojis": [
+              "📱",
+              "😐"
+            ]
+          },
+          {
+            "text": "Video-game character",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "🎮",
+              "👾"
+            ]
+          },
+          {
+            "text": "Superhero",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Zack"
+            ],
+            "emojis": [
+              "🦸",
+              "💥"
+            ]
+          },
+          {
+            "text": "A pic of you",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Paul"
+            ],
+            "emojis": [
+              "🤳",
+              "😏"
+            ]
+          },
+          {
+            "text": "Motivational quote",
+            "j_name": "John",
+            "friend_signals": [
+              "Mike"
+            ],
+            "emojis": [
+              "💪",
+              "📈"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "sister",
+        "text": "She says, “You slept with my sister.” You say...",
+        "answers": [
+          {
+            "text": "I’d do it again.",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Zack"
+            ],
+            "emojis": [
+              "😏",
+              "🔁"
+            ]
+          },
+          {
+            "text": "Are you mad?",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🥺",
+              "👉",
+              "👈"
+            ]
+          },
+          {
+            "text": "That’s not what happened.",
+            "j_name": "James",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "🤨",
+              "☝️"
+            ]
+          },
+          {
+            "text": "How’d you find out?",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Wyatt"
+            ],
+            "emojis": [
+              "👀",
+              "📱"
+            ]
+          },
+          {
+            "text": "THAT’S YOUR SISTER?",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Adam"
+            ],
+            "emojis": [
+              "😳",
+              "⁉️"
+            ]
+          },
+          {
+            "text": "Which one?",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Austin"
+            ],
+            "emojis": [
+              "🤔",
+              "👯"
+            ]
+          },
+          {
+            "text": "We weren’t exclusive.",
+            "j_name": "John",
+            "friend_signals": [
+              "Connor"
+            ],
+            "emojis": [
+              "☝️",
+              "🤓"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "saturday",
+        "text": "Pick a Saturday.",
+        "answers": [
+          {
+            "text": "Golf",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Connor",
+              "Paul"
+            ],
+            "emojis": [
+              "⛳",
+              "🏌️"
+            ]
+          },
+          {
+            "text": "Camping",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🏕️",
+              "🌲"
+            ]
+          },
+          {
+            "text": "Whiskey bar",
+            "j_name": "James",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "🥃",
+              "🪵"
+            ]
+          },
+          {
+            "text": "Casino",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Zack"
+            ],
+            "emojis": [
+              "🎰",
+              "💸"
+            ]
+          },
+          {
+            "text": "Day drinking",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Adam"
+            ],
+            "emojis": [
+              "🍻",
+              "☀️"
+            ]
+          },
+          {
+            "text": "Boat",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Austin"
+            ],
+            "emojis": [
+              "🛥️",
+              "🌊"
+            ]
+          },
+          {
+            "text": "Home Depot",
+            "j_name": "John",
+            "friend_signals": [
+              "Mike"
+            ],
+            "emojis": [
+              "🔨",
+              "🪚"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "boys_need_you",
+        "text": "The boys need you. You bring...",
+        "answers": [
+          {
+            "text": "Beer",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Adam",
+              "Wyatt"
+            ],
+            "emojis": [
+              "🍺"
+            ]
+          },
+          {
+            "text": "Truck",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🛻",
+              "💨"
+            ]
+          },
+          {
+            "text": "A plan",
+            "j_name": "James",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "📋",
+              "☝️"
+            ]
+          },
+          {
+            "text": "Shovel",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Wyatt"
+            ],
+            "emojis": [
+              "🥷",
+              "🪦"
+            ]
+          },
+          {
+            "text": "Fireworks",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Zack"
+            ],
+            "emojis": [
+              "🧨",
+              "🔥"
+            ]
+          },
+          {
+            "text": "Girls",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Austin"
+            ],
+            "emojis": [
+              "👯‍♀️",
+              "🍾"
+            ]
+          },
+          {
+            "text": "Jumper cables",
+            "j_name": "John",
+            "friend_signals": [
+              "Mike"
+            ],
+            "emojis": [
+              "🔋",
+              "⚡"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "purchase",
+        "text": "Pick a purchase.",
+        "answers": [
+          {
+            "text": "Motorcycle",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Paul"
+            ],
+            "emojis": [
+              "🏍️",
+              "💨"
+            ]
+          },
+          {
+            "text": "Grill",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Mike"
+            ],
+            "emojis": [
+              "🥩",
+              "🔥"
+            ]
+          },
+          {
+            "text": "Rolex",
+            "j_name": "James",
+            "friend_signals": [
+              "Connor"
+            ],
+            "emojis": [
+              "⌚",
+              "💰"
+            ]
+          },
+          {
+            "text": "Sword",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "⚔️",
+              "🫡"
+            ]
+          },
+          {
+            "text": "Golf cart",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Adam"
+            ],
+            "emojis": [
+              "⛳",
+              "🛺"
+            ]
+          },
+          {
+            "text": "Bottle service",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Austin"
+            ],
+            "emojis": [
+              "🍾",
+              "💸"
+            ]
+          },
+          {
+            "text": "Power tools",
+            "j_name": "John",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🛠️",
+              "🔋"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "gas_station",
+        "text": "Pick a gas station purchase.",
+        "answers": [
+          {
+            "text": "Zyns",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Wyatt"
+            ],
+            "emojis": [
+              "🫡",
+              "⚪"
+            ]
+          },
+          {
+            "text": "Beef jerky",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Mike",
+              "Paul"
+            ],
+            "emojis": [
+              "🥩",
+              "🤠"
+            ]
+          },
+          {
+            "text": "Black coffee",
+            "j_name": "James",
+            "friend_signals": [
+              "Connor"
+            ],
+            "emojis": [
+              "☕",
+              "⚫"
+            ]
+          },
+          {
+            "text": "Scratch-offs",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Austin"
+            ],
+            "emojis": [
+              "🎟️",
+              "💸"
+            ]
+          },
+          {
+            "text": "Slurpee",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Adam",
+              "Zack"
+            ],
+            "emojis": [
+              "🥤",
+              "🧊"
+            ]
+          },
+          {
+            "text": "Condoms",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Zack"
+            ],
+            "emojis": [
+              "🛡️",
+              "😏"
+            ]
+          },
+          {
+            "text": "Protein bar",
+            "j_name": "John",
+            "friend_signals": [
+              "Paul"
+            ],
+            "emojis": [
+              "💪",
+              "🍫"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fridge",
+        "text": "What’s in your fridge?",
+        "answers": [
+          {
+            "text": "Meal prep",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Paul"
+            ],
+            "emojis": [
+              "🍗",
+              "🍚",
+              "💪"
+            ]
+          },
+          {
+            "text": "Leftovers from Mom",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Mike",
+              "Wyatt"
+            ],
+            "emojis": [
+              "👩‍🍳",
+              "🥡",
+              "❤️"
+            ]
+          },
+          {
+            "text": "Expensive liquor",
+            "j_name": "James",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "🥃",
+              "💰"
+            ]
+          },
+          {
+            "text": "Mystery meat",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🥩",
+              "❓"
+            ]
+          },
+          {
+            "text": "14 sauces",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Adam"
+            ],
+            "emojis": [
+              "🌶️",
+              "🧴"
+            ]
+          },
+          {
+            "text": "Champagne",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Connor"
+            ],
+            "emojis": [
+              "🍾",
+              "🥂"
+            ]
+          },
+          {
+            "text": "A rotisserie chicken",
+            "j_name": "John",
+            "friend_signals": [
+              "Wyatt"
+            ],
+            "emojis": [
+              "🍗",
+              "🛒"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "pad",
+        "text": "Where’s your pad at?",
+        "is_primary_j_name_tiebreaker": true,
+        "answers": [
+          {
+            "text": "Miami",
+            "j_name": "Jake",
+            "friend_signals": [
+              "Austin"
+            ],
+            "emojis": [
+              "🌴",
+              "🛥️",
+              "☀️"
+            ]
+          },
+          {
+            "text": "Colorado",
+            "j_name": "Josh",
+            "friend_signals": [
+              "Brad"
+            ],
+            "emojis": [
+              "🏔️",
+              "🌲"
+            ]
+          },
+          {
+            "text": "NYC",
+            "j_name": "James",
+            "friend_signals": [
+              "Ed"
+            ],
+            "emojis": [
+              "🗽",
+              "💼"
+            ]
+          },
+          {
+            "text": "Vegas",
+            "j_name": "Jared",
+            "friend_signals": [
+              "Zack"
+            ],
+            "emojis": [
+              "🎰",
+              "🍾"
+            ]
+          },
+          {
+            "text": "Your hometown",
+            "j_name": "Joey",
+            "friend_signals": [
+              "Wyatt"
+            ],
+            "emojis": [
+              "🏠",
+              "🫡"
+            ]
+          },
+          {
+            "text": "LA",
+            "j_name": "Justin",
+            "friend_signals": [
+              "Connor"
+            ],
+            "emojis": [
+              "🌴",
+              "🎬"
+            ]
+          },
+          {
+            "text": "Suburbs",
+            "j_name": "John",
+            "friend_signals": [
+              "Adam",
+              "Mike"
+            ],
+            "emojis": [
+              "🏡",
+              "🚙"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "result_flow": [
+    {
+      "type": "response_interstitial",
+      "style": "yellow_oval",
+      "text": "I think we got everything... ooooh are you so nervous!!"
+    },
+    {
+      "type": "response_interstitial",
+      "style": "yellow_oval",
+      "text": "First your percentage...",
+      "display": "j_percentage"
+    },
+    {
+      "type": "response_interstitial",
+      "style": "yellow_oval",
+      "text": "Now for your name! Which J name are you the most like?",
+      "display": "j_name"
+    }
+  ],
+  "j_name_results": {
+    "Justin": {
+      "description": "Babes, imma hold ur hand when I tell u this but ur a sl*t. Plz realize ur the problem. U have some past trauma u need to heal from and that’s ok. ILY",
+      "image": "images/justin.png",
+      "redeeming_quality": "Timeshare",
+      "red_flags": [
+        "Phone is always face-down",
+        "Has a girl saved as a man's name",
+        "Two Snapchats",
+        "Knows every bartender by name",
+        "Has somehow dated two roommates",
+        "Has a suspicious number of women's hair ties",
+        "Sleeps with his Apple Watch on"
+      ],
+      "quote": "She's literally like my sister.",
+      "text_thread": [
+        {
+          "from": "me",
+          "text": "thinking of you"
+        },
+        {
+          "from": "me",
+          "text": "sends unsolicited nude at 2:07 AM",
+          "action": true
+        },
+        {
+          "from": "them",
+          "text": "don't you have a girlfriend?"
+        },
+        {
+          "from": "me",
+          "text": "it's complicated"
+        }
+      ]
+    },
+    "Josh": {
+      "description": "Ur a momma’s boy. And it’s cute and all until ur mom gets jealous of ur partner… U probs wouldn’t notice bc ur oblivious. Don’t get me wrong it’s cute most of the time, but would it kill you to pay attention once and while, dearie? Thx",
+      "image": "images/josh.png",
+      "redeeming_quality": "Nice hair",
+      "red_flags": [
+        "Mom still does his laundry",
+        "Has never asked a follow-up question",
+        "Patagonia quarter-zip",
+        "Never misses fantasy football",
+        "Has a European mount in his room",
+        "Wears a WWJD bracelet",
+        "Has a scripture in his bio"
+      ],
+      "quote": "I'm just bad at texting.",
+      "text_thread": [
+        {
+          "from": "them",
+          "text": "are you mad at me?"
+        },
+        {
+          "from": "me",
+          "text": "no why"
+        },
+        {
+          "from": "them",
+          "text": "you haven't talked to me in 3 days"
+        },
+        {
+          "from": "me",
+          "text": "i've just been busy"
+        }
+      ]
+    },
+    "Joey": {
+      "description": "Like grow the &%$# up already. Ur fun and all but ur partner needs someone who will figure out how insurance works so they don’t have to. That’s true love. Learn to love that way.",
+      "image": "images/joey.png",
+      "redeeming_quality": "Great smile",
+      "red_flags": [
+        "Golfs",
+        "Doesn't use a top sheet",
+        "Owns exactly one towel",
+        "Eats off paper plates at home",
+        "Still has his fraternity flag",
+        "Has broken the same bone twice",
+        "Uses 3-in-1 shampoo"
+      ],
+      "quote": "Bro, watch this.",
+      "text_thread": [
+        {
+          "from": "them",
+          "text": "you coming over?"
+        },
+        {
+          "from": "me",
+          "text": "yea"
+        },
+        {
+          "from": "them",
+          "text": "?"
+        },
+        {
+          "from": "me",
+          "text": "my bad i fell asleep"
+        }
+      ]
+    },
+    "James": {
+      "description": "When was the last time u asked someone a question about themselves? Jeez James. It’s not all about u. There r other people and guess what, they aren’t NPCs. They have kids and a family, James.",
+      "image": "images/james.png",
+      "redeeming_quality": "Trust fund",
+      "red_flags": [
+        "Incorrectly corrects your grammar",
+        "Has a podcast",
+        "Rewears old socks",
+        "Plays devil's advocate",
+        "Has LinkedIn Premium",
+        "Owns loafers without socks",
+        "Has a bookshelf he wants you to notice"
+      ],
+      "quote": "But if you actually look at the economy...",
+      "text_thread": [
+        {
+          "from": "them",
+          "text": "I had a really good time tonight :)"
+        },
+        {
+          "from": "me",
+          "text": "Me too. I've never met someone like you."
+        },
+        {
+          "from": "them",
+          "text": "I'd love to see you again"
+        },
+        {
+          "from": "me",
+          "text": "never texts again",
+          "action": true
+        }
+      ]
+    },
+    "Jake": {
+      "description": "First off, enjoy it in hell. Secondly, ur never around when things get difficult. U always pop in late thinking they’ll come crawling back. And they’re not gonna this time... so don’t even try! Thirdly! U know what u did! The council will NEVER forgive u!",
+      "image": "images/jake.png",
+      "redeeming_quality": "BD",
+      "red_flags": [
+        "Thinks he's fit",
+        "Fish picture on dating profile",
+        "Follows Barstool Sports",
+        "Owns white Oakleys",
+        "Wears a backwards hat indoors",
+        "Has a truck he's still paying off",
+        "Doesn't care about politics"
+      ],
+      "quote": "Boys will be boys.",
+      "text_thread": [
+        {
+          "from": "me",
+          "text": "wyd"
+        },
+        {
+          "from": "them",
+          "text": "my aunt just died so i'm kinda sad"
+        },
+        {
+          "from": "me",
+          "text": "oh sucks. what would u do if i was there? ;) ;)"
+        }
+      ]
+    },
+    "Jared": {
+      "description": "Oh Jared... Life is gonna pass u by buddy. College is over. U really should cut back on the beers and give ur mom a call. Also txt people back, would ya? Not everyone is a booty call. And don’t take sex advice from Twitter. It’s not fun 4 her.",
+      "image": "images/jared.png",
+      "redeeming_quality": "6'4\"",
+      "red_flags": [
+        "Still uses Snapchat",
+        "Has punched a hole in a wall",
+        "Follows 4,000 women on Instagram",
+        "Has \"a guy\" for everything",
+        "Thinks Kalshi is a hobby",
+        "Won't tell you what he did between 2019-2021",
+        "Has a tattoo in Latin he cannot translate"
+      ],
+      "quote": "You remind me of my mom.",
+      "text_thread": [
+        {
+          "from": "them",
+          "text": "I miss you"
+        },
+        {
+          "from": "me",
+          "text": "prove it ;) u won't"
+        }
+      ]
+    },
+    "John": {
+      "description": "Do u have a timeline for when ur gonna be emotionally available? Bc at this rate ur partner has a better chance of marrying a robot with more emotions than u. Just go to that therapy appointment ur gf booked for u, ok?",
+      "image": "images/john.png",
+      "redeeming_quality": "Good job",
+      "red_flags": [
+        "Has read receipts off",
+        "Has no bed frame",
+        "Schedules dates a week in advance",
+        "Thumbs-up reacts to emotional texts",
+        "Owns three identical quarter-zips",
+        "Uses the word \"boundaries\" incorrectly",
+        "Has notifications hidden on his lock screen"
+      ],
+      "quote": "I just have a lot going on right now.",
+      "text_thread": [
+        {
+          "from": "me",
+          "text": "Hey stranger!"
+        },
+        {
+          "from": "them",
+          "text": "you ghosted me 4 months ago"
+        },
+        {
+          "from": "me",
+          "text": "haha yeah life got crazy"
+        },
+        {
+          "from": "me",
+          "text": "what are you up to tonight?"
+        }
+      ]
+    }
+  },
+  "infographic": {
+    "note": "Shareable / downloadable result card. Follows the reference design.",
+    "shows_result_image": true,
+    "sections": [
+      {
+        "key": "percent_match",
+        "source": "j_percentage",
+        "label": "% MATCH"
+      },
+      {
+        "key": "name",
+        "source": "j_name"
+      },
+      {
+        "key": "description",
+        "source": "j_name_results.description"
+      },
+      {
+        "key": "image",
+        "source": "j_name_results.image"
+      },
+      {
+        "key": "redeeming_quality",
+        "label": "Only redeeming quality"
+      },
+      {
+        "key": "red_flags",
+        "label": "Red flags"
+      },
+      {
+        "key": "quote"
+      },
+      {
+        "key": "text_thread",
+        "label": "Recent texts"
+      }
+    ],
+    "text_thread": {
+      "use_profile_pictures": false,
+      "labels": [
+        "me",
+        "them"
+      ],
+      "note": "Label the two sides 'me' (the person who took the quiz) and 'them' (the other person). Keep it gender neutral; never show profile pictures."
+    }
+  },
+  "output_object": {
+    "j_percentage": "integer 0-100",
+    "j_name": "Jake | Josh | James | Jared | Joey | Justin | John",
+    "j_name_scores": "object containing all seven raw J-name scores",
+    "friend_type": "Brad | Connor | Austin | Mike | Ed | Wyatt | Adam | Paul | Zack",
+    "friend_scores": "object containing all nine raw friend scores",
+    "selected_best_friends": "array of exactly 3 friend archetype IDs"
+  }
+}

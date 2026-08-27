@@ -11,6 +11,7 @@ import { CoopController } from './coop.controller';
 import { CoopService } from './coop.service';
 import { PortalController } from './portal.controller';
 import { PortalService } from './portal.service';
+import { PromoService } from './promo.service';
 import { PurchaseGateway } from './purchase.gateway';
 import { RequireCoopMemberGuard } from './require-coop-member.guard';
 
@@ -20,11 +21,12 @@ import { RequireCoopMemberGuard } from './require-coop-member.guard';
   providers: [
     CoopService,
     PortalService,
+    PromoService,
     PurchaseGateway,
     SupabaseAuthGuard,
     OptionalSupabaseAuthGuard,
     RequireCoopMemberGuard
   ],
-  exports: [CoopService, PortalService]
+  exports: [CoopService, PortalService, PromoService]
 })
 export class CoopModule {}

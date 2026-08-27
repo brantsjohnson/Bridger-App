@@ -197,6 +197,8 @@ export default function ProfileScreen() {
               top5={profile.top5}
               obsession={profile.obsession}
               favorites={profile.favorites}
+              greatestHits={profile.greatestHits}
+              upcoming={profile.upcoming}
               hobbyFollowUps={profile.hobbyFollowUps}
               editable={editing}
               own

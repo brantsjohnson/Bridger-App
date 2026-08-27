@@ -15,15 +15,16 @@ Self-contained spec. This is the celebratory reveal that plays **right after you
 
 The opener. It captures the meeting memory and tells the reveal how to frame itself.
 
-- **Top:** `via {mutualFriend}` (small, muted) when there is one.
-- **Headline:** `How did you two meet?`
+- **Top:** `via {mutualFriend}` (small, muted) when there is one, then their **real photo** (large circle) and name. The photo stays on this screen.
+- **Headline:** `How did you two meet?` (large).
+- No "next · what you have in common" hint under Continue.
 - **Choice (single select, required):** `We just met` / `We already know each other`. Each option shows an empty checkbox so it is obvious you need to pick one. When selected, the **whole row fills with color** and the checkbox gets a checkmark.
 - **Tier from the choice:**
   - `We just met` → they land in **Acquaintances** automatically (no extra step).
   - `We already know each other` → optional buckets appear below: **Close / Friends / Acquaintances**. Skipping them soft-defaults to Friends.
 - **Memory capture (depends on how you connected):**
   - **In person / QR / link:** checkbox — `Record where you met`, defaulted ON. Saves a **coarse place** ("RiNo, Denver," approximate — never precise coordinates). Only the two of you see it; either can edit or remove it.
-  - **Discover (via a mutual):** there usually is no place (unless you also share an event). Instead of pushing a place, offer an optional short **Add a note** field (how-you-met note, max ~80 chars). Only the two of you see it.
+  - **Discover (via a mutual):** there usually is no place (unless you also share an event). Centered **Add a note - optional** text (no box). Tap it to open a short how-you-met field (max ~80 chars). Only the two of you see it.
 - **Continue** → into the 3-screen story.
 
 *(Screen 0 has no progress bar — it's the setup step. The 3 segments belong to Screens 1–3.)*
@@ -32,8 +33,8 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 
 ## Screen 1 — the strongest thing
 
-- **Top:** `via {mutualFriend}` — small, muted (who connects you).
-- **Center:** the **connection orbs** — your two profile photos float in from opposite sides, meet, then dissolve into two see-through circles (yours yellow, theirs green) whose overlap mixes to orange. That orange middle is the focal point. *(This is the signature detail — keep it. Reduce-motion shows the circles without the float.)*
+- **No via chip, name, or header photo** on this screen. The Venn is the only face.
+- **Center:** the **connection orbs** — your two profile photos (same size as the circles) float in from opposite sides, meet, then dissolve into two see-through circles (yours yellow, theirs green) whose overlap mixes to orange. That orange middle is the focal point. *(This is the signature detail — keep it. Reduce-motion shows the circles without the float.)*
 - **Label:** `What connects you most`
 - **Big headline:** the single strongest shared thing — e.g. **"You both live for climbing."**
 
@@ -54,6 +55,7 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 
 - Screens 1–3 are a **tap-through story**: tap the **right** edge to go forward, the **left** edge to go back. You can never tap back past Screen 1 (that would feel like closing).
 - An **X** in the top-right leaves the story early and opens the new connection's profile.
+- Screens 1–2: the current progress bar **fills over ~5.5s**, then the story advances. Tap right still skips ahead early. Reduce Motion shows a static full bar and waits for a tap.
 - The last card **holds** (progress bar full) until they tap `See {name}'s profile`.
 
 ---
@@ -76,7 +78,7 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 | Component | Spec |
 |---|---|
 | `HowYouMetStep` | screen 0: just-met / already-know (checkmarks + filled color) + optional tier buckets (already-know) + place checkbox (in person) or short note (Discover) |
-| `RevealProgressBars` | 3 segments, fill on advance; holds full on the close card |
+| `RevealProgressBars` | 3 segments; current bar fills over ~5.5s then advances; holds full on the close card |
 | `RevealOrbs` | two profile photos float in, dissolve into yellow + green circles, overlap mixes to orange |
 | `QuizMatchList` | compatibility scores from matching-only quizzes (e.g. "95% in Humor") |
 | `RevealScreen` | dark screen: headline + body |
@@ -86,6 +88,6 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 
 ## Copy (use these exactly — they carry the charm)
 
-`via {name}` · `How did you two meet?` · `We just met` · `We already know each other` · `Want to add them to a circle?` · `Optional · Close, Friends, or Acquaintances` · `Record where you met` · `Add a note` · `What connects you most` · `You both live for climbing` (dynamic) · `You've also got…` · `You two should click.` · `See {name}'s profile` · `Revisit anytime under "In common"`
+`{their full name}` (screen 0 top) · `How did you two meet?` · `We just met` · `We already know each other` · `Want to add them to a circle?` · `Optional · Close, Friends, or Acquaintances` · `Record where you met` · `Add a note` · `via {name}` (screens 1–3) · `What connects you most` · `You both live for climbing` (dynamic) · `You've also got…` · `You two should click.` · `See {name}'s profile` · `Revisit anytime under "In common"`
 
 Everything else: minimal copy.

@@ -2,7 +2,33 @@
 
 Build doc for the Events tab. Maps to `apps/mobile/app/(tabs)/events.tsx`, the `events` API module, and its connections to `matching`, `connections`, and `notifications` in `ARCHITECTURE.md`. Read that file first.
 
-Events is where connection becomes in-person. It has four surfaces: the **list**, the **create** flow, the **invitee** event view (RSVP), and the **host** dashboard. Its distinctive job is turning a guest list into introductions — so the same matchmaking that powers Discover runs *inside* an event.
+Events is where connection becomes in-person. It has five surfaces: the **gate** (first-time host marketing page), the **list**, the **create** flow, the **invitee** event view (RSVP), and the **host** dashboard. Its distinctive job is turning a guest list into introductions — so the same matchmaking that powers Discover runs *inside* an event.
+
+---
+
+## 0 · Events gate (first visit)
+
+Before the user has **explored Events** (or ever hosted), the Events tab shows a Discover-style marketing page instead of Touch Grass + the calendar.
+
+```
+┌─────────────────────────────┐
+│  Events              [+]    │
+├─────────────────────────────┤
+│  Create places where        │
+│  memories happen.           │
+│  Plans, dinners, clubs…     │
+│  [=== idea chips scrolling] │  3 rows, ~3–4 visible each
+│  [ Explore Events ]         │
+└─────────────────────────────┘
+```
+
+- **Headline:** "Create places where memories happen."
+- **Wall:** three offset horizontal marquees of small decorative idea chips (political activism / share-ideas first, then book club, game night, Sunday dinner, cocktail night, movie night, poetry, etc.) plus miniature Touch Grass marks (same green Sprout icon as the Touch Grass button). Chips bleed off the screen edges and loop seamlessly (no hard restart). Chips are **not** tappable for prefill.
+- **Canvas:** black intro (`Screen tone="intro"`), same family as the Discover gate. Headline and body are white. After Explore, Events returns to the eggshell canvas.
+- **CTA:** "Explore Events" dismisses the gate and opens the normal Events list (Touch Grass + calendar). It does **not** open the create wizard. Header `+` still opens create whenever they want.
+- **Exit:** after Explore once (saved on device) or after the user hosts their first event, the gate never returns. The normal list appears (real Touch Grass, Hosting/Going/Invited, calendar empty state when empty).
+- **Reduce Motion:** freeze marquees (chips stay visible).
+- **QA:** `EXPO_PUBLIC_FORCE_EVENTS_GATE=1` shows the gate even when host fixtures exist. Tapping Explore Events still dismisses it. The flag must not pin the user on the marketing page.
 
 ---
 
@@ -36,6 +62,7 @@ Create is a **full-screen, four-step wizard** (its own analytics surface, `creat
 | Event title\* | required (red asterisk) |
 | Details | short description (was "Bio") |
 | Day / time | Google-Calendar style: tap date → month grid; tap time → 15-min list |
+| Repeats | optional toggle. Off = one-off (`recurrence` null). On = weekly / monthly / yearly rule (interval, weekdays or month day / Nth weekday, ends never / on date / after N). One row per series; `starts_at` is the next occurrence. Preview + event page show a short human label under When. |
 | Address | **live address lookup** via Photon (Komoot / OpenStreetMap) for fuzzy autocomplete; Nominatim fallback. Tap a match to fill address + short place name. No separate Place field. PRIVACY: typed text goes only to geocode the host's own venue, with no name/account attached; falls back to manual entry if offline. Address is visible only to people going or invited. |
 | Add co-hosts? | toggle; when on, search and multi-select friends (close + friend). Co-hosts can edit; their acquaintances may appear in invite suggestions |
 | Chip in | **toggle**; when on: amount (auto `$`, no `$$`), method, and **username/handle** (auto `@` or Cash App `$`) — stored link only; we never process payment and there is no wallet OAuth |
@@ -54,13 +81,35 @@ There is **no** global "Bring" field — use Assignments on step 3 instead.
 - **Cover modes:** Photo · Emoji. Photo can include **banner text** over the image. Emoji uses the system keyboard (clearable) plus a **vibrant** background color. Tap the cover preview anytime to change it. If skipped, a random emoji cover is chosen at create time. **MEDIA EXCEPTION:** Bridger is capture-only everywhere except the profile photo and this event cover.
 - **Assignments** (renamed from "Who's bringing what"): host adds items. List is public on the event. Assigning someone does **not** check the item off. No per-item chip-in. Checking off happens on the event page — the **assignee or the host/co-host** can do it (hosts can check off anyone's item). Open items can be snagged; assignees can remove themselves (host is notified).
 
-**Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it, then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`) — never the title, bio, or address text — and route to the new event page.
+**Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it (including the recurrence label under When when Repeats is on), then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`, `has_recurrence`, optional `recurrence_freq`) — never the title, bio, address, or schedule prose — and route to the new event page.
 
-After creating, the host lands on the **event page** where they can **Share** (one action: the native share sheet, which covers AirDrop, Messages, and copy link). If friends-invite-friends is on, share is emphasized so guests can invite within the cap. Guests never see the guest cap or invited totals on this page.
+### Recurring events (v1)
 
-### Guest cap (free vs co-op)
+- Stored as `events.recurrence` jsonb on a **single** event row (not materializing future rows).
+- Patterns: weekly (weekdays), monthly (calendar day or Nth weekday), yearly.
+- Ends: never, until a date, or after a count.
+- Hosts edit the series from the event page Edit mode (same Repeats controls). No "this occurrence only" editing in v1.
+- Guests and hosts see the human label under When; countdown still uses `starts_at` (next occurrence).
 
-Hosting is **never gated** — anyone can host. But scale is a co-op benefit: the default cap is **35 guests** (free); **co-op members can host up to 100** (`COOP.md`). The larger cap has real cost, because the introduction-matching runs across every attendee — which is exactly the kind of expensive-at-scale feature the co-op covers. (This supersedes the old standalone per-event expansion fee; scale rides on membership, not a separate SKU — see `COOP.md` payment note.)
+After creating, the host lands on the **event page** where they can **Share** (one action: the native share sheet, which covers AirDrop, Messages, and copy link; on web without a share sheet we copy the link). If friends-invite-friends is on, share is emphasized so guests can invite within the cap. Guests never see the guest cap or invited totals on this page.
+
+**Shared-link visibility (open the link when you are not already on the list):**
+
+| Host setting | What the opener sees | RSVP |
+|---|---|---|
+| Friends can invite **ON** | Basics (title, host, when, place name, bio). No going / to-meet counts, no full address, no assignments until they join. | Can tap Going / Can't (joins the invite list, cap still applies). |
+| Friends can invite **OFF** | Basics only. No who's going, no meet list, no RSVP. | Must be invited by the host (or a going friend after the setting is on). |
+
+People the host already invited always get full invitee RSVP (Going / Can't) and the usual friends-going / to-meet pills.
+
+### Guest cap and host tools (free vs co-op)
+
+Hosting is **never gated** — anyone can host. Scale and extra host features are co-op benefits (`COOP.md`):
+
+- **Guest cap:** default **35 guests** on Free Lite; **co-op members can host up to 100**. The larger cap has real cost, because introduction-matching runs across every attendee.
+- **Premium host tools (co-op only):** co-hosts, collect allergies, and assignments. Free Lite hosts still run the event; they do not get those extras.
+
+This supersedes the old standalone per-event expansion fee; scale and host tools ride on membership, not a separate SKU.
 
 ### Suggested invites (events as matchmaking)
 
@@ -88,7 +137,9 @@ The detail page leads with **clear, complete event info** (see mockup): title, *
 
 The host's own view of their event — **fully editable in place** via **Edit / Done** in the header (same page unlocks title, bio, when, where, chip-in, friends-invite, reminders, assignments). It shows:
 
-- **Tappable counts** — **"{N} going"** (→ people sheet), **"{N} invited"** (→ people sheet), and when friends-can-invite is on **"{N} brought"** (guest-of-guest / bring-a-friend). Invited and brought are host-only planning tools — never vanity for guests.
+- **Tappable counts** — two wide pills: **"{N} going"** and **"{N} invited"** (each → people sheet). Big display numerals. Invited is host-only planning — never vanity for guests. There is no third "brought" pill; when friends-can-invite is on, each row in the people sheet shows who invited that person ("invited by Jade" / "brought by Sam"). Host-invited people have no tag. When the setting is off, lists render plainly.
+- **Header date** — the 31 / FRI date square sits next to the event title (not inside the When row).
+- **Flip-tile countdown** — under When, a live days · hours · minutes · seconds flip-clock replaces the grey "in 2 days" pill. Respects Reduce Motion (numbers still update; no flip animation).
 - **Co-host** — shown at the top with the host; can edit and manage too.
 - **Chip-in.** Amount + method + handle (Venmo / Cash App / person). Plain link the app never processes.
 - **Introductions** — who's being introduced to whom and why ("Sam & Alex · both climbers"), from `matching` over **invited + going**. Suggested people can get an `event_introduction` notification.
@@ -105,7 +156,7 @@ Because Events is where plans happen, the **Touch Grass button lives here too** 
 - **Each shows enough to know *why*** — the person, when (now / tonight / this weekend), and a short line ("anyone want to grab food + walk?").
 - **Each card has a split action row: "I'm in" and "Details."** "I'm in" says yes right there; "Details" (or tapping anywhere on the card) opens the full signal sheet. The old ✕ still quietly dismisses it from the list.
 - **The detail sheet offers "I'm in" and "Quietly decline."** Declining tells the poster nothing — it just clears the card for you. Same touch-grass mechanics as `TOUCHGRASS-AND-QUIZ.md` — no counts, no public "no," private who's-in.
-- **PRIVACY — the circle is never fully named.** A signal shows it went to **Close** or **Friends**, but an **Everyone** broadcast shows *no* circle label, so a wide send never looks less personal than a close-circle one.
+- **Who to tell is Close / Friends only.** A signal may show it went to **Close** or **Friends**. Older leftover "Everyone" rows show *no* circle label.
 
 ---
 
@@ -141,8 +192,9 @@ interface EventDetail extends EventSummary {
 interface HostView {           // editable in place
   invitedCount: number;        // host-only (tap → invited list)
   goingCount: number;          // tap → who's coming
-  attendees: Attendee[];
-  invited: Attendee[];
+  attendees: Attendee[];       // each may carry invitedById when friends-can-invite
+  invited: Attendee[];         // same; UI shows "invited by" / "brought by"
+  inviteByIds?: Record<string, string>; // personId → inviter; omit = host invited
   introductions: Introduction[];   // pairwise, with the "why"
   sharedAllergies: string[];       // host-only, opt-in
   reminders: { twoDays: boolean; twoHours: boolean };
@@ -171,21 +223,28 @@ interface RsvpInput {
 
 ## Acceptance criteria
 
+- [ ] First-time visitors (not yet explored, no hosted events) see the Events gate (headline + three-row idea wall + Explore Events CTA), not the empty calendar alone.
+- [ ] Explore Events opens the normal Events list without opening create; header + still creates. After Explore once (or hosting once), the gate never returns; post-gate Events still has Touch Grass + calendar EmptyState when empty.
+- [ ] Idea chips are decorative only (no create prefill); Reduce Motion freezes the marquees.
 - [ ] List groups events into Hosting / Going / Invited; Community is a dormant "coming soon" placeholder.
+- [ ] Create Details can mark an event as repeating (weekly / monthly day or Nth weekday / yearly + ends); Preview and detail show the human label; `event_created` includes `has_recurrence` (and optional `recurrence_freq` enum only).
 - [ ] Create supports inviting all connections plus FoF suggestions with mutual names (no tier labels), plus a "let friends invite friends" toggle with a guest cap.
 - [ ] Create surfaces friend-of-friend suggested invites from `matching`.
-- [ ] Hosting is free (never gated); the guest cap is 35 for free members and 100 for co-op members (see `COOP.md`).
+- [ ] Hosting is free (never gated); the guest cap is 35 for Free Lite and 100 for co-op members. Co-hosts, allergy collection, and assignments are co-op host tools (see `COOP.md`).
 - [ ] The chip-in handle is a stored link only — never processed by the app (no Venmo/Cash App OAuth).
 - [ ] Assignments are public; assign ≠ done; the assignee or host/co-host can check off (hosts can check anyone's); open items use an assign dropdown (no "Snag" label); leave-open / reassign notifies the host.
 - [ ] Invitee view offers Going / Can't, add-to-calendar (Google/Apple, prefilled), and who-you-should-meet cards that route to Discover.
 - [ ] Food-allergy sharing is opt-in per event, visible only to the host, and never used for matching.
 - [ ] Guests see only "{N} going" (people they know) and "{N} to meet" — never a raw invited/going total — and both counts are tappable.
-- [ ] The event detail clearly shows host (+ co-host) with real profile photos when available, date/time, full address (maps link), a bio/description, assignments, and the chip-in line; one header Share control (iOS-style icon) opens the native share sheet. Guests never see invited totals or guest caps. Host and guest views share the same layout.
-- [ ] The host view is fully editable in place (Edit / Done); it shows tappable "{N} going", "{N} invited", and when enabled "{N} brought" (bring-a-friend).
+- [ ] Shared-link outsiders (not on the invite list) see basics only: no going / to-meet counts. If friends-can-invite is on they may RSVP Going; if off they cannot RSVP until invited.
+- [ ] The event detail clearly shows host (+ co-host) with real profile photos when available, date/time, full address (maps link), a bio/description, assignments, and the chip-in line; one header Share control (iOS-style icon) opens the native share sheet (web without Share copies the link). Guests never see invited totals or guest caps. Host and guest views share the same layout.
+- [ ] When guests tag updates to the event (party capture flow), a **Photo album** section shows those photos on the event detail for everyone on the guest list (not outsiders).
+- [ ] The host view is fully editable in place (Edit / Done); it shows tappable "{N} going" and "{N} invited" (wide pills, big numerals). When friends-can-invite is on, people-sheet rows show invite attribution ("invited by" / "brought by"); no separate "brought" count pill.
+- [ ] The date square sits next to the title; the When row uses a live flip-tile countdown (Reduce Motion: update without flip animation).
 - [ ] The host can add a co-host who can also edit/manage.
 - [ ] The chip-in sits at the top and includes an amount and a method + handle (Venmo / Cash App / person); the app never processes it.
 - [ ] The Allergies "Only you can see this" note sits under the header, not inside the box.
 - [ ] The Events page shows the Touch Grass button with friend signals listed directly under it (no separate "Who's free" heading), each showing when + what they want to do, with a split "I'm in" / "Details" action row; tapping the card opens a detail sheet offering "I'm in" or "Quietly decline."
-- [ ] A signal only ever names the **Close** or **Friends** circle; an **Everyone** send shows no circle label at all.
+- [ ] The send sheet offers **Close** and **Friends** only (no Everyone). A signal only names those two circles; any leftover wide send shows no circle label.
 - [ ] Host view shows introductions (with the "why"), shared allergies (host-only), and reminder toggles.
 - [ ] Reminders auto-send 2 days and 2 hours before when enabled.

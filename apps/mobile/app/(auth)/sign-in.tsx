@@ -1,17 +1,17 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Sign in screen. Full-bleed Bridger color-bar art, the Bridger mark in the
-// middle, and Google / Apple / email controls in a readable panel on the lower
-// half. Long-pressing the logo (when the build allows) unlocks fake-data demo
-// so TestFlight / local builds can walk the app without a real account.
+// middle, and Google / Apple as the main paths (tap = sign in, no extra button).
+// Email + password is tucked behind a subtle "Sign in with email" link under
+// Apple. Long-pressing the logo (when the build allows) opens the demo gate.
 // Every control carries a taxonomy analyticsId so taps are measured.
 // ============================================
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Image,
   ImageBackground,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -33,29 +33,38 @@ import {
   Screen,
   TextField
 } from '@bridger/ui';
-import { setOnboardingComplete } from '../../data/onboarding';
+import { resetOnboarding, setOnboardingComplete } from '../../data/onboarding';
 import {
   enableDemoMode,
-  isDemoUnlockAllowed
+  isDemoUnlockAllowed,
+  makeDemoOnboardSeed,
+  setDemoOnboardSeed,
+  verifyDemoUnlockPassword,
+  verifyOnboardDemoPassword
 } from '../../lib/demo';
 import { useAuth } from '../../providers/auth-provider';
 
-const LOGIN_BG = require('../../assets/brand/login-bg.jpg');
+const LOGIN_BG = require('../../assets/brand/login-screen.png');
 const BRIDGER_MARK = require('../../assets/brand/bridger-mark.png');
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { signInWithEmail, signInWithGoogle, signInWithApple } = useAuth();
+  const [showManual, setShowManual] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'google' | 'apple' | 'email' | 'demo' | null>(
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [demoPassword, setDemoPassword] = useState('');
+  const [demoPasswordError, setDemoPasswordError] = useState<string | null>(null);
   const unlockAllowed = isDemoUnlockAllowed();
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mark this screen as the active analytics surface when it opens.
   useEffect(() => {
     openSurface('auth');
   }, []);
@@ -78,7 +87,7 @@ export default function SignInScreen() {
     if (!cancelled && !err) trackProduct('auth_signed_in', { method: 'apple' });
   }
 
-  async function onSignIn() {
+  async function onSignInEmail() {
     setBusy('email');
     setError(null);
     const { error: err } = await signInWithEmail(email.trim(), password);
@@ -87,37 +96,79 @@ export default function SignInScreen() {
     else trackProduct('auth_signed_in', { method: 'email' });
   }
 
-  // THIS SECTION DOES: confirm, then turn on fake-data demo and jump into Home.
+  function openDemoSheet() {
+    if (!unlockAllowed || busy) return;
+    setDemoPassword('');
+    setDemoPasswordError(null);
+    setDemoOpen(true);
+  }
+
+  function onLogoPress() {
+    trackClick(AUTH.sign_in.brand_logo, { method: 'tap' });
+    if (!unlockAllowed || busy) return;
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0;
+      openDemoSheet();
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+    }, 800);
+  }
+
   function onLogoLongPress() {
     if (!unlockAllowed || busy) return;
     trackClick(AUTH.sign_in.brand_logo, { method: 'long_press' });
-    Alert.alert(
-      'Enter demo?',
-      'Walk Bridger with fake friends and posts. No real account is created.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Enter demo',
-          onPress: () => {
-            void (async () => {
-              setBusy('demo');
-              setError(null);
-              try {
-                await enableDemoMode();
-                // Land in the populated app, not the new-user onboarding run.
-                await setOnboardingComplete();
-                trackProduct('demo_mode_entered', { method: 'logo_long_press' });
-                router.replace('/home');
-              } catch {
-                setError('Could not start demo on this build.');
-              } finally {
-                setBusy(null);
-              }
-            })();
-          }
+    openDemoSheet();
+  }
+
+  function onDemoSubmit() {
+    const pw = demoPassword.trim();
+
+    if (verifyDemoUnlockPassword(pw)) {
+      setDemoOpen(false);
+      void (async () => {
+        setBusy('demo');
+        setError(null);
+        try {
+          await enableDemoMode();
+          await setOnboardingComplete();
+          trackProduct('demo_mode_entered', { method: 'logo_password' });
+          router.replace('/home');
+        } catch {
+          setError('Could not start demo on this build.');
+        } finally {
+          setBusy(null);
+          setDemoPassword('');
         }
-      ]
-    );
+      })();
+      return;
+    }
+
+    if (verifyOnboardDemoPassword(pw)) {
+      setDemoOpen(false);
+      void (async () => {
+        setBusy('demo');
+        setError(null);
+        try {
+          await enableDemoMode();
+          await resetOnboarding();
+          setDemoOnboardSeed(makeDemoOnboardSeed());
+          trackProduct('demo_mode_entered', { method: 'logo_onboard' });
+          router.replace('/onboarding');
+        } catch {
+          setError('Could not start demo on this build.');
+        } finally {
+          setBusy(null);
+          setDemoPassword('');
+        }
+      })();
+      return;
+    }
+
+    setDemoPasswordError('Wrong password');
   }
 
   return (
@@ -132,13 +183,12 @@ export default function SignInScreen() {
           className="flex-1"
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* THIS SECTION DOES: hold the logo in the vertical center of the screen. */}
           <View
             className="flex-1 items-center justify-center px-8"
             style={{ paddingTop: insets.top + 12 }}
           >
             <Pressable
-              onPress={() => trackClick(AUTH.sign_in.brand_logo, { method: 'tap' })}
+              onPress={onLogoPress}
               onLongPress={onLogoLongPress}
               delayLongPress={700}
               disabled={busy !== null}
@@ -146,7 +196,7 @@ export default function SignInScreen() {
               accessibilityLabel="Bridger logo"
               accessibilityHint={
                 unlockAllowed
-                  ? 'Hold to enter demo mode with sample data'
+                  ? 'Tap three times or hold to enter the demo password'
                   : undefined
               }
               className="items-center justify-center"
@@ -161,7 +211,6 @@ export default function SignInScreen() {
             </Pressable>
           </View>
 
-          {/* THIS SECTION DOES: put login controls on a readable panel over the art. */}
           <View
             className="rounded-t-3xl bg-canvas px-5 pt-5"
             style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
@@ -180,84 +229,141 @@ export default function SignInScreen() {
               bounces={false}
               style={{ maxHeight: 420 }}
             >
-              <View className="gap-3">
-                <ButtonSecondary
-                  full
-                  size="lg"
-                  onPress={onGoogle}
-                  disabled={busy !== null}
-                  loading={busy === 'google'}
-                  accessibilityLabel="Continue with Google"
-                  analyticsId={AUTH.sign_in.google}
-                  analyticsProps={{ method: 'google' }}
-                >
-                  Continue with Google
-                </ButtonSecondary>
-                <ButtonSecondary
-                  full
-                  size="lg"
-                  onPress={onApple}
-                  disabled={busy !== null}
-                  loading={busy === 'apple'}
-                  accessibilityLabel="Continue with Apple"
-                  analyticsId={AUTH.sign_in.apple}
-                  analyticsProps={{ method: 'apple' }}
-                >
-                  Continue with Apple
-                </ButtonSecondary>
-              </View>
+              {!showManual ? (
+                <>
+                  {/* OAuth is the default: tap Google or Apple to sign in. */}
+                  <View className="gap-3">
+                    <ButtonSecondary
+                      full
+                      size="lg"
+                      onPress={onGoogle}
+                      disabled={busy !== null}
+                      loading={busy === 'google'}
+                      accessibilityLabel="Continue with Google"
+                      analyticsId={AUTH.sign_in.google}
+                      analyticsProps={{ method: 'google' }}
+                    >
+                      Continue with Google
+                    </ButtonSecondary>
+                    <ButtonSecondary
+                      full
+                      size="lg"
+                      onPress={onApple}
+                      disabled={busy !== null}
+                      loading={busy === 'apple'}
+                      accessibilityLabel="Continue with Apple"
+                      analyticsId={AUTH.sign_in.apple}
+                      analyticsProps={{ method: 'apple' }}
+                    >
+                      Continue with Apple
+                    </ButtonSecondary>
+                  </View>
 
-              <View className="my-5 flex-row items-center gap-3">
-                <View className="h-px flex-1 bg-ink-line" />
-                <Text className="font-sans-b text-[12px] text-ink-mute">or</Text>
-                <View className="h-px flex-1 bg-ink-line" />
-              </View>
+                  {/* Subtle manual path under the OAuth buttons. */}
+                  <Pressable
+                    onPress={() => {
+                      trackClick(AUTH.sign_in.manual_link);
+                      setShowManual(true);
+                    }}
+                    disabled={busy !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sign in with email"
+                    className="mt-5 items-center py-2"
+                  >
+                    <Text className="font-sans-sb text-[13px] text-ink-mute underline decoration-ink-mute/40">
+                      Sign in with email
+                    </Text>
+                  </Pressable>
 
-              <View className="gap-3">
-                <TextField
-                  label="Email"
-                  value={email}
-                  onChange={setEmail}
-                  placeholder="you@email.com"
-                  type="email"
-                  autoComplete="email"
-                  analyticsId={AUTH.sign_in.email}
-                />
-                <TextField
-                  label="Password"
-                  value={password}
-                  onChange={setPassword}
-                  type="password"
-                  placeholder="Your password"
-                  autoComplete="password"
-                  analyticsId={AUTH.sign_in.password}
-                />
-              </View>
+                  <Pressable
+                    onPress={() => {
+                      trackClick(AUTH.sign_in.switch_to_sign_up);
+                      router.replace('/(auth)/sign-up');
+                    }}
+                    disabled={busy !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create account"
+                    className="mt-2 items-center py-2"
+                  >
+                    <Text className="font-sans-b text-[13px] text-ink-soft">
+                      New here?{' '}
+                      <Text className="font-sans-sb text-ink underline decoration-ink/30">
+                        Create account
+                      </Text>
+                    </Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  {/* Manual sign-in: email + password only (no confirm). */}
+                  <Pressable
+                    onPress={() => {
+                      setShowManual(false);
+                      setError(null);
+                    }}
+                    disabled={busy !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel="Back to Google and Apple sign in"
+                    className="mb-4 self-start py-1"
+                  >
+                    <Text className="font-sans-sb text-[13px] text-ink-mute">← Back</Text>
+                  </Pressable>
 
-              <View className="mt-5 gap-2.5">
-                <ButtonPrimary
-                  full
-                  size="lg"
-                  onPress={onSignIn}
-                  disabled={busy !== null || !email.trim() || !password}
-                  loading={busy === 'email'}
-                  accessibilityLabel="Sign in"
-                  analyticsId={AUTH.sign_in.submit}
-                  analyticsProps={{ method: 'email' }}
-                >
-                  Sign in
-                </ButtonPrimary>
-                <ButtonSecondary
-                  full
-                  tone="ghost"
-                  onPress={() => router.replace('/(auth)/sign-up')}
-                  disabled={busy !== null}
-                  accessibilityLabel="Create account"
-                  analyticsId={AUTH.sign_in.switch_to_sign_up}
-                >
-                  Create account
-                </ButtonSecondary>
-              </View>
+                  <View className="gap-3">
+                    <TextField
+                      label="Email"
+                      value={email}
+                      onChange={setEmail}
+                      placeholder="you@email.com"
+                      type="email"
+                      autoComplete="email"
+                      analyticsId={AUTH.sign_in.email}
+                    />
+                    <TextField
+                      label="Password"
+                      value={password}
+                      onChange={setPassword}
+                      type="password"
+                      placeholder="Your password"
+                      autoComplete="password"
+                      analyticsId={AUTH.sign_in.password}
+                    />
+                  </View>
+
+                  <View className="mt-5">
+                    <ButtonPrimary
+                      full
+                      size="lg"
+                      onPress={onSignInEmail}
+                      disabled={busy !== null || !email.trim() || !password}
+                      loading={busy === 'email'}
+                      accessibilityLabel="Sign in with email"
+                      analyticsId={AUTH.sign_in.submit}
+                      analyticsProps={{ method: 'email' }}
+                    >
+                      Sign in
+                    </ButtonPrimary>
+                  </View>
+
+                  <Pressable
+                    onPress={() => {
+                      trackClick(AUTH.sign_in.switch_to_sign_up);
+                      router.replace('/(auth)/sign-up');
+                    }}
+                    disabled={busy !== null}
+                    accessibilityRole="button"
+                    accessibilityLabel="Create account"
+                    className="mt-4 items-center py-2"
+                  >
+                    <Text className="font-sans-b text-[13px] text-ink-soft">
+                      New here?{' '}
+                      <Text className="font-sans-sb text-ink underline decoration-ink/30">
+                        Create account
+                      </Text>
+                    </Text>
+                  </Pressable>
+                </>
+              )}
 
               {error ? (
                 <Text
@@ -271,6 +377,77 @@ export default function SignInScreen() {
           </View>
         </KeyboardAvoidingView>
       </ImageBackground>
+
+      <Modal
+        visible={demoOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDemoOpen(false)}
+      >
+        <Pressable
+          className="flex-1 justify-end bg-ink/40"
+          onPress={() => setDemoOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss demo password"
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="rounded-t-3xl bg-canvas px-5 pt-5"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+          >
+            <Text className="font-pixel text-[20px] text-ink">Demo mode</Text>
+            <Text className="mt-1 font-sans-sb text-[13px] text-ink-mute">
+              "demomode" walks the finished app. "onboard" runs a fresh onboarding
+              demo. No real account is created.
+            </Text>
+            <View className="mt-4">
+              <TextField
+                label="Password"
+                value={demoPassword}
+                onChange={(v) => {
+                  setDemoPassword(v);
+                  setDemoPasswordError(null);
+                }}
+                type="password"
+                placeholder="Demo password"
+                autoComplete="off"
+                analyticsId={AUTH.sign_in.password}
+              />
+            </View>
+            {demoPasswordError ? (
+              <Text
+                className="mt-2 font-sans-sb text-[13px] text-coral"
+                accessibilityLiveRegion="polite"
+              >
+                {demoPasswordError}
+              </Text>
+            ) : null}
+            <View className="mt-5 gap-2.5">
+              <ButtonPrimary
+                full
+                size="lg"
+                onPress={onDemoSubmit}
+                disabled={busy !== null || !demoPassword.trim()}
+                loading={busy === 'demo'}
+                accessibilityLabel="Enter demo"
+                analyticsId={AUTH.sign_in.submit}
+                analyticsProps={{ method: 'demo_password' }}
+              >
+                Enter demo
+              </ButtonPrimary>
+              <ButtonSecondary
+                full
+                tone="ghost"
+                onPress={() => setDemoOpen(false)}
+                disabled={busy === 'demo'}
+                accessibilityLabel="Cancel"
+              >
+                Cancel
+              </ButtonSecondary>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }

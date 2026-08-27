@@ -1,56 +1,35 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The three thin bars at the top of the Connection Reveal story (Screens 1–3).
-// The current step is half-filled; finished ones are full; upcoming stay empty.
-// Purely decorative — not a button. Respects reduce-motion (no half-fill fade).
+// The current bar fills over a few seconds (same timed fill as Updates).
+// Finished bars stay full. The last card holds full. Reduce Motion jumps
+// to a static fill and does not auto-advance.
 // ============================================
-import React, { useEffect, useState } from 'react';
-import { AccessibilityInfo, View } from 'react-native';
-import { AnalyticsRegion, cn } from '@bridger/ui';
+import React from 'react';
+import { AnalyticsRegion, SegmentedProgress } from '@bridger/ui';
 import { REVEAL } from '@bridger/shared';
+
+/** How long one story card takes to fill. Tap still skips ahead early. */
+const CARD_MS = 5500;
 
 type Props = {
   /** Always 3 for the reveal story screens */
   segments?: number;
-  /** 0-based index among Screens 1–3 */
+  /** 0-based index among Screens 1–3; 3 means the close card (all full). */
   active: number;
+  /** When the current bar finishes filling (not on the held last card). */
+  onComplete?: () => void;
 };
 
-export function RevealProgressBars({ segments = 3, active }: Props) {
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const sub = AccessibilityInfo.addEventListener?.(
-      'reduceMotionChanged',
-      setReduceMotion
-    );
-    return () => sub?.remove?.();
-  }, []);
-
+export function RevealProgressBars({ segments = 3, active, onComplete }: Props) {
   return (
     <AnalyticsRegion analyticsId={REVEAL.flow.progress} interactive={false}>
-      <View
-        accessible={false}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        className="flex-row gap-1.5"
-      >
-        {Array.from({ length: segments }).map((_, i) => {
-          const filled = i < active;
-          const current = i === active;
-          // ACCESSIBILITY: reduce-motion skips the half-fill "in progress" look
-          const width = filled ? 'w-full' : current ? (reduceMotion ? 'w-full' : 'w-1/2') : 'w-0';
-          return (
-            <View
-              key={i}
-              className="h-1 flex-1 overflow-hidden rounded-full bg-white/35"
-            >
-              <View className={cn('h-full rounded-full bg-white', width)} />
-            </View>
-          );
-        })}
-      </View>
+      <SegmentedProgress
+        count={segments}
+        index={active}
+        durationMs={CARD_MS}
+        onComplete={active < segments ? onComplete : undefined}
+      />
     </AnalyticsRegion>
   );
 }

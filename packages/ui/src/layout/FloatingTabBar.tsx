@@ -1,24 +1,27 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The bottom navigation — a detached, rounded PILL that floats inset from the
-// screen edge (not a full-width bar), per DESIGN.md. Five destinations: Home,
-// Friends, Messages, Events, Discover. Profile lives in the header avatar
-// instead.
+// The bottom navigation — a detached, elongated capsule that floats inset
+// from the screen edge (not a flush full-width bar), per DESIGN.md. Five
+// destinations: Home, Friends, Events, Discover, News. Messages moved up
+// to the header (top-right icon), and your Profile lives in the header
+// avatar instead. The selected tab is a stretched pill, same language as
+// the long toggle thumb, not a tight circle.
 //
 // Each tab has its own accent (active fill + notification dot):
-//   Home teal · Friends coral/orange · Messages blue · Events touch-grass
-//   green · Discover amber/yellow.
-// Inactive icons stay muted. A small matching-color dot marks something new.
-// Each tab press emits chrome.tab_bar.* analytics.
+//   Home teal · Friends coral/orange · Events touch-grass green ·
+//   Discover amber/yellow · News purple.
+// Discover uses a globe (the "www"/world icon) and News uses Lucide's
+// Newspaper icon. Inactive icons stay muted. A small matching-color dot
+// marks something new. Each tab press emits chrome.tab_bar.* analytics.
 // ============================================
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CalendarIcon,
-  CompassIcon,
+  GlobeIcon,
   HouseIcon,
-  SendIcon,
+  NewspaperIcon,
   UsersIcon
 } from 'lucide-react-native';
 import { CHROME } from '@bridger/shared';
@@ -26,15 +29,15 @@ import { ACCENT_HEX, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
 import { withAnalyticsPress } from '../lib/analytics';
 
-export type TabKey = 'home' | 'friends' | 'messages' | 'events' | 'discover';
+export type TabKey = 'home' | 'friends' | 'events' | 'discover' | 'news';
 
-/** Per-tab brand color — used for the selected circle and the badge dot. */
+/** Per-tab brand color — used for the selected pill and the badge dot. */
 export const TAB_COLOR: Record<TabKey, string> = {
   home: ACCENT_HEX.teal,
   friends: ACCENT_HEX.coral,
-  messages: ACCENT_HEX.blue,
   events: ACCENT_HEX.green,
-  discover: ACCENT_HEX.amber
+  discover: ACCENT_HEX.amber,
+  news: ACCENT_HEX.purple
 };
 
 const TABS: Array<{
@@ -45,19 +48,19 @@ const TABS: Array<{
 }> = [
   { key: 'home', label: 'Home', analyticsId: CHROME.tab_bar.tab_home, Icon: HouseIcon },
   { key: 'friends', label: 'Friends', analyticsId: CHROME.tab_bar.tab_friends, Icon: UsersIcon },
-  {
-    key: 'messages',
-    label: 'Messages',
-    // Paper airplane = messages everywhere in the app (not the flag-like bubble).
-    analyticsId: CHROME.tab_bar.tab_messages,
-    Icon: SendIcon
-  },
   { key: 'events', label: 'Events', analyticsId: CHROME.tab_bar.tab_events, Icon: CalendarIcon },
   {
     key: 'discover',
+    // Globe = the "www"/world icon, replacing the old compass.
     label: 'Discover',
     analyticsId: CHROME.tab_bar.tab_discover,
-    Icon: CompassIcon
+    Icon: GlobeIcon
+  },
+  {
+    key: 'news',
+    label: 'News',
+    analyticsId: CHROME.tab_bar.tab_news,
+    Icon: NewspaperIcon
   }
 ];
 
@@ -78,9 +81,10 @@ export function FloatingTabBar({
     <View
       pointerEvents="box-none"
       style={{ position: 'absolute', left: 0, right: 0, bottom: Math.max(insets.bottom, 12) }}
-      className="items-center px-5"
+      className="px-3"
     >
-      <View className="flex-row items-center gap-1 rounded-full border border-ink-line bg-surface px-2 py-2">
+      {/* THIS SECTION DOES: the long capsule track. Tabs share the width evenly. */}
+      <View className="w-full flex-row items-center rounded-full border border-ink-line bg-surface px-1.5 py-1.5">
         {TABS.map(({ key, label, Icon, analyticsId }) => {
           const active = key === value;
           const color = TAB_COLOR[key];
@@ -97,10 +101,10 @@ export function FloatingTabBar({
               }
               accessibilityState={{ selected: active }}
               style={active ? { backgroundColor: color } : undefined}
-              className="relative h-11 w-11 items-center justify-center rounded-full active:opacity-80"
+              className="relative min-h-[44px] min-w-[44px] flex-1 items-center justify-center rounded-full active:opacity-80"
             >
               <Icon
-                size={19}
+                size={20}
                 color={active ? '#FFFFFF' : c.inkMute}
                 strokeWidth={active ? 2.6 : 2}
               />
@@ -109,7 +113,7 @@ export function FloatingTabBar({
                   accessibilityElementsHidden
                   importantForAccessibility="no"
                   style={{ backgroundColor: color }}
-                  className="absolute right-2 top-2 h-2 w-2 rounded-full"
+                  className="absolute right-3 top-2 h-2 w-2 rounded-full"
                 />
               ) : null}
             </Pressable>

@@ -4,7 +4,6 @@ import { CustomWidget, PROFILE_PRESETS, ProfileTheme, Tier } from '../../../../p
 import {
   Breathe,
   ButtonSecondary,
-  Card,
   PixelHeading,
   ProfileSkin,
   Screen,

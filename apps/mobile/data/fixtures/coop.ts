@@ -62,6 +62,6 @@ export const DEMO_SHIPPED = [
 export const DEMO_MEMBERSHIP = {
   since: 'March 2026',
   renews: 'March 2027',
-  dues: '$24/year',
+  dues: '$72/year',
   members: 12480
 };

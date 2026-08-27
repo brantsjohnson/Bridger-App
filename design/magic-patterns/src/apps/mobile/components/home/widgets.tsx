@@ -1,7 +1,6 @@
-import React from 'react';
 import { ArrowUpRightIcon } from 'lucide-react';
 import { EventItem } from '../../../../packages/shared';
-import { ACCENTS, Avatar, Card, CoverArt, cn } from '../../../../packages/ui';
+import { ACCENTS, Avatar, CoverArt, cn } from '../../../../packages/ui';
 import { EventCard } from '../EventCard';
 import { InsideJokeNote } from '../InsideJokeNote';
 import { QuizCard } from '../QuizCard';
@@ -247,7 +246,7 @@ export function CoopWidget({
           {member ? 'Member portal' : 'Join the co-op'}
         </span>
         <span className="block truncate text-[12px] font-semibold text-onaccent/75">
-          {member ? 'Votes, feedback, what we are building' : 'You are not the product · $24 a year'}
+          {member ? 'Votes, feedback, what we are building' : 'You are not the product · $72 a year'}
         </span>
       </span>
       <ArrowUpRightIcon aria-hidden="true" className="h-4 w-4 shrink-0" strokeWidth={2.8} />

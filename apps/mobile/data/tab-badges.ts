@@ -8,7 +8,6 @@
 import type { TabKey } from '@bridger/ui';
 import { isDemoMode } from '../lib/demo';
 import { hasOpenStoryReplies, unreadNotificationKinds } from './feed';
-import { THREADS } from './fixtures/messages';
 
 /** Which tabs should show a colored notification dot right now. */
 export function getTabBadges(): Partial<Record<TabKey, boolean>> {
@@ -18,13 +17,13 @@ export function getTabBadges(): Partial<Record<TabKey, boolean>> {
   }
 
   const kinds = unreadNotificationKinds();
-  const unreadMessages = THREADS.some((t) => t.unread);
 
   return {
     home: hasOpenStoryReplies() || kinds.has('story_reply') || kinds.has('recap_reaction'),
     friends: kinds.has('connect_request') || kinds.has('mutual_connection'),
-    messages: unreadMessages,
     events: kinds.has('touch_grass_signal') || kinds.has('event_invite'),
-    discover: true
+    discover: true,
+    // No news feed yet — no dot until the feature lands.
+    news: false
   };
 }

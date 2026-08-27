@@ -1,4 +1,3 @@
-import React from 'react';
 import { PlusIcon } from 'lucide-react';
 import { Story } from '../../../packages/shared';
 import { ACCENTS, cn } from '../../../packages/ui';

@@ -45,7 +45,7 @@ export function FreeSignalCard({
   };
 
   return (
-    <article className="relative overflow-visible rounded-card border-2 border-green bg-[#EEF8E3] px-4 py-3.5">
+    <article className="relative overflow-visible rounded-card border border-ink-line bg-[#EEF8E3] px-4 py-3.5">
       <GrassBurst play={burst} onDone={() => setBurst(false)} />
 
       <button

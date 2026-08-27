@@ -1,9 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // One question: your birthday. It uses the drill-down picker (year → month →
-// day). Picking the day fills the answer and lets you continue. Skippable, and
-// you can step back to fix it. PRIVACY: who can see this is chosen next, in the
-// visibility step.
+// day). Confirming "Yes, that's right" saves and moves on — no separate Continue.
+// Required — no skip. PRIVACY: who can see this is chosen later in the privacy step.
 // ============================================
 import React from 'react';
 import { View } from 'react-native';
@@ -17,7 +16,6 @@ export function BirthdayStep({
   value,
   onChange,
   onNext,
-  onSkip,
   onBack
 }: {
   step: number;
@@ -25,7 +23,6 @@ export function BirthdayStep({
   value: string;
   onChange: (v: string) => void;
   onNext: () => void;
-  onSkip: () => void;
   onBack: () => void;
 }) {
   return (
@@ -35,16 +32,17 @@ export function BirthdayStep({
       purpose="Friends love a heads-up."
       ask="When's your birthday?"
       accent="teal"
-      ctaDisabled={value.trim().length === 0}
-      onContinue={onNext}
-      onSkip={onSkip}
+      fillBody
+      scrollBody
+      hideFooter
       onBack={onBack}
     >
-      <View className="gap-3">
+      <View className="min-h-0 flex-1">
         <BirthdayPicker
           value={value}
           onChange={onChange}
           onComplete={onNext}
+          onColorWash
           analyticsId={ONBOARDING.basics.answer}
         />
       </View>

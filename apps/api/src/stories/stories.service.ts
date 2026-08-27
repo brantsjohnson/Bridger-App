@@ -39,6 +39,7 @@ export type StoryPostDto = {
   overlayText?: string;
   caption?: string;
   themeSlug?: string;
+  eventId?: string;
   createdAt: string;
   mediaUrl: string | null;
 };
@@ -107,6 +108,7 @@ export class StoriesService {
     type: string;
     update_text: string | null;
     theme_slug: string | null;
+    event_id?: string | null;
     created_at: string;
     media_id: string | null;
   }): Promise<StoryPostDto> {
@@ -128,6 +130,7 @@ export class StoriesService {
       accent: 'purple',
       caption: row.update_text ?? undefined,
       themeSlug: row.theme_slug ?? undefined,
+      eventId: row.event_id ?? undefined,
       createdAt: row.created_at,
       mediaUrl
     };
@@ -150,6 +153,7 @@ export class StoriesService {
       caption?: string;
       themeSlug?: string;
       visibleToTier?: Tier;
+      eventId?: string;
     }
   ): Promise<StoryPostDto> {
     const type = body.type === 'video' ? 'video' : 'photo';
@@ -202,6 +206,10 @@ export class StoriesService {
       : new Date(Date.now() + THIRTY_DAYS_MS).toISOString();
     const caption = body.caption?.trim() || null;
 
+    if (body.eventId) {
+      await this.assertCanTagEvent(userId, body.eventId);
+    }
+
     const { data: row, error: insErr } = await this.supabase.admin
       .from('stories')
       .insert({
@@ -211,10 +219,11 @@ export class StoriesService {
         update_text: caption,
         theme_slug: body.themeSlug ?? null,
         visible_to_tier: visible,
+        event_id: body.eventId ?? null,
         expires_at: expires
       })
       .select(
-        'id, author_id, type, update_text, theme_slug, created_at, media_id, transcript'
+        'id, author_id, type, update_text, theme_slug, event_id, created_at, media_id, transcript'
       )
       .single();
     if (insErr) throw insErr;
@@ -245,6 +254,79 @@ export class StoriesService {
     }
 
     return this.toPostDto(row);
+  }
+
+  /** Viewer must be host, co-host, or marked going before tagging an event. */
+  private async assertCanTagEvent(userId: string, eventId: string): Promise<void> {
+    const { data: event, error } = await this.supabase.admin
+      .from('events')
+      .select('id, host_id, co_host_ids')
+      .eq('id', eventId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!event) throw new NotFoundException('Event not found');
+    if (event.host_id === userId) return;
+    if ((event.co_host_ids ?? []).includes(userId)) return;
+    const { data: invite } = await this.supabase.admin
+      .from('event_invites')
+      .select('status')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (invite?.status === 'going') return;
+    throw new ForbiddenException('You must be going to tag this event');
+  }
+
+  /** Host, co-host, or anyone on the invite list (not Can't) can view the album. */
+  private async assertEventGuest(userId: string, eventId: string): Promise<void> {
+    const { data: event, error } = await this.supabase.admin
+      .from('events')
+      .select('id, host_id, co_host_ids')
+      .eq('id', eventId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!event) throw new NotFoundException('Event not found');
+    if (event.host_id === userId) return;
+    if ((event.co_host_ids ?? []).includes(userId)) return;
+    const { data: invite } = await this.supabase.admin
+      .from('event_invites')
+      .select('status')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (invite && invite.status !== 'cant') return;
+    throw new ForbiddenException('Not on the event guest list');
+  }
+
+  /**
+   * Event photo album: photo updates tagged to this event.
+   * PRIVACY: viewer must be on the guest list; each post still tier-filtered.
+   */
+  async listEventPhotos(viewerId: string, eventId: string): Promise<StoryPostDto[]> {
+    await this.assertEventGuest(viewerId, eventId);
+
+    const { data: rows, error } = await this.supabase.admin
+      .from('stories')
+      .select(
+        'id, author_id, type, update_text, theme_slug, event_id, created_at, media_id, visible_to_tier'
+      )
+      .eq('event_id', eventId)
+      .eq('type', 'photo')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const out: StoryPostDto[] = [];
+    for (const row of rows ?? []) {
+      const ok = await canViewTier(
+        this.supabase,
+        row.author_id,
+        viewerId,
+        row.visible_to_tier as Tier
+      );
+      if (!ok) continue;
+      out.push(await this.toPostDto(row));
+    }
+    return out;
   }
 
   // --- List posts ---
@@ -549,7 +631,15 @@ export class StoriesService {
 
     // Currently song/book from attributes when the viewer may see friend-tier facts.
     let currently = {
-      listening: { title: '', artist: '', emoji: '💿' },
+      listening: {
+        title: '',
+        artist: '',
+        emoji: '💿',
+        previewUrl: null as string | null,
+        spotifyId: null as string | null,
+        spotifyUri: null as string | null,
+        artworkUrl: null as string | null
+      },
       reading: { title: '', author: '', emoji: '📖' }
     };
     const canSeeCurrently = await canViewTier(
@@ -559,6 +649,28 @@ export class StoriesService {
       'friend'
     );
     if (canSeeCurrently) {
+      // Prefer music_picks.listening_now when present; fall back to attribute.
+      const { data: pick } = await this.supabase.admin
+        .from('music_picks')
+        .select('*')
+        .eq('owner_id', authorId)
+        .eq('kind', 'listening_now')
+        .maybeSingle();
+      if (pick) {
+        currently = {
+          ...currently,
+          listening: {
+            title: pick.title ?? '',
+            artist: pick.artist_name ?? '',
+            emoji: '💿',
+            previewUrl: pick.preview_url,
+            spotifyId: pick.spotify_id,
+            spotifyUri: pick.spotify_uri,
+            artworkUrl: pick.artwork_url
+          }
+        };
+      }
+
       const { data: attrs } = await this.supabase.admin
         .from('attributes')
         .select('key, value')
@@ -566,13 +678,17 @@ export class StoriesService {
         .in('key', ['currently_song', 'currently_book']);
       for (const a of attrs ?? []) {
         const v = a.value as Record<string, string>;
-        if (a.key === 'currently_song') {
+        if (a.key === 'currently_song' && !pick) {
           currently = {
             ...currently,
             listening: {
               title: v.title ?? '',
               artist: v.artist ?? '',
-              emoji: '💿'
+              emoji: '💿',
+              previewUrl: (v as { previewUrl?: string }).previewUrl ?? null,
+              spotifyId: (v as { spotifyId?: string }).spotifyId ?? null,
+              spotifyUri: (v as { spotifyUri?: string }).spotifyUri ?? null,
+              artworkUrl: (v as { artworkUrl?: string }).artworkUrl ?? null
             }
           };
         }

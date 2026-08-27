@@ -14,7 +14,7 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeftIcon } from 'lucide-react-native';
+import { ChevronLeftIcon, SendIcon } from 'lucide-react-native';
 import type { Accent } from '@bridger/shared';
 import { useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
@@ -24,7 +24,7 @@ import { AnalyticsRegion, withAnalyticsPress } from '../lib/analytics';
 import { useProfileLink } from './ProfileLink';
 import { SynthGrid } from './SynthGrid';
 
-type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain';
+type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain' | 'intro';
 
 /*
   --- TWEAK THESE if title spacing feels wrong on every tab ---
@@ -42,70 +42,14 @@ const HEADER_BOTTOM_PAD = 8;
 const GAP_BELOW_HEADER = 10;
 const HEADER_ROW = 44;
 
-type ScreenContextValue = {
-  hasHeader: boolean;
-  /** ScreenHeader mounts its chrome here so ScreenBody can scroll it away. */
-  headerChrome: React.ReactNode;
-  setHeaderChrome: (node: React.ReactNode) => void;
-};
-
-const ScreenContext = React.createContext<ScreenContextValue>({
-  hasHeader: false,
-  headerChrome: null,
-  setHeaderChrome: () => undefined
-});
-
-export function Screen({
-  children,
-  tone = 'canvas',
-  accent,
-  className
-}: {
-  children: React.ReactNode;
-  /** eggshell by default; 'color' for onboarding/fill flows; 'synth' = Discover grid. */
-  tone?: ScreenTone;
-  /** a Tailwind bg class used when tone is 'color', e.g. "bg-purple/20". */
-  accent?: string;
-  className?: string;
-}) {
-  const [headerChrome, setHeaderChrome] = useState<React.ReactNode>(null);
-
-  const value = useMemo(
-    () => ({
-      hasHeader: headerChrome != null,
-      headerChrome,
-      setHeaderChrome
-    }),
-    [headerChrome]
-  );
-
-  const bg =
-    tone === 'color'
-      ? accent ?? 'bg-purple/20'
-      : tone === 'plain'
-        ? ''
-        : 'bg-canvas';
-
-  return (
-    <ScreenContext.Provider value={value}>
-      <View className={cn('flex-1', bg, className)}>
-        {/*
-          The drifting grid is Bridger's background everywhere now, not just
-          Discover — Discover simply gets the boldest version of it. Only
-          'plain' screens (things drawn edge to edge, like the story player)
-          skip it, because a grid behind a photo just makes it look dirty.
-        */}
-        {tone === 'plain' ? null : <SynthGrid strength={tone === 'synth' ? 'bold' : 'normal'} />}
-        <View className="relative z-10 flex-1">{children}</View>
-      </View>
-    </ScreenContext.Provider>
-  );
-}
+/** Solid ink pill so header icons stay visible in dark mode (matches Back). */
+const HEADER_ICON_BTN =
+  'h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-80';
 
 type ScreenHeaderProps = {
   title: string;
   onBack?: () => void;
-  /** top-right profile photo — falls back to ProfileLink context when omitted */
+  /** profile photo (now LEFT of the title) — falls back to ProfileLink context */
   onProfile?: () => void;
   profile?: {
     name: string;
@@ -115,20 +59,148 @@ type ScreenHeaderProps = {
   };
   /** hide the profile circle (e.g. already on Profile, or a detail sheet) */
   hideProfile?: boolean;
+  /** open the Messages inbox (top-right shortcut) — falls back to ProfileLink context */
+  onMessages?: () => void;
+  /** hide the messages shortcut (e.g. you're already on Messages, or a detail sheet) */
+  hideMessages?: boolean;
   trailing?: React.ReactNode;
   /**
    * Analytics surface for this screen (e.g. "home"). When set, the title logs
-   * dead_click as `{surface}.top_nav.page_title` and the profile avatar as
-   * `{surface}.top_nav.profile_icon`.
+   * dead_click as `{surface}.top_nav.page_title`, the profile avatar as
+   * `{surface}.top_nav.profile_icon`, and the messages shortcut as
+   * `{surface}.top_nav.messages_icon`.
    */
   analyticsSurface?: string;
   /** Override the dead-click id on the title (defaults from analyticsSurface). */
   titleAnalyticsId?: string;
   /** Override the profile icon analytics id. */
   profileAnalyticsId?: string;
+  /** Override the messages icon analytics id. */
+  messagesAnalyticsId?: string;
   /** Override the back button analytics id. */
   backAnalyticsId?: string;
 };
+
+type ScreenContextValue = {
+  hasHeader: boolean;
+  /**
+   * Latest title-row props. ScreenBody paints HeaderChrome from these so the
+   * header is not a throwaway React element in state (that remounted buttons
+   * and let taps fall through — e.g. Friends + opening Recap).
+   */
+  headerProps: ScreenHeaderProps | null;
+  setHeaderProps: (props: ScreenHeaderProps | null) => void;
+  /**
+   * Legacy slot used by older ScreenHeader builds during Metro half-refresh.
+   * Prefer setHeaderProps. Kept so "setHeaderChrome is not a function" cannot crash.
+   */
+  headerChrome: React.ReactNode;
+  setHeaderChrome: (node: React.ReactNode) => void;
+  /** So the title row can flip to light type on black intro gates. */
+  tone: ScreenTone;
+};
+
+const ScreenContext = React.createContext<ScreenContextValue>({
+  hasHeader: false,
+  headerProps: null,
+  setHeaderProps: () => undefined,
+  headerChrome: null,
+  setHeaderChrome: () => undefined,
+  tone: 'canvas'
+});
+
+export function Screen({
+  children,
+  tone = 'canvas',
+  accent,
+  className
+}: {
+  children: React.ReactNode;
+  /** eggshell by default; 'color' for onboarding/fill; 'synth' = Discover grid; 'intro' = black first-look gates. */
+  tone?: ScreenTone;
+  /** a Tailwind bg class used when tone is 'color', e.g. "bg-purple/20". */
+  accent?: string;
+  className?: string;
+}) {
+  const [headerProps, setHeaderPropsState] = useState<ScreenHeaderProps | null>(null);
+  const [headerChrome, setHeaderChrome] = useState<React.ReactNode>(null);
+
+  // THIS SECTION DOES: update header props without remounting when nothing
+  // meaningful changed (same trailing node identity = same + / Edit buttons).
+  const setHeaderProps = React.useCallback((props: ScreenHeaderProps | null) => {
+    setHeaderPropsState((prev) => {
+      if (props == null) return null;
+      if (
+        prev &&
+        prev.title === props.title &&
+        prev.onBack === props.onBack &&
+        prev.onProfile === props.onProfile &&
+        prev.profile === props.profile &&
+        prev.hideProfile === props.hideProfile &&
+        prev.onMessages === props.onMessages &&
+        prev.hideMessages === props.hideMessages &&
+        prev.trailing === props.trailing &&
+        prev.analyticsSurface === props.analyticsSurface &&
+        prev.titleAnalyticsId === props.titleAnalyticsId &&
+        prev.profileAnalyticsId === props.profileAnalyticsId &&
+        prev.messagesAnalyticsId === props.messagesAnalyticsId &&
+        prev.backAnalyticsId === props.backAnalyticsId
+      ) {
+        return prev;
+      }
+      return props;
+    });
+    // New path owns the header; clear any leftover legacy chrome node.
+    if (props != null) setHeaderChrome(null);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      hasHeader: headerProps != null || headerChrome != null,
+      headerProps,
+      setHeaderProps,
+      headerChrome,
+      setHeaderChrome,
+      tone
+    }),
+    [headerProps, setHeaderProps, headerChrome, tone]
+  );
+
+  // THIS SECTION DOES: pick the canvas. Intro gates stay black (same as
+  // Discover's first look). Everything else stays eggshell unless it is plain.
+  const bg =
+    tone === 'color'
+      ? accent ?? 'bg-purple/20'
+      : tone === 'plain'
+        ? ''
+        : tone === 'intro'
+          ? 'bg-canvas-dark'
+          : 'bg-canvas';
+
+  return (
+    <ScreenContext.Provider value={value}>
+      <View
+        className={cn('flex-1', bg, className)}
+        // NativeWind `bg-black` can fail to paint on web; pin intro to near-black.
+        style={tone === 'intro' ? { backgroundColor: '#0E0E0E' } : undefined}
+      >
+        {/*
+          The drifting grid is Bridger's background everywhere now, not just
+          Discover — Discover simply gets the boldest version of it. Only
+          'plain' screens (things drawn edge to edge, like the story player)
+          skip it, because a grid behind a photo just makes it look dirty.
+          Intro gates skip it too: they stay solid black.
+        */}
+        {tone === 'plain' || tone === 'intro' ? null : (
+          <SynthGrid strength={tone === 'synth' ? 'bold' : 'normal'} />
+        )}
+        <View className="relative z-10 flex-1" style={{ backgroundColor: 'transparent' }}>
+          {children}
+        </View>
+      </View>
+    </ScreenContext.Provider>
+  );
+}
 
 /**
  * Builds the title row chrome. ScreenHeader registers this into the scroll
@@ -140,19 +212,32 @@ function HeaderChrome({
   onProfile,
   profile,
   hideProfile = false,
+  onMessages,
+  hideMessages = false,
   trailing,
   analyticsSurface,
   titleAnalyticsId,
   profileAnalyticsId,
+  messagesAnalyticsId,
   backAnalyticsId
 }: ScreenHeaderProps) {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const link = useProfileLink();
+  const { tone } = React.useContext(ScreenContext);
+  const intro = tone === 'intro';
 
+  // THIS SECTION DOES: figure out which chrome buttons this header shows.
+  // Detail screens (with a Back arrow) keep the old shape; top-level tabs get
+  // the new one — profile photo on the LEFT of the title, messages on the RIGHT.
+  const backMode = !!onBack;
   const openProfile = onProfile ?? link.open;
   const face = profile ?? link.profile;
   const showProfile = !hideProfile && !!openProfile && !!face;
+  const openMessages = onMessages ?? link.openMessages;
+  // Messages shortcut only rides in the top-right of top-level tabs (never in
+  // back mode, so detail screens stay clean).
+  const showMessages = !backMode && !hideMessages && !!openMessages;
 
   const resolvedTitleId =
     titleAnalyticsId ??
@@ -160,9 +245,64 @@ function HeaderChrome({
   const resolvedProfileId =
     profileAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.profile_icon` : undefined);
+  const resolvedMessagesId =
+    messagesAnalyticsId ??
+    (analyticsSurface ? `${analyticsSurface}.top_nav.messages_icon` : undefined);
   const resolvedBackId =
     backAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.back` : undefined);
+
+  // --- THE PROFILE BUTTON: your photo; opens your Profile page ---
+  const profileButton =
+    showProfile && face ? (
+      <Pressable
+        onPress={withAnalyticsPress(resolvedProfileId, openProfile)}
+        accessibilityRole="button"
+        accessibilityLabel="Your profile"
+        className="shrink-0 active:opacity-80"
+      >
+        <Avatar
+          name={face.name}
+          emoji={face.emoji}
+          accent={face.accent}
+          photo={face.photo}
+          size="header"
+        />
+      </Pressable>
+    ) : null;
+
+  // --- THE MESSAGES BUTTON: paper-airplane; opens your inbox ---
+  const messagesButton = showMessages ? (
+    <Pressable
+      onPress={withAnalyticsPress(resolvedMessagesId, openMessages)}
+      accessibilityRole="button"
+      accessibilityLabel="Messages"
+      className={HEADER_ICON_BTN}
+    >
+      <SendIcon size={18} color={c.canvas} strokeWidth={2.2} />
+    </Pressable>
+  ) : null;
+
+  // Left slot: Back arrow on detail screens, otherwise your profile photo.
+  const leading = backMode ? (
+    <Pressable
+      onPress={withAnalyticsPress(resolvedBackId, onBack)}
+      accessibilityRole="button"
+      accessibilityLabel="Back"
+      hitSlop={4}
+      // Solid ink fill + canvas chevron so dark mode never washes the
+      // arrow into the near-black header (border-only looked invisible).
+      className="h-11 w-11 items-center justify-center rounded-full bg-ink active:opacity-80"
+    >
+      <ChevronLeftIcon size={22} color={c.canvas} strokeWidth={3} />
+    </Pressable>
+  ) : (
+    profileButton
+  );
+
+  // Right slot: screen's own trailing controls, then Messages (tabs) or the
+  // profile photo (detail screens that still opt into it).
+  const rightExtra = backMode ? profileButton : messagesButton;
 
   return (
     <View
@@ -180,19 +320,7 @@ function HeaderChrome({
           minHeight: HEADER_ROW
         }}
       >
-        {onBack ? (
-          <Pressable
-            onPress={withAnalyticsPress(resolvedBackId, onBack)}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={4}
-            // Solid ink fill + canvas chevron so dark mode never washes the
-            // arrow into the near-black header (border-only looked invisible).
-            className="h-11 w-11 items-center justify-center rounded-full bg-ink active:opacity-80"
-          >
-            <ChevronLeftIcon size={22} color={c.canvas} strokeWidth={3} />
-          </Pressable>
-        ) : null}
+        {leading}
 
         <View style={{ flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center' }}>
           <AnalyticsRegion
@@ -200,31 +328,21 @@ function HeaderChrome({
             interactive={false}
             accessibilityLabel={title}
           >
-            <PixelHeading size="lg" numberOfLines={1}>
+            <PixelHeading
+              size="lg"
+              numberOfLines={1}
+              className={intro ? 'text-white' : undefined}
+              style={intro ? { color: '#FFFFFF' } : undefined}
+            >
               {title}
             </PixelHeading>
           </AnalyticsRegion>
         </View>
 
-        {trailing || showProfile ? (
+        {trailing || rightExtra ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {trailing}
-            {showProfile ? (
-              <Pressable
-                onPress={withAnalyticsPress(resolvedProfileId, openProfile)}
-                accessibilityRole="button"
-                accessibilityLabel="Your profile"
-                className="shrink-0 active:opacity-80"
-              >
-                <Avatar
-                  name={face.name}
-                  emoji={face.emoji}
-                  accent={face.accent}
-                  photo={face.photo}
-                  size="header"
-                />
-              </Pressable>
-            ) : null}
+            {rightExtra}
           </View>
         ) : null}
       </View>
@@ -237,31 +355,30 @@ function HeaderChrome({
  * not float or auto-hide mid-scroll.
  */
 export function ScreenHeader(props: ScreenHeaderProps) {
-  const { setHeaderChrome } = React.useContext(ScreenContext);
+  const { setHeaderProps, setHeaderChrome } = React.useContext(ScreenContext);
 
-  // THIS SECTION DOES: keep the header painted while props update. Clearing it
-  // to null on every change left a one-frame hole where a tap could fall
-  // through onto content underneath (e.g. Friends + opening the wrong sheet).
+  // THIS SECTION DOES: push the latest title-row props into Screen. We never
+  // clear to null on a normal update (that left a hole taps could fall through).
+  // Runs every commit so trailing / Edit stay in sync; setHeaderProps no-ops
+  // when nothing meaningful changed (keeps the + button from remounting).
+  // Falls back to setHeaderChrome if Metro still has an older Screen provider.
   useLayoutEffect(() => {
-    setHeaderChrome(<HeaderChrome {...props} />);
-  }, [
-    setHeaderChrome,
-    props.title,
-    props.onBack,
-    props.onProfile,
-    props.profile,
-    props.hideProfile,
-    props.trailing,
-    props.analyticsSurface,
-    props.titleAnalyticsId,
-    props.profileAnalyticsId,
-    props.backAnalyticsId
-  ]);
+    if (typeof setHeaderProps === 'function') {
+      setHeaderProps(props);
+      return;
+    }
+    if (typeof setHeaderChrome === 'function') {
+      setHeaderChrome(<HeaderChrome {...props} />);
+    }
+  });
 
   // Only clear when this screen's header unmounts for real.
   useLayoutEffect(() => {
-    return () => setHeaderChrome(null);
-  }, [setHeaderChrome]);
+    return () => {
+      if (typeof setHeaderProps === 'function') setHeaderProps(null);
+      if (typeof setHeaderChrome === 'function') setHeaderChrome(null);
+    };
+  }, [setHeaderProps, setHeaderChrome]);
 
   // Chrome lives inside ScreenBody's ScrollView — nothing to paint here.
   return null;
@@ -282,21 +399,32 @@ export function ScreenBody({
   scrollEnabled?: boolean;
   className?: string;
 }) {
-  const { headerChrome, hasHeader } = React.useContext(ScreenContext);
+  const { headerProps, headerChrome, hasHeader } = React.useContext(ScreenContext);
 
   return (
     <ScrollView
       className={cn('flex-1', className)}
       scrollEnabled={scrollEnabled}
       showsVerticalScrollIndicator={false}
+      // Transparent so intro's black canvas shows through (web ScrollView
+      // otherwise paints white and the gate looks like graph paper).
+      style={{ backgroundColor: 'transparent' }}
       contentContainerStyle={{
         // Header is full-bleed (own horizontal pad). Body content is padded below.
         paddingTop: hasHeader ? 0 : 8,
         paddingBottom: tabBarInset ? 140 : 32
       }}
     >
-      {/* Title row scrolls away with the page; returns only at the top. */}
-      {headerChrome}
+      {/* Title row scrolls away with the page; zIndex keeps + taps on the header. */}
+      {headerProps ? (
+        <View collapsable={false} style={{ zIndex: 20, elevation: 20 }}>
+          <HeaderChrome {...headerProps} />
+        </View>
+      ) : headerChrome ? (
+        <View collapsable={false} style={{ zIndex: 20, elevation: 20 }}>
+          {headerChrome}
+        </View>
+      ) : null}
       <View style={{ paddingHorizontal: padded ? 20 : 0 }}>{children}</View>
     </ScrollView>
   );

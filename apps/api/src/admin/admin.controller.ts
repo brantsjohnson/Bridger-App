@@ -25,17 +25,21 @@ import type {
   ThemedPrompt
 } from '@bridger/shared';
 import type { JobName } from '@bridger/ai';
-import type { AssistantAdminConfig } from '@bridger/shared';
+import type { AssistantAdminConfig, BillyConfigDto, DemoWeekConfig } from '@bridger/shared';
 import { AdminGuard } from '../admin-auth/admin.guard';
 import { AiOpsService } from '../ai/ai-ops.service';
 import { AiWorkerService } from '../ai/ai-worker.service';
 import { AssistantGateService } from '../assistant/assistant-gate.service';
+import { BillyBillingService } from '../assistant/billy-billing.service';
 import { PortalService } from '../coop/portal.service';
+import { PromoService } from '../coop/promo.service';
 import { MatchingConfigService } from '../matching/matching-config.service';
 import { MatchingCronService } from '../matching/matching-cron.service';
 import { MatchingFeedbackService } from '../matching/matching-feedback.service';
 import { AdminService } from './admin.service';
+import { IntegrationsHealthService } from './integrations-health.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
+import { DemoWeekService } from '../demo-week/demo-week.service';
 
 @Controller('admin')
 @UseGuards(AdminGuard)
@@ -47,9 +51,13 @@ export class AdminController {
     private readonly aiOps: AiOpsService,
     private readonly aiWorker: AiWorkerService,
     private readonly assistantGate: AssistantGateService,
+    private readonly billyBilling: BillyBillingService,
     private readonly matchingConfig: MatchingConfigService,
     private readonly matchingFeedback: MatchingFeedbackService,
-    private readonly matchingCron: MatchingCronService
+    private readonly matchingCron: MatchingCronService,
+    private readonly integrationsHealthSvc: IntegrationsHealthService,
+    private readonly promo: PromoService,
+    private readonly demoWeek: DemoWeekService
   ) {}
 
   // --- Home defaults + themed prompts + live quiz ---
@@ -62,6 +70,16 @@ export class AdminController {
   @Put('config/home-defaults')
   putHomeDefaults(@Body() body: HomeDefaults) {
     return this.admin.putHomeDefaults(body);
+  }
+
+  @Get('config/demo-week')
+  getDemoWeek() {
+    return this.demoWeek.getConfig();
+  }
+
+  @Put('config/demo-week')
+  putDemoWeek(@Body() body: DemoWeekConfig) {
+    return this.demoWeek.putConfig(body);
   }
 
   @Get('config/themed-prompts')
@@ -211,6 +229,40 @@ export class AdminController {
     return this.admin.listMembers();
   }
 
+  // --- Co-op promo / auth codes (free-year gift codes) ---
+
+  @Get('coop/promo-codes')
+  listPromoCodes() {
+    return this.promo.listCodes();
+  }
+
+  @Post('coop/promo-codes')
+  createPromoCode(
+    @Body()
+    body: {
+      code: string;
+      label?: string;
+      maxRedemptions?: number;
+      grantMonths?: number;
+    }
+  ) {
+    return this.promo.createCode(body);
+  }
+
+  @Patch('coop/promo-codes/:id')
+  patchPromoCode(
+    @Param('id') id: string,
+    @Body()
+    body: { maxRedemptions?: number; active?: boolean; label?: string }
+  ) {
+    return this.promo.patchCode(id, body);
+  }
+
+  @Get('coop/promo-codes/:id/redemptions')
+  listPromoRedemptions(@Param('id') id: string) {
+    return this.promo.listRedemptions(id);
+  }
+
   // --- Co-op portal CRM (ideas + vote tallies for operators) ---
 
   @Get('coop/portal/ideas')
@@ -250,14 +302,26 @@ export class AdminController {
 
   @Post('delights')
   createDelight(
-    @Body() body: { slug?: string; id?: string; name: string; scope: DelightScope }
+    @Body()
+    body: {
+      slug?: string;
+      id?: string;
+      name: string;
+      scope: DelightScope;
+      kind?: 'standalone' | 'effect';
+      status?: 'idea' | 'built' | 'live';
+      notes?: string;
+    }
   ) {
     // Accept either "slug" or "id" as the plugin folder name.
     const slug = body.slug ?? body.id;
     return this.admin.createDelight({
       slug: slug!,
       name: body.name,
-      scope: body.scope
+      scope: body.scope,
+      kind: body.kind,
+      status: body.status,
+      notes: body.notes
     });
   }
 
@@ -270,6 +334,9 @@ export class AdminController {
       scope?: DelightScope;
       schedule?: { from?: string; to?: string };
       name?: string;
+      kind?: 'standalone' | 'effect';
+      status?: 'idea' | 'built' | 'live';
+      notes?: string;
     }
   ) {
     return this.admin.patchDelight(id, body);
@@ -305,6 +372,12 @@ export class AdminController {
   @Get('not-found-hits')
   listNotFoundHits() {
     return this.telemetry.listNotFoundHits();
+  }
+
+  // --- Outbound API / integration health (admin-only; no secrets in response) ---
+  @Get('integrations/health')
+  getIntegrationsHealth() {
+    return this.integrationsHealthSvc.checkAll();
   }
 
   // --- AI System ops (kill switches, cost, dead letters) ---
@@ -355,6 +428,48 @@ export class AdminController {
   @Put('assistant')
   putAssistantConfig(@Body() body: Partial<AssistantAdminConfig>) {
     return this.assistantGate.putAdminConfig(body ?? {});
+  }
+
+  // --- Billy economics (per-user allowance + org vendor alerts) ---
+
+  @Get('assistant/billy/config')
+  getBillyConfig() {
+    return this.billyBilling.getConfig();
+  }
+
+  @Put('assistant/billy/config')
+  putBillyConfig(@Body() body: Partial<BillyConfigDto>) {
+    return this.billyBilling.putConfig(body ?? {});
+  }
+
+  @Get('assistant/billy/overview')
+  getBillyOverview() {
+    return this.billyBilling.overview();
+  }
+
+  @Post('assistant/billy/alerts/:id/resolve')
+  resolveBillyAlert(@Param('id') id: string) {
+    return this.billyBilling.resolveAlert(id).then(() => ({ ok: true }));
+  }
+
+  @Post('assistant/billy/grant-plus')
+  grantBillyPlus(@Body() body: { userId?: string }) {
+    if (!body?.userId) return { ok: false, message: 'userId required' };
+    return this.billyBilling.activatePlus(body.userId, 'admin');
+  }
+
+  @Post('assistant/billy/adjust')
+  adjustBilly(
+    @Body() body: { userId?: string; amountUsd?: number; note?: string }
+  ) {
+    if (!body?.userId || typeof body.amountUsd !== 'number') {
+      return { ok: false, message: 'userId and amountUsd required' };
+    }
+    return this.billyBilling.adjustAdmin(
+      body.userId,
+      body.amountUsd,
+      body.note ?? 'admin adjust'
+    );
   }
 
   // --- Matching learning dashboard (matching_feedback + domain only) ---

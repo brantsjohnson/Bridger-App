@@ -26,6 +26,8 @@ export interface StoryPost {
   caption?: string;
   /** set when posted through a themed prompt */
   themeSlug?: string;
+  /** when tagged to an event, shows in that event's photo album */
+  eventId?: string;
   createdAt: string;
   /**
    * Local media (a dropped-in photo or video) as a require()'d asset. When set,
@@ -47,8 +49,14 @@ export interface Reaction {
   stickerId?: string;
   /** a sticker they made themselves — where the image lives */
   stickerUri?: string;
-  /** the 10-second round video reply — where the clip lives */
+  /** the 10-second round video reply — where the clip lives (live / recorded) */
   videoUri?: string;
+  /**
+   * Bundled demo clip (a require()'d asset), same idea as StoryPost.media.
+   * Demo seeds use this so the purple "missing clip" badge does not show.
+   * Live replies use videoUri instead.
+   */
+  videoMedia?: ImageSourcePropType;
   /** how long that clip runs, capped at 10 */
   videoSeconds?: number;
   parentReactionId?: string;

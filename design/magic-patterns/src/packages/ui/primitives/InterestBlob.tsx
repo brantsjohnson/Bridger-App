@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckIcon } from 'lucide-react';
 import { Accent } from '../../shared';
 import { ACCENTS, BLOBS, cn } from '../tokens';

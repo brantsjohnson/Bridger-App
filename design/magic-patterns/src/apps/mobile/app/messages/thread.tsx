@@ -1,9 +1,9 @@
 import React from 'react';
 import {
   ArrowUpIcon,
-  CalendarPlusIcon,
   ChevronLeftIcon,
   ClockIcon,
+  HeartIcon,
   PhoneIcon,
   UserRoundPlusIcon } from
 'lucide-react';
@@ -12,7 +12,8 @@ import { DAILY_CAP, THREADS } from '../../state/messages';
 
 /**
  * One conversation, capped at 5 messages a day each way.
- * The whole point is to swap numbers and get off the app.
+ * Share a contact card (not a raw number). Double-click a friend's
+ * bubble to heart it. Hearts are not sent messages.
  */
 export function ThreadScreen({
   threadId = 't1',
@@ -34,13 +35,14 @@ export function ThreadScreen({
 }: {threadId?: string; /** they have spent their 5 for today */blocked?: boolean; /**
    * Already sent on your behalf — saying "I'm in" to a touch grass opens the
    * thread with the yes already delivered, so you arrive mid-plan.
-   */seedMessage?: string;onBack?: () => void;onShareContact?: () => void;}) {const thread = THREADS.find((t) => t.id === threadId) ?? THREADS[0];const token = ACCENTS[thread.accent];const [draft, setDraft] = React.useState('');
+   */seedMessage?: string;onBack?: () => void;onShareContact?: () => void;}) {const thread = THREADS.find((t) => t.id === threadId) ?? THREADS[0];const token = ACCENTS[thread.accent];  const [draft, setDraft] = React.useState('');
   const [left, setLeft] = React.useState(seedMessage ? Math.max(0, thread.myLeft - 1) : thread.myLeft);
   const [bubbles, setBubbles] = React.useState(
     seedMessage ?
     [...thread.bubbles, { id: 'seed', from: 'me' as const, text: seedMessage }] :
     thread.bubbles
   );
+  const [hearted, setHearted] = React.useState<Record<string, boolean>>({});
 
   const send = () => {
     if (!draft.trim() || left === 0) return;
@@ -77,25 +79,39 @@ export function ThreadScreen({
       <div className="no-scrollbar flex-1 space-y-2.5 overflow-y-auto px-4 py-4">
         {bubbles.map((b) =>
         <div key={b.id} className={cn('flex', b.from === 'me' ? 'justify-end' : 'justify-start')}>
-            <div
-            className={cn(
-              'max-w-[76%] px-4 py-2.5 text-[15px] font-semibold leading-snug',
-              b.from === 'me' ?
-              cn('rounded-[20px_20px_6px_20px]', token.bg, token.text) :
-              'rounded-[20px_20px_20px_6px] border border-ink-line bg-white text-ink'
-            )}>
+            {b.from === 'them' ?
+          <button
+            type="button"
+            onDoubleClick={() => {
+              setHearted((prev) => ({ ...prev, [b.id]: !prev[b.id] }));
+            }}
+            aria-label={`${hearted[b.id] ? 'Hearted. ' : ''}Double click to heart. Does not use a message.`}
+            className="relative max-w-[76%] rounded-[20px_20px_20px_6px] border border-ink-line bg-white px-4 py-2.5 text-left text-[15px] font-semibold leading-snug text-ink">
             
               {b.text}
               {b.phone &&
-            <button
-              type="button"
+            <span
               className="ml-1.5 inline-flex items-center gap-1 font-bold text-success underline decoration-success/40 underline-offset-2">
               
                   {b.phone}
                   <PhoneIcon className="h-3.5 w-3.5" strokeWidth={2.6} />
-                </button>
+                </span>
             }
+              {hearted[b.id] ?
+            <HeartIcon className="mt-1.5 ml-auto h-3.5 w-3.5 fill-[#E11D48] text-[#E11D48]" strokeWidth={2.2} /> :
+            null}
+            </button> :
+
+          <div
+            className={cn(
+              'max-w-[76%] rounded-[20px_20px_6px_20px] px-4 py-2.5 text-[15px] font-semibold leading-snug',
+              token.bg,
+              token.text
+            )}>
+            
+              {b.text}
             </div>
+          }
           </div>
         )}
 
@@ -129,23 +145,14 @@ export function ThreadScreen({
           </> :
 
         <>
-            <div className="flex gap-2.5">
-              <button
+            <button
               type="button"
               onClick={onShareContact}
-              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#DFF3E4] px-3 py-2.5 text-[13px] font-bold text-success">
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#DFF3E4] px-3 py-2.5 text-[13px] font-bold text-success">
               
-                <PhoneIcon className="h-4 w-4" strokeWidth={2.6} />
-                Share my number
+                <UserRoundPlusIcon className="h-4 w-4" strokeWidth={2.6} />
+                Share contact
               </button>
-              <button
-              type="button"
-              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#EDE6FF] px-3 py-2.5 text-[13px] font-bold text-purple">
-              
-                <CalendarPlusIcon className="h-4 w-4" strokeWidth={2.6} />
-                Make a plan
-              </button>
-            </div>
 
             <div className="flex items-center gap-2 rounded-full border border-ink-line bg-white py-1.5 pl-4 pr-1.5">
               <input
@@ -169,7 +176,7 @@ export function ThreadScreen({
             </div>
 
             <p className="text-center text-[12px] font-semibold text-ink-mute">
-              {left} of {DAILY_CAP} left today · swap numbers to keep going
+              {left} of {DAILY_CAP} left today · share your contact card to keep going
             </p>
           </>
         }

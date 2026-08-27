@@ -9,7 +9,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SendIcon } from 'lucide-react-native';
-import type { FavoriteModule, ObsessionSquare, Top5Item, WhereMetView } from '@bridger/shared';
+import type {
+  FavoriteModule,
+  ObsessionSquare,
+  PhotoBlock,
+  Top5Item,
+  WhereMetView
+} from '@bridger/shared';
 import { openSurface, PROFILE, type BucketItem } from '@bridger/shared';
 // Friend Favorites tiles are built from their fav groups (never the viewer's).
 import {
@@ -27,17 +33,21 @@ import { InCommonAnswers } from '../../components/profile/InCommonAnswers';
 import { MutualFriendsStrip } from '../../components/profile/MutualFriendsStrip';
 import { NotesReminders } from '../../components/profile/NotesReminders';
 import { ProfileCard } from '../../components/profile/ProfileCard';
+import { SendDelightSheet } from '../../components/delight/SendDelightSheet';
 import { ProfileHeaderBlock } from '../../components/profile/ProfileHeaderBlock';
 import {
   ProfileSearchSheet,
   type ProfileSearchHit
 } from '../../components/profile/ProfileSearchSheet';
+import type { UpcomingEventRow } from '../../components/profile/UpcomingEventsSection';
 import { SharedPlacePhotos } from '../../components/profile/SharedPlacePhotos';
 import {
   PROFILE_HEADER_TO_TABS,
   PROFILE_TABS_TO_CONTENT
 } from '../../components/profile/profileSpacing';
 import type { Commonality } from '../../data/discover';
+import { resolveEmojiBombId } from '../../data/delight';
+import { listUpcomingForProfile } from '../../data/events';
 import { startThreadWith } from '../../data/messages';
 import { mutualFriendsWith, personById } from '../../data/people';
 import type {
@@ -48,12 +58,7 @@ import type {
   ThisOrThatRow,
   TravelPlace
 } from '../../data/profile';
-import {
-  getPersonProfile,
-  listObsession,
-  listPersonBucket,
-  listTop5
-} from '../../data/profile';
+import { getPersonProfile, listPersonBucket } from '../../data/profile';
 import { getReveal } from '../../data/reveal';
 
 /** Build album tiles from a friend's filled groups only (read-only). */
@@ -134,12 +139,21 @@ export default function PersonScreen() {
   const [top5, setTop5] = useState<Top5Item[]>([]);
   const [obsession, setObsession] = useState<ObsessionSquare[]>([]);
   const [favorites, setFavorites] = useState<FavoriteModule[]>([]);
+  const [greatestHits, setGreatestHits] = useState<PhotoBlock[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingEventRow[]>([]);
   const [whereMet, setWhereMet] = useState<WhereMetView | null>(null);
   const [bucket, setBucket] = useState<BucketItem[]>([]);
   const [bucketLoading, setBucketLoading] = useState(true);
+  const [emojiBombOpen, setEmojiBombOpen] = useState(false);
+  const [emojiBombId, setEmojiBombId] = useState<string | null>(null);
 
   useEffect(() => {
     openSurface('profile');
+  }, []);
+
+  // THIS SECTION DOES: only show Emoji bomb when that gift delighter is live.
+  useEffect(() => {
+    void resolveEmojiBombId().then(setEmojiBombId);
   }, []);
 
   useEffect(() => {
@@ -154,7 +168,7 @@ export default function PersonScreen() {
   }, [personId]);
 
   useEffect(() => {
-    void getPersonProfile(personId).then(async (p) => {
+    void getPersonProfile(personId).then((p) => {
       if (!p) {
         setHeader({
           city: person.label || 'Somewhere',
@@ -167,8 +181,13 @@ export default function PersonScreen() {
         setFavs([]);
         setThisOrThat([]);
         setPlaces([]);
+        setTop5([]);
+        setObsession([]);
+        setFavorites([]);
+        setGreatestHits([]);
         return;
       }
+      // PRIVACY: Top 5 / Obsession / Favorites come from THIS subject only.
       setHeader(p.header);
       setAbout(p.about);
       setHobbies(p.hobbies);
@@ -176,17 +195,19 @@ export default function PersonScreen() {
       setFavs(p.favs);
       setThisOrThat(p.thisOrThat);
       setPlaces(p.places);
-      // Demo: reuse own top5/obsession fixtures for friend card richness.
-      // Favorites tiles come from THIS friend's answers only.
-      const [t5, ob] = await Promise.all([listTop5(), listObsession()]);
-      setTop5(t5);
-      setObsession(ob);
+      setTop5(p.top5 ?? []);
+      setObsession(p.obsession ?? []);
       setFavorites(favoriteModulesFromFriend(p.favs, p.thisOrThat));
+      setGreatestHits(p.greatestHits ?? []);
       if (p.header.city) {
         setWhereMet({ label: p.header.city, via: undefined });
       }
     });
   }, [personId, person.label]);
+
+  useEffect(() => {
+    void listUpcomingForProfile(personId).then(setUpcoming);
+  }, [personId]);
 
   const mutuals = mutualFriendsWith(personId);
 
@@ -227,15 +248,29 @@ export default function PersonScreen() {
           onOpenStory={() => router.push(`/story/${personId}?from=profile`)}
           onSearch={() => setSearchOpen(true)}
           heroTrailing={
-            <Pressable
-              onPress={withAnalyticsPress(PROFILE.actions.message, () => void openMessage())}
-              accessibilityRole="button"
-              accessibilityLabel={`Message ${first}`}
-              className="h-10 flex-row items-center gap-1.5 rounded-full bg-coral px-3.5 active:opacity-90"
-            >
-              <Text className="font-sans-b text-[13px] text-white">Message</Text>
-              <SendIcon size={16} color="#FFFFFF" strokeWidth={2.6} />
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              {emojiBombId ? (
+                <Pressable
+                  onPress={withAnalyticsPress(PROFILE.actions.emoji_bomb, () =>
+                    setEmojiBombOpen(true)
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Send emoji bomb to ${first}`}
+                  className="h-10 min-w-[44px] items-center justify-center rounded-full border border-ink-line bg-canvas px-3 active:opacity-90"
+                >
+                  <Text className="font-sans-b text-[13px] text-ink">Emoji bomb</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={withAnalyticsPress(PROFILE.actions.message, () => void openMessage())}
+                accessibilityRole="button"
+                accessibilityLabel={`Message ${first}`}
+                className="h-10 flex-row items-center gap-1.5 rounded-full bg-coral px-3.5 active:opacity-90"
+              >
+                <Text className="font-sans-b text-[13px] text-white">Message</Text>
+                <SendIcon size={16} color="#FFFFFF" strokeWidth={2.6} />
+              </Pressable>
+            </View>
           }
         />
 
@@ -263,11 +298,14 @@ export default function PersonScreen() {
               top5={top5}
               obsession={obsession}
               favorites={favorites}
+              greatestHits={greatestHits}
+              upcoming={upcoming}
               hobbyFollowUps={hobbyFollowUps}
               mutuals={mutuals}
               whereMet={whereMet}
               asTier={person.tier}
               onOpenMutuals={() => setTab('In common')}
+              onOpenEvent={(eid) => router.push(`/event/${eid}`)}
             />
           </View>
         ) : null}
@@ -353,6 +391,16 @@ export default function PersonScreen() {
         onClose={() => setSearchOpen(false)}
         onJump={() => setTab('About them')}
       />
+
+      {emojiBombId ? (
+        <SendDelightSheet
+          open={emojiBombOpen}
+          onClose={() => setEmojiBombOpen(false)}
+          toUserId={personId}
+          toFirstName={first}
+          delightId={emojiBombId}
+        />
+      ) : null}
     </Screen>
   );
 }

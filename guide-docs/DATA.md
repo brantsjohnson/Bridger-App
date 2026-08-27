@@ -77,6 +77,10 @@ users            id · auth_provider · status · created_at
 user_identity    user_id⟶users · display_name · avatar_media_id⟶media · profile_song    [PII]
 user_contacts    user_id⟶users · email · phone (via Supabase Auth)                        [PII]
 user_settings    user_id⟶users · discoverable · notif_prefs · home_city(coarse) · meet_scope(nearby|anywhere) · theme · locale   [home_city = city only, never street address]
+music_connections user_id⟶users · provider(spotify|apple_music) · refresh_token_enc · access_token_enc
+                  · scopes · provider_user_id · connected_at
+                  [PII / secrets: encrypted by Nest; NOT Supabase Auth login; owner-only; cascade delete]
+music_oauth_states state · user_id⟶users · provider · expires_at   [short-lived Nest OAuth handshake; cascade]
 ```
 
 ### Attributes — the pool (Zone B)
@@ -84,7 +88,22 @@ user_settings    user_id⟶users · discoverable · notif_prefs · home_city(coa
 attributes       id · owner_id⟶users · key · value(jsonb) · layer(essential|profile|connection)
                  · visible_to_tier(close|friend|acquaintance|none) · matchable(bool) · updated_at
 ```
-*(hobbies, favs, places, this-or-that, deeper answers, quiz results all live here as rows — **one row per item, unlimited per category**, each independently visible; a person can have hundreds of entries. A **place** row's `value` can carry tags + note + **photo media refs (co-op)**; matching two people's place rows surfaces **shared-place photos** in In-common. A **this-or-that** row's value is `this | that | both`.)*
+*(hobbies, favs, places, this-or-that, deeper answers, quiz results all live here as rows — **one row per item, unlimited per category**, each independently visible; a person can have hundreds of entries. A **place** row's `value` can carry tags + note + **photo media refs (co-op)**; matching two people's place rows surfaces **shared-place photos** in In-common. A **this-or-that** row's value is `this | that | both`. Synced Spotify top artists also write `music.artist.<id>` rows for reveal overlap.)*
+
+```
+profile_greatest_hits  id · owner_id⟶users · media_id⟶media · placement_index(0..2)
+                       · after_module · visible_to_tier · created_at
+                       [co-op only; ≤3 Bridger-hosted photos; unique (owner, placement); cascade on user/media delete]
+
+music_picks            id · owner_id⟶users · kind(listening_now|song_of_week|fav_*)
+                       · spotify_id/uri · apple_music_id · isrc · title · artist_name · album_name
+                       · artwork_url · preview_url · visible_to_tier · matchable
+                       [catalog metadata only, no tokens; tier RLS via can_view; cascade]
+
+music_taste_artists    id · owner_id⟶users · provider · artist_id · artist_name · rank
+                       · artwork_url · visible_to_tier · matchable · synced_at
+                       [top artists for In common; up to 50 per provider; cascade]
+```
 
 ### Relationships
 ```
@@ -95,9 +114,10 @@ connections      id · user_a⟶users · user_b⟶users · status(pending|accept
 blocks           blocker_id⟶users · blocked_id⟶users · created_at
                  [excludes both directions from suggestions + as mutual bridge for the blocker; hides/unreaches; other friendships untouched; unblockable]
 suggestion_skips blocker_id⟶users · skipped_id⟶users        ["don't suggest again" — soft, one-directional]
-analytics_events id · analytics_id · action · screen · section · element · platform · app_version
-                 · session_id · user_ref(opaque, consented) · props(jsonb) · created_at
-                 [first-party product analytics — NO PII, NO content; separate from matching; hard-deleted with the account; see analytics-rules.mdc]
+product analytics  stored in PostHog (not Postgres), so matching cannot join taps.
+                 Events are taxonomy ids + opaque user_ref while signed in (demo/logged-out do not send).
+                 No PII, no message/caption text. Person is purged on opt-out and
+                 account delete. See ANALYTICS-TAXONOMY.md and analytics-enforcement.mdc.
 tiers            user_id⟶users · other_id⟶users · tier(close|friend|acquaintance)   [per-viewer]
 invite_links     token · owner_id⟶users · expires_at
 qr_tokens        token · owner_id⟶users · expires_at
@@ -126,7 +146,9 @@ bucket_list      id · owner_id⟶users · text · is_public · done · created_
 bucket_list_tags item_id⟶bucket_list · tagged_user_id⟶users     [friends tagged to do it together]
 events           id · host_id⟶users · co_host_ids · title · bio · starts_at · address · place · bring
                  · chip_in(amount,note,methods[{kind,handle}]) · allow_friends_invite · cap(35|coop 100)
+                 · recurrence(jsonb|null)  [weekly|monthly|yearly rule; null = one-off; starts_at = next]
 event_invites    event_id⟶events · user_id⟶users · status(going|cant|invited)
+                 · invited_by⟶users|null   [null = host invited; else the attendee who invited]
                  · allergies_optin · allergies_text            [host-only, opt-in]
 event_intros     event_id⟶events · a⟶users · b⟶users · why
 polls            id · author_id⟶users · question · closes_at(≤7d)   [CREATE = co-op; answering free]
@@ -141,6 +163,11 @@ activity_hearts  post_id⟶activity_posts · user_id⟶users
 ```
 ai_config          job · lane(deidentified|personal_agent) · model_id · temperature · max_tokens · timeout_ms · schema_id · monthly_budget_usd · enabled
 ai_job_cost_log    job · prompt_version · latency_ms · tokens · estimated_usd · subject_ref · created_at   [NO CONTENT]
+ai_ops_alerts      source · code · detail · job · resolved_at · created_at   [admin; NO CONTENT]
+billy_config       singleton grants/prices (taste/plus/rollover)
+billy_subscriptions user_id⟶users · plan(taste|plus|none) · status · period · cancel_at_period_end
+billy_balances     user_id⟶users · balance_usd · lifetime_granted/spent   [USD of model cost]
+billy_ledger       user_id · kind(grant/spend/expire/…) · amount_usd · balance_after · job · cost_log_id   [NO CONTENT]
 ai_jobs            job · subject_ref · content_hash · payload_json · status · attempts · run_after · last_error   [queue]
 week_summaries     author_id⟶users · week_start · days_json · built_at
 module_moderator_notes  user_id⟶users · module_key · notes(jsonb) · updated_at   [NO PII]
@@ -164,8 +191,11 @@ assistant_turns                  session_id · role · content · tool_name   [d
 assistant_activity_log           user_id · tool · summary · undo_payload · undone_at
 assistant_memory_chunks          user_id · kind · ref_id · text · embedding   [private RAG; NOT person_embeddings]
 assistant_proposals              user_id · session_id · tool · preview · args · status
+assistant_scheduled_messages     user_id · person_id · body · send_at · status(queued|sent|cancelled|failed)
+                                   · activity_id? · cancelled_at? · sent_at?
+                                   [queued only after approve of full draft + exact send time; cancel via activity undo until fire; hard-delete with account]
 ```
-Reconnect ranking today uses connection `created_at` + overdue check-ins (messages last-activity timestamps not yet in schema). Document when messaging timestamps land.
+Reconnect ranking today uses connection `created_at` + overdue check-ins (messages last-activity timestamps not yet in schema). Document when messaging timestamps land. A worker will deliver `assistant_scheduled_messages` when the messaging send path exists.
 
 ### Membership & payments
 ```
@@ -173,8 +203,11 @@ coop_memberships   user_id⟶users · since · active · dues_paid_through
                    · cancel_at_period_end(bool) · cancelled_at(timestamptz?)
                    [unlocks all co-op benefits, see COOP.md; cancel_at_period_end keeps perks until dues_paid_through]
 plan_state         user_id⟶users · plan(free|coop) · storage(rolling30|unlimited) · used_bytes
-                   · circle_caps(free 10/25/∞) · video(bool) · summary(weekly|daily) · event_cap(35|100)
+                   · circle_caps(free 5/30/∞, coop 25/125/∞) · video(bool) · summary(weekly|daily) · event_cap(35|100)
 payments           id · user_id⟶users · kind(coop_dues) · amount · provider_ref   [one membership; no à-la-carte SKUs]
+coop_promo_codes   id · code(unique, UPPER) · label · grant_months(12) · max_redemptions(the "amount", e.g. 25) · redeemed_count · active(bool)
+                   [admin-issued auth codes for a free year; server-only writes; RLS: no client read]
+coop_promo_redemptions promo_code_id⟶coop_promo_codes · user_id⟶users · redeemed_at   [PK(promo_code_id,user_id): one use per person; RLS select-own; hard-delete with account]
 ```
 *(Recommended model: the co-op is the single paid membership; storage/video/circles/hosting-scale are benefits of it, not separate purchases — see `COOP.md`.)*
 
@@ -182,12 +215,21 @@ payments           id · user_id⟶users · kind(coop_dues) · amount · provide
 ```
 admin_config       home_defaults(jsonb) · live_quiz_slug · themed_prompts(jsonb)
 quiz_registry      slug · title · status(live|draft|archived) · live_week · friends_taken_count
-quizzes            id · version · goal · dimensions(jsonb) · moderator_instructions · adaptation_policy(jsonb)   [see QUIZ-ENGINE.md]
+quizzes            id · version · goal · dimensions(jsonb) · moderator_instructions · adaptation_policy(jsonb)   [see QUIZ-ENGINE.md; includes adaptBelowConfidence]
 quiz_questions     id · quiz_id⟶quizzes · prompt · type(single|multi) · options(jsonb: label + dimension weights) · allow_explain
 quiz_responses     id · quiz_id · user_id⟶users · question_id · selected_option_ids · explain_text
 quiz_results       user_id⟶users · quiz_id · dimension_scores(jsonb, deterministic rubric) · confidence(jsonb, AI moderator) · completed_at   [feeds attributes → matching Zone B/C]
+jname_results      user_id⟶users(PK) · j_name · percent · top_names(text[]: top J-names by score, for match alerts) · updated_at   [Which J name; retakes overwrite; RLS owner-only; friend reads via Nest; cascade]
+jname_shares       token(PK) · sharer_id⟶users(unique) · j_name · percent   [one stable public share link per person; snapshot; public web view reads via Nest service role; cascade]
+jname_referrals    id · token⟶jname_shares · sharer_id⟶users · invited_user_id⟶users|null · anon_ref(opaque, logged-out) · opened_at · resolved_at   [who opened a link / who-invited-whom; resolved after signup by Nest; RLS: sharer or invited can read; cascade]
+disclosure_profiles user_id⟶users · version · status(pending|skipped|completed) · match_weight_preference(use|a_little|barely?) · matching_enabled · completed_at · updated_at
+                   [Behind the Scenes; owner-only; NEVER profile / NEVER reveal evidence; additive matching only]
+disclosure_items   id · user_id⟶users · condition_key · condition_label_custom? · impact_level(1–4)? · context_note? · unique(user_id, condition_key)
+                   [sensitive free text stays owner-only; hard-delete with account]
 coop_announcements id · body · published_at
-delights           id · enabled · scope(global|opt-in|gift) · schedule
+delights           id · slug · name · status(idea|built|live) · kind(standalone|effect) · notes · enabled · scope(global|opt-in|gift) · schedule
+delight_triggers   id · delight_id · from_user_id · to_user_id · played · created_at   # gift plays once on recipient open
+# user_settings.delight_opt_ins  text[]  # opt-in standalone plugin slugs
 notifications      id · user_id⟶users · kind · payload(jsonb) · read · created_at
 ```
 

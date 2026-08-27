@@ -65,7 +65,16 @@ export class BridgerFoundationStack extends cdk.Stack {
           ADMIN_PASSWORD: '',
           ADMIN_JWT_SECRET: '',
           EMAIL_HMAC_KEY: '',
-          EMAIL_ENCRYPTION_KEY: ''
+          EMAIL_ENCRYPTION_KEY: '',
+          SPOTIFY_CLIENT_ID: '',
+          SPOTIFY_CLIENT_SECRET: '',
+          SPOTIFY_REDIRECT_URI: '',
+          MUSIC_TOKEN_ENCRYPTION_KEY: '',
+          APPLE_MUSIC_TEAM_ID: '',
+          APPLE_MUSIC_KEY_ID: '',
+          APPLE_MUSIC_MEDIA_ID: '',
+          APPLE_MUSIC_PRIVATE_KEY: '',
+          API_PUBLIC_URL: ''
         }),
         generateStringKey: '_unused'
       }

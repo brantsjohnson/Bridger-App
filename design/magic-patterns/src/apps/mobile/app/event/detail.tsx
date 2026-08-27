@@ -76,37 +76,51 @@ export function EventDetailScreen({
               
             </div>
             <div className="p-4">
-              <h2 className="text-[22px] font-bold leading-tight tracking-tight text-ink">
-                {event.title}
-              </h2>
+              {/* Date square + title sit together */}
+              <div className="flex items-center gap-3">
+                <span
+                  aria-label={event.day}
+                  className="flex h-14 w-14 shrink-0 flex-col items-center justify-center border-2 border-ink bg-surface"
+                >
+                  <span className="font-pixel text-[18px] leading-none text-ink">
+                    {event.day.split(/\s+/).find((p) => /^\d{1,2}$/.test(p)) ?? ''}
+                  </span>
+                  <span className="mt-0.5 text-[10px] font-bold uppercase text-ink-mute">
+                    {event.day.split(/\s+/)[0]}
+                  </span>
+                </span>
+                <h2 className="min-w-0 text-[22px] font-bold leading-tight tracking-tight text-ink">
+                  {event.title}
+                </h2>
+              </div>
 
               <div className="mt-3 flex items-center gap-2">
                 <Avatar name={host.name} emoji={host.emoji} accent={host.accent} size="sm" />
                 <span className="min-w-0 text-[13px] font-semibold text-ink">
                   Hosted by {host.name}
-                  {coHosts.length > 0 &&
-                  <span className="text-ink-mute">
+                  {coHosts.length > 0 ? (
+                    <span className="text-ink-mute">
                       {' '}
                       with {coHosts.map((p) => p.name.split(' ')[0]).join(' & ')}
                     </span>
-                  }
+                  ) : null}
                 </span>
               </div>
 
-              {/* the counts are the answer to "who else is going", so they open */}
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
+              {/* Two wide pills — attribution lives in the people sheet */}
+              <div className="mt-4 flex gap-2.5">
                 <CountButton
                   value={event.goingIds.length}
                   label="going"
                   ids={event.goingIds}
-                  onClick={() => setPeople('going')} />
-                
+                  onClick={() => setPeople('going')}
+                />
                 <CountButton
                   value={invited.length}
                   label="invited"
                   ids={invited}
-                  onClick={() => setPeople('invited')} />
-                
+                  onClick={() => setPeople('invited')}
+                />
               </div>
             </div>
           </Card>
@@ -149,14 +163,29 @@ export function EventDetailScreen({
               <dl className="space-y-3 border-t border-ink-line pt-3.5">
                 <DetailRow
                   icon={<ClockIcon className="h-4 w-4" strokeWidth={2.4} />}
-                  label="When">
-                  
+                  label="When"
+                >
                   {event.day} at {event.time}
-                  {event.countdown &&
-                  <span className="ml-2 align-middle">
-                      <Badge tone="neutral">{event.countdown}</Badge>
-                    </span>
-                  }
+                  {/* Flip-tile countdown stand-in (live clock is in the mobile app) */}
+                  <span
+                    aria-label={event.countdown ?? 'Countdown'}
+                    className="mt-2 flex max-w-[280px] gap-1.5"
+                  >
+                    {['2D', '17H', '40M', '37S'].map((tile) => (
+                      <span
+                        key={tile}
+                        className="relative flex min-w-[44px] flex-1 flex-col items-center justify-center overflow-hidden rounded-[6px] bg-[#1C1B16] px-1.5 py-2"
+                      >
+                        <span className="absolute inset-x-0 top-1/2 h-px bg-white/15" />
+                        <span className="font-pixel text-[15px] leading-none text-white">
+                          {tile.slice(0, -1)}
+                        </span>
+                        <span className="mt-1 text-[9px] font-bold uppercase tracking-wide text-white/70">
+                          {tile.slice(-1)}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
                 </DetailRow>
 
                 <DetailRow
@@ -308,31 +337,29 @@ export function EventDetailScreen({
 
 }
 
-/** A count you can open — "3 going" answers "who?" on tap. */
+/** Wide count pill — big display numeral, avatars, chevron into the list. */
 export function CountButton({
   value,
   label,
   ids,
   onClick
-
-
-
-
-
-}: {value: number;label: string;ids: string[];onClick: () => void;}) {
+}: {
+  value: number;
+  label: string;
+  ids: string[];
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2.5 rounded-card border border-ink-line bg-surface px-3 py-2.5 text-left transition-colors hover:bg-[#F1ECFF]">
-      
-      <span className="min-w-0 flex-1">
-        <span className="block font-pixel text-[18px] leading-none text-ink">
-          {value} {label}
-        </span>
-        {ids.length > 0 &&
-        <span aria-hidden="true" className="mt-1.5 flex -space-x-2">
-            {ids.slice(0, 4).map((id) => {
+      className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-ink bg-surface px-3.5 py-3 text-left transition-colors hover:bg-[#F1ECFF]"
+    >
+      <span className="font-pixel text-[28px] leading-none text-ink">{value}</span>
+      <span className="text-[14px] font-bold italic text-ink">{label}</span>
+      {ids.length > 0 ? (
+        <span aria-hidden="true" className="ml-auto flex -space-x-2">
+          {ids.slice(0, 3).map((id) => {
             const p = personById(id);
             return (
               <Avatar
@@ -341,21 +368,21 @@ export function CountButton({
                 emoji={p.emoji}
                 accent={p.accent}
                 size="xs"
-                className="ring-2 ring-surface" />);
-
-
+                className="ring-2 ring-surface"
+              />
+            );
           })}
-          </span>
-        }
-      </span>
+        </span>
+      ) : null}
       <ChevronRightIcon
         aria-hidden="true"
         className="h-4 w-4 shrink-0 text-ink-mute"
-        strokeWidth={2.6} />
-      
-    </button>);
-
+        strokeWidth={2.6}
+      />
+    </button>
+  );
 }
+
 
 function DetailRow({
   icon,

@@ -67,7 +67,7 @@ export function TravelModule() {
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.12}
-        onDragEnd={(_, info) => {
+        onDragEnd={(_e, info: { offset: { x: number; y: number } }) => {
           if (info.offset.x < -50) setPage(1);
           if (info.offset.x > 50) setPage(0);
         }}

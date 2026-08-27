@@ -1,4 +1,3 @@
-import React from 'react';
 import { MapPinIcon } from 'lucide-react';
 import { ACCENTS, cn } from '../../../../packages/ui';
 import { SHARED_PLACES } from '../../state/mock-data';

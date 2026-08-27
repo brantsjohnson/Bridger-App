@@ -1,4 +1,3 @@
-import React from 'react';
 import { CakeIcon, FlagIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../../../../packages/ui';

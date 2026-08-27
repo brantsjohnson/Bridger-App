@@ -1,4 +1,3 @@
-import React from 'react';
 import { Person } from '../../../packages/shared';
 import { ACCENTS } from '../../../packages/ui';
 import { ME } from '../state/mock-data';
@@ -99,11 +98,6 @@ export function ConnectionMap({
           </g>
         )}
       </svg>
-      <p className="mt-1 text-center text-[11px] font-semibold text-ink-mute">
-        {variant === 'A' ?
-        `Dashed is the intro · via ${via.name.split(' ')[0]}` :
-        'Dashed links are suggested intros'}
-      </p>
     </div>);
 
 }

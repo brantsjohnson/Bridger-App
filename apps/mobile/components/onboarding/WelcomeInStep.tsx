@@ -9,7 +9,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
-import { ButtonPrimary, PixelHeading } from '@bridger/ui';
+import { AnalyticsRegion, ButtonPrimary, PixelHeading } from '@bridger/ui';
 
 const CONFETTI = ['#6B2FEA', '#FF5A1F', '#00A676', '#FFB515', '#FF3E8A', '#1D6FE8', '#5FBF3A'];
 
@@ -51,50 +51,52 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
           <View className="self-start rounded-full bg-ink px-3 py-1.5">
             <Text className="font-sans-b text-[12px] text-canvas">That is everything we need</Text>
           </View>
-          <PixelHeading size="lg" className="mt-3 text-[40px] leading-[1.05]">
+          <PixelHeading size="lg" className="mt-3 text-[40px] leading-[1.05] text-onaccent">
             You're in.
           </PixelHeading>
-          <Text className="mt-2 max-w-[280px] font-sans-sb text-[15px] leading-snug text-ink">
+          <Text className="mt-2 max-w-[280px] font-sans-sb text-[15px] leading-snug text-onaccent/85">
             No feed to scroll. Just the people you actually know.
           </Text>
         </View>
 
         <Bloom reduceMotion={reduceMotion} />
 
-        <View className="gap-2.5">
-          {NEXT.map((n) => (
-            <View
-              key={n.label}
-              className="flex-row items-center gap-3 rounded-card border-2 border-ink bg-canvas px-3.5 py-2.5"
-            >
+        <AnalyticsRegion analyticsId={ONBOARDING.welcome_in.next_cards} interactive={false}>
+          <View className="gap-2.5">
+            {NEXT.map((n) => (
               <View
-                accessible={false}
-                className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: n.color }}
+                key={n.label}
+                className="flex-row items-center gap-3 rounded-card border-2 border-ink bg-canvas px-3.5 py-2.5"
               >
-                <Text className="text-[18px]">{n.emoji}</Text>
+                <View
+                  accessible={false}
+                  className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: n.color }}
+                >
+                  <Text className="text-[18px]">{n.emoji}</Text>
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text numberOfLines={1} className="font-sans-b text-[14px] text-ink">
+                    {n.label}
+                  </Text>
+                  <Text numberOfLines={1} className="font-sans-sb text-[12px] text-ink-mute">
+                    {n.line}
+                  </Text>
+                </View>
               </View>
-              <View className="min-w-0 flex-1">
-                <Text numberOfLines={1} className="font-sans-b text-[14px] text-ink">
-                  {n.label}
-                </Text>
-                <Text numberOfLines={1} className="font-sans-sb text-[12px] text-ink-mute">
-                  {n.line}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          <View className="pt-2">
-            <ButtonPrimary
-              full
-              analyticsId={ONBOARDING.welcome_in.lets_go}
-              onPress={onDone}
-              accessibilityLabel="Let's go"
-            >
-              Let's go
-            </ButtonPrimary>
+            ))}
           </View>
+        </AnalyticsRegion>
+
+        <View className="gap-2.5 pt-2">
+          <ButtonPrimary
+            full
+            analyticsId={ONBOARDING.welcome_in.lets_go}
+            onPress={onDone}
+            accessibilityLabel="Let's go"
+          >
+            Let's go
+          </ButtonPrimary>
         </View>
       </View>
     </View>

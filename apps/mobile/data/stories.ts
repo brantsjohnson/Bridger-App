@@ -17,7 +17,7 @@ import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import { uploadMedia } from '../lib/media-upload';
 import { STORY_REPLIES as CATALOG_REPLIES } from './fixtures/catalog';
-import { getStoryMedia } from './fixtures/demo-media';
+import { getDemoReplyVideo, getStoryMedia } from './fixtures/demo-media';
 import {
   CATCH_UP as FIXTURE_CATCH_UP,
   POLL_RESULTS,
@@ -53,6 +53,8 @@ export type CreatePostInput = {
   /** PRIVACY: concentric audience — mapped to visible_to_tier on the API */
   audience?: 'close' | 'friend' | 'everyone';
   group?: string | null;
+  /** Tag this update to an event photo album (party capture flow). */
+  eventId?: string;
   /**
    * Local file uri from the camera (or a picker). Live mode uploads this into
    * the private media bucket before calling POST /stories. Demo ignores it.
@@ -178,10 +180,26 @@ export async function getCatchUp(authorId: string): Promise<CatchUpBundle> {
   };
 }
 
+/**
+ * Attach a real demo clip to seeded circle-video replies that were saved
+ * without media (so the thread shows the video, not the purple empty badge).
+ */
+function hydrateDemoReply(r: Reaction): Reaction {
+  if (r.kind !== 'circleVideo') return r;
+  if (r.videoUri || r.videoMedia) return r;
+  const videoMedia = getDemoReplyVideo(r.authorId);
+  if (!videoMedia) return r;
+  return {
+    ...r,
+    videoMedia,
+    videoSeconds: r.videoSeconds ?? 8
+  };
+}
+
 /** Replies for one post (including nested children via parentReactionId). */
 export async function listReplies(postId: string): Promise<Reaction[]> {
   if (isDemoMode()) {
-    return demoReplies.filter((r) => r.postId === postId);
+    return demoReplies.filter((r) => r.postId === postId).map(hydrateDemoReply);
   }
   return apiFetch<Reaction[]>(
     `/stories/posts/${encodeURIComponent(postId)}/replies`
@@ -292,6 +310,7 @@ export async function createPost(input: CreatePostInput): Promise<StoryPost> {
       overlayText: input.overlayText,
       caption: input.caption,
       themeSlug: input.themeSlug,
+      eventId: input.eventId,
       createdAt: 'now',
       media: input.uri ? { uri: input.uri } : undefined
     };
@@ -318,10 +337,26 @@ export async function createPost(input: CreatePostInput): Promise<StoryPost> {
       mediaId,
       caption,
       themeSlug: input.themeSlug,
-      visibleToTier: audienceToTier(input.audience)
+      visibleToTier: audienceToTier(input.audience),
+      eventId: input.eventId
     })
   });
   return mapPostDto(dto);
+}
+
+/** Photo updates tagged to an event (shared album on the event page). */
+export async function listEventStoryPosts(eventId: string): Promise<StoryPost[]> {
+  if (isDemoMode()) {
+    return demoPosts.filter((p) => p.eventId === eventId && p.type === 'photo');
+  }
+  try {
+    const rows = await apiFetch<StoryPostDto[]>(
+      `/events/${encodeURIComponent(eventId)}/photos`
+    );
+    return rows.map(mapPostDto);
+  } catch {
+    return [];
+  }
 }
 
 /**

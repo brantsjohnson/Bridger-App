@@ -1,4 +1,3 @@
-import React from 'react';
 import { PaletteIcon } from 'lucide-react';
 import { cn } from '../../../../packages/ui';
 

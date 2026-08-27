@@ -4,20 +4,24 @@ import { ChevronLeftIcon, MessageSquareIcon } from 'lucide-react';
 import { cn } from '../tokens';
 import { breatheIn, stagger } from '../motion';
 import { PixelHeading } from '../primitives/PixelHeading';
+import { Avatar } from '../primitives/Avatar';
 import { useMessagesLink } from './MessagesLink';
+import { useProfileLink } from './ProfileLink';
 
 type ScreenContextValue = {
   scrolled: boolean;
   setScrolled: (v: boolean) => void;
   hasHeader: boolean;
   registerHeader: () => void;
+  tone: ScreenProps['tone'];
 };
 
 const ScreenContext = React.createContext<ScreenContextValue>({
   scrolled: false,
   setScrolled: () => undefined,
   hasHeader: false,
-  registerHeader: () => undefined
+  registerHeader: () => undefined,
+  tone: 'canvas'
 });
 
 type ScreenProps = {
@@ -26,7 +30,7 @@ type ScreenProps = {
    * eggshell by default; onboarding and fill flows may go full color.
    * 'plain' draws nothing, for when a ProfileSkin owns the background.
    */
-  tone?: 'canvas' | 'color' | 'synth' | 'plain';
+  tone?: 'canvas' | 'color' | 'synth' | 'plain' | 'intro';
   accent?: string;
   className?: string;
 };
@@ -37,8 +41,8 @@ export function Screen({ children, tone = 'canvas', accent, className }: ScreenP
   const registerHeader = React.useCallback(() => setHasHeader(true), []);
 
   const value = React.useMemo(
-    () => ({ scrolled, setScrolled, hasHeader, registerHeader }),
-    [scrolled, hasHeader, registerHeader]
+    () => ({ scrolled, setScrolled, hasHeader, registerHeader, tone }),
+    [scrolled, hasHeader, registerHeader, tone]
   );
 
   return (
@@ -49,11 +53,12 @@ export function Screen({ children, tone = 'canvas', accent, className }: ScreenP
           tone === 'canvas' && 'bg-app-grid',
           tone === 'color' && (accent ?? 'bg-purple/25'),
           tone === 'synth' && 'bg-app-grid',
+          tone === 'intro' && 'bg-black',
           tone === 'plain' && 'bg-transparent',
           className
         )}>
         
-        {tone === 'synth' &&
+        {(tone === 'synth' || tone === 'intro') &&
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="synth-grid absolute -inset-x-20 -top-20 h-[160%] animate-drift" />
           </div>
@@ -86,12 +91,17 @@ export function ScreenHeader({
   hideMessages = false,
   trailing
 }: ScreenHeaderProps) {
-  const { scrolled, registerHeader } = React.useContext(ScreenContext);
+  const { scrolled, registerHeader, tone } = React.useContext(ScreenContext);
+  const intro = tone === 'intro';
   const link = useMessagesLink();
+  const profileLink = useProfileLink();
   // every screen shares one Messages destination unless it opts out explicitly
   const openMessages = onMessages ?? link.open;
   const dormant = messagesDormant ?? !openMessages;
   const unread = unreadMessages ?? link.unread ?? false;
+  const openProfile = profileLink.open;
+  const face = profileLink.profile;
+  const showProfile = !onBack && !!openProfile && !!face;
 
   React.useEffect(() => {
     registerHeader();
@@ -106,7 +116,7 @@ export function ScreenHeader({
         'translate-y-0 opacity-100'
       )}>
       
-      {onBack &&
+      {onBack ?
       <button
         type="button"
         onClick={onBack}
@@ -114,9 +124,24 @@ export function ScreenHeader({
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-line bg-white text-ink">
         
           <ChevronLeftIcon className="h-5 w-5" strokeWidth={2.5} />
-        </button>
+        </button> :
+      showProfile && face ?
+      <button
+        type="button"
+        onClick={openProfile}
+        aria-label="Your profile"
+        className="shrink-0">
+        
+          <Avatar
+            name={face.name}
+            emoji={face.emoji}
+            accent={face.accent ?? 'purple'}
+            size="sm" />
+        
+        </button> :
+      null
       }
-      <PixelHeading as="h1" size="lg" className="flex-1 truncate">
+      <PixelHeading as="h1" size="lg" className={cn('flex-1 truncate', intro && 'text-white')}>
         {title}
       </PixelHeading>
       {trailing}
@@ -163,7 +188,7 @@ export function ScreenBody({
       variants={stagger}
       initial="hidden"
       animate="show"
-      onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 12)}
+      onScroll={(e: React.UIEvent<HTMLElement>) => setScrolled(e.currentTarget.scrollTop > 12)}
       className={cn(
         'screen-body no-scrollbar flex-1 overflow-y-auto pb-32',
         hasHeader && 'pt-[68px]',

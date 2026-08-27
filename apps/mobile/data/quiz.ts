@@ -5,6 +5,7 @@
 // have not taken yet. Demo mode uses the fixture catalog; live mode calls
 // the Nest /quizzes routes.
 // ============================================
+import type { ImageSourcePropType } from 'react-native';
 import type {
   Cover,
   LiveQuiz,
@@ -15,6 +16,7 @@ import type {
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import { QUIZ } from './fixtures/catalog';
+import { HOME_COVER_FACES } from '../quizzes/what-j-name/images';
 
 /** Home widget shape (fixture + live mapped to the same fields). */
 export type HomeQuiz = {
@@ -23,6 +25,8 @@ export type HomeQuiz = {
   description?: string;
   comparable: boolean;
   cover?: Cover;
+  /** Optional faces the Home card cross-fades through instead of a static cover. */
+  coverImages?: ImageSourcePropType[];
   results: Array<{
     id: string;
     label: string;
@@ -87,9 +91,9 @@ export async function getLiveQuiz(): Promise<HomeQuiz | null> {
     return {
       id: QUIZ.id,
       title: QUIZ.title,
-      description: QUIZ.description,
       comparable: QUIZ.comparable,
       cover: QUIZ.cover,
+      coverImages: HOME_COVER_FACES,
       results: QUIZ.results.map((r) => ({ ...r, friendIds: [...r.friendIds] })),
       resultId: demoResultId
     };
@@ -97,7 +101,46 @@ export async function getLiveQuiz(): Promise<HomeQuiz | null> {
 
   try {
     const live = await apiFetch<LiveQuiz>('/quizzes/current');
-    return toHomeQuiz(live);
+    const home = toHomeQuiz(live);
+    // J-name quiz: overlay the dedicated friend board (grows as friends take it).
+    if (home.id === 'what-j-name' || live.slug === 'what-j-name') {
+      try {
+        const board = await apiFetch<{
+          buckets: Array<{ jName: string; friendIds: string[] }>;
+        }>('/jname/leaderboard');
+        if (board?.buckets?.length) {
+          const accents = [
+            'teal',
+            'amber',
+            'coral',
+            'purple',
+            'pink',
+            'blue',
+            'green'
+          ] as const;
+          const accentBy: Record<string, (typeof accents)[number]> = {
+            Justin: 'pink',
+            Josh: 'green',
+            Joey: 'amber',
+            James: 'blue',
+            Jake: 'coral',
+            Jared: 'purple',
+            John: 'teal'
+          };
+          home.results = board.buckets.map((b, i) => ({
+            id: b.jName,
+            label: b.jName,
+            accent: accentBy[b.jName] ?? accents[i % accents.length],
+            friendIds: b.friendIds
+          }));
+          home.comparable = true;
+        }
+      } catch {
+        // Keep the generic quiz payload if the board isn't ready yet.
+      }
+      home.coverImages = HOME_COVER_FACES;
+    }
+    return home;
   } catch {
     return null;
   }

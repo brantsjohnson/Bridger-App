@@ -2,9 +2,9 @@
 // WHAT THIS FILE DOES (plain English):
 // The server side of sorting friends into Close / Friends / Acquaintances.
 // One person privately sorts another; that sort is what decides what they can
-// see of each other's profile. Free members have caps (10 Close, 25 Friends);
-// Acquaintances are never capped, and hitting a cap never blocks the
-// connection — they just land in Acquaintances and the app can offer co-op.
+// see of each other's profile. Free Lite caps 5 Close / 30 Friends; co-op
+// caps 25 Close / 125 Friends. Acquaintances are never capped. Hitting a cap
+// never blocks the connection: they land in Acquaintances (Free Lite can see co-op).
 // ============================================
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { Tier } from '@bridger/shared';
@@ -12,10 +12,14 @@ import { CoopService } from '../coop/coop.service';
 import { MatchingFeedbackService } from '../matching/matching-feedback.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
-/** Free-plan caps from FRIENDS.md. Acquaintances are never capped. */
+/** Circle caps from COOP.md / FRIENDS.md. Acquaintances are never capped. */
 const FREE_CAPS: Partial<Record<Tier, number>> = {
-  close: 10,
-  friend: 25
+  close: 5,
+  friend: 30
+};
+const COOP_CAPS: Partial<Record<Tier, number>> = {
+  close: 25,
+  friend: 125
 };
 
 /** What the app gets back after a move. */
@@ -51,14 +55,15 @@ export class TiersService {
       throw new BadRequestException('Invalid tier');
     }
 
-    // Co-op members lift the Close / Friends caps entirely (reconcile first).
+    // THIS SECTION DOES: load membership so we know which Close / Friends cap to use.
     const isCoop = await this.coop.isActiveMember(userId);
+    const caps = isCoop ? COOP_CAPS : FREE_CAPS;
 
     let landedIn: Tier = target;
     let upsell = false;
 
     // Cap only applies when adding into a capped circle (not when already there).
-    if (!isCoop && FREE_CAPS[target] != null) {
+    if (caps[target] != null) {
       const { data: existing } = await this.supabase.admin
         .from('tiers')
         .select('tier')
@@ -75,9 +80,10 @@ export class TiersService {
           .eq('tier', target)
           .neq('other_id', personId);
         if (countErr) throw countErr;
-        if ((count ?? 0) >= (FREE_CAPS[target] as number)) {
+        if ((count ?? 0) >= (caps[target] as number)) {
           landedIn = 'acquaintance';
-          upsell = true;
+          // PAYMENT: only Free Lite gets the co-op upsell when a circle is full.
+          upsell = !isCoop;
         }
       }
     }

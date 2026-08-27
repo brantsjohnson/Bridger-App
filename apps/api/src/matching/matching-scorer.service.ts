@@ -5,7 +5,11 @@
 // No LLM calls. Empty result is correct when the bar is not met.
 // ============================================
 import { Injectable } from '@nestjs/common';
-import { MATCHING_FEATURES, type MatchingFeature } from '@bridger/shared';
+import {
+  MATCHING_FEATURES,
+  normalizePairFeaturesSnapshot,
+  type MatchingFeature
+} from '@bridger/shared';
 import { MatchingEvidenceService } from './matching-evidence.service';
 import { MatchingFeaturesService } from './matching-features.service';
 import type { FofCandidate } from './matching-eligibility.service';
@@ -40,6 +44,8 @@ export class MatchingScorerService {
 
     if (!evidenceGatePassed) return null;
 
+    // THIS SECTION DOES: weight × feature for each of the six components;
+    // a missing feature value counts as 0 (zero-by-absence).
     const contribs = {} as Record<MatchingFeature, number>;
     let score = 0;
     for (const f of MATCHING_FEATURES) {
@@ -56,7 +62,8 @@ export class MatchingScorerService {
       sharedQuizIds
     );
 
-    const snapshot = {
+    // THIS SECTION DOES: freeze a full six-key snapshot for matching_feedback.
+    const snapshot = normalizePairFeaturesSnapshot({
       features: bundle.features,
       contribs,
       score,
@@ -65,12 +72,12 @@ export class MatchingScorerService {
       sharedAttributeCount,
       isExploration: false,
       configVersion: cfg.version
-    };
+    });
 
     return {
       score,
-      contribs,
-      features: bundle.features,
+      contribs: snapshot.contribs,
+      features: snapshot.features,
       evidenceGatePassed,
       isSpotlight: score >= cfg.spotlightThreshold,
       sharedQuizIds,

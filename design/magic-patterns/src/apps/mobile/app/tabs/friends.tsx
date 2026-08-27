@@ -128,9 +128,9 @@ export function FriendsScreen({
                   type="button"
                   onClick={() => setJokeOpen(true)}
                   aria-label="Add an Inside Joke"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple text-[18px] font-bold leading-none text-onaccent transition-transform active:scale-95">
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple transition-transform active:scale-95">
                   
-                    +
+                    <PlusIcon className="h-4 w-4 text-white" strokeWidth={3} />
                   </button>
                 </div>
                 <InsideJokesWidget size="full" />

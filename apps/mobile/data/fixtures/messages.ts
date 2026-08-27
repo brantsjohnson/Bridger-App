@@ -28,6 +28,8 @@ export type DemoThread = {
     phone?: string;
     kind?: Message['kind'];
     countsAgainstCap?: boolean;
+    heartedByMe?: boolean;
+    heartedByThem?: boolean;
   }>;
 };
 

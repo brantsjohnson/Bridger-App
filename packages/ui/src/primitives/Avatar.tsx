@@ -31,6 +31,8 @@ type AvatarProps = {
   /** Who this avatar is — lets us auto-load their photo via the resolver. */
   personId?: string;
   size?: 'xs' | 'sm' | 'header' | 'md' | 'lg' | 'xl';
+  /** Exact pixel width when a named size is too small (reveal orbs). */
+  diameter?: number;
   /**
    * Ring = they posted a story. Unseen rings spin; seen rings stay still
    * (same white → light wash, just quieter). No value = no ring.
@@ -85,6 +87,7 @@ export function Avatar({
   photo,
   personId,
   size = 'md',
+  diameter,
   story,
   ringWash = 'friend',
   onStory,
@@ -95,18 +98,19 @@ export function Avatar({
   // Prefer an explicit photo; otherwise ask the resolver for this person's
   // dropped-in photo. Falls back to the emoji-on-color circle.
   const resolved = photo ?? (personId ? photoResolver?.(personId) : undefined);
-  const px = pixelSizes[size];
+  const px = diameter ?? pixelSizes[size];
   const face = resolved ? (
     <Image
       source={resolved}
       accessibilityLabel={name}
-      className={cn('rounded-full', sizes[size])}
+      className={cn('rounded-full', !diameter && sizes[size])}
       style={{ width: px, height: px, borderRadius: px / 2, resizeMode: 'cover' }}
     />
   ) : (
     <View
       accessibilityLabel={name}
-      className={cn('items-center justify-center rounded-full', sizes[size], token.bg)}
+      className={cn('items-center justify-center rounded-full', !diameter && sizes[size], token.bg)}
+      style={diameter ? { width: px, height: px, borderRadius: px / 2 } : undefined}
     >
       <Text className={cn('font-sans-b', textSizes[size], token.text)}>{emoji ?? name.charAt(0)}</Text>
     </View>

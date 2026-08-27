@@ -1,10 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Sets up the main tabs — Home, Friends, Messages, Events, Discover — and
-// swaps the default bottom bar for Bridger's floating pill nav. Profile is
-// still a real screen here, but it is NOT in the pill: you open it from the
-// header photo circle instead, and the pill hides while you're on Profile
-// (nothing in the bar would be selected).
+// Sets up the main tabs — Home, Friends, Events, Discover, News — and swaps the
+// default bottom bar for Bridger's floating pill nav. Messages and Profile are
+// still real screens here, but they are NOT in the pill: you open Profile from
+// the header photo (left of the title) and Messages from the header paper-plane
+// (top-right). The pill hides while you're on Profile (nothing would look
+// selected).
 // ============================================
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { Tabs, useRouter } from 'expo-router';
@@ -35,6 +36,11 @@ export default function TabsLayout() {
     router.push('/(tabs)/profile');
   }, [router]);
 
+  // Header paper-plane → your Messages inbox (moved off the bottom pill).
+  const openMessages = useCallback(() => {
+    router.push('/(tabs)/messages');
+  }, [router]);
+
   const profile = useMemo(
     () => ({
       name: me.name,
@@ -47,16 +53,16 @@ export default function TabsLayout() {
   );
 
   return (
-    <ProfileLinkProvider profile={profile} open={openProfile}>
+    <ProfileLinkProvider profile={profile} open={openProfile} openMessages={openMessages}>
       <Tabs
         screenOptions={{ headerShown: false }}
         // --- THE NAV: Expo Router tab state → FloatingTabBar, and a pill tap
         //     back into real navigation. ---
         tabBar={({ state, navigation }) => {
           const current = state.routes[state.index]?.name as string;
-          // Profile is opened from the header avatar, not the pill — hide the
-          // bar so nothing looks "half selected" while you're on your page.
-          if (current === 'profile') return null;
+          // Profile and Messages open from the header, not the pill — hide the
+          // bar so nothing looks "half selected" while you're on those pages.
+          if (current === 'profile' || current === 'messages') return null;
           return (
             <FloatingTabBar
               value={current}
@@ -79,9 +85,11 @@ export default function TabsLayout() {
       >
         <Tabs.Screen name="home" />
         <Tabs.Screen name="friends" />
-        <Tabs.Screen name="messages" />
         <Tabs.Screen name="events" />
         <Tabs.Screen name="discover" />
+        <Tabs.Screen name="news" />
+        {/* Messages stays routable from the header paper-plane, but off the pill */}
+        <Tabs.Screen name="messages" options={{ href: null }} />
         {/* Profile stays routable from the header avatar, but off the pill */}
         <Tabs.Screen name="profile" options={{ href: null }} />
       </Tabs>

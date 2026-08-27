@@ -19,12 +19,15 @@ import {
 export function ColdStart({
   onAdd,
   bodyAnalyticsId = HOME.cold_start.body,
-  ctaAnalyticsId = HOME.cold_start.cta
+  ctaAnalyticsId = HOME.cold_start.cta,
+  inviteLocked = false
 }: {
   onAdd?: () => void;
   /** Override when reused outside Home (e.g. Friends). */
   bodyAnalyticsId?: string;
   ctaAnalyticsId?: string;
+  /** Demo week: invitee cannot send links. */
+  inviteLocked?: boolean;
 }) {
   const c = useThemeColors();
   return (
@@ -43,10 +46,14 @@ export function ColdStart({
           Bring your people in
         </PixelHeading>
         <Text className="mt-2 text-center font-sans-sb text-[13px] text-ink-mute">
-          Bridger is quiet until your friends are here.
+          {inviteLocked
+            ? 'During the TestFlight demo, only people who were here first can send invite links.'
+            : 'Bridger is quiet until your friends are here.'}
         </Text>
       </AnalyticsRegion>
       <View className="mt-5 w-full gap-2.5">
+        {!inviteLocked ? (
+          <>
         <ButtonSecondary
           full
           size="md"
@@ -79,6 +86,8 @@ export function ColdStart({
         >
           Scan a code
         </ButtonSecondary>
+          </>
+        ) : null}
       </View>
     </Card>
   );

@@ -1,7 +1,10 @@
 {
   "mcpServers": {
     "magic-patterns": {
-      "url": "https://mcp.magicpatterns.com/mcp"
+      "url": "https://mcp.magicpatterns.com/mcp",
+      "headers": {
+        "Authorization": "Bearer mp_live_GGfukCruGAg1vbHF2pqXPf"
+      }
     }
   }
 }

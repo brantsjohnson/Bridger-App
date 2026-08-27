@@ -19,7 +19,6 @@ const BAR = ['bg-purple', 'bg-teal', 'bg-amber', 'bg-pink'];
 export function AskWidget({
   onAsk,
   member = false,
-  onJoinCoop,
   onSeePrevious
 
 

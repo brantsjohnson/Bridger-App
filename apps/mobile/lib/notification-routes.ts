@@ -23,6 +23,11 @@ export function pathForNotification(n: AppNotification): NotificationHref {
       const author = t.authorId ?? n.personId;
       return author ? `/story/${author}?comments=1` : '/notifications';
     }
+    case 'story_prompt':
+      // Opens capture; party nudges pass eventId so the post tags the album.
+      return t.eventId
+        ? `/story/capture?eventId=${encodeURIComponent(t.eventId)}`
+        : '/story/capture';
     case 'connect_request':
     case 'mutual_connection':
       return '/(tabs)/discover';
@@ -46,6 +51,9 @@ export function pathForNotification(n: AppNotification): NotificationHref {
       return '/(tabs)/home';
     case 'quiz_share':
       return t.quizSlug ? `/quiz/${t.quizSlug}` : '/notifications';
+    case 'jname_link_opened':
+    case 'jname_top_match':
+      return '/quiz/what-j-name';
     case 'recap_reaction':
       return '/recap';
     case 'message':
@@ -55,6 +63,9 @@ export function pathForNotification(n: AppNotification): NotificationHref {
       return '/coop/portal';
     case 'activity_live':
       return '/activity';
+    case 'delight_gift':
+      // Host overlays the gift when the app is open; Home is the calm landing.
+      return '/(tabs)/home';
     default:
       return '/notifications';
   }
