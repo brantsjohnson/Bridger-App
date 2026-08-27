@@ -47,6 +47,7 @@ import {
   hydrateDemoMode,
   isDemoMode
 } from '../lib/demo';
+import { getCachedPerson } from '../lib/people-cache';
 import { resolveJnameReferral } from '../lib/jname-api';
 import { takePendingReferral } from '../lib/jname-referral';
 import { recordRoutePath } from '../lib/route-trail';
@@ -60,9 +61,13 @@ import { fetchAssistantSettings } from '../data/assistant';
 // Analytics: wire context + (dev) sink once. Capture stays opted-out until Settings.
 bootstrapAnalytics();
 
-// Photos: let any <Avatar personId="..."> pull a person's dropped-in photo,
-// so real faces appear everywhere (Friend Pod, Inside Jokes, rows, etc.).
-registerAvatarPhotoResolver(getProfilePhoto);
+// Photos: prefer a live signed avatar URL from the people cache, then the
+// demo asset drop-in. Any <Avatar personId="..."> can find a face this way.
+registerAvatarPhotoResolver((personId) => {
+  const liveUri = getCachedPerson(personId)?.avatarUrl?.trim();
+  if (liveUri) return { uri: liveUri };
+  return getProfilePhoto(personId);
+});
 
 // Crashes show the Magic Patterns Windows 404 ("Fucks not found."), not Expo's
 // black "Something went wrong" page. Missing routes still use +not-found.tsx.

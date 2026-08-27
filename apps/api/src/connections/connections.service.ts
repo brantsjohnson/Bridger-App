@@ -18,6 +18,7 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import type {
   ApprovalRequest,
@@ -42,12 +43,44 @@ export type ConnectionPersonDto = {
 
 @Injectable()
 export class ConnectionsService {
+  private readonly mediaBucket: string;
+  private readonly signedUrlTtl = 60 * 60;
+
   constructor(
     private readonly supabase: SupabaseService,
     private readonly tiers: TiersService,
     private readonly matchingFeedback: MatchingFeedbackService,
-    private readonly demoWeek: DemoWeekService
-  ) {}
+    private readonly demoWeek: DemoWeekService,
+    private readonly config: ConfigService
+  ) {
+    this.mediaBucket =
+      this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
+  }
+
+  // THIS SECTION DOES: turn a stored media id into a short-lived photo URL
+  // the app can put in an Avatar (never send the raw storage path).
+  private async signAvatarMediaIds(
+    mediaIds: Array<string | null | undefined>
+  ): Promise<Map<string, string>> {
+    const ids = [...new Set(mediaIds.filter((id): id is string => !!id))];
+    const out = new Map<string, string>();
+    if (ids.length === 0) return out;
+    const { data: mediaRows, error } = await this.supabase.admin
+      .from('media')
+      .select('id, storage_path')
+      .in('id', ids);
+    if (error || !mediaRows?.length) return out;
+    await Promise.all(
+      mediaRows.map(async (row) => {
+        if (!row.storage_path) return;
+        const { data, error: signErr } = await this.supabase.admin.storage
+          .from(this.mediaBucket)
+          .createSignedUrl(row.storage_path, this.signedUrlTtl);
+        if (!signErr && data?.signedUrl) out.set(row.id, data.signedUrl);
+      })
+    );
+    return out;
+  }
 
   // --- helpers ---
 
@@ -139,8 +172,12 @@ export class ConnectionsService {
     const nameById = new Map(
       (identities ?? []).map((i) => [i.user_id, i.display_name ?? 'Friend'])
     );
-    const avatarById = new Map(
-      (identities ?? []).map((i) => [i.user_id, i.avatar_media_id])
+    const avatarMediaByUser = new Map(
+      (identities ?? []).map((i) => [i.user_id, i.avatar_media_id as string | null])
+    );
+    // Resolve media ids → signed https URLs so Avatars can actually load.
+    const signedByMediaId = await this.signAvatarMediaIds(
+      [...avatarMediaByUser.values()]
     );
 
     const { data: tierRows, error: tErr } = await this.supabase.admin
@@ -172,13 +209,16 @@ export class ConnectionsService {
       mutualsById.set(other, n);
     }
 
-    return visibleIds.map((id) => ({
-      id,
-      name: nameById.get(id) ?? 'Friend',
-      avatarUrl: avatarById.get(id) ?? null,
-      tier: tierById.get(id) ?? 'acquaintance',
-      mutuals: mutualsById.get(id) ?? 0
-    }));
+    return visibleIds.map((id) => {
+      const mediaId = avatarMediaByUser.get(id);
+      return {
+        id,
+        name: nameById.get(id) ?? 'Friend',
+        avatarUrl: mediaId ? signedByMediaId.get(mediaId) ?? null : null,
+        tier: tierById.get(id) ?? 'acquaintance',
+        mutuals: mutualsById.get(id) ?? 0
+      };
+    });
   }
 
   // --- REQUESTS ---

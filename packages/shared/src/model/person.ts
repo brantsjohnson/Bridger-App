@@ -26,6 +26,11 @@ export interface Person {
   song?: { title: string; artist: string };
   /** What they're reading — roster fallback when there's no song */
   book?: { title: string; author: string };
+  /**
+   * Live profile photo URL (signed storage link). Demo mode uses local
+   * assets instead; when this is set, Avatar prefers it over the emoji.
+   */
+  avatarUrl?: string | null;
 }
 
 /**

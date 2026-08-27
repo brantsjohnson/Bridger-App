@@ -7,14 +7,14 @@
 // (top-right). The pill hides while you're on Profile (nothing would look
 // selected).
 // ============================================
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { FloatingTabBar, ProfileLinkProvider, type TabKey } from '@bridger/ui';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { getMe } from '../../data/people';
 import { getTabBadges } from '../../data/tab-badges';
 import { isDemoMode } from '../../lib/demo';
-import { loadPeople } from '../../lib/people-cache';
+import { getCachedMe, loadPeople } from '../../lib/people-cache';
 
 // Keep the app on Home when it first opens.
 export const unstable_settings = {
@@ -24,11 +24,14 @@ export const unstable_settings = {
 export default function TabsLayout() {
   const router = useRouter();
   const me = getMe();
+  // Rerender when the live people cache finishes so the header picks up
+  // your real avatar URL (demo uses the local asset right away).
+  const [peopleTick, setPeopleTick] = useState(0);
 
   // Live: fill the people cache so personById / roster look-ups work sync.
   useEffect(() => {
     if (isDemoMode()) return;
-    void loadPeople();
+    void loadPeople().then(() => setPeopleTick((n) => n + 1));
   }, []);
 
   // Header photo → your Profile page (not a bottom-tab destination).
@@ -41,16 +44,19 @@ export default function TabsLayout() {
     router.push('/(tabs)/messages');
   }, [router]);
 
-  const profile = useMemo(
-    () => ({
+  const profile = useMemo(() => {
+    const live = getCachedMe();
+    const liveUri = live?.avatarUrl?.trim();
+    return {
       name: me.name,
       emoji: me.emoji,
       accent: me.accent,
-      // Uses a dropped-in photo from assets/demo/profile-pics when present.
-      photo: getProfilePhoto('me')
-    }),
-    [me.name, me.emoji, me.accent]
-  );
+      // Prefer a live signed photo URL; otherwise the demo asset for "me".
+      photo: liveUri
+        ? { uri: liveUri }
+        : getProfilePhoto('me')
+    };
+  }, [me.name, me.emoji, me.accent, me.avatarUrl, peopleTick]);
 
   return (
     <ProfileLinkProvider profile={profile} open={openProfile} openMessages={openMessages}>

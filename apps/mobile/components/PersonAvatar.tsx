@@ -37,12 +37,14 @@ export function PersonAvatar({
   const wash: WashStoryRing =
     ringWash ??
     (p.tier === 'close' ? 'close' : p.tier === 'acquaintance' ? 'acquaintance' : 'friend');
+  const liveUri = p.avatarUrl?.trim();
   return (
     <Avatar
       name={name ?? p.name}
       emoji={emoji ?? p.emoji}
       accent={accent ?? p.accent}
-      photo={getProfilePhoto(id)}
+      personId={id}
+      photo={liveUri ? { uri: liveUri } : getProfilePhoto(id)}
       size={size}
       story={story ?? p.story}
       ringWash={wash}

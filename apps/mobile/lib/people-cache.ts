@@ -20,9 +20,10 @@ type ConnDto = {
   mutuals: number;
 };
 
-/** Shape returned by GET /me (we only need the display name). */
+/** Shape returned by GET /me (we only need the display name + photo). */
 type MeDto = {
   name?: string | null;
+  avatarUrl?: string | null;
 };
 
 const ACCENTS: Accent[] = [
@@ -62,7 +63,9 @@ function toPerson(d: ConnDto): Person {
     accent: accentFor(d.id),
     tier: d.tier,
     label: '',
-    mutuals: d.mutuals
+    mutuals: d.mutuals,
+    // Live photo URL from the API (signed). Avatar prefers this over emoji.
+    avatarUrl: d.avatarUrl
   };
 }
 
@@ -90,7 +93,8 @@ export async function loadPeople(): Promise<void> {
         accent: 'purple',
         tier: 'close',
         label: '',
-        mutuals: 0
+        mutuals: 0,
+        avatarUrl: me?.avatarUrl ?? null
       };
       loaded = true;
     } finally {
