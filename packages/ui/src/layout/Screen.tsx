@@ -253,6 +253,8 @@ function HeaderChrome({
     (analyticsSurface ? `${analyticsSurface}.top_nav.back` : undefined);
 
   // --- THE PROFILE BUTTON: your photo; opens your Profile page ---
+  // Fixed 40×40 hit target so a missing/failing photo never collapses the
+  // left header slot (that made every tab look like it had no profile pic).
   const profileButton =
     showProfile && face ? (
       <Pressable
@@ -260,6 +262,7 @@ function HeaderChrome({
         accessibilityRole="button"
         accessibilityLabel="Your profile"
         className="shrink-0 active:opacity-80"
+        style={{ width: 40, height: 40 }}
       >
         <Avatar
           name={face.name}

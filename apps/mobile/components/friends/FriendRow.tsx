@@ -147,7 +147,12 @@ export function FriendRow({
         name={person.name}
         emoji={person.emoji}
         accent={person.accent}
-        photo={getProfilePhoto(person.id)}
+        personId={person.id}
+        photo={
+          person.avatarUrl?.trim()
+            ? { uri: person.avatarUrl.trim() }
+            : getProfilePhoto(person.id)
+        }
         story={person.story}
         ringWash={ringWash}
         onStory={!editing && person.story ? onStory : undefined}

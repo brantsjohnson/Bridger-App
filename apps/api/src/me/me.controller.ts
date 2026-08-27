@@ -22,6 +22,7 @@ import {
   Post,
   UseGuards
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { InviteAccessStatus } from '@bridger/shared';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
@@ -47,12 +48,38 @@ interface UpdateMeBody {
 @Controller('me')
 @UseGuards(SupabaseAuthGuard)
 export class MeController {
+  private readonly mediaBucket: string;
+  private readonly signedUrlTtl = 60 * 60;
+
   constructor(
     private readonly supabase: SupabaseService,
     private readonly coop: CoopService,
     private readonly posthog: PosthogService,
-    private readonly demoWeek: DemoWeekService
-  ) {}
+    private readonly demoWeek: DemoWeekService,
+    private readonly config: ConfigService
+  ) {
+    this.mediaBucket =
+      this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
+  }
+
+  // THIS SECTION DOES: turn your stored avatar media id into a short-lived
+  // https URL the header Avatar can load.
+  private async signAvatarUrl(
+    mediaId: string | null | undefined
+  ): Promise<string | null> {
+    if (!mediaId) return null;
+    const { data: media } = await this.supabase.admin
+      .from('media')
+      .select('storage_path')
+      .eq('id', mediaId)
+      .maybeSingle();
+    if (!media?.storage_path) return null;
+    const { data, error } = await this.supabase.admin.storage
+      .from(this.mediaBucket)
+      .createSignedUrl(media.storage_path, this.signedUrlTtl);
+    if (error || !data) return null;
+    return data.signedUrl;
+  }
 
   // --- Story storage bar (Profile calendar) ---
   @Get('storage')
@@ -96,12 +123,16 @@ export class MeController {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    const avatarUrl = await this.signAvatarUrl(identity?.avatar_media_id);
+
     return {
       authUserId: user.id,
       email: user.email,
       profile: account,
       name: identity?.display_name ?? null,
       avatarMediaId: identity?.avatar_media_id ?? null,
+      // Short-lived signed URL for the header / profile photo (null if none).
+      avatarUrl,
       // Missing settings row = brand-new account = not onboarded yet.
       onboardingComplete: settings?.onboarding_complete ?? false
     };

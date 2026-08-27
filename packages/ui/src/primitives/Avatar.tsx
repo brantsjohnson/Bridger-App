@@ -4,11 +4,15 @@
 // emoji on a colored circle (their accent). An optional story ring means they
 // posted an update: a moving white → light wash gradient (Instagram-style).
 // No ring = no story. Never a presence "online" dot.
+//
+// Sizing is ALWAYS inline pixels (never Tailwind h-/w- alone). Production
+// builds were collapsing faces to 0×0 when NativeWind class sizes did not
+// stick, which made every header and roster photo look "missing."
 // ============================================
 import React from 'react';
 import { Image, Pressable, Text, View, type ImageSourcePropType } from 'react-native';
 import type { Accent } from '@bridger/shared';
-import { ACCENTS, WASH_STORY_RING, type WashStoryRing } from '../tokens';
+import { ACCENT_HEX, ACCENTS, WASH_STORY_RING, type WashStoryRing } from '../tokens';
 import { cn } from '../lib/cn';
 import { GradientRing } from './GradientRing';
 
@@ -47,35 +51,25 @@ type AvatarProps = {
   className?: string;
 };
 
-const sizes = {
-  xs: 'h-7 w-7',
-  sm: 'h-9 w-9',
-  // header = 40px, so the profile photo matches the +, settings, and Edit
-  // buttons that sit next to it in the top bar.
-  header: 'h-10 w-10',
-  md: 'h-11 w-11',
-  lg: 'h-14 w-14',
-  xl: 'h-24 w-24'
-};
-// Exact pixel size for each avatar size. A photo <Image> needs a real
-// width/height (a Tailwind class alone isn't reliably applied to images on
-// web, which made the photo balloon to its full resolution). These match the
-// h-/w- classes above.
+// Exact pixel size for each avatar size. Inline styles only — NativeWind
+// h-/w- classes are not reliable enough for faces in release builds.
 const pixelSizes = {
   xs: 28,
   sm: 36,
+  // header = 40px, so the profile photo matches the +, settings, and Edit
+  // buttons that sit next to it in the top bar.
   header: 40,
   md: 44,
   lg: 56,
   xl: 96
 };
-const textSizes = {
-  xs: 'text-[12px]',
-  sm: 'text-[15px]',
-  header: 'text-[16px]',
-  md: 'text-[18px]',
-  lg: 'text-[22px]',
-  xl: 'text-[38px]'
+const fontSizes = {
+  xs: 12,
+  sm: 15,
+  header: 16,
+  md: 18,
+  lg: 22,
+  xl: 38
 };
 
 const RING_WIDTH = 3;
@@ -94,25 +88,41 @@ export function Avatar({
   className
 }: AvatarProps) {
   const token = ACCENTS[accent];
+  const fill = ACCENT_HEX[accent];
 
   // Prefer an explicit photo; otherwise ask the resolver for this person's
   // dropped-in photo. Falls back to the emoji-on-color circle.
   const resolved = photo ?? (personId ? photoResolver?.(personId) : undefined);
   const px = diameter ?? pixelSizes[size];
+  // THIS SECTION DOES: draw the face with hard pixel sizes so it never
+  // collapses to an invisible 0×0 circle in production.
+  const roundStyle = {
+    width: px,
+    height: px,
+    borderRadius: px / 2,
+    overflow: 'hidden' as const
+  };
   const face = resolved ? (
     <Image
       source={resolved}
       accessibilityLabel={name}
-      className={cn('rounded-full', !diameter && sizes[size])}
-      style={{ width: px, height: px, borderRadius: px / 2, resizeMode: 'cover' }}
+      resizeMode="cover"
+      style={roundStyle}
     />
   ) : (
     <View
       accessibilityLabel={name}
-      className={cn('items-center justify-center rounded-full', !diameter && sizes[size], token.bg)}
-      style={diameter ? { width: px, height: px, borderRadius: px / 2 } : undefined}
+      style={[roundStyle, { alignItems: 'center', justifyContent: 'center', backgroundColor: fill }]}
     >
-      <Text className={cn('font-sans-b', textSizes[size], token.text)}>{emoji ?? name.charAt(0)}</Text>
+      <Text
+        style={{
+          fontSize: fontSizes[size],
+          fontWeight: '700',
+          color: token.text.includes('white') ? '#FFFFFF' : '#1C1B16'
+        }}
+      >
+        {emoji ?? name.charAt(0)}
+      </Text>
     </View>
   );
 
