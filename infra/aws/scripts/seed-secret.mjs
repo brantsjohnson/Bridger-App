@@ -16,7 +16,10 @@ import { join } from 'node:path';
 const SECRET_ID = 'bridger/api/server';
 const REGION = 'us-east-1';
 
-// The exact set of fields the API expects (matches the CDK secret template).
+// The exact set of fields the API expects (must match the CDK secret template
+// in foundation-stack.ts AND the environmentSecrets in service-stack.ts). If
+// App Runner asks for a json key that is missing here, the container cannot
+// start and the deploy rolls back, so keep all three lists in lockstep.
 const KEYS = [
   'SUPABASE_URL',
   'SUPABASE_SECRET_KEY',
@@ -31,7 +34,18 @@ const KEYS = [
   'ADMIN_PASSWORD',
   'ADMIN_JWT_SECRET',
   'EMAIL_HMAC_KEY',
-  'EMAIL_ENCRYPTION_KEY'
+  'EMAIL_ENCRYPTION_KEY',
+  // Music connect (Spotify + Apple Music). Added after the first deploy, which
+  // is why the live secret was missing them and the API could not boot.
+  'SPOTIFY_CLIENT_ID',
+  'SPOTIFY_CLIENT_SECRET',
+  'SPOTIFY_REDIRECT_URI',
+  'MUSIC_TOKEN_ENCRYPTION_KEY',
+  'APPLE_MUSIC_TEAM_ID',
+  'APPLE_MUSIC_KEY_ID',
+  'APPLE_MUSIC_MEDIA_ID',
+  'APPLE_MUSIC_PRIVATE_KEY',
+  'API_PUBLIC_URL'
 ];
 
 // --- Read apps/api/.env into a simple key -> value map (no printing) ---
