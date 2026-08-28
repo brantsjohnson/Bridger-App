@@ -13,7 +13,7 @@
 #   4) runner   - a clean, production-only image that just runs the server
 # ============================================
 
-ARG NODE_VERSION=20
+ARG NODE_VERSION=22
 
 # --- Stage 1: prune the monorepo down to the API and its dependencies ---
 FROM node:${NODE_VERSION}-slim AS pruner
