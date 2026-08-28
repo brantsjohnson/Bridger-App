@@ -73,6 +73,43 @@ export async function signInWithGoogle() {
 }
 
 /**
+ * Read the name + photo that Google (or Apple) handed us at sign-in.
+ *
+ * WHAT THIS DOES (plain English): after someone continues with Google, their
+ * Google account already knows their name and profile picture. This grabs those
+ * from the signed-in session so onboarding can pre-fill the "Confirm your
+ * details" screen instead of making them retype everything.
+ *
+ * The name can arrive as separate given/family names or as one full name, and
+ * the photo can be under `avatar_url` (Google) or `picture` (some providers),
+ * so we check each spot and fall back gracefully when a field is missing.
+ */
+export async function getOAuthProfilePrefill(): Promise<{
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+}> {
+  const { data } = await supabase.auth.getUser();
+  const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+
+  const str = (key: string) =>
+    typeof meta[key] === 'string' ? (meta[key] as string).trim() : '';
+
+  // Prefer the split names Google usually provides; otherwise split the full name.
+  let firstName = str('given_name');
+  let lastName = str('family_name');
+  const fullName = str('full_name') || str('name');
+  if (!firstName && !lastName && fullName) {
+    const parts = fullName.split(/\s+/);
+    firstName = parts[0] ?? '';
+    lastName = parts.slice(1).join(' ');
+  }
+
+  const avatarUrl = str('avatar_url') || str('picture') || null;
+  return { firstName, lastName, avatarUrl };
+}
+
+/**
  * Apple: native sheet on iOS, OAuth browser elsewhere.
  * Native path uses a one-time nonce so the token can't be replayed.
  */

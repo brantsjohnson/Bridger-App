@@ -15,9 +15,10 @@
 // notifications → taste intro → right now → obsession → social battery → color
 // → places → recap → privacy & control → [screentime stat] → co-op → welcome.
 // ============================================
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { trackFlowCompleted, trackFlowStep, type Tier } from '@bridger/shared';
 import { clearDevPreview, getDemoOnboardSeed, isDemoMode } from '../lib/demo';
+import { getOAuthProfilePrefill } from '../lib/oauth';
 import {
   buildPrivacyRows,
   saveBirthday,
@@ -173,6 +174,34 @@ export function useOnboarding(onDone: () => void) {
     };
   });
   const [startedAt] = useState(() => Date.now());
+
+  // THIS SECTION DOES: for real (non-demo) sign-ins, pre-fill the first name,
+  // last name, and profile photo from the Google/Apple account so the person
+  // just confirms instead of retyping. We only fill blanks, so anything they
+  // have already typed is never overwritten. A remote avatar URL previews right
+  // away and uploads when the step is saved.
+  useEffect(() => {
+    if (isDemoMode()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const prefill = await getOAuthProfilePrefill();
+        if (cancelled) return;
+        setDraft((d) => ({
+          ...d,
+          firstName: d.firstName || prefill.firstName,
+          lastName: d.lastName || prefill.lastName,
+          photoSource: d.photoSource ?? (prefill.avatarUrl ? 'library' : null),
+          photoUri: d.photoUri ?? prefill.avatarUrl
+        }));
+      } catch {
+        // No prefill available (e.g. email sign-up): leave the form empty.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // THIS SECTION DOES: remember which way we moved so the slide animation
   // knows whether to come in from the right (forward) or the left (back).
   const [dir, setDir] = useState<1 | -1>(1);
@@ -194,59 +223,72 @@ export function useOnboarding(onDone: () => void) {
     }
   }, [index]);
 
-  /** Save the step we're leaving, then move to the next. */
+  /**
+   * Save the step we're leaving, then move to the next.
+   *
+   * IMPORTANT: the save is wrapped so a failed network/API call can NEVER trap
+   * someone on a screen. Before this, if saving the name on step 1 threw (for
+   * example the API was unreachable), Continue silently did nothing. Now we try
+   * to save, but always move forward either way, so the button always advances.
+   */
   const goNext = useCallback(async () => {
-    switch (step) {
-      case 'confirm-profile':
-        await saveName(`${draft.firstName} ${draft.lastName}`.trim());
-        if (draft.photoSource)
-          await savePhoto({
-            source: draft.photoSource,
-            uri: draft.photoUri ?? undefined
+    try {
+      switch (step) {
+        case 'confirm-profile':
+          await saveName(`${draft.firstName} ${draft.lastName}`.trim());
+          if (draft.photoSource)
+            await savePhoto({
+              source: draft.photoSource,
+              uri: draft.photoUri ?? undefined
+            });
+          break;
+        case 'birthday':
+          if (draft.birthday) await saveBirthday(draft.birthday);
+          break;
+        case 'friends-of-friends':
+          await saveConnectionStyle(draft.connectStyles);
+          break;
+        case 'notifications':
+          await saveNotifications(draft.notifPrefs);
+          break;
+        case 'right-now':
+          await saveRightNow({ currentJob: draft.currentJob, dreamJob: draft.dreamJob });
+          break;
+        case 'obsession':
+          await saveObsessionSong(draft.song);
+          break;
+        case 'social-battery':
+          if (draft.nights != null) await saveSocialBattery(draft.nights);
+          break;
+        case 'color':
+          if (draft.color) await saveColor(draft.color);
+          break;
+        case 'places':
+          await savePlaces({
+            hometown: draft.hometown,
+            currentTown: draft.currentTown,
+            favoritePlace: draft.favoritePlace
           });
-        break;
-      case 'birthday':
-        if (draft.birthday) await saveBirthday(draft.birthday);
-        break;
-      case 'friends-of-friends':
-        await saveConnectionStyle(draft.connectStyles);
-        break;
-      case 'notifications':
-        await saveNotifications(draft.notifPrefs);
-        break;
-      case 'right-now':
-        await saveRightNow({ currentJob: draft.currentJob, dreamJob: draft.dreamJob });
-        break;
-      case 'obsession':
-        await saveObsessionSong(draft.song);
-        break;
-      case 'social-battery':
-        if (draft.nights != null) await saveSocialBattery(draft.nights);
-        break;
-      case 'color':
-        if (draft.color) await saveColor(draft.color);
-        break;
-      case 'places':
-        await savePlaces({
-          hometown: draft.hometown,
-          currentTown: draft.currentTown,
-          favoritePlace: draft.favoritePlace
-        });
-        break;
-      case 'recap':
-        await saveRecap({
-          mode: draft.recapMode,
-          text: draft.recapText,
-          recorded: draft.recapRecorded,
-          recordedUri: draft.recapUri ?? undefined
-        });
-        break;
-      case 'privacy-control':
-        await saveVisibility(draft.visibility);
-        break;
-      // stat screens, taste-intro, contacts, and co-op save inside their screens.
-      default:
-        break;
+          break;
+        case 'recap':
+          await saveRecap({
+            mode: draft.recapMode,
+            text: draft.recapText,
+            recorded: draft.recapRecorded,
+            recordedUri: draft.recapUri ?? undefined
+          });
+          break;
+        case 'privacy-control':
+          await saveVisibility(draft.visibility);
+          break;
+        // stat screens, taste-intro, contacts, and co-op save inside their screens.
+        default:
+          break;
+      }
+    } catch (err) {
+      // Saving failed (offline, API down, etc.). Don't strand the person on the
+      // step: log it for debugging and still move forward.
+      console.warn(`Onboarding save failed on "${step}"; continuing.`, err);
     }
     advance();
   }, [step, draft, advance]);

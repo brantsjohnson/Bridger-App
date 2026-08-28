@@ -62,7 +62,10 @@ async function trackAuthOutcome(method: 'google' | 'apple') {
   }
 }
 
-const LOGIN_BG = require('../../assets/brand/login-screen.png');
+// Full-bleed glitch art that fills the whole frame (no baked-in white band).
+// The old login-screen.png had white in its lower half, which showed as a gap
+// between the color bars and the sign-in sheet; login-bg.jpg is edge-to-edge.
+const LOGIN_BG = require('../../assets/brand/login-bg.jpg');
 const BRIDGER_MARK = require('../../assets/brand/bridger-mark.png');
 
 export default function SignInScreen() {
