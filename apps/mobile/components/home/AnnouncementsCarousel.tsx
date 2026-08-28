@@ -32,7 +32,7 @@ import type { CoopAnnouncement } from '../../data/feed';
 
 export type Announcement = {
   id: string;
-  kind: 'grass' | 'quickCheck' | 'coop';
+  kind: 'grass' | 'quickCheck' | 'coop' | 'intro';
   content: React.ReactNode;
 };
 

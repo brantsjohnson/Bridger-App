@@ -1,7 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Onboarding taste of the Friend Pod: record one voice answer with the SAME
-// UI as "Add your recap" (lavender question card, black mic circle). One
+// ARCHIVED from the onboarding run (2026-08-28). Kept so we can bring the
+// screen back later, and so old analytics ids still make sense. Friend Pod
+// "Add your recap" on Friends is the live place to record weekly voice answers.
+//
+// Was: onboarding taste of the Friend Pod. Record one voice answer with the
+// SAME UI as "Add your recap" (lavender question card, black mic circle). One
 // question only: "Best part of your week?" Skippable.
 //
 // This is a REAL recorder: tapping the mic asks for the microphone in context,

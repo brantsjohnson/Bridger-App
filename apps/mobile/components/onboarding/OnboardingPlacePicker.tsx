@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The onboarding "favorite place" control: a small world map plus a search box.
-// You type a city or country, pick a result, and a FAV pin lands on that
+// The onboarding "favorite place" control: a search box (with a magnifying
+// glass), a clear list of places to tap, then a small world map that shows the
+// FAV pin. You type a city or country, tap a match, and the pin lands on that
 // country. Same geocoder as Places traveled on the profile. Never logs what
 // you typed (PRIVACY).
 // ============================================
@@ -13,13 +14,23 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { ChevronRightIcon, MapPinIcon, SearchIcon } from 'lucide-react-native';
 import { ONBOARDING, trackUi } from '@bridger/shared';
-import { withAnalyticsPress } from '@bridger/ui';
+import { AnalyticsRegion, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import type { GeocodeHit } from '../../lib/geocode';
 import { searchPlaces } from '../../lib/geocode';
 import type { TravelPlace } from '../../data/profile';
 import { WorldMapSvg } from '../profile/WorldMapSvg';
+import { useOnboardingBodyScroll } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
+
+/** One clear line for a hit so city + country read as one choice. */
+function hitTitle(h: GeocodeHit): string {
+  if (h.countryName && h.label && h.label !== h.countryName) {
+    return `${h.label}, ${h.countryName}`;
+  }
+  return h.displayName || h.label;
+}
 
 /**
  * Map + search for the favorite trip. Hometown / current town stay as plain
@@ -38,6 +49,11 @@ export function OnboardingPlacePicker({
   const [error, setError] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abort = useRef<AbortController | null>(null);
+  // Anchor used to scroll this block above the keyboard when you tap in.
+  const searchBlockRef = useRef<View>(null);
+  const { ensureVisible } = useOnboardingBodyScroll();
+  // Labels outside the white search box follow theme ink on the dark canvas.
+  const theme = useThemeColors();
 
   // THIS SECTION DOES: look up places after a short pause. Prefer hits that
   // carry a country code so the map can fill that country.
@@ -77,6 +93,12 @@ export function OnboardingPlacePicker({
     };
   }, [query]);
 
+  // When matches appear, keep the search + list above the keyboard.
+  useEffect(() => {
+    if (hits.length === 0) return;
+    ensureVisible(searchBlockRef.current);
+  }, [hits.length, ensureVisible]);
+
   // Preview place for the map when we have a pick.
   const previewPlaces: TravelPlace[] = useMemo(() => {
     if (!hit) return [];
@@ -111,23 +133,118 @@ export function OnboardingPlacePicker({
     <View style={{ gap: 10 }}>
       <Text
         className="font-sans-sb text-[13px]"
-        style={{ letterSpacing: 0.4, color: OB.navy }}
+        style={{ letterSpacing: 0.4, color: theme.ink }}
       >
         Favorite place you've visited
       </Text>
-      <Text className="font-sans-sb text-[12px]" style={{ color: OB.inkSoft }}>
+      <Text className="font-sans-sb text-[12px]" style={{ color: theme.inkSoft }}>
         Search a city or country · pins your Places traveled map
       </Text>
 
-      {/* THIS SECTION DOES: live map preview. Empty until a place is picked. */}
-      <WorldMapSvg
-        taggedCountryCodes={tagged}
-        places={previewPlaces}
-        activeId={previewPlaces[0]?.id ?? null}
-        onPinPress={() => {}}
-        height={168}
-        pinAnalyticsId={ONBOARDING.taste.favorite_place_input}
-      />
+      {/* THIS SECTION DOES: search first (above the map) so the keyboard never
+          hides the box under a tall map. Magnifying glass marks it as search. */}
+      <View ref={searchBlockRef} style={{ gap: 8 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            backgroundColor: OB.paper,
+            borderWidth: OB_BORDER,
+            borderColor: OB.navy,
+            paddingHorizontal: 14,
+            minHeight: 52
+          }}
+        >
+          <View accessible={false} importantForAccessibility="no">
+            <SearchIcon size={18} color={OB.navy} strokeWidth={2.4} />
+          </View>
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            onFocus={() => {
+              trackUi('focus', ONBOARDING.taste.place_search);
+              trackUi('focus', ONBOARDING.taste.favorite_place_input);
+              ensureVisible(searchBlockRef.current);
+            }}
+            placeholder="Search a city or country"
+            placeholderTextColor="rgba(0,0,0,0.35)"
+            accessibilityLabel="Favorite place you've visited"
+            accessibilityHint="Searches for a place to pin on your map. Tap a match below to choose it."
+            autoCapitalize="words"
+            style={{
+              flex: 1,
+              fontSize: 17,
+              color: OB.ink,
+              paddingVertical: 14,
+              minHeight: 52
+            }}
+          />
+          {loading ? <ActivityIndicator size="small" color={OB.navy} /> : null}
+        </View>
+
+        {error ? (
+          <Text className="font-sans-sb text-[13px]" style={{ color: theme.inkSoft }}>
+            Couldn't look that up. Check your connection and try again.
+          </Text>
+        ) : null}
+
+        {/* THIS SECTION DOES: matches as obvious tappable choices (not a quiet
+            subtitle that looks like extra info under the search box). */}
+        {hits.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <AnalyticsRegion analyticsId={ONBOARDING.taste.place_pick_hint} interactive={false}>
+              <Text
+                className="font-sans-sb text-[12px]"
+                style={{ letterSpacing: 0.3, color: theme.ink }}
+              >
+                Tap a place to pin it
+              </Text>
+            </AnalyticsRegion>
+            {hits.map((h, i) => {
+              const title = hitTitle(h);
+              return (
+                <Pressable
+                  key={`${h.lat}-${h.lng}-${i}`}
+                  onPress={withAnalyticsPress(ONBOARDING.taste.place_result, () =>
+                    pick(h)
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Choose ${title}`}
+                  accessibilityHint="Pins this place on your map"
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    backgroundColor: pressed ? OB.periwinkle : OB.paper,
+                    borderWidth: OB_BORDER,
+                    borderColor: OB.navy,
+                    paddingHorizontal: 14,
+                    paddingVertical: 14,
+                    minHeight: 52
+                  })}
+                >
+                  <MapPinIcon size={18} color={OB.blue} strokeWidth={2.4} />
+                  <Text
+                    className="min-w-0 flex-1 font-sans-b text-[15px]"
+                    style={{ color: OB.ink }}
+                    numberOfLines={2}
+                  >
+                    {title}
+                  </Text>
+                  <Text
+                    className="font-sans-sb text-[13px]"
+                    style={{ color: OB.blue }}
+                  >
+                    Choose
+                  </Text>
+                  <ChevronRightIcon size={18} color={OB.blue} strokeWidth={2.6} />
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+      </View>
 
       {hit ? (
         <View
@@ -149,88 +266,15 @@ export function OnboardingPlacePicker({
         </View>
       ) : null}
 
-      {/* THIS SECTION DOES: the search box (navy outline like OBField). */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          backgroundColor: OB.paper,
-          borderWidth: OB_BORDER,
-          borderColor: OB.navy,
-          paddingHorizontal: 14,
-          minHeight: 52
-        }}
-      >
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          onFocus={() => {
-            trackUi('focus', ONBOARDING.taste.place_search);
-            trackUi('focus', ONBOARDING.taste.favorite_place_input);
-          }}
-          placeholder="Search a city or country"
-          placeholderTextColor="rgba(0,0,0,0.35)"
-          accessibilityLabel="Favorite place you've visited"
-          accessibilityHint="Searches for a place to pin on your map"
-          autoCapitalize="words"
-          style={{
-            flex: 1,
-            fontSize: 17,
-            color: OB.ink,
-            paddingVertical: 14,
-            minHeight: 52
-          }}
-        />
-        {loading ? <ActivityIndicator size="small" color={OB.navy} /> : null}
-      </View>
-
-      {error ? (
-        <Text className="font-sans-sb text-[13px]" style={{ color: OB.inkSoft }}>
-          Couldn't look that up. Check your connection and try again.
-        </Text>
-      ) : null}
-
-      {hits.length > 0 ? (
-        <View
-          style={{
-            overflow: 'hidden',
-            backgroundColor: OB.paper,
-            borderWidth: OB_BORDER,
-            borderColor: OB.navy
-          }}
-        >
-          {hits.map((h, i) => (
-            <Pressable
-              key={`${h.lat}-${h.lng}-${i}`}
-              onPress={withAnalyticsPress(ONBOARDING.taste.place_result, () =>
-                pick(h)
-              )}
-              accessibilityRole="button"
-              accessibilityLabel={`${h.label}${h.countryName ? `, ${h.countryName}` : ''}`}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                borderBottomWidth: i < hits.length - 1 ? OB_BORDER : 0,
-                borderBottomColor: OB.borderMuted
-              }}
-            >
-              <Text className="font-sans-b text-[14px]" style={{ color: OB.ink }}>
-                {h.label}
-              </Text>
-              {h.countryName || h.displayName ? (
-                <Text
-                  numberOfLines={1}
-                  className="mt-0.5 font-sans-sb text-[12px]"
-                  style={{ color: OB.inkSoft }}
-                >
-                  {h.countryName ?? h.displayName}
-                </Text>
-              ) : null}
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      {/* THIS SECTION DOES: live map preview under the search. Empty until picked. */}
+      <WorldMapSvg
+        taggedCountryCodes={tagged}
+        places={previewPlaces}
+        activeId={previewPlaces[0]?.id ?? null}
+        onPinPress={() => {}}
+        height={168}
+        pinAnalyticsId={ONBOARDING.taste.favorite_place_input}
+      />
     </View>
   );
 }

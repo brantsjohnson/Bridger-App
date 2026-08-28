@@ -35,7 +35,13 @@ import {
   type ViewStyle
 } from 'react-native';
 import { trackClick, trackUi } from '@bridger/shared';
-import { AnalyticsRegion, HobbyEmojiBurst, useReduceMotion, withAnalyticsPress } from '@bridger/ui';
+import {
+  AnalyticsRegion,
+  HobbyEmojiBurst,
+  useReduceMotion,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
 import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
 import { OB, OB_BORDER, OB_HEADING, OB_HEADING_SM, OB_SHADOW_OFFSET } from './onboarding-theme';
 
@@ -172,12 +178,13 @@ export function OBHeading({
   );
 }
 
-/** The sentence under the question. */
+/** The sentence under the question (theme ink so it stays readable on dark canvas). */
 export function OBBody({ children, className }: { children: React.ReactNode; className?: string }) {
+  const theme = useThemeColors();
   return (
     <Text
       className={className}
-      style={{ fontSize: 15.5, lineHeight: 23, color: 'rgba(0,0,0,0.78)' }}
+      style={{ fontSize: 15.5, lineHeight: 23, color: theme.inkSoft }}
     >
       {children}
     </Text>
@@ -214,7 +221,12 @@ export function OBNote({ children }: { children: React.ReactNode }) {
 
 // ============================================
 // TYPING: a white box with a hard navy outline and its label above it.
+// Multiline fields start one line tall, then grow as the words wrap so
+// long answers stay visible without scrolling inside the box.
 // ============================================
+const OB_FIELD_PAD_Y = 14;
+const OB_FIELD_LINE_MIN = 52;
+
 export function OBField({
   label,
   value,
@@ -238,10 +250,18 @@ export function OBField({
   /** Spoken name when the visible label is omitted (e.g. the heading above). */
   accessibilityLabel?: string;
 }) {
+  // THIS SECTION DOES: remember how tall the typing box needs to be when words wrap.
+  const [growHeight, setGrowHeight] = useState(OB_FIELD_LINE_MIN);
+  // Label sits on the page canvas, so it must follow light/dark ink (boxes stay white).
+  const theme = useThemeColors();
+
   return (
     <View style={{ gap: 7 }}>
       {label ? (
-        <Text className="font-sans-sb text-[13px]" style={{ letterSpacing: 0.4, color: OB.navy }}>
+        <Text
+          className="font-sans-sb text-[13px]"
+          style={{ letterSpacing: 0.4, color: theme.ink }}
+        >
           {label}
         </Text>
       ) : null}
@@ -257,16 +277,32 @@ export function OBField({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         multiline={multiline}
+        // Grow the box instead of scrolling text inside it.
+        scrollEnabled={multiline ? false : undefined}
         accessibilityLabel={accessibilityLabel ?? label}
+        onContentSizeChange={
+          multiline
+            ? (e) => {
+                // Text height + top/bottom padding, never shorter than one line.
+                const next = Math.max(
+                  OB_FIELD_LINE_MIN,
+                  Math.ceil(e.nativeEvent.contentSize.height) + OB_FIELD_PAD_Y * 2
+                );
+                setGrowHeight((prev) => (prev === next ? prev : next));
+              }
+            : undefined
+        }
         style={{
           backgroundColor: OB.paper,
           borderWidth: OB_BORDER,
           borderColor: OB.navy,
           paddingHorizontal: 14,
-          paddingVertical: 14,
+          paddingVertical: OB_FIELD_PAD_Y,
           fontSize: 17,
+          lineHeight: 22,
           color: OB.ink,
-          minHeight: multiline ? 96 : 52,
+          minHeight: OB_FIELD_LINE_MIN,
+          ...(multiline ? { height: growHeight } : null),
           textAlignVertical: multiline ? 'top' : 'center'
         }}
       />
@@ -449,14 +485,21 @@ function OBSwitchMark({ on }: { on: boolean }) {
 export function OBCTA({
   label,
   onPress,
+  onLongPress,
+  delayLongPress,
   analyticsId,
   analyticsProps,
   disabled = false,
   accessibilityLabel,
-  tone = 'pink'
+  tone = 'pink',
+  burstEmojis
 }: {
   label: string;
   onPress?: () => void;
+  /** Optional hold (e.g. co-op auth-code Easter egg). Does not fire onPress. */
+  onLongPress?: () => void;
+  /** Ms before onLongPress fires. Default is React Native's 500. */
+  delayLongPress?: number;
   analyticsId: string;
   analyticsProps?: Record<string, string | number | boolean | undefined>;
   disabled?: boolean;
@@ -465,6 +508,11 @@ export function OBCTA({
   accessibilityLabel?: string;
   /** Pink for question Continues; green for "Let's try again" on the blue stats. */
   tone?: 'pink' | 'green';
+  /**
+   * Emojis for the Continue shower. Defaults to the party mix. Places passes
+   * the favorite country's flag so Continue explodes that flag instead.
+   */
+  burstEmojis?: string[];
 }) {
   const reduce = useReduceMotion();
   const btnRef = useRef<View>(null);
@@ -472,6 +520,8 @@ export function OBCTA({
     null
   );
   const fill = tone === 'green' ? OB.green : OB.pink;
+  const shower =
+    burstEmojis && burstEmojis.length > 0 ? burstEmojis : ONBOARDING_BURST_EMOJIS;
 
   const handlePress = () => {
     if (!onPress || disabled) return;
@@ -492,14 +542,14 @@ export function OBCTA({
   };
 
   return (
-    <>
+    <View>
       <Modal visible={burst != null} transparent animationType="none" pointerEvents="none">
         <View style={{ flex: 1 }} pointerEvents="none">
           {burst ? (
             <HobbyEmojiBurst
               key={burst.key}
               play
-              emoji={ONBOARDING_BURST_EMOJIS}
+              emoji={shower}
               origin={burst.origin}
               count={22}
               power="boom"
@@ -512,6 +562,15 @@ export function OBCTA({
       <Pressable
         ref={btnRef}
         onPress={handlePress}
+        onLongPress={
+          onLongPress && !disabled
+            ? () => {
+                // Quiet hold path: no click event, no emoji burst.
+                onLongPress();
+              }
+            : undefined
+        }
+        delayLongPress={delayLongPress}
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
@@ -546,7 +605,7 @@ export function OBCTA({
           →
         </Text>
       </Pressable>
-    </>
+    </View>
   );
 }
 
@@ -560,17 +619,21 @@ export function OBSkipLink({
   onPress: () => void;
   analyticsId: string;
 }) {
+  // Skip sits on the canvas, so ink follows the theme (dark mode needs light type).
+  const theme = useThemeColors();
   return (
     <Pressable
       onPress={withAnalyticsPress(analyticsId, onPress)}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={10}
-      style={{ alignSelf: 'center', minHeight: 44, justifyContent: 'center' }}
+      // ACCESSIBILITY: hitSlop keeps a 44pt tap target without a tall empty band
+      // that pushes Continue up off the bottom of the screen.
+      hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}
+      style={{ alignSelf: 'center', paddingVertical: 2 }}
     >
       <Text
         className="font-sans-sb text-[14px]"
-        style={{ color: OB.navy, textDecorationLine: 'underline' }}
+        style={{ color: theme.ink, textDecorationLine: 'underline' }}
       >
         {label}
       </Text>
@@ -592,6 +655,8 @@ export function OBProgress({
   analyticsId?: string;
 }) {
   const done = Math.max(0, Math.min(total, step));
+  // "3/14" sits on the canvas; follow theme ink so dark mode stays readable.
+  const theme = useThemeColors();
   return (
     <AnalyticsRegion
       analyticsId={analyticsId}
@@ -624,7 +689,7 @@ export function OBProgress({
         </View>
         <Text
           className="font-sans-b text-[13px]"
-          style={{ letterSpacing: 0.4, color: OB.navy }}
+          style={{ letterSpacing: 0.4, color: theme.ink }}
         >
           {done}/{total}
         </Text>

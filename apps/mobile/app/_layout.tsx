@@ -58,6 +58,7 @@ import { recordRoutePath } from '../lib/route-trail';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
 import { BridgeLiveProvider, useBridgeLive } from '../providers/bridge-live-provider';
 import { BillyVoiceProvider, useBillyVoice } from '../providers/billy-voice-provider';
+import { PurchasesProvider } from '../providers/purchases-provider';
 import { PartyCapturePromptSync } from '../components/story/PartyCapturePromptSync';
 import { AgentIsland } from '../components/assistant/AgentIsland';
 import { fetchAssistantSettings } from '../data/assistant';
@@ -66,12 +67,13 @@ import { apiFetch } from '../lib/api';
 // Analytics: wire context + (dev) sink once. Capture stays opted-out until Settings.
 bootstrapAnalytics();
 
-// Photos: prefer a live signed avatar URL from the people cache, then the
-// demo asset drop-in. Any <Avatar personId="..."> can find a face this way.
+// Photos: prefer a live signed avatar URL from the people cache. Demo mode
+// may fall back to dropped-in assets; live mode never shows a stranger's face.
 registerAvatarPhotoResolver((personId) => {
   const liveUri = getCachedPerson(personId)?.avatarUrl?.trim();
   if (liveUri) return { uri: liveUri };
-  return getProfilePhoto(personId);
+  if (isDemoMode()) return getProfilePhoto(personId);
+  return undefined;
 });
 
 // Crashes show the Magic Patterns Windows 404 ("Error 404 / You're invited to suffer"), not Expo's
@@ -161,15 +163,17 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, width: '100%', height: '100%' }}>
       <AuthProvider>
-        <BridgeLiveProvider>
-          {/* Shared Billy mic lives above screens so listening survives navigation. */}
-          <BillyVoiceProvider>
-            {/* Personal grid tint from onboarding ColorStep wraps every Screen. */}
-            <GridColorProvider>
-              <RootLayoutNav />
-            </GridColorProvider>
-          </BillyVoiceProvider>
-        </BridgeLiveProvider>
+        <PurchasesProvider>
+          <BridgeLiveProvider>
+            {/* Shared Billy mic lives above screens so listening survives navigation. */}
+            <BillyVoiceProvider>
+              {/* Personal grid tint from onboarding ColorStep wraps every Screen. */}
+              <GridColorProvider>
+                <RootLayoutNav />
+              </GridColorProvider>
+            </BillyVoiceProvider>
+          </BridgeLiveProvider>
+        </PurchasesProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
@@ -239,9 +243,10 @@ function useProtectedRoute() {
 
     if (isDemoMode()) {
       const preview = getDevPreview();
-      // Dev preview: stay on CRT intro / sign-in or onboarding instead of Home.
+      // Dev preview: stay on CRT intro / sign-in or onboarding instead of Home,
+      // but once the run is marked complete, let Let's Go leave.
       if (preview === 'crt' && inAuthGroup) return;
-      if (preview === 'onboarding' && inOnboarding) return;
+      if (preview === 'onboarding' && inOnboarding && !isOnboardingCompleteCached()) return;
 
       // In demo we trust the synchronous cache only, so the "onboard" bypass
       // (which just reset the flag) starts the run instead of bouncing to Home.

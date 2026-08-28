@@ -1,7 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Quiet membership manage page — renews date and period-end cancel. Title opens
-// a short explainer. Cancel stays low-emphasis (ghost), not a black CTA.
+// Quiet membership manage page — renews date and period-end cancel. When the
+// person paid through Apple / Google, "Manage in App Store / Play" opens the
+// RevenueCat Customer Center (change plan, cancel in the store, restore).
+// Bridger's own "Cancel membership" still schedules a quiet period-end cancel.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
@@ -9,6 +11,7 @@ import { useRouter } from 'expo-router';
 import type { CoopMembership } from '@bridger/shared';
 import { COOP } from '../../../lib/analytics-ids';
 import {
+  ButtonPrimary,
   ButtonSecondary,
   SectionTitle,
   Screen,
@@ -17,6 +20,7 @@ import {
 } from '@bridger/ui';
 import { PortalPanel } from '../../../components/coop/PortalPanel';
 import { cancelMembership, getMembership } from '../../../data/coop';
+import { presentCustomerCenter, purchasesAvailable } from '../../../lib/purchases';
 
 export default function CoopManageScreen() {
   const router = useRouter();
@@ -35,7 +39,7 @@ export default function CoopManageScreen() {
   function onCancel() {
     Alert.alert(
       'Cancel membership?',
-      `You'll keep member perks until ${m?.renews ?? 'the end of your year'}. After that, free rolling storage applies (posts older than about a month roll off).`,
+      `You'll keep member perks until ${m?.renews ?? 'the end of your billing period'}. After that, free rolling storage applies (posts older than about a month roll off).`,
       [
         { text: 'Keep membership', style: 'cancel' },
         {
@@ -49,6 +53,22 @@ export default function CoopManageScreen() {
         }
       ]
     );
+  }
+
+  // THIS SECTION DOES: open RevenueCat Customer Center (change plan, cancel in
+  // the store, restore, refund request on iOS). Prefer this when they paid via IAP.
+  async function onOpenCustomerCenter() {
+    const result = await presentCustomerCenter();
+    if (!result.ok) {
+      Alert.alert('Membership', result.message);
+      return;
+    }
+    // Refresh Bridger membership after they may have cancelled in the store.
+    try {
+      setM(await getMembership());
+    } catch {
+      // ignore: screen already has last-known state
+    }
   }
 
   if (!m) {
@@ -74,7 +94,7 @@ export default function CoopManageScreen() {
       <ScreenBody>
         <SectionTitle
           title="Your membership"
-          description="See when your year renews. Canceling is period-end only: you keep member perks until the paid-through date, then free rolling storage applies."
+          description="See when your membership renews. Canceling is period-end only: you keep member perks until the paid-through date, then free rolling storage applies."
           infoAnalyticsId={COOP.manage.info}
           parentScreen="coop"
           section="manage"
@@ -96,6 +116,19 @@ export default function CoopManageScreen() {
               : `Renews ${m.renews ?? '—'}`}
           </Text>
         </PortalPanel>
+
+        {purchasesAvailable() ? (
+          <View className="mb-3">
+            <ButtonPrimary
+              full
+              analyticsId={COOP.manage.customer_center}
+              onPress={() => void onOpenCustomerCenter()}
+              accessibilityLabel="Open store membership settings"
+            >
+              Manage in App Store / Play
+            </ButtonPrimary>
+          </View>
+        ) : null}
 
         {!m.cancelAtPeriodEnd ? (
           <ButtonSecondary

@@ -15,6 +15,7 @@ import { SearchField } from './SearchField';
 import { NATIVE_DRIVER, useReduceMotion } from '../lib/whimsy';
 import { cn } from '../lib/cn';
 import { AnalyticsRegion, withAnalyticsPress } from '../lib/analytics';
+import { useThemeColors } from '../tokens';
 import type { HobbyBurstOrigin } from './HobbyEmojiBurst';
 
 export type HobbyOption = {
@@ -63,6 +64,7 @@ export function HobbySelect({
   onChange,
   onBurst
 }: Props) {
+  const c = useThemeColors();
   const [searchQuery, setSearchQuery] = useState('');
   const [customHobbies, setCustomHobbies] = useState<CustomHobby[]>([]);
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -218,7 +220,8 @@ export function HobbySelect({
           accessibilityLabel="Add your own hobby"
           className="min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full border border-ink-line bg-surface px-4"
         >
-          <PlusIcon size={16} color="#1C1B16" strokeWidth={2.6} />
+          {/* Theme ink so the + matches the label in dark mode (surface goes dark). */}
+          <PlusIcon size={16} color={c.ink} strokeWidth={2.6} />
           <Text className="font-sans-b text-[14px] text-ink">Add your own</Text>
         </Pressable>
       )}

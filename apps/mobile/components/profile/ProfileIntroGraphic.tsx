@@ -74,10 +74,18 @@ export function ProfileIntroDivider({ style }: { style?: StyleProp<ViewStyle> })
   );
 }
 
-/** White pixel padlock: shackle drops, body jolts, green flash. */
-export function ProfileIntroPadlock() {
+/**
+ * Pixel padlock: shackle drops, body jolts, green flash.
+ * `onDark` = white lock (profile intro on black). `onLight` = ink lock
+ * (onboarding eggshell) so the same animation reads on a light page.
+ */
+export function ProfileIntroPadlock({
+  tone = 'onDark'
+}: {
+  tone?: 'onDark' | 'onLight';
+}) {
   const reduce = useReduceMotion();
-  return <Padlock reduceMotion={reduce} />;
+  return <Padlock reduceMotion={reduce} tone={tone} />;
 }
 
 /** White-bezel CRT that types green phosphor text, then loops. */
@@ -447,11 +455,20 @@ function LedBlink({ reduceMotion }: { reduceMotion: boolean }) {
   );
 }
 
-/** White pixel padlock: shackle drops, body jolts, green flash. */
-function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
+/** Pixel padlock: shackle drops, body jolts, green flash. */
+function Padlock({
+  reduceMotion,
+  tone
+}: {
+  reduceMotion: boolean;
+  tone: 'onDark' | 'onLight';
+}) {
   const shackleY = useRef(new Animated.Value(reduceMotion ? 0 : -26)).current;
   const bodyY = useRef(new Animated.Value(0)).current;
   const flash = useRef(new Animated.Value(0)).current;
+  // White on black intro; ink on eggshell so the lock never disappears.
+  const metal = tone === 'onLight' ? '#1C1B16' : '#FFFFFF';
+  const keyhole = tone === 'onLight' ? '#F5F0E6' : '#000000';
 
   useEffect(() => {
     if (reduceMotion) {
@@ -516,7 +533,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
   }, [reduceMotion, shackleY, bodyY, flash]);
 
   return (
-    <View style={{ width: 92, height: 110, alignSelf: 'flex-start' }}>
+    <View style={{ width: 92, height: 110, alignSelf: 'center' }}>
       <Animated.View style={{ height: 34, transform: [{ translateY: shackleY }] }}>
         <View
           style={{
@@ -525,7 +542,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 0,
             width: 40,
             height: 10,
-            backgroundColor: '#FFFFFF'
+            backgroundColor: metal
           }}
         />
         <View
@@ -535,7 +552,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 10,
             width: 10,
             height: 10,
-            backgroundColor: '#FFFFFF'
+            backgroundColor: metal
           }}
         />
         <View
@@ -545,7 +562,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 10,
             width: 10,
             height: 10,
-            backgroundColor: '#FFFFFF'
+            backgroundColor: metal
           }}
         />
         <View
@@ -555,7 +572,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 20,
             width: 10,
             height: 24,
-            backgroundColor: '#FFFFFF'
+            backgroundColor: metal
           }}
         />
         <View
@@ -565,7 +582,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 20,
             width: 10,
             height: 24,
-            backgroundColor: '#FFFFFF'
+            backgroundColor: metal
           }}
         />
       </Animated.View>
@@ -584,7 +601,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 0,
             width: 92,
             height: 70,
-            backgroundColor: '#FFFFFF'
+            backgroundColor: metal
           }}
         />
         {/* Green flash sits under the keyhole so the hole stays visible when lit. */}
@@ -607,7 +624,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 20,
             width: 12,
             height: 12,
-            backgroundColor: '#000000'
+            backgroundColor: keyhole
           }}
         />
         <View
@@ -617,7 +634,7 @@ function Padlock({ reduceMotion }: { reduceMotion: boolean }) {
             top: 32,
             width: 4,
             height: 14,
-            backgroundColor: '#000000'
+            backgroundColor: keyhole
           }}
         />
       </Animated.View>

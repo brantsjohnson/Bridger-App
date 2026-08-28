@@ -1,12 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Server-side PostHog helper. The app captures events itself. This file only
-// (1) checks that person-delete credentials work, and (2) erases a person's
-// PostHog record when they opt out or we delete their account.
-// Never logs API keys or emails.
+// Server-side PostHog helper. The app captures most events itself. This file
+// (1) checks that person-delete credentials work, (2) erases a person's
+// PostHog record when they opt out or we delete their account, and (3) can
+// capture a few confirmed product events from webhooks (e.g. coop_renewed).
+// Never logs API keys, emails, receipts, or card data.
 // ============================================
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { AnalyticsProductEvent } from '@bridger/shared';
 
 const DEFAULT_INGEST = 'https://us.i.posthog.com';
 
@@ -68,8 +70,18 @@ export class PosthogService {
     return (this.config.get<string>('POSTHOG_PERSONAL_API_KEY') ?? '').trim();
   }
 
+  /** Public project key (phc_…) used for server-side capture. Never a personal key. */
+  private projectApiKey(): string {
+    return (this.config.get<string>('POSTHOG_PROJECT_API_KEY') ?? '').trim();
+  }
+
   isConfigured(): boolean {
     return Boolean(this.projectId() && this.personalKey());
+  }
+
+  /** True when we can send product events from webhooks. */
+  canCapture(): boolean {
+    return Boolean(this.projectApiKey());
   }
 
   // THIS SECTION DOES: a short live probe for the admin health page.
@@ -111,6 +123,67 @@ export class PosthogService {
         kind: 'live',
         detail: 'Could not reach the PostHog API host.'
       };
+    }
+  }
+
+  /**
+   * Capture a named product event for an opaque Bridger user id.
+   * Used by payment webhooks (renew / expire). Missing project key is a quiet
+   * no-op so webhooks still succeed when analytics is not wired on the server.
+   * PRIVACY: distinct_id is the opaque user uuid only. Never pass email, name,
+   * receipt, or card data in properties.
+   */
+  async captureProduct(
+    distinctId: string,
+    event: AnalyticsProductEvent,
+    properties: Record<string, string | number | boolean | null | undefined> = {}
+  ): Promise<void> {
+    const apiKey = this.projectApiKey();
+    const id = distinctId.trim();
+    if (!apiKey || !id) return;
+
+    // Strip undefined and anything that looks like content / PII keys.
+    const safe: Record<string, string | number | boolean | null> = {};
+    for (const [k, v] of Object.entries(properties)) {
+      if (v === undefined) continue;
+      const key = k.toLowerCase();
+      if (
+        key.includes('email') ||
+        key.includes('name') ||
+        key.includes('receipt') ||
+        key.includes('token') ||
+        key.includes('card') ||
+        key.includes('phone')
+      ) {
+        continue;
+      }
+      safe[k] = v;
+    }
+
+    try {
+      const res = await fetchWithTimeout(
+        `${this.ingestHost()}/capture/`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: apiKey,
+            event,
+            distinct_id: id,
+            properties: {
+              ...safe,
+              $lib: 'bridger-api',
+              platform: 'server'
+            }
+          })
+        },
+        4000
+      );
+      if (!res.ok) {
+        this.log.warn(`PostHog capture HTTP ${res.status} for ${event}`);
+      }
+    } catch (e) {
+      this.log.warn(`PostHog capture failed for ${event}: ${String(e)}`);
     }
   }
 

@@ -10,7 +10,9 @@
 // ============================================
 import { ACCENT_HEX, THEME } from '@bridger/ui';
 
-/** Light-mode surface colors (onboarding stays light-only, no dark flip). */
+/** Light-mode paper/ink for white onboarding boxes. The page canvas follows
+ *  the app theme (`bg-canvas`); labels ON the canvas must use `useThemeColors`
+ *  or `text-ink*`, not these locked light values. */
 const light = THEME.light;
 
 /** Soft blue fill used when a tile is picked (same pale blue as ACCENTS.blue.tintSolid). */

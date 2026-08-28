@@ -992,6 +992,9 @@ export type Database = {
           cancelled_at: string | null
           created_at: string
           dues_paid_through: string | null
+          provider: string | null
+          provider_subscription_id: string | null
+          stripe_customer_id: string | null
           since: string
           updated_at: string
           user_id: string
@@ -1002,6 +1005,9 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           dues_paid_through?: string | null
+          provider?: string | null
+          provider_subscription_id?: string | null
+          stripe_customer_id?: string | null
           since?: string
           updated_at?: string
           user_id: string
@@ -1012,6 +1018,9 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           dues_paid_through?: string | null
+          provider?: string | null
+          provider_subscription_id?: string | null
+          stripe_customer_id?: string | null
           since?: string
           updated_at?: string
           user_id?: string
@@ -3595,6 +3604,8 @@ export type Database = {
           meet_scope: string
           notif_prefs: Json
           onboarding_complete: boolean
+          onboarding_step: string | null
+          onboarding_draft: Json | null
           profile_intro_seen: boolean
           profile_presentation: Json | null
           profile_custom_css: string | null
@@ -3621,6 +3632,8 @@ export type Database = {
           meet_scope?: string
           notif_prefs?: Json
           onboarding_complete?: boolean
+          onboarding_step?: string | null
+          onboarding_draft?: Json | null
           profile_intro_seen?: boolean
           profile_presentation?: Json | null
           profile_custom_css?: string | null
@@ -3647,6 +3660,8 @@ export type Database = {
           meet_scope?: string
           notif_prefs?: Json
           onboarding_complete?: boolean
+          onboarding_step?: string | null
+          onboarding_draft?: Json | null
           profile_intro_seen?: boolean
           profile_presentation?: Json | null
           profile_custom_css?: string | null

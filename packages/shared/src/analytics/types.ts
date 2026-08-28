@@ -145,6 +145,16 @@ export type AnalyticsProductEvent =
   | 'coop_joined'
   /** Redeemed a promo / auth code for a free year. Never logs the code string. */
   | 'coop_promo_redeemed'
+  /**
+   * Subscription renewed (RevenueCat RENEWAL / Stripe invoice cycle).
+   * Server webhook only. Never receipt / PII.
+   */
+  | 'coop_renewed'
+  /**
+   * Membership ended after paid-through (RevenueCat EXPIRATION / Stripe
+   * subscription deleted). Server webhook only. Never receipt / PII.
+   */
+  | 'coop_expired'
   | 'coop_left'
   /** scheduled leave; perks stay until paid-through */
   | 'coop_cancel_scheduled'

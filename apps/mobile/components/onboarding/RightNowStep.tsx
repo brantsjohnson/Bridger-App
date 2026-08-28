@@ -63,20 +63,22 @@ export function RightNowStep({
             placeholder="Barista, student, nurse..."
             analyticsId={ONBOARDING.taste.current_input}
             accessibilityLabel="What you currently do"
+            multiline
           />
         </View>
 
         {/* Dream: the question, then the typing box. */}
         <View style={{ gap: 12 }}>
           <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
-            <OBHeading small>What's your dream to do for work?</OBHeading>
+            <OBHeading small>If anything were possible, what would you do?</OBHeading>
           </AnalyticsRegion>
           <OBField
             value={dreamJob}
             onChange={onChangeDream}
             placeholder="What you'd love to do"
             analyticsId={ONBOARDING.taste.dream_input}
-            accessibilityLabel="Your dream to do"
+            accessibilityLabel="If anything were possible, what would you do"
+            multiline
           />
         </View>
       </View>

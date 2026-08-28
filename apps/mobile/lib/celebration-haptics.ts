@@ -107,6 +107,29 @@ export function runVennMergeHaptics(reduced: boolean): () => void {
   };
 }
 
+// THIS SECTION DOES: the "fireworks show" buzz for the post-onboarding welcome.
+// Each shell going up + bursting is a heavy/rigid "boom", and most booms trail a
+// couple of light "crackle" taps, so it feels like real fireworks over ~3.5s.
+export function fireFireworksHaptics(): void {
+  if (Platform.OS === 'web') return;
+
+  void AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
+    if (reduced) return;
+
+    // When each shell bursts (ms from start). Lines up with the visual shells.
+    const booms = [0, 360, 720, 1120, 1560, 2050, 2600, 3200];
+    for (const at of booms) {
+      // The boom itself: a big hit, randomly heavy or rigid so it is not robotic.
+      setTimeout(() => fireTap(Math.random() < 0.5 ? 'heavy' : 'rigid'), at);
+      // The crackle: quick little sparks right after most booms.
+      if (Math.random() < 0.72) {
+        setTimeout(() => fireTap('light'), at + 70);
+        setTimeout(() => fireTap('selection'), at + 130);
+      }
+    }
+  });
+}
+
 /**
  * One excited tap when a word pops onto the taste-intro line. Later words hit
  * a little harder so the line builds energy toward the end.

@@ -119,7 +119,8 @@ export function AboutMeSection({
               editing ? 'bg-ink' : 'border border-ink-line bg-surface'
             }`}
           >
-            <Text className={`font-sans-b text-[12px] ${editing ? 'text-white' : 'text-ink'}`}>
+            {/* text-canvas flips with theme so Done stays readable on cream ink in dark mode. */}
+            <Text className={`font-sans-b text-[12px] ${editing ? 'text-canvas' : 'text-ink'}`}>
               {editing ? 'Done' : 'Edit'}
             </Text>
           </Pressable>

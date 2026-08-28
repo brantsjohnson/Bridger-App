@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Contacts permission + local picker + share invite link. Used by the demo-week
-// access gate and the three onboarding invite slots (#1 / #2 / #3).
+// access gate and the three onboarding invite slots (#1 / #2 / #3), and the
+// Co-op "Invite 3 friends" path.
 //
 // If the device has no share sheet at all (a desktop browser), we copy the
 // invite link to the clipboard instead of throwing, so a tap never turns into
@@ -17,7 +18,7 @@ import { markDemoInviteSent } from '../data/access';
 import type { ContactPick } from '../components/invite/ContactInviteSheet';
 
 export type InviteFromContactsResult =
-  | { ok: true; method: 'sms' | 'share' }
+  | { ok: true; method: 'sms' | 'share' | 'clipboard'; url: string }
   | { ok: false; message: string; cancelled?: boolean };
 
 const DEMO_INVITE_MESSAGE =
@@ -76,28 +77,64 @@ function messageFor(context: InviteContext): string {
   return context === 'onboarding' ? ONBOARDING_INVITE_MESSAGE : DEMO_INVITE_MESSAGE;
 }
 
+/** Build the full share body so every app gets the link in the text. */
+function shareBody(context: InviteContext, url: string): string {
+  return `${messageFor(context)} ${url}`;
+}
+
 /**
- * THIS SECTION DOES: open the phone's share sheet, and never blow up if there
- * isn't one. Desktop browsers have no share sheet, so instead of throwing (which
- * used to paint a red error over the screen) we quietly copy the link to the
- * clipboard, which still counts as the invite going out.
+ * THIS SECTION DOES: open the phone's share sheet (or Messages), and never blow
+ * up if there isn't one. Desktop browsers have no share sheet, so instead of
+ * throwing we copy the link to the clipboard.
  */
 async function shareOrCopy(
-  message: string,
+  body: string,
   url: string
 ): Promise<InviteFromContactsResult> {
-  try {
-    const share = await Share.share({ message, url });
-    if (share.action === Share.dismissedAction) {
-      return { ok: false, message: 'Share cancelled', cancelled: true };
+  // Web: prefer the browser share sheet when it exists, else copy the link.
+  if (Platform.OS === 'web') {
+    const nav = (globalThis as {
+      navigator?: {
+        share?: (data: { title?: string; text?: string; url?: string }) => Promise<void>;
+        clipboard?: { writeText?: (t: string) => Promise<void> };
+      };
+    }).navigator;
+
+    if (typeof nav?.share === 'function') {
+      try {
+        await nav.share({ title: 'Join me on Bridger', text: body, url });
+        return { ok: true, method: 'share', url };
+      } catch (err) {
+        // User cancelled the browser sheet: AbortError. Anything else → copy.
+        const name = err && typeof err === 'object' && 'name' in err ? String((err as { name: string }).name) : '';
+        if (name === 'AbortError') {
+          return { ok: false, message: 'Share cancelled', cancelled: true };
+        }
+      }
     }
-    return { ok: true, method: 'share' };
-  } catch {
-    const copied = await copyLinkToClipboard(message);
-    if (copied) return { ok: true, method: 'share' };
+
+    const copied = await copyLinkToClipboard(body);
+    if (copied) return { ok: true, method: 'clipboard', url };
     return {
       ok: false,
       message: 'Sharing is not available here. Open Bridger on your phone to send the invite.'
+    };
+  }
+
+  try {
+    // Put the URL in the message so Messages / WhatsApp / Mail always get it.
+    // Also pass `url` for iOS targets that prefer a link attachment.
+    const share = await Share.share(
+      Platform.OS === 'ios' ? { message: body, url } : { message: body }
+    );
+    if (share.action === Share.dismissedAction) {
+      return { ok: false, message: 'Share cancelled', cancelled: true };
+    }
+    return { ok: true, method: 'share', url };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Could not open the share sheet.'
     };
   }
 }
@@ -119,11 +156,11 @@ async function copyLinkToClipboard(text: string): Promise<boolean> {
 /** After a confirmed share/SMS open, unlock demo access only for that gate. */
 async function afterInviteSent(
   context: InviteContext,
-  method: 'sms' | 'share',
+  method: 'sms' | 'share' | 'clipboard',
   opts?: ShareInviteOpts
 ): Promise<void> {
   trackProduct('invite_link_shared', {
-    method,
+    method: method === 'clipboard' ? 'share' : method,
     context,
     ...(opts?.slot != null ? { slot: opts.slot } : {})
   });
@@ -139,23 +176,25 @@ export async function sendInviteToContact(
   opts?: ShareInviteOpts
 ): Promise<InviteFromContactsResult> {
   try {
-    const invite = await createShareInvite();
-    const message = `${messageFor(context)} ${invite.url}`;
+    const invite = await createShareInvite(
+      context === 'onboarding' ? { forOnboarding: true } : undefined
+    );
+    const body = shareBody(context, invite.url);
 
     const digits = contact.phone.replace(/[^\d+]/g, '');
     if (digits && Platform.OS !== 'web') {
-      const body = encodeURIComponent(message);
+      const encoded = encodeURIComponent(body);
       const smsUrl =
-        Platform.OS === 'ios' ? `sms:${digits}&body=${body}` : `sms:${digits}?body=${body}`;
+        Platform.OS === 'ios' ? `sms:${digits}&body=${encoded}` : `sms:${digits}?body=${encoded}`;
       const can = await Linking.canOpenURL(smsUrl);
       if (can) {
         await Linking.openURL(smsUrl);
         await afterInviteSent(context, 'sms', opts);
-        return { ok: true, method: 'sms' };
+        return { ok: true, method: 'sms', url: invite.url };
       }
     }
 
-    const result = await shareOrCopy(message, invite.url);
+    const result = await shareOrCopy(body, invite.url);
     if (result.ok) await afterInviteSent(context, result.method, opts);
     return result;
   } catch (err) {
@@ -172,9 +211,11 @@ export async function shareInviteForAccess(
   opts?: ShareInviteOpts
 ): Promise<InviteFromContactsResult> {
   try {
-    const invite = await createShareInvite();
-    const message = `${messageFor(context)} ${invite.url}`;
-    const result = await shareOrCopy(message, invite.url);
+    const invite = await createShareInvite(
+      context === 'onboarding' ? { forOnboarding: true } : undefined
+    );
+    const body = shareBody(context, invite.url);
+    const result = await shareOrCopy(body, invite.url);
     if (result.ok) await afterInviteSent(context, result.method, opts);
     return result;
   } catch (err) {

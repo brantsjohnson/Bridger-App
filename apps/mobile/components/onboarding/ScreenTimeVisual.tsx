@@ -3,14 +3,16 @@
 // The last reality-check picture: an 80-year life that colors in one beat at
 // a time. First you see the whole life. Then sleep. Then the everyday stuff
 // (work, chores, commute, exercise). Then devices take a huge pink bite.
-// Then the tiny leftover for time spent in person with people (4.0 years).
+// Then the tiny leftover: only 4.0 years spent in person with people.
 //
-// Each beat colors a band, then smoothly opens a little accordion under that
-// band (icon + years). The next beat closes the previous accordion and opens
-// the new one, so the sections below slide down. After a band is filled, tap
-// it again to reopen or hide its years. Captions type in letter by letter
-// (skipped when Reduce Motion is on). The green "Let's try again" button
-// waits until the last caption is done.
+// Each beat colors a band, then opens a roomy accordion under that band with
+// the icon + the SAME big thick caption that used to sit under the whole
+// stack (so we do not show a tiny line and a giant line at once). The next
+// beat closes the previous accordion and opens the new one, so the sections
+// below slide down. After a band is filled, tap it again to reopen or hide
+// its caption. Captions type in letter by letter (skipped when Reduce Motion
+// is on). The green "Let's try again" button waits until the last caption is
+// done.
 //
 // ACCESSIBILITY: the hash-line picture is decorative aside from the band
 // taps. The changing sentence is real text. Reduce Motion skips waits and
@@ -38,9 +40,12 @@ import { OB } from "./onboarding-theme";
 const HOLD_MS = 3000;
 /** How long each typed character waits before the next one appears. */
 const TYPE_MS = 32;
-/** Open accordion row height (icon + years). */
-const STAT_ROW_H = 28;
-/** How long open/close of a years row takes. */
+/**
+ * Open accordion height: icon + big display caption (up to ~3 lines).
+ * Tall on purpose so the stack between bands is not squished.
+ */
+const STAT_ROW_H = 108;
+/** How long open/close of a caption row takes. */
 const ACCORDION_MS = 340;
 
 // Bright slice colors on the blue page. Caption type uses the same hex as
@@ -53,6 +58,11 @@ const SLICES: ReadonlyArray<{
   key: string;
   noun: string;
   years: string;
+  /**
+   * Optional lead-in for the big caption (social uses "only 4.0").
+   * The year-band math still uses `years` + `ticks`.
+   */
+  yearsLead?: string;
   ticks: number;
   color: string;
   Icon: LucideIcon;
@@ -117,6 +127,7 @@ const SLICES: ReadonlyArray<{
     key: "social",
     noun: "spent in person with people.",
     years: "4.0",
+    yearsLead: "only 4.0",
     ticks: 4,
     color: SLICE_LAVENDER,
     Icon: UsersIcon,
@@ -126,7 +137,18 @@ const SLICES: ReadonlyArray<{
 
 const FAINT = "rgba(255,255,255,0.28)";
 const LAST_BEAT = 7;
-const AVERAGE_NOTE = "(Average over 80 years)";
+
+/** Build the spoken / typed line for one life-slice. */
+function sliceCaption(slice: (typeof SLICES)[number]) {
+  const lead = slice.yearsLead ?? slice.years;
+  return {
+    partA: lead,
+    partB: " years ",
+    partC: slice.noun,
+    full: `${lead} years ${slice.noun}`,
+    accent: slice.color,
+  };
+}
 
 export function ScreenTimeVisual({
   reduceMotion,
@@ -138,7 +160,7 @@ export function ScreenTimeVisual({
 }) {
   const [beat, setBeat] = useState(reduceMotion ? LAST_BEAT : 0);
   const [linesBeat, setLinesBeat] = useState(reduceMotion ? LAST_BEAT : 0);
-  // Which band's years row is open. Story auto-opens the latest filled band;
+  // Which band's caption row is open. Story auto-opens the latest filled band;
   // taps can reopen an older one.
   const [openSlice, setOpenSlice] = useState<number | null>(
     reduceMotion ? SLICES.length - 1 : null,
@@ -174,8 +196,8 @@ export function ScreenTimeVisual({
   }, [linesBeat]);
 
   // THIS SECTION DOES: tell analytics which beat we reached. The green button
-  // waits until TypeCaption finishes the last line (4.0…), not just when the
-  // beat index flips.
+  // waits until TypeCaption finishes the last line (only 4.0…), not just when
+  // the beat index flips.
   useEffect(() => {
     trackFlowStep("onboarding", "stat-screentime", { page_index: beat });
   }, [beat]);
@@ -199,7 +221,7 @@ export function ScreenTimeVisual({
     setBeat((b) => Math.min(LAST_BEAT, b + 1));
   };
 
-  // THIS SECTION DOES: tap a filled band to toggle its years row; tap while
+  // THIS SECTION DOES: tap a filled band to toggle its caption row; tap while
   // the story is still playing on an unfilled area to skip ahead.
   const onBandPress = (sliceIndex: number) => {
     const filled = sliceIndex < linesBeat;
@@ -210,9 +232,12 @@ export function ScreenTimeVisual({
     if (canAdvance) goNext();
   };
 
+  // Which slice is actively typing (beat 1 → slice 0). Null on the intro beat.
+  const typingSlice = beat > 0 ? beat - 1 : null;
+
   return (
-    <View style={{ flex: 1, minHeight: 0, width: "100%", gap: 12 }}>
-      {/* THE LIFE BAR: bands stack; each opens a years accordion under itself. */}
+    <View style={{ flex: 1, minHeight: 0, width: "100%", gap: 16 }}>
+      {/* THE LIFE BAR: bands stack; each opens a big caption accordion under itself. */}
       <AnalyticsRegion
         analyticsId={ONBOARDING.stat.visual}
         interactive={false}
@@ -221,130 +246,120 @@ export function ScreenTimeVisual({
         <LifeBar
           filled={linesBeat}
           openSlice={openSlice}
+          typingSlice={typingSlice}
+          beat={beat}
           reduceMotion={reduceMotion}
           canAdvance={canAdvance}
           onBandPress={onBandPress}
           onAdvance={goNext}
-        />
-      </AnalyticsRegion>
-
-      {/* Quiet note under the bars: centered, types in once, then stays. */}
-      <TypeInLine
-        text={AVERAGE_NOTE}
-        reduceMotion={reduceMotion}
-        style={{
-          color: "rgba(255,255,255,0.72)",
-          fontSize: 13,
-          lineHeight: 18,
-          textAlign: "center",
-          width: "100%",
-        }}
-        className="font-sans-sb"
-      />
-
-      {/* THE SENTENCE: types in as each beat lands. VoiceOver still gets the full line. */}
-      <AnalyticsRegion
-        analyticsId={ONBOARDING.stat.caption}
-        interactive={false}
-      >
-        <TypeCaption
-          beat={beat}
           onTextVisible={setLinesBeat}
-          reduceMotion={reduceMotion}
           onTypingDone={() => {
             if (beat >= LAST_BEAT) markLifeComplete();
           }}
         />
       </AnalyticsRegion>
+
+      {/* INTRO ONLY: "An 80-year life." lives under the stack until the first
+          band opens and takes over with its own between-band caption. */}
+      {beat === 0 ? (
+        <AnalyticsRegion
+          analyticsId={ONBOARDING.stat.caption}
+          interactive={false}
+        >
+          <TypeCaption
+            mode="intro"
+            animate
+            reduceMotion={reduceMotion}
+            onTextVisible={setLinesBeat}
+            onTypingDone={() => {
+              /* intro has no CTA gate */
+            }}
+          />
+        </AnalyticsRegion>
+      ) : null}
     </View>
   );
 }
 
+/** Fixed blue gap between hash lines. Always 1px so the stack looks even. */
+const TICK_GAP = 1;
+
+/**
+ * Split a band's pixel height into equal tick heights with the same gap
+ * between every line. Leftover pixels go into line thickness (not the gaps),
+ * so you never get a random double-wide blue stripe from flex rounding.
+ */
+function tickHeights(bandHeight: number, ticks: number): number[] {
+  if (ticks <= 0 || bandHeight <= 0) return Array.from({ length: ticks }, () => 0);
+  const gaps = Math.max(0, ticks - 1) * TICK_GAP;
+  const usable = Math.max(0, Math.floor(bandHeight) - gaps);
+  const base = Math.floor(usable / ticks);
+  const rem = usable - base * ticks;
+  // First `rem` lines get +1px so the band still fills edge to edge.
+  return Array.from({ length: ticks }, (_, i) => base + (i < rem ? 1 : 0));
+}
+
 /**
  * Stack of year-bands. Under each filled band, an accordion can open with that
- * slice's icon + years, pushing everything below it down smoothly.
+ * slice's icon + big thick caption, pushing everything below it down smoothly.
  */
 function LifeBar({
   filled,
   openSlice,
+  typingSlice,
+  beat,
   reduceMotion,
   canAdvance,
   onBandPress,
   onAdvance,
+  onTextVisible,
+  onTypingDone,
 }: {
   filled: number;
   openSlice: number | null;
+  typingSlice: number | null;
+  beat: number;
   reduceMotion: boolean;
   canAdvance: boolean;
   onBandPress: (sliceIndex: number) => void;
   onAdvance: () => void;
+  onTextVisible: (b: number) => void;
+  onTypingDone: () => void;
 }) {
   return (
-    <View style={{ flex: 1, minHeight: 0, width: "100%", gap: 1 }}>
+    // No gap between siblings: closed accordions are height 0, and a flex gap
+    // would punch uneven blue holes between bands.
+    <View style={{ flex: 1, minHeight: 0, width: "100%" }}>
       {SLICES.map((slice, sliceIndex) => {
         const on = sliceIndex < filled;
         const open = openSlice === sliceIndex;
+        // Live typing only on the slice the story just opened; older reopen
+        // taps show the finished line right away.
+        const animateThis =
+          open && on && typingSlice === sliceIndex && beat === sliceIndex + 1;
         return (
           <React.Fragment key={slice.key}>
-            {/* THE BAND: flex share by tick count. Accordion is a sibling so
-                opening it pushes bands below down instead of squishing this one. */}
-            <Pressable
-              onPress={withAnalyticsPress(
-                on
-                  ? ONBOARDING.stat.band
-                  : canAdvance
-                    ? ONBOARDING.stat.advance
-                    : undefined,
-                () => {
-                  if (on) onBandPress(sliceIndex);
-                  else if (canAdvance) onAdvance();
-                },
-                {
-                  analyticsProps: {
-                    variant: "screentime",
-                    page_index: sliceIndex,
-                    method: on ? "toggle" : "advance",
-                  },
-                },
-              )}
-              disabled={!on && !canAdvance}
-              accessibilityRole={on || canAdvance ? "button" : "none"}
-              accessibilityLabel={
-                on
-                  ? `${slice.a11y}, ${slice.years} years. ${open ? "Hide" : "Show"} detail`
-                  : canAdvance
-                    ? "Show the next part of the story"
-                    : undefined
-              }
-              accessibilityState={on ? { expanded: open } : undefined}
-              style={{
-                flexGrow: slice.ticks,
-                flexShrink: 1,
-                flexBasis: 0,
-                minHeight: 0,
-                gap: 1,
-              }}
-            >
-              {Array.from({ length: slice.ticks }, (_, t) => (
-                <View
-                  key={`${slice.key}-${t}`}
-                  style={{
-                    flexGrow: 1,
-                    flexShrink: 1,
-                    flexBasis: 0,
-                    minHeight: 0,
-                    width: "100%",
-                    backgroundColor: on ? slice.color : FAINT,
-                  }}
-                />
-              ))}
-            </Pressable>
+            {/* THE BAND: flex share by tick count. Hash lines use measured
+                pixel heights so gaps stay exactly 1px (no flex leftover stripes). */}
+            <YearBand
+              slice={slice}
+              sliceIndex={sliceIndex}
+              on={on}
+              open={open}
+              canAdvance={canAdvance}
+              onBandPress={onBandPress}
+              onAdvance={onAdvance}
+            />
 
-            {/* ACCORDION: under this band; lower bands slide down when it opens. */}
-            <SliceStatRow
+            {/* ACCORDION: icon + big thick caption between the year bands. */}
+            <SliceCaptionRow
               open={open && on}
               slice={slice}
+              animate={animateThis}
+              beat={beat}
               reduceMotion={reduceMotion}
+              onTextVisible={onTextVisible}
+              onTypingDone={onTypingDone}
             />
           </React.Fragment>
         );
@@ -354,17 +369,108 @@ function LifeBar({
 }
 
 /**
- * Smooth open/close row under a color band. Height animates so the bands
- * below slide instead of jumping. Reduce Motion snaps.
+ * One color band of year-hash lines. Measures its own height, then paints
+ * every tick with the same gap so flex cannot leave random bigger blue spaces.
  */
-function SliceStatRow({
+function YearBand({
+  slice,
+  sliceIndex,
+  on,
+  open,
+  canAdvance,
+  onBandPress,
+  onAdvance,
+}: {
+  slice: (typeof SLICES)[number];
+  sliceIndex: number;
+  on: boolean;
+  open: boolean;
+  canAdvance: boolean;
+  onBandPress: (sliceIndex: number) => void;
+  onAdvance: () => void;
+}) {
+  const [bandH, setBandH] = useState(0);
+  const heights = tickHeights(bandH, slice.ticks);
+
+  return (
+    <Pressable
+      onLayout={(e) => {
+        const next = Math.round(e.nativeEvent.layout.height);
+        setBandH((prev) => (prev === next ? prev : next));
+      }}
+      onPress={withAnalyticsPress(
+        on
+          ? ONBOARDING.stat.band
+          : canAdvance
+            ? ONBOARDING.stat.advance
+            : undefined,
+        () => {
+          if (on) onBandPress(sliceIndex);
+          else if (canAdvance) onAdvance();
+        },
+        {
+          analyticsProps: {
+            variant: "screentime",
+            page_index: sliceIndex,
+            method: on ? "toggle" : "advance",
+          },
+        },
+      )}
+      disabled={!on && !canAdvance}
+      accessibilityRole={on || canAdvance ? "button" : "none"}
+      accessibilityLabel={
+        on
+          ? `${slice.a11y}, ${slice.yearsLead ?? slice.years} years. ${open ? "Hide" : "Show"} detail`
+          : canAdvance
+            ? "Show the next part of the story"
+            : undefined
+      }
+      accessibilityState={on ? { expanded: open } : undefined}
+      style={{
+        flexGrow: slice.ticks,
+        flexShrink: 1,
+        flexBasis: 0,
+        minHeight: 0,
+        width: "100%",
+        overflow: "hidden",
+      }}
+    >
+      {heights.map((h, t) => (
+        <View
+          key={`${slice.key}-${t}`}
+          style={{
+            height: h,
+            width: "100%",
+            marginBottom: t < slice.ticks - 1 ? TICK_GAP : 0,
+            backgroundColor: on ? slice.color : FAINT,
+          }}
+        />
+      ))}
+    </Pressable>
+  );
+}
+
+/**
+ * Smooth open/close row under a color band. Holds the icon + the big display
+ * caption (the old small between-band line is gone). Height animates so the
+ * bands below slide instead of jumping. Reduce Motion snaps.
+ */
+function SliceCaptionRow({
   open,
   slice,
+  animate,
+  beat,
   reduceMotion,
+  onTextVisible,
+  onTypingDone,
 }: {
   open: boolean;
   slice: (typeof SLICES)[number];
+  animate: boolean;
+  beat: number;
   reduceMotion: boolean;
+  onTextVisible: (b: number) => void;
+  onTypingDone: () => void;
 }) {
   const height = useRef(new Animated.Value(open ? STAT_ROW_H : 0)).current;
   const opacity = useRef(new Animated.Value(open ? 1 : 0)).current;
@@ -404,118 +510,99 @@ function SliceStatRow({
         style={{
           height: STAT_ROW_H,
           flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
+          alignItems: "flex-start",
+          gap: 10,
+          paddingTop: 10,
+          paddingBottom: 8,
           paddingHorizontal: 2,
         }}
       >
-        <Icon size={14} color={slice.color} strokeWidth={2.4} />
-        <Text
-          style={{
-            fontSize: 13,
-            lineHeight: 16,
-            fontWeight: "700",
-            letterSpacing: -0.2,
-            color: slice.color,
-          }}
+        {/* Keep the slice emoji / icon beside the big caption. */}
+        <View style={{ paddingTop: 4 }}>
+          <Icon size={22} color={slice.color} strokeWidth={2.4} />
+        </View>
+        <AnalyticsRegion
+          analyticsId={ONBOARDING.stat.caption}
+          interactive={false}
+          style={{ flex: 1, minWidth: 0 }}
         >
-          {slice.years}
-        </Text>
-        <Text
-          numberOfLines={1}
-          style={{
-            flexShrink: 1,
-            fontSize: 12,
-            lineHeight: 15,
-            fontWeight: "600",
-            color: slice.color,
-            opacity: 0.9,
-          }}
-        >
-          {slice.noun.replace(/\.$/, "")}
-        </Text>
+          <TypeCaption
+            mode="slice"
+            slice={slice}
+            animate={animate}
+            reduceMotion={reduceMotion}
+            onTextVisible={onTextVisible}
+            onTypingDone={onTypingDone}
+            // Re-key so a reopen tap still shows the finished line, while a
+            // fresh story beat restarts the typewriter.
+            typeKey={`${slice.key}-${animate ? beat : "static"}`}
+          />
+        </AnalyticsRegion>
       </View>
     </Animated.View>
   );
 }
 
 /**
- * Types one plain string letter by letter. Used for the quiet average note.
- * Reduce Motion shows the whole line at once.
- */
-function TypeInLine({
-  text,
-  reduceMotion,
-  style,
-  className,
-}: {
-  text: string;
-  reduceMotion: boolean;
-  style?: object;
-  className?: string;
-}) {
-  const [count, setCount] = useState(reduceMotion ? text.length : 0);
-
-  useEffect(() => {
-    if (reduceMotion) {
-      setCount(text.length);
-      return;
-    }
-    setCount(0);
-    let i = 0;
-    const id = setInterval(() => {
-      i += 1;
-      setCount(i);
-      if (i >= text.length) clearInterval(id);
-    }, TYPE_MS);
-    return () => clearInterval(id);
-  }, [text, reduceMotion]);
-
-  return (
-    <Text className={className} style={style} accessibilityRole="text">
-      {text.slice(0, count)}
-    </Text>
-  );
-}
-
-/**
- * Types the beat caption letter by letter, keeping orange/white colors on the
- * right parts of the line. When the beat changes, it clears and types the new
- * sentence. Bars color in as soon as typing starts for that beat. onTypingDone
- * fires when the full line is on screen (so the parent can wait for 4.0…).
+ * Types the beat caption letter by letter, keeping accent/white colors on the
+ * right parts of the line. Bars color in as soon as typing starts for that
+ * beat. onTypingDone fires when the full line is on screen (so the parent can
+ * wait for only 4.0…).
  */
 function TypeCaption({
-  beat,
+  mode,
+  slice,
+  animate,
   onTextVisible,
   onTypingDone,
   reduceMotion,
+  typeKey,
 }: {
-  beat: number;
+  mode: "intro" | "slice";
+  slice?: (typeof SLICES)[number];
+  /** When false, show the finished line immediately (reopened accordion). */
+  animate: boolean;
   onTextVisible: (b: number) => void;
   /** Fires once the current caption is fully revealed. */
   onTypingDone?: () => void;
   reduceMotion: boolean;
+  /** Optional key so reopen vs live typing reset cleanly. */
+  typeKey?: string;
 }) {
-  const slice = beat === 0 ? null : SLICES[beat - 1];
-  // Build the full line as three colored parts so typing can reveal them in order.
-  const partA = beat === 0 ? "An 80-year life." : slice?.years ?? "";
-  const partB = beat === 0 ? "" : " years ";
-  const partC = beat === 0 ? "" : slice?.noun ?? "";
-  const full = partA + partB + partC;
-  const accent = slice?.color ?? OB.onColor;
+  const parts =
+    mode === "intro"
+      ? {
+          partA: "An 80-year life.",
+          partB: "",
+          partC: "",
+          full: "An 80-year life.",
+          accent: OB.onColor,
+          beatIndex: 0,
+        }
+      : (() => {
+          const c = sliceCaption(slice!);
+          return { ...c, beatIndex: SLICES.indexOf(slice!) + 1 };
+        })();
 
-  const [count, setCount] = useState(reduceMotion ? full.length : 0);
+  const { partA, partB, partC, full, accent, beatIndex } = parts;
+  const shouldAnimate = animate && !reduceMotion;
+
+  const [count, setCount] = useState(shouldAnimate ? 0 : full.length);
   const onTextVisibleRef = useRef(onTextVisible);
   onTextVisibleRef.current = onTextVisible;
   const onTypingDoneRef = useRef(onTypingDone);
   onTypingDoneRef.current = onTypingDone;
 
   useEffect(() => {
-    onTextVisibleRef.current(beat);
+    // Live story captions (animate) drive which bands fill. A reopen tap must
+    // not rewind the colored bars or re-fire the CTA gate.
+    if (animate) {
+      onTextVisibleRef.current(beatIndex);
+    }
 
-    if (reduceMotion) {
+    if (!shouldAnimate) {
       setCount(full.length);
-      onTypingDoneRef.current?.();
+      if (animate) onTypingDoneRef.current?.();
       return;
     }
 
@@ -535,7 +622,7 @@ function TypeCaption({
       }
     }, TYPE_MS);
     return () => clearInterval(id);
-  }, [beat, full, reduceMotion]);
+  }, [animate, beatIndex, full, shouldAnimate, typeKey]);
 
   // Split the revealed characters across the three colored parts.
   const n = Math.min(count, full.length);
@@ -544,27 +631,27 @@ function TypeCaption({
   const shownA = partA.slice(0, aLen);
   const shownB = partB.slice(0, bLen);
   const shownC = partC.slice(0, Math.max(0, n - partA.length - partB.length));
-  const typing = !reduceMotion && count < full.length;
+  const typing = shouldAnimate && count < full.length;
 
   return (
-    <View style={{ minHeight: 88, justifyContent: "flex-start" }}>
-      <Text
-        className="font-display text-[26px] uppercase tracking-tight"
-        style={{ lineHeight: 30, color: OB.onColor }}
-        accessibilityLabel={full}
-      >
-        {shownA ? (
-          <Text style={{ color: beat === 0 ? OB.onColor : accent }}>{shownA}</Text>
-        ) : null}
-        {shownB ? <Text style={{ color: OB.onColor }}>{shownB}</Text> : null}
-        {shownC ? <Text style={{ color: accent }}>{shownC}</Text> : null}
-        {/* Blinking caret while letters are still landing. */}
-        {typing ? (
-          <Text style={{ color: OB.onColor }} accessible={false}>
-            |
-          </Text>
-        ) : null}
-      </Text>
-    </View>
+    <Text
+      className="font-display text-[26px] uppercase tracking-tight"
+      style={{ lineHeight: 32, color: OB.onColor }}
+      accessibilityLabel={full}
+    >
+      {shownA ? (
+        <Text style={{ color: mode === "intro" ? OB.onColor : accent }}>
+          {shownA}
+        </Text>
+      ) : null}
+      {shownB ? <Text style={{ color: OB.onColor }}>{shownB}</Text> : null}
+      {shownC ? <Text style={{ color: accent }}>{shownC}</Text> : null}
+      {/* Blinking caret while letters are still landing. */}
+      {typing ? (
+        <Text style={{ color: OB.onColor }} accessible={false}>
+          |
+        </Text>
+      ) : null}
+    </Text>
   );
 }

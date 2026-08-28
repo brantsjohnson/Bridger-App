@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Co-op benefits screen. Shows what is always free vs what members unlock,
-// the $72/year price, and Join / Open portal. From Magic Patterns coop/index.
-// Connecting is never behind a paywall.
+// the price ($6/month or $60/year with 2 months free), and Join / Open portal.
+// From Magic Patterns coop/index. Connecting is never behind a paywall.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
@@ -15,6 +15,7 @@ import {
   MEMBER_UNLOCKS
 } from '@bridger/shared';
 import { COOP } from '../../lib/analytics-ids';
+import { purchasesAvailable } from '../../lib/purchases';
 import {
   AnalyticsRegion,
   ButtonPrimary,
@@ -29,6 +30,7 @@ import {
   cn
 } from '@bridger/ui';
 import { PortalPanel } from '../../components/coop/PortalPanel';
+import { JoinCoopSheet } from '../../components/coop/JoinCoopSheet';
 import { getMembership, joinCoop, redeemPromoCode } from '../../data/coop';
 
 const ALWAYS_FREE = [
@@ -57,6 +59,8 @@ export default function CoopBenefitsScreen() {
   const [since, setSince] = useState<string | undefined>();
   const [renews, setRenews] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
+  // Our custom paywall sheet (pick method, then monthly / yearly).
+  const [joinSheetOpen, setJoinSheetOpen] = useState(false);
   // Auth-code redeem panel (free year, no payment).
   const [showRedeem, setShowRedeem] = useState(false);
   const [code, setCode] = useState('');
@@ -72,15 +76,56 @@ export default function CoopBenefitsScreen() {
 
   const caps = member ? MEMBER_BENEFITS : FREE_BENEFITS;
 
-  async function onJoin() {
+  // THIS SECTION DOES: open our own join sheet (pick method, then plan).
+  function onJoin() {
+    if (busy) return;
+    setJoinSheetOpen(true);
+  }
+
+  // THIS SECTION DOES: run the real purchase after they pick method + plan.
+  // Apple / Google go through the store (RevenueCat); Card opens Stripe. On
+  // success we open the portal. A cancel just leaves the sheet open.
+  async function handleChoose(
+    method: 'apple' | 'google' | 'card',
+    plan: 'monthly' | 'yearly'
+  ) {
     if (busy) return;
     setBusy(true);
     try {
-      const m = await joinCoop('soft');
+      const m = await joinCoop(method, plan);
       setMember(m.member);
       setSince(m.since);
       setRenews(m.renews);
-      router.push('/coop/portal');
+      setJoinSheetOpen(false);
+      if (m.member) router.push('/coop/portal');
+    } catch (err) {
+      const { PurchaseCancelledError } = await import('../../data/coop');
+      if (err instanceof PurchaseCancelledError) return;
+      Alert.alert(
+        'Could not join',
+        err instanceof Error ? err.message : 'Try again in a moment.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // THIS SECTION DOES: restore a prior App Store / Play purchase onto this account.
+  async function onRestore() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const { restoreCoopPurchases } = await import('../../data/coop');
+      const m = await restoreCoopPurchases();
+      setMember(m.member);
+      setSince(m.since);
+      setRenews(m.renews);
+      if (m.member) router.push('/coop/portal');
+    } catch (err) {
+      Alert.alert(
+        'Restore',
+        err instanceof Error ? err.message : 'Could not restore purchases.'
+      );
     } finally {
       setBusy(false);
     }
@@ -126,7 +171,7 @@ export default function CoopBenefitsScreen() {
             <Text className="mt-1.5 font-sans-sb text-[14px] text-onaccent/80">
               {member
                 ? `Member${since ? ` since ${since}` : ''}${renews ? ` · renews ${renews}` : ''}`
-                : '$72 a year · members keep it running'}
+                : '$6/mo or $60/yr · members keep it running'}
             </Text>
           </View>
         </AnalyticsRegion>
@@ -283,10 +328,21 @@ export default function CoopBenefitsScreen() {
                   analyticsId={COOP.benefits.join}
                   onPress={() => void onJoin()}
                   loading={busy}
-                  accessibilityLabel="Join the co-op for seventy two dollars a year"
+                  accessibilityLabel="Join the co-op. Opens monthly or yearly membership options."
                 >
-                  Join · $72 a year
+                  Join · from $6 a month
                 </ButtonPrimary>
+                {purchasesAvailable() ? (
+                  <ButtonSecondary
+                    full
+                    tone="ghost"
+                    analyticsId={COOP.benefits.restore}
+                    onPress={() => void onRestore()}
+                    accessibilityLabel="Restore a previous co-op purchase"
+                  >
+                    Restore purchases
+                  </ButtonSecondary>
+                ) : null}
 
                 {/* Auth code: a free year without paying. Tucked below join. */}
                 {showRedeem ? (
@@ -337,6 +393,24 @@ export default function CoopBenefitsScreen() {
         </View>
 
       </ScreenBody>
+
+      {/* JOIN: our own paywall — pick method (App Store / Play / Card), then plan. */}
+      <JoinCoopSheet
+        open={joinSheetOpen}
+        onClose={() => setJoinSheetOpen(false)}
+        onChoose={handleChoose}
+        busy={busy}
+        surface="coop_join_sheet"
+        parentScreen="coop"
+        yearlyLabel="$60 / year"
+        ids={{
+          apple: COOP.benefits.apple_pay,
+          google: COOP.benefits.google_pay,
+          card: COOP.benefits.card,
+          planMonthly: COOP.benefits.plan_monthly,
+          planYearly: COOP.benefits.plan_yearly
+        }}
+      />
     </Screen>
   );
 }

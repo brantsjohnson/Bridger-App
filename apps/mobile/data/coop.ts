@@ -30,6 +30,9 @@ import {
 
 export type DuesMethod = 'apple' | 'google' | 'card' | 'soft';
 
+/** Which billing period the person picked in the join sheet. */
+export type DuesPlan = 'monthly' | 'yearly';
+
 export type PortalOverview = {
   member: boolean;
   members: number;
@@ -68,18 +71,109 @@ export async function getMembership(): Promise<CoopMembership> {
   return membership;
 }
 
-export async function joinCoop(method: DuesMethod = 'soft'): Promise<CoopMembership> {
+export async function joinCoop(
+  method: DuesMethod = 'soft',
+  plan: DuesPlan = 'monthly'
+): Promise<CoopMembership> {
   if (isDemoMode()) {
     demoMember = true;
     demoCancelAtPeriodEnd = false;
-    trackProduct('coop_joined', { method });
+    trackProduct('coop_joined', { method, plan });
     return getMembership();
   }
+
+  // THIS SECTION DOES: Apple / Google buy the chosen plan (monthly or yearly)
+  // straight from our own paywall via RevenueCat + StoreKit / Play Billing.
+  // Membership is granted on the server only after a confirmed purchase /
+  // restore (never on the tap that opens the store sheet).
+  if (method === 'apple' || method === 'google') {
+    const { purchaseCoopPlan } = await import('../lib/purchases');
+    const outcome = await purchaseCoopPlan(plan);
+    if (outcome.status === 'cancelled' || outcome.status === 'not_presented') {
+      throw new PurchaseCancelledError();
+    }
+    if (outcome.status === 'unavailable' || outcome.status === 'error') {
+      throw new Error(outcome.message);
+    }
+    // Confirmed purchase / restore: mirror onto Bridger membership (webhook
+    // also syncs renewals later).
+    const membership = await apiFetch<CoopMembership>('/coop/membership', {
+      method: 'POST',
+      body: JSON.stringify({ join: true, method: outcome.method })
+    });
+    trackProduct('coop_joined', { method: outcome.method, plan });
+    return membership;
+  }
+
+  // THIS SECTION DOES: Card opens Stripe Checkout in the browser for the chosen
+  // plan. Membership is granted by the Stripe webhook after payment succeeds,
+  // not on this tap. iOS must not use this path for digital membership (Apple
+  // 3.1.1).
+  if (method === 'card') {
+    const { Platform } = await import('react-native');
+    if (Platform.OS === 'ios') {
+      throw new Error(
+        'Card membership is available on the web. On iPhone, join with the App Store.'
+      );
+    }
+    const session = await apiFetch<{ url: string; sessionId: string }>(
+      '/coop/checkout/stripe',
+      {
+        method: 'POST',
+        body: JSON.stringify({ plan })
+      }
+    );
+    if (!session?.url) {
+      throw new Error('Could not start card checkout.');
+    }
+    if (Platform.OS === 'web') {
+      const Linking = await import('expo-linking');
+      await Linking.openURL(session.url);
+    } else {
+      const WebBrowser = await import('expo-web-browser');
+      await WebBrowser.openBrowserAsync(session.url);
+    }
+    // Do not emit coop_joined here; webhook / next membership fetch confirms.
+    return getMembership();
+  }
+
   const membership = await apiFetch<CoopMembership>('/coop/membership', {
     method: 'POST',
     body: JSON.stringify({ join: true, method })
   });
-  trackProduct('coop_joined', { method });
+  trackProduct('coop_joined', { method, plan });
+  return membership;
+}
+
+/** Thrown when the person closes the store sheet without buying. */
+export class PurchaseCancelledError extends Error {
+  constructor() {
+    super('Purchase cancelled');
+    this.name = 'PurchaseCancelledError';
+  }
+}
+
+/** Restore App Store / Play purchases, then sync Bridger membership. */
+export async function restoreCoopPurchases(): Promise<CoopMembership> {
+  if (isDemoMode()) {
+    demoMember = true;
+    trackProduct('coop_joined', { method: 'soft' });
+    return getMembership();
+  }
+  const { restorePurchases } = await import('../lib/purchases');
+  const outcome = await restorePurchases();
+  if (outcome.status === 'cancelled') throw new PurchaseCancelledError();
+  if (outcome.status === 'unavailable' || outcome.status === 'error') {
+    throw new Error(outcome.message);
+  }
+  if (outcome.status !== 'restored' && outcome.status !== 'purchased') {
+    throw new Error('No active membership to restore.');
+  }
+  const membership = await apiFetch<CoopMembership>('/coop/membership', {
+    method: 'POST',
+    body: JSON.stringify({ join: true, method: outcome.method })
+  });
+  trackProduct('coop_joined', { method: outcome.method });
   return membership;
 }
 

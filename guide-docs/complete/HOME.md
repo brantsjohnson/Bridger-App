@@ -56,7 +56,7 @@ Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboard
 | # | Zone | Contents | Component | Empty behavior |
 |---|---|---|---|---|
 | 1 | Header | Search (people; events later) + **messages icon** (opens Messages — see `MESSAGES.md`) | `MessagesButton` | always shown |
-| 2 | **Announcements carousel** | One **swipeable** strip holding whatever's live — **touch-grass signals** (I'm in / ✕), the **quick check-in**, **co-op** announcements, and **coming up** (birthdays ≤1wk + day-of, custom date reminders, check-in nudges). Page dots; each card tappable | `AnnouncementsCarousel` | **hidden entirely when there are no announcements** |
+| 2 | **Announcements carousel** | One **swipeable** strip holding whatever's live — **one-time intro** (until dismissed), **touch-grass signals** (I'm in / ✕), the **quick check-in** (model-backed; demo may seed a sample), **co-op** announcements, and **coming up** (birthdays ≤1wk + day-of, custom date reminders, check-in nudges). Page dots; each card tappable | `AnnouncementsCarousel` | **hidden entirely when there are no announcements** (intro counts until dismissed) |
 | 4 | Stories | Tier filter (Close / Friends / Everyone) + tiles; **first tile = "Your story"** — post *and* **tap to view your own** posted update. When Assistant is opted in, the **AgentWidget** (Billy) sits **directly under** this row (and under "what people said" when present); full-screen AgentScreen for longer threads; AgentIsland when live off Home | `StoryTile` + `AgentWidget` | see state matrix |
 | 4a | What people said | Under the stories row: **reactions & video responses** to your update ("this is what people said") — **tap to watch/read and reply** | `ResponseStrip` | hidden when no responses |
 | 5 | Notifications preview | ~2–3 unread; **tap the card or See all → Notifications page**; tap a row → that item's destination; no unread → **"All caught up!"** | `NotificationRow` | shows unread; empty → All caught up |
@@ -99,16 +99,17 @@ Notifications no longer live behind a header bell. Instead:
 
 The top of Home is a single **swipeable carousel** that consolidates what used to be separate strips. It holds only what's **actually live**, one card per item, with **page dots** — swipe through them:
 
+- **Intro (one-time)** — when nothing else is live yet, a short explainer: this strip is for co-op notes and exciting things about the app. Tap the card or the X to dismiss forever (device flag). After dismiss, the carousel hides until something real appears.
 - **Touch grass** — a friend's signal ("Maya's free tonight — grab food?") with **I'm in** / **✕**. (Sending your own happens on the **Events page**, not Home; see that section.)
-- **Quick check** — the profile-freshness nudge ("Still into beatboxing?" → **Yes** / **update**), from the model when your profile looks stale (see `ONBOARDING.md`).
+- **Quick check** — the profile-freshness nudge ("Still into beatboxing?" → **Yes** / **update**), from the model when your profile looks stale (see `ONBOARDING.md`). Demo may seed a sample card; live never shows a fake one.
 - **Co-op** — announcements / feedback asks from the co-op (community call, dues vote, a new feature).
 - **Coming up** — **birthdays** (within ~a week, and again on the day — cake icon; only friends who shared their birthday with your tier), **custom date reminders** (dates you saved on a friend, firing 1 week before + on the day — "Priya's graduation · in 1 week"), and optional **check-in nudges** ("Check in with Jade?") from private friend notes with no calendar date. **Row color = their circle** (green Close / blue Friends / orange Acquaintances). **Order is soonest first** (now → Today → weekday → in N days). Tapping opens that friend's profile. Check-ins also push as `friend_check_in` when due.
 
-**When there are no announcements, the whole carousel is hidden** — the top of Home is simply empty, and Stories become the first thing. Cards are aggregated from existing sources (`touchgrass`, `coop`, `notifications` for birthdays/reminders, the freshness signal); the carousel is a presentation layer, not a new data store.
+**When there are no announcements (and the intro was dismissed or never needed), the whole carousel is hidden** — the top of Home is simply empty, and Stories become the first thing. Cards are aggregated from existing sources (`touchgrass`, `coop`, `notifications` for birthdays/reminders, the freshness signal) plus the one-time intro; the carousel is a presentation layer, not a new data store.
 
 ### Editable widgets (containers stay)
 
-Home keeps its widget shells for a new user. Quiz, Activity, Stories, Co-op, and Notifications each show their own null copy inside the box. Announcements stay out until something is live.
+Home keeps its widget shells for a new user. Quiz, Activity, Stories, Co-op, and Notifications each show their own null copy inside the box. Announcements show the one-time intro until dismissed; after that they stay out until something is live.
 
 - **This week** (next-event widget) — when empty, one quiet line; tap opens the **Events** tab.
 - **Coming up** — when empty, one line: **"Add friends to get reminders."** When filled, rows open that friend's profile.
@@ -264,7 +265,8 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 
 - [ ] `friendCount === 0` renders the cold-start invitation, not empty zones.
 - [ ] There is no generic `+`; the header's right control is the messages icon, and the only post entry is the "Your story" tile. **Home has no Touch Grass send button** (send lives on the Events page).
-- [ ] The top of Home is a single swipeable announcements carousel (touch-grass signals, quick check-in, co-op announcements, coming-up birthdays/reminders/check-ins) with page dots; it hides entirely when there are nothing live.
+- [ ] The top of Home is a single swipeable announcements carousel (one-time intro until dismissed, touch-grass signals, model-backed quick check-in, co-op announcements, coming-up birthdays/reminders/check-ins) with page dots; it hides entirely when there is nothing live (and the intro was dismissed).
+- [ ] Live Home never shows a fake "Still into…?" quick check; demo may seed one for design preview.
 - [ ] When Assistant is opted in, AgentWidget appears under Stories; AgentScreen / AgentIsland behave per AGENT.md; when off, all three are absent.
 - [ ] The announcements carousel hides entirely when empty; updates, your poll, and This week each hide independently (no header, no gap) when empty.
 - [ ] Posting shows the multi-select audience picker: choosing Friends also checks Close friends (both lit); Everyone checks all three.

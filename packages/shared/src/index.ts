@@ -42,6 +42,7 @@ export * from './analytics/client';
 export {
   AUTH,
   ONBOARDING,
+  WELCOME_CELEBRATION,
   CHROME,
   HOME,
   SECTION_INFO_TOOLTIP,

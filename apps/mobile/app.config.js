@@ -39,6 +39,15 @@ module.exports = ({ config }) => ({
             'NSPrivacyCollectedDataTypePurposeAnalytics',
             'NSPrivacyCollectedDataTypePurposeAppFunctionality'
           ]
+        },
+        // Co-op membership purchases via RevenueCat / StoreKit.
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality'
+          ]
         }
       ],
       NSPrivacyAccessedAPITypes: [
@@ -70,6 +79,7 @@ module.exports = ({ config }) => ({
   },
   plugins: [
     'expo-router',
+    'expo-dev-client',
     'expo-apple-authentication',
     [
       'expo-splash-screen',
@@ -168,6 +178,8 @@ module.exports = ({ config }) => ({
         process.env.EAS_PROJECT_ID ?? '6f732be5-8d08-43ad-8463-2e932c2444a8'
     },
     demoUnlock: process.env.EXPO_PUBLIC_DEMO_UNLOCK ?? '0',
-    demoMode: process.env.EXPO_PUBLIC_DEMO_MODE ?? '0'
+    demoMode: process.env.EXPO_PUBLIC_DEMO_MODE ?? '0',
+    // RevenueCat public SDK key (Test Store or platform app key). Safe to ship.
+    revenueCatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? ''
   }
 });

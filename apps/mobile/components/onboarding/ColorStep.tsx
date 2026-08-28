@@ -2,22 +2,27 @@
 // WHAT THIS FILE DOES (plain English):
 // Step 10D - "Your color." Tap (or drag) anywhere on a 2D spectrum to pick a
 // color that feels like you. Hue runs left to right; lightness runs white at
-// the top to black at the bottom. Under it a small swatch shows the pick, and
-// a live "Your grid" preview shows the app's grid lines tinted in that color.
-// Skippable. scrollBody is on because the spectrum plus preview is tall on a
-// small phone.
+// the top to black at the bottom. Under the hint, a saturation slider lets you
+// fine-tune how vivid the pick is (muted ↔ vivid). A small swatch shows the
+// pick, and a live "Your grid" preview shows the app's grid lines tinted in
+// that color. Skippable. scrollBody is on because the spectrum plus slider
+// plus preview is tall on a small phone.
 //
-// LOOK: a continuous spectrum box (not stripe columns), the picked swatch beside
-// a hint line, and the grid preview on tan paper with its "Your grid" label
-// sitting ABOVE the box so it is not drawn on top of the lines.
+// LOOK: a continuous spectrum box (not stripe columns), the picked swatch
+// beside a hint line, a fine-tune slider under that hint, and the grid
+// preview on tan paper with its "Your grid" label sitting ABOVE the box so
+// it is not drawn on top of the lines.
 // ============================================
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ONBOARDING } from '@bridger/shared';
-import { withAnalyticsPress } from '@bridger/ui';
+import { withAnalyticsPress, useThemeColors } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
+
+/** Hue, saturation (0–100), and lightness (0–100) for one pick. */
+type Hsl = { h: number; s: number; l: number };
 
 /**
  * Turn hue/saturation/lightness into a #rrggbb string (no color libs needed).
@@ -37,6 +42,32 @@ function hslToHex(h: number, s: number, lightness: number): string {
   };
   return `#${f(0)}${f(8)}${f(4)}`;
 }
+
+/**
+ * Turn a #rrggbb string back into hue / saturation / lightness so the slider
+ * and spectrum can stay in sync when the draft already has a saved color.
+ */
+function hexToHsl(hex: string): Hsl {
+  const raw = hex.replace('#', '');
+  if (raw.length !== 6) return { h: 330, s: 100, l: 60 };
+  const r = parseInt(raw.slice(0, 2), 16) / 255;
+  const g = parseInt(raw.slice(2, 4), 16) / 255;
+  const b = parseInt(raw.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: l * 100 };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+/** Starting pick when nothing is saved yet (matches the pink Continue accent). */
+const DEFAULT_HSL: Hsl = hexToHsl(OB.pink);
 
 /** Rainbow stops for the horizontal hue wash (full circle back to red). */
 const HUE_STOPS = [
@@ -58,6 +89,9 @@ const HUE_STOPS = [
 /** How tall the spectrum and the grid preview are. */
 const SPECTRUM_PX = 160;
 const PREVIEW_PX = 150;
+/** Track height for the fine-tune slider (thumb sits slightly taller). */
+const SLIDER_TRACK_PX = 14;
+const SLIDER_THUMB_PX = 28;
 
 export function ColorStep({
   step,
@@ -76,7 +110,40 @@ export function ColorStep({
   onSkip: () => void;
   onBack: () => void;
 }) {
-  const chosen = color ?? OB.pink;
+  // THIS SECTION DOES: keep hue / sat / light in one place so spectrum + slider agree.
+  const [hsl, setHsl] = useState<Hsl>(() => (color ? hexToHsl(color) : DEFAULT_HSL));
+  // Ref mirrors hsl so slider drags always read the latest hue/lightness.
+  const hslRef = useRef(hsl);
+  // Hint under the swatch sits on the canvas; follow theme ink in dark mode.
+  const theme = useThemeColors();
+  hslRef.current = hsl;
+  const chosen = hslToHex(hsl.h, hsl.s, hsl.l);
+
+  // THIS SECTION DOES: write a new hex up to the draft whenever HSL changes.
+  const commit = (next: Hsl, method: 'spectrum' | 'slider', withAnalytics: boolean) => {
+    hslRef.current = next;
+    setHsl(next);
+    const hex = hslToHex(next.h, next.s, next.l);
+    if (withAnalytics) {
+      const id =
+        method === 'slider' ? ONBOARDING.taste.color_slider : ONBOARDING.taste.color_swatch;
+      const press = withAnalyticsPress(id, () => onPick(hex), {
+        analyticsProps: { color: hex, method }
+      });
+      press?.({} as never);
+    } else {
+      onPick(hex);
+    }
+  };
+
+  // Spectrum tap sets hue + lightness at full vividness; slider then fine-tunes sat.
+  const pickFromSpectrum = (h: number, l: number, withAnalytics: boolean) => {
+    commit({ h, s: 100, l }, 'spectrum', withAnalytics);
+  };
+
+  const pickFromSlider = (s: number, withAnalytics: boolean) => {
+    commit({ ...hslRef.current, s }, 'slider', withAnalytics);
+  };
 
   return (
     <OnboardingStep
@@ -91,7 +158,7 @@ export function ColorStep({
     >
       <View style={{ gap: 16 }}>
         {/* THIS SECTION DOES: the continuous hue × lightness spectrum you tap. */}
-        <SpectrumMap color={color} onPick={onPick} />
+        <SpectrumMap color={chosen} onPick={pickFromSpectrum} />
 
         {/* THIS SECTION DOES: show the pick in a square swatch with a hint. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -107,10 +174,13 @@ export function ColorStep({
               borderColor: OB.navy
             }}
           />
-          <Text className="font-sans-sb text-[13px]" style={{ color: 'rgba(0,0,0,0.55)' }}>
+          <Text className="font-sans-sb text-[13px]" style={{ color: theme.inkMute }}>
             Tap anywhere in the spectrum
           </Text>
         </View>
+
+        {/* THIS SECTION DOES: saturation slider to fine-tune after the tap. */}
+        <SaturationSlider hsl={hsl} onChange={pickFromSlider} />
 
         {/* THIS SECTION DOES: a live grid preview tinted by the pick. */}
         <GridPreview color={chosen} />
@@ -129,27 +199,18 @@ function SpectrumMap({
   onPick
 }: {
   color: string | null;
-  onPick: (hex: string) => void;
+  onPick: (hue: number, lightness: number, withAnalytics: boolean) => void;
 }) {
   const [size, setSize] = useState({ w: 1, h: 1 });
 
-  // THIS SECTION DOES: turn a tap/drag point into a hex color.
+  // THIS SECTION DOES: turn a tap/drag point into hue + lightness.
   const pickAt = (x: number, y: number, withAnalytics: boolean) => {
     const nx = Math.max(0, Math.min(1, x / size.w));
     const ny = Math.max(0, Math.min(1, y / size.h));
     const hue = nx * 360;
     // Top of the map is white (100), bottom is black (0).
     const lightness = (1 - ny) * 100;
-    const hex = hslToHex(hue, 100, lightness);
-    if (withAnalytics) {
-      // withAnalyticsPress returns a press handler; call it with no gesture event.
-      const press = withAnalyticsPress(ONBOARDING.taste.color_swatch, () => onPick(hex), {
-        analyticsProps: { color: hex, method: 'spectrum' }
-      });
-      press?.({} as never);
-    } else {
-      onPick(hex);
-    }
+    onPick(hue, lightness, withAnalytics);
   };
 
   return (
@@ -210,10 +271,103 @@ function SpectrumMap({
   );
 }
 
+// ============================================
+// THE FINE-TUNE SLIDER: muted (left) → vivid (right).
+// Same hue and lightness as the spectrum pick; only saturation moves.
+// ============================================
+function SaturationSlider({
+  hsl,
+  onChange
+}: {
+  hsl: Hsl;
+  onChange: (saturation: number, withAnalytics: boolean) => void;
+}) {
+  const [trackW, setTrackW] = useState(1);
+  // Gray at this lightness on the left; full-sat color on the right.
+  const muted = hslToHex(hsl.h, 0, hsl.l);
+  const vivid = hslToHex(hsl.h, 100, hsl.l);
+  // "Fine-tune" label sits on the canvas.
+  const theme = useThemeColors();
+  const thumbLeft = Math.max(
+    0,
+    Math.min(trackW - SLIDER_THUMB_PX, (hsl.s / 100) * (trackW - SLIDER_THUMB_PX))
+  );
+
+  // THIS SECTION DOES: map a finger X on the track to 0–100 saturation.
+  const setFromX = (x: number, withAnalytics: boolean) => {
+    const usable = Math.max(1, trackW - SLIDER_THUMB_PX);
+    const nx = Math.max(0, Math.min(1, (x - SLIDER_THUMB_PX / 2) / usable));
+    onChange(nx * 100, withAnalytics);
+  };
+
+  return (
+    <View style={{ gap: 8 }}>
+      <Text
+        className="font-sans-sb text-[12px]"
+        style={{ color: theme.inkMute }}
+        accessibilityRole="header"
+      >
+        Fine-tune
+      </Text>
+      <View
+        accessibilityRole="adjustable"
+        accessibilityLabel="Color vividness"
+        accessibilityHint="Slide left for more muted, right for more vivid."
+        accessibilityValue={{ min: 0, max: 100, now: Math.round(hsl.s) }}
+        onLayout={(e) => setTrackW(Math.max(1, e.nativeEvent.layout.width))}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderGrant={(e) => setFromX(e.nativeEvent.locationX, false)}
+        onResponderMove={(e) => setFromX(e.nativeEvent.locationX, false)}
+        onResponderRelease={(e) => setFromX(e.nativeEvent.locationX, true)}
+        style={{
+          height: SLIDER_THUMB_PX,
+          width: '100%',
+          justifyContent: 'center'
+        }}
+      >
+        {/* Track: gray → current hue at full saturation. */}
+        <View
+          pointerEvents="none"
+          style={{
+            height: SLIDER_TRACK_PX,
+            width: '100%',
+            overflow: 'hidden',
+            borderWidth: OB_BORDER,
+            borderColor: OB.navy
+          }}
+        >
+          <LinearGradient
+            colors={[muted, vivid]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+          />
+        </View>
+        {/* Square thumb that matches onboarding outlines. */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: thumbLeft,
+            width: SLIDER_THUMB_PX,
+            height: SLIDER_THUMB_PX,
+            backgroundColor: hslToHex(hsl.h, hsl.s, hsl.l),
+            borderWidth: OB_BORDER,
+            borderColor: OB.navy
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 /** A square of graph paper on tan stock whose lines take the chosen color. */
 function GridPreview({ color }: { color: string }) {
   const cols = 7;
   const rows = 4;
+  // Label sits above the box on the page canvas.
+  const theme = useThemeColors();
   return (
     <View style={{ gap: 8 }}>
       {/* Label lives ABOVE the box so it is not drawn on top of the grid lines. */}
@@ -222,7 +376,7 @@ function GridPreview({ color }: { color: string }) {
         style={{
           letterSpacing: 1.2,
           textTransform: 'uppercase',
-          color: 'rgba(0,0,0,0.6)'
+          color: theme.inkMute
         }}
       >
         Your grid

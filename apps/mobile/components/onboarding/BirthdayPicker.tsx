@@ -13,7 +13,7 @@
 // ============================================
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { withAnalyticsPress } from '@bridger/ui';
+import { withAnalyticsPress, useThemeColors } from '@bridger/ui';
 import { OB, OB_BORDER } from './onboarding-theme';
 import { OBHardShadow, OBKicker } from './onboarding-ui';
 
@@ -455,6 +455,8 @@ function Crumb({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  // Inactive crumbs sit on the canvas; follow theme ink in dark mode.
+  const theme = useThemeColors();
   return (
     <Pressable
       onPress={onPress}
@@ -470,7 +472,7 @@ function Crumb({
         style={{
           letterSpacing: 0.6,
           textTransform: 'uppercase',
-          color: active ? OB.blue : OB.inkFaint
+          color: active ? OB.blue : theme.inkMute
         }}
       >
         {label}
@@ -481,10 +483,11 @@ function Crumb({
 
 /** The little arrow between two breadcrumb words. Decoration only. */
 function Sep() {
+  const theme = useThemeColors();
   return (
     <Text
       className="font-sans-b text-[14px]"
-      style={{ color: OB.inkWhisper }}
+      style={{ color: theme.inkMute }}
       accessible={false}
     >
       →

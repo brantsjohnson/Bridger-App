@@ -61,7 +61,7 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 | `story_reply_elsewhere` | "{Name} replied to your comment" | That person's update, comments open | `/story/{authorId}?comments=1` |
 | `story_prompt` | "Time to post an update" or "📸 Don't forget to capture the mems" (mid-party) | Capture / Your story composer | `/story/capture` or `/story/capture?eventId={eventId}` |
 | `connect_request` | "{Name} wants to connect" | Discover → Wants to connect | `/(tabs)/discover` (focus request when `requestId` present) |
-| `mutual_connection` | "{A} and {B} connected — through you" | Discover (communal payoff) | `/(tabs)/discover` |
+| `mutual_connection` | "{A} and {B} connected — through you" · or "Joined from your invite" when someone redeems your invite link/QR | Discover (FoF payoff) · their profile when it was an invite join | `/(tabs)/discover` · `/person/{personId}` |
 | `touch_grass_signal` | "{Name} is free tonight" | Their live signal (Events / Home strip) | `/(tabs)/events` (signal focused when `signalId` present) |
 | `touch_grass_im_in` | "{Name}'s in" | Your signal / plan | `/(tabs)/events` (own signal / plan) |
 | `birthday` | "{Name}'s birthday is Friday" | Their profile | `/person/{personId}` |

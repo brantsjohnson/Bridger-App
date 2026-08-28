@@ -702,9 +702,10 @@ function ReviewStep({
         {isPrivate ? 'That stays between us.' : 'Who sees this?'}
       </Text>
       {isPrivate ? (
+        // Mint stays pale in dark mode; text-onaccent keeps near-black type readable.
         <View className="mt-4 flex-row items-start gap-2.5 rounded-2xl bg-[#D7F0E8] px-4 py-3.5">
           <LockIcon size={16} color="#1C1B16" strokeWidth={2.5} />
-          <Text className="flex-1 font-sans-sb text-[13px] leading-snug text-ink">
+          <Text className="flex-1 font-sans-sb text-[13px] leading-snug text-onaccent">
             Used only to find people worth knowing. Never shown on your profile.
           </Text>
         </View>

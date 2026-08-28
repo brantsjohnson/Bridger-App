@@ -16,7 +16,7 @@
 import React, { useRef, useState } from 'react';
 import { Modal, Text, View } from 'react-native';
 import { ONBOARDING, trackClick } from '@bridger/shared';
-import { HobbyEmojiBurst, useReduceMotion } from '@bridger/ui';
+import { HobbyEmojiBurst, useReduceMotion, useThemeColors } from '@bridger/ui';
 import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
 import { OnboardingStep } from './OnboardingStep';
 import { OB } from './onboarding-theme';
@@ -65,6 +65,8 @@ export function FriendsOfFriendsStep({
   } | null>(null);
 
   const allOn = ALL_IDS.every((id) => picked.includes(id));
+  // Private note sits on the canvas; follow theme ink in dark mode.
+  const theme = useThemeColors();
 
   // THIS SECTION DOES: turn every style on, or clear them all. When turning
   // them on, spray every option emoji from the "All of the above" row.
@@ -150,7 +152,7 @@ export function FriendsOfFriendsStep({
 
         <Text
           className="font-sans-sb text-[12px]"
-          style={{ marginTop: 8, textAlign: 'center', color: OB.inkFaint }}
+          style={{ marginTop: 8, textAlign: 'center', color: theme.inkMute }}
         >
           (all answers are private)
         </Text>

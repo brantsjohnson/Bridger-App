@@ -149,7 +149,8 @@ guide-docs/
 | `complete/EVENTS.md` | [COMPLETE] | Event detail/host, cover, co-host, chip-in, assignments, native share, going/to-meet counts, touch-grass. |
 | `complete/MESSAGES.md` | [COMPLETE] | Threads, contact-card share, make-a-plan, the 5/day message cap. |
 | `complete/RECAP-PODCAST.md` | [COMPLETE] | The weekly recap recorder + stitched podcast player (5 questions). |
-| `complete/COOP.md` | [COMPLETE] | Two tiers: Join the co-op ($72/yr) or Free Lite (5 Close / 30 Friends, 30-day storage, no ads). |
+| `complete/COOP.md` | [COMPLETE] | Two tiers: Join the co-op ($6/mo or $60/yr) or Free Lite (5 Close / 30 Friends, 30-day storage, no ads). |
+| `complete/COOP-PAYMENTS-SETUP.md` | [ACTIVE] | Dashboard + prod secrets checklist: RevenueCat webhook, store SKUs, Stripe live, EAS device build. |
 | `complete/COOP-PORTAL.md` | [COMPLETE] | The multi-page portal: mission, model, ideas, vote, transparent economics/cost. |
 | `complete/ASSISTANT-ACCESS-WIDEN.md` | [COMPLETE] | The ops rollout checklist for widening assistant access (flag stages). |
 | `complete/TOUCHGRASS-AND-QUIZ.md` | [COMPLETE] | Touch-grass send (Events) + Home answer cards + quiz take/share/who-got-who. |

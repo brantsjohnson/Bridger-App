@@ -20,6 +20,21 @@ export type GeocodeHit = {
   countryName?: string;
 };
 
+/**
+ * Turn a 2-letter country code (DE, US, …) into that country's flag emoji.
+ * Uses the regional-indicator letters so 🇩🇪 comes from "DE". Returns '' if
+ * the code is missing or not two letters.
+ */
+export function countryCodeToFlagEmoji(countryCode: string): string {
+  const cc = countryCode.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc)) return '';
+  // A → 🇦 (U+1F1E6), B → 🇧, …
+  const A = 0x1f1e6;
+  return String.fromCodePoint(
+    ...[...cc].map((ch) => A + (ch.charCodeAt(0) - 65))
+  );
+}
+
 type PhotonFeature = {
   geometry?: { coordinates?: [number, number] };
   properties?: {

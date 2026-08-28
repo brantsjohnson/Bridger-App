@@ -72,13 +72,19 @@ async function createDemoInvite(kind: InviteKind, ownerId: string): Promise<Invi
 
 /**
  * Pull a shareable invite link for the signed-in user (or demo "me").
+ * Onboarding's "invite 3 for free" always needs a link, even during demo week.
  */
-export async function createShareInvite(): Promise<InvitePayload> {
+export async function createShareInvite(opts?: {
+  /** Skip demo-week "can invite" gate (onboarding free-access path). */
+  forOnboarding?: boolean;
+}): Promise<InvitePayload> {
   if (isDemoMode()) {
-    const { getInviteAccess } = await import('./access');
-    const access = await getInviteAccess();
-    if (access.demoWeekActive && !access.canInvite) {
-      throw new Error('Invites are paused during the demo.');
+    if (!opts?.forOnboarding) {
+      const { getInviteAccess } = await import('./access');
+      const access = await getInviteAccess();
+      if (access.demoWeekActive && !access.canInvite) {
+        throw new Error('Invites are paused during the demo.');
+      }
     }
     return createDemoInvite('link', 'me');
   }

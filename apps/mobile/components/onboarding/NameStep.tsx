@@ -43,20 +43,19 @@ export function NameStep({
       onBack={onBack}
     >
       <View className="gap-3">
+        {/* Default labelTone uses text-ink so labels stay readable on dark canvas. */}
         <TextField
-          labelTone="onaccent"
           label="First name"
           value={first}
           onChange={onChangeFirst}
-          placeholder="Brant"
+          placeholder="Yo"
           analyticsId={ONBOARDING.name.first_input}
         />
         <TextField
-          labelTone="onaccent"
           label="Last name"
           value={last}
           onChange={onChangeLast}
-          placeholder="Kim"
+          placeholder="Mamma"
           analyticsId={ONBOARDING.name.last_input}
         />
       </View>

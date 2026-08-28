@@ -50,7 +50,7 @@
 - The **co-op** is optional membership for richer creation, named groups, and storage. Signup offers **Join the co-op** or **Free Lite**. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
 - During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (workout, go out, creative, industry, travel, nearby, someone who gets me). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
-- Onboarding also asks a few optional, skippable "taste" questions (job, dream job, a song, your towns, a favorite trip that may be placed on your map, a weekly highlight, a grid color, nights-out pacing). You choose the audience for each on the Privacy & Control screen, and nothing is required except your name.
+- Onboarding also asks a few optional, skippable "taste" questions (job, dream job, a song, your towns, a favorite trip that may be placed on your map, a weekly highlight, a grid color, social-events pacing). You choose the audience for each on the Privacy & Control screen, and nothing is required except your name.
 - The co-op join screen offers: **invite 3 friends for free access** (with progress if you already shared some links during the contacts step; when all 3 are done, "Continue with free access"), **join directly for a paid membership ($6/mo)** that shares profits, or redeem an **auth code** for a free year. There is no separate "use free tier" skip; free access is only via the invite path (or an auth code for a free year of membership).
 
 ---
@@ -121,7 +121,7 @@
 - Public read; member write.
 - Ideas, mission, economics, votes. Comments appear as **"A member"** (no person names on the member portal).
 - Vote **tallies are not shown** on the member portal (admin may see aggregates).
-- Display dues **$72/year** (about $6/mo). Cancel is **period-end** (`cancel_at_period_end`); perks continue until `dues_paid_through`, then membership reconciles to free / rolling ~30-day storage.
+- Display dues: **$6/month** or **$60/year** (yearly is 2 months free). You pick the billing period in the join sheet before paying. Cancel is **period-end** (`cancel_at_period_end`); perks continue until `dues_paid_through`, then membership reconciles to free / rolling ~30-day storage.
 - **Billy+** is an optional monthly add-on for more Billy assistant time (metered in USD of model cost). Taste allowance for members who enable Billy does not roll over; Billy+ unused credit may roll up to a capped bank (see `AGENT.md`). Period-end cancel forfeits remaining balance after the paid-through date.
 
 ### 7.6 Messages
@@ -133,7 +133,7 @@
 
 ### 7.6b Adding friends (invite link / QR)
 
-- Invite links and QR codes are **instant** connections (no request/accept) when redeemed by a signed-in Bridger user.
+- Invite links and QR codes are **instant** connections (no request/accept) when redeemed by a signed-in Bridger user. The person who shared the invite gets an in-app alert that someone joined from their invite.
 - Do not spam, sell, or publicly post invite links for abuse. QR invites expire quickly; treat them like handing someone your phone number in person.
 - You cannot redeem your own invite. Report / block still apply after connect.
 
@@ -181,9 +181,10 @@
 
 ## 8 · Membership, payments, and cancel
 
-- One annual co-op membership (display **$72/year**, about $6/mo). Standalone micro-SKUs (old storage add-on, etc.) are retired. The free path is **Free Lite**.
-- **Joining is always skippable.** Choosing Free Lite keeps the essentials to stay connected (no ads).
-- **Planned payment methods** in the join flow: Apple Pay / Google Pay via platform IAP where required, plus an in-app third-party card processor for cards. **Current wave: soft-join stub** (no live StoreKit / Play / Stripe). That is intentional.
+- One co-op membership sold as auto-renewing **monthly** ($6/mo) and **yearly** ($60/yr, 2 months free) products. On iPhone/iPad this is App Store In-App Purchase; on Android it is Google Play Billing; on the web it is a card via Stripe Checkout. The person chooses the pay method (by device) and the billing period in an in-app join sheet. Standalone micro-SKUs are retired. The free path is **Free Lite** (invite 3 friends, or stay free with smaller circle caps).
+- **Joining is always skippable.** Choosing Free Lite / inviting friends keeps the essentials to stay connected (no ads).
+- **Payment methods:** Apple / Google via **RevenueCat** + platform IAP on iOS and Android. Card via **Stripe Checkout** on web (and optionally Android). Card payment for digital membership is **not** offered inside the iOS app (Apple rules). Demo builds may still soft-join.
+- Subscriptions auto-renew until cancelled in App Store / Google Play (Customer Center) or via Bridger's period-end cancel. Refunds follow the store's rules.
 - Do not steer iOS users to an external web checkout for membership in a way that violates Apple rules.
 - **Auth / promo codes:** we may issue codes that grant a **free year** of the co-op at no charge. A code can be used a limited number of times (set by the operator) and each person may use a given code once; codes may be turned off or expire, and giving one out is a courtesy, not a permanent entitlement. When the free year ends, membership returns to normal (renew to keep perks, or drop to Free Lite). We record which account redeemed which code (opaque id only) to enforce these limits.
 - Cancel schedules end-of-period; you keep member perks until paid-through, then return to free limits.
@@ -235,6 +236,8 @@
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-28 | Co-op paywall: custom in-app join sheet (pick method by device, then monthly $6 / yearly $60 with 2 months free); Apple Pay / Google Pay marks not used (IAP methods). Yearly price set to $60. Server webhooks emit coop_renewed / coop_expired (opaque user id only). |
+| 2026-08-28 | Co-op payments: RevenueCat (Apple/Google) + Stripe Checkout for card on web; card not offered inside iOS for digital membership |
 | 2026-08-27 | Apple Music link (optional): not Bridger login; MusicKit authorize; taste sync for shared artists; disconnect deletes tokens + taste; Apple Music / Spotify ToS apply to each link |
 | 2026-08-21 | Recap Friend Pod: background audio playback (locked phone / backgrounded app) with lock-screen controls; lock-screen shows friend first name + "Bridger · Weekly recap" only |
 | 2026-08-21 | Messages: contact card share + double-tap hearts (not sends); no Make a plan in-thread |
@@ -262,6 +265,7 @@
 | 2026-08-07 | Storage meter stub: used vs included; overage price shown before charge (no silent billing) |
 | 2026-08-07 | Co-op Greatest hits photos: Bridger-hosted UGC (≤3), reportable like other profile media |
 | 2026-08-06 | Profile: per-field visibility + separate matchable consent; co-op customize is presentation-only UGC with View original; no scripts or off-Bridger assets in custom skins |
+| 2026-08-28 | Invite redeem: inviter gets an in-app "Joined from your invite" alert |
 | 2026-08-06 | Invite link / QR: instant connect when redeemed; no self-redeem; no spam/abuse of invite links |
 | 2026-08-20 | Product analytics on while signed in; no Settings off-switch in this build; purge on account delete |
 | 2026-08-20 | Quiz result sharing: save card image or send image/result link to other apps; user owns/responsible once shared off Bridger; links are quiz invites, not for spam |

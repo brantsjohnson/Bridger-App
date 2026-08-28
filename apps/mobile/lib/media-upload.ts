@@ -24,7 +24,8 @@ const EXT: Record<MediaKind, string> = {
 };
 
 /**
- * Upload bytes from a local uri and return the new media row id.
+ * Upload bytes from a local uri (or a remote https photo URL, e.g. Google
+ * avatar prefill) and return the new media row id.
  * `pathSuffix` is everything after `{userId}/`, e.g. `stories/tmp-123.jpg`
  * or `recap/{weekId}/0-123.m4a`.
  */
@@ -37,8 +38,17 @@ export async function uploadMedia(
   const userId = session.session?.user.id;
   if (!userId) throw new Error('Not signed in');
 
+  // THIS SECTION DOES: pull the file bytes. Works for file://, content://, and
+  // https:// (OAuth profile photo). Fail loud if the URL is dead so onboarding
+  // never "succeeds" with an empty avatar.
   const res = await fetch(uri);
+  if (!res.ok) {
+    throw new Error(`Could not read photo (${res.status})`);
+  }
   const bytes = await res.arrayBuffer();
+  if (!bytes.byteLength) {
+    throw new Error('Photo file was empty');
+  }
 
   // Allow callers to pass a suffix with or without an extension.
   const hasExt = /\.[a-z0-9]+$/i.test(pathSuffix);
