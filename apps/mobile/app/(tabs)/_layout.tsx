@@ -15,6 +15,7 @@ import { getMe } from '../../data/people';
 import { getTabBadges } from '../../data/tab-badges';
 import { isDemoMode } from '../../lib/demo';
 import { getCachedMe, loadPeople } from '../../lib/people-cache';
+import { useAuth } from '../../providers/auth-provider';
 
 // Keep the app on Home when it first opens.
 export const unstable_settings = {
@@ -23,6 +24,8 @@ export const unstable_settings = {
 
 export default function TabsLayout() {
   const router = useRouter();
+  const { loading: authLoading, session } = useAuth();
+  const demoMode = isDemoMode();
   const me = getMe();
   // Rerender when the live people cache finishes so the header picks up
   // your real avatar URL (demo uses the local asset right away).
@@ -30,9 +33,9 @@ export default function TabsLayout() {
 
   // Live: fill the people cache so personById / roster look-ups work sync.
   useEffect(() => {
-    if (isDemoMode()) return;
+    if (demoMode || authLoading || !session) return;
     void loadPeople().then(() => setPeopleTick((n) => n + 1));
-  }, []);
+  }, [authLoading, demoMode, session]);
 
   // Header photo → your Profile page (not a bottom-tab destination).
   const openProfile = useCallback(() => {
@@ -57,6 +60,9 @@ export default function TabsLayout() {
         : getProfilePhoto('me')
     };
   }, [me.name, me.emoji, me.accent, me.avatarUrl, peopleTick]);
+
+  // SECURITY: signed-out people never mount private tabs or start private API calls.
+  if (!demoMode && (authLoading || !session)) return null;
 
   return (
     <ProfileLinkProvider profile={profile} open={openProfile} openMessages={openMessages}>

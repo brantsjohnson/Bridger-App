@@ -1,20 +1,23 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 7 — "Stop swiping to meet people." Bridger only ever introduces you to
+// Step 7 - "Stop swiping to meet people." Bridger only ever introduces you to
 // friends of friends, never strangers. Here you pick what you want those
 // introductions to be based on: humor, values, personality, hobbies, or
 // communication style. Checkbox rows plus "All of the above." Skippable.
+//
+// LOOK: a stack of white rows on tan paper, each with a small square checkbox
+// that fills hot pink with a tick when you pick it. All the paint comes from the
+// shared onboarding parts.
 //
 // PRIVACY: these are opaque preference keys (never free text). They shape which
 // friends-of-friends the matcher surfaces; they are not shown to other people.
 // ============================================
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { CheckIcon } from 'lucide-react-native';
+import { View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
-import { cn, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
-import { WASH_BODY, WASH_MUTED } from './onboarding-wash';
+import { OB } from './onboarding-theme';
+import { OBTile } from './onboarding-ui';
 
 /** The five ways to be matched. Keys are opaque; labels are what you see. */
 export const CONNECTION_STYLES: Array<{ id: string; label: string }> = [
@@ -32,6 +35,7 @@ export function FriendsOfFriendsStep({
   total,
   picked,
   onToggle,
+  onSetAll,
   onNext,
   onSkip,
   onBack
@@ -40,23 +44,19 @@ export function FriendsOfFriendsStep({
   total: number;
   picked: string[];
   onToggle: (id: string) => void;
+  /** Replaces the whole list in one go (used by "All of the above"). */
+  onSetAll: (ids: string[]) => void;
   onNext: () => void;
   onSkip: () => void;
   onBack: () => void;
 }) {
   const allOn = ALL_IDS.every((id) => picked.includes(id));
 
-  // THIS SECTION DOES: turn every style on, or clear them all.
+  // THIS SECTION DOES: turn every style on, or clear them all. This writes the
+  // whole list at once. Flipping them one at a time only ever landed the last
+  // one, which is why tapping "All of the above" used to tick just one row.
   const toggleAll = () => {
-    if (allOn) {
-      for (const id of ALL_IDS) {
-        if (picked.includes(id)) onToggle(id);
-      }
-    } else {
-      for (const id of ALL_IDS) {
-        if (!picked.includes(id)) onToggle(id);
-      }
-    }
+    onSetAll(allOn ? [] : ALL_IDS);
   };
 
   return (
@@ -65,82 +65,39 @@ export function FriendsOfFriendsStep({
       total={total}
       purpose="Friends of your friends, never strangers."
       ask="Stop swiping to meet people"
-      accent="green"
+      blurb="Bridger finds friends of friends you should know. What should we connect you on?"
+      kicker="Pick any that apply"
       onContinue={onNext}
       onSkip={onSkip}
       onBack={onBack}
     >
-      <View className="gap-3">
-        <Text className={cn('px-1 font-sans-sb text-[14px] leading-snug', WASH_BODY)}>
-          Bridger finds friends of friends you should know. What should we connect you on?
-        </Text>
-        <Text className={cn('px-1 font-sans-b text-[11px] uppercase tracking-wide', WASH_MUTED)}>
-          Pick any that apply
-        </Text>
-
-        {/* THIS SECTION DOES: one checkbox row per matching style. */}
-        <View className="gap-1.5">
-          {CONNECTION_STYLES.map((s) => {
-            const on = picked.includes(s.id);
-            return (
-              <CheckRow
-                key={s.id}
-                label={s.label}
-                on={on}
-                analyticsId={ONBOARDING.friends_of_friends.style}
-                analyticsProps={{ style: s.id }}
-                onPress={() => onToggle(s.id)}
-              />
-            );
-          })}
-          <CheckRow
+      {/* THIS SECTION DOES: one checkbox row per matching style, then the
+          shortcut row that ticks every one of them at once. */}
+      <View style={{ gap: 10 }}>
+        {CONNECTION_STYLES.map((s) => (
+          <OBTile
+            key={s.id}
+            label={s.label}
+            variant="checkbox"
+            selected={picked.includes(s.id)}
+            analyticsId={ONBOARDING.friends_of_friends.style}
+            analyticsProps={{ style: s.id }}
+            onPress={() => onToggle(s.id)}
+          />
+        ))}
+        {/* THIS SECTION DOES: give "All of the above" a little extra room
+            above it so it reads as a separate shortcut, not just another row. */}
+        <View style={{ marginTop: 8 }}>
+          <OBTile
             label="All of the above"
-            on={allOn}
+            variant="checkbox"
+            selected={allOn}
+            idleFill={OB.pinkWash}
             analyticsId={ONBOARDING.friends_of_friends.all}
             onPress={toggleAll}
           />
         </View>
       </View>
     </OnboardingStep>
-  );
-}
-
-/** One rounded checkbox row. */
-function CheckRow({
-  label,
-  on,
-  analyticsId,
-  analyticsProps,
-  onPress
-}: {
-  label: string;
-  on: boolean;
-  analyticsId: string;
-  analyticsProps?: Record<string, string>;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={withAnalyticsPress(analyticsId, onPress, { analyticsProps })}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: on }}
-      accessibilityLabel={label}
-      className={cn(
-        'min-h-[48px] flex-row items-center gap-3 rounded-card border px-4',
-        on ? 'border-teal bg-teal/15' : 'border-ink-line bg-surface'
-      )}
-    >
-      <View
-        className={cn(
-          'h-5 w-5 items-center justify-center rounded-md border',
-          on ? 'border-teal bg-teal' : 'border-ink-line bg-surface'
-        )}
-      >
-        {on ? <CheckIcon size={12} color="#FFFFFF" strokeWidth={3.5} /> : null}
-      </View>
-      <Text className={cn('font-sans-sb text-[15px]', on ? 'text-onaccent' : 'text-ink')}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }

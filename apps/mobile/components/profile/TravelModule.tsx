@@ -84,11 +84,18 @@ export function TravelModule({
           <View className="mt-2.5 min-h-[34px]">
             {place ? (
               <Text className="font-sans-sb text-[13px] text-ink">
+                {place.favorite ? (
+                  <Text className="font-sans-b text-coral">FAV · </Text>
+                ) : null}
                 <Text className="font-sans-b">{place.label}</Text> · {place.note}
               </Text>
             ) : (
               <Text className="font-sans-md text-[12px] text-ink-mute">
-                {places.length} places · tap a pin
+                {places.length === 0
+                  ? 'Add places you have traveled to fill the map'
+                  : places.length === 1
+                    ? '1 place · add more trips to fill the map · tap a pin'
+                    : `${places.length} places · tap a pin`}
               </Text>
             )}
           </View>
@@ -98,6 +105,11 @@ export function TravelModule({
         <View style={{ width: width || undefined }}>
           <ScrollView style={{ maxHeight: 204 }} nestedScrollEnabled>
             <View className="gap-2">
+              {places.length === 0 ? (
+                <Text className="px-1 font-sans-md text-[13px] text-ink-mute">
+                  Keep adding places you have traveled. Your favorite can wear a FAV star.
+                </Text>
+              ) : null}
               {places.map((p) => (
                 <View
                   key={p.id}
@@ -107,12 +119,19 @@ export function TravelModule({
                     accessible={false}
                     className="h-9 w-9 shrink-0 items-center justify-center rounded-full bg-coral/25"
                   >
-                    <Text className="text-[16px]">{p.emoji}</Text>
+                    <Text className="text-[16px]">{p.favorite ? '⭐' : p.emoji}</Text>
                   </View>
                   <View className="min-w-0 flex-1">
-                    <Text numberOfLines={1} className="font-sans-b text-[13px] text-ink">
-                      {p.label}
-                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-b text-[13px] text-ink">
+                        {p.label}
+                      </Text>
+                      {p.favorite ? (
+                        <Text className="shrink-0 font-sans-b text-[10px] uppercase tracking-wide text-coral">
+                          FAV
+                        </Text>
+                      ) : null}
+                    </View>
                     <Text numberOfLines={1} className="font-sans-sb text-[12px] text-ink-mute">
                       {p.note}
                     </Text>

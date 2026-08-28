@@ -29,6 +29,18 @@ export default function Root({ children }: { children: ReactNode }) {
 }
 
 const responsiveBackground = `
+/* Fill the real browser window. Without width: 100% the app can lock to a
+   leftover phone-sized box, leaving a white gutter on the right (or clipping
+   when the window is narrower than that box). */
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+#root {
+  display: flex;
+  flex: 1;
+}
 body {
   background-color: #fff;
 }

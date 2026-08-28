@@ -214,8 +214,16 @@ Stories expire; media is no longer available to viewers (`STORIES.md` / retentio
 
 | Surface | Behavior |
 |---|---|
-| **Onboarding · Stay in touch** | Coarse multi-select: Close friends' updates · Birthdays & dates · Big moments · Events. Each chip expands into the individual kinds below when onboarding finishes. |
-| **Profile → Settings → Notifications** | Chevron (not a master toggle). Two layers: **who** (Close / Friends / Acquaintances) and **what** (one toggle per `kind`). |
+| **Onboarding · Stay in touch** | Coarse multi-select chips (`birthdays`, `life_updates`, `meet`, `activities`, `messages`, `reconnect`). Each chip expands into the individual kinds below when onboarding finishes. Client expands locally, then `PATCH /me/notification-prefs` with full `{ kinds, circles }`. |
+| **Profile → Settings → Notifications** | Chevron (not a master toggle). Two layers: **who** (Close / Friends / Acquaintances) and **what** (one toggle per `kind`). Reads `GET /me/notification-prefs`; writes partial `PATCH` merges. |
+
+**Storage:** `user_settings.notif_prefs` jsonb = `{ kinds: Record<NotificationKind, boolean>, circles: Record<NotificationCircleId, boolean> }`. Legacy `{ selected: prefIds[] }` blobs are normalized on read.
+
+**API:**
+- `GET /me/notification-prefs` → `{ kinds, circles }` (defaults filled in)
+- `PATCH /me/notification-prefs` accepts `{ kinds? }`, `{ circles? }`, and/or legacy `{ prefIds? }` (expands server-side)
+
+**Gating:** `NotificationsService.notifyIfAllowed` reads prefs before inserting a `notifications` row (story replies, connect requests, and other call sites as they migrate). Kind must be on; circle-gated kinds also need the actor's circle on. Prefs gate **delivery** of those rows; there is still no separate device-push pipeline beyond this insert path today.
 
 There is **no** single Settings master switch. Per-kind + per-circle toggles only.
 

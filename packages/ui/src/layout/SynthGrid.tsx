@@ -13,7 +13,8 @@ const COLS = 16;
 
 // Purple lines (same idea as Magic Patterns). Fixed rgba so dark mode
 // never turns the grid into a bright white stripe via themed `ink`.
-const LINE = 'rgba(127, 119, 221, 0.5)';
+// Personal onboarding color overrides this via the `color` prop.
+const DEFAULT_LINE = 'rgba(127, 119, 221, 0.5)';
 
 /**
  * How loud the grid is. 'normal' is the everyday backdrop; 'bold' is Discover,
@@ -24,8 +25,16 @@ const STRENGTH = {
   bold: { opacity: 1 }
 };
 
-export function SynthGrid({ strength = 'normal' }: { strength?: keyof typeof STRENGTH }) {
+export function SynthGrid({
+  strength = 'normal',
+  color
+}: {
+  strength?: keyof typeof STRENGTH;
+  /** Optional personal line tint from onboarding (rgba or hex). */
+  color?: string;
+}) {
   const level = STRENGTH[strength];
+  const line = color?.trim() ? color : DEFAULT_LINE;
   const drift = useRef(new Animated.Value(0)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -112,7 +121,7 @@ export function SynthGrid({ strength = 'normal' }: { strength?: keyof typeof STR
               opacity: 0.45 + (Math.abs(i - COLS / 2) / (COLS / 2)) * 0.35,
               height: '100%',
               width: StyleSheet.hairlineWidth,
-              backgroundColor: LINE
+              backgroundColor: line
             }}
           />
         ))}
@@ -140,7 +149,7 @@ export function SynthGrid({ strength = 'normal' }: { strength?: keyof typeof STR
                 opacity: r.opacity,
                 height: StyleSheet.hairlineWidth,
                 width: '100%',
-                backgroundColor: LINE
+                backgroundColor: line
               }}
             />
           ))}

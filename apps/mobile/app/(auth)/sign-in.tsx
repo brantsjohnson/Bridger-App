@@ -9,12 +9,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Image,
-  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View
 } from 'react-native';
@@ -42,7 +42,25 @@ import {
   verifyDemoUnlockPassword,
   verifyOnboardDemoPassword
 } from '../../lib/demo';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/auth-provider';
+
+/**
+ * After Google / Apple succeeds, decide signup vs sign-in for analytics.
+ * Brand-new accounts were created in the last minute; everyone else is returning.
+ */
+async function trackAuthOutcome(method: 'google' | 'apple') {
+  try {
+    const { data } = await supabase.auth.getUser();
+    const createdAt = data.user?.created_at
+      ? new Date(data.user.created_at).getTime()
+      : 0;
+    const isNew = createdAt > 0 && Date.now() - createdAt < 60_000;
+    trackProduct(isNew ? 'auth_signed_up' : 'auth_signed_in', { method });
+  } catch {
+    trackProduct('auth_signed_in', { method });
+  }
+}
 
 const LOGIN_BG = require('../../assets/brand/login-screen.png');
 const BRIDGER_MARK = require('../../assets/brand/bridger-mark.png');
@@ -75,7 +93,8 @@ export default function SignInScreen() {
     const { error: err, cancelled } = await signInWithGoogle();
     setBusy(null);
     if (!cancelled && err) setError(err);
-    if (!cancelled && !err) trackProduct('auth_signed_in', { method: 'google' });
+    // First-time Google users get an account automatically; returning users just sign in.
+    if (!cancelled && !err) await trackAuthOutcome('google');
   }
 
   async function onApple() {
@@ -84,7 +103,8 @@ export default function SignInScreen() {
     const { error: err, cancelled } = await signInWithApple();
     setBusy(null);
     if (!cancelled && err) setError(err);
-    if (!cancelled && !err) trackProduct('auth_signed_in', { method: 'apple' });
+    // First-time Apple users get an account automatically; returning users just sign in.
+    if (!cancelled && !err) await trackAuthOutcome('apple');
   }
 
   async function onSignInEmail() {
@@ -173,210 +193,190 @@ export default function SignInScreen() {
 
   return (
     <Screen tone="plain">
-      <ImageBackground
+      {/*
+        Full-bleed art sits ABSOLUTE behind everything and crops with cover, so
+        it always meets the sign-in sheet. ImageBackground + flex left a white
+        band on some devices when the image did not stretch to the sheet.
+      */}
+      <Image
         source={LOGIN_BG}
         resizeMode="cover"
-        className="flex-1"
+        style={[
+          StyleSheet.absoluteFill,
+          // Width/height 100% keeps cover painting edge-to-edge on web too.
+          { width: '100%', height: '100%' }
+        ]}
         accessibilityIgnoresInvertColors
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <KeyboardAvoidingView
-          className="flex-1"
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        {/* Logo floats over the art; sheet sits below and covers the lower art. */}
+        <View
+          className="flex-1 items-center justify-center px-8"
+          style={{ paddingTop: insets.top + 12 }}
         >
-          <View
-            className="flex-1 items-center justify-center px-8"
-            style={{ paddingTop: insets.top + 12 }}
+          <Pressable
+            onPress={onLogoPress}
+            onLongPress={onLogoLongPress}
+            delayLongPress={700}
+            disabled={busy !== null}
+            accessibilityRole="imagebutton"
+            accessibilityLabel="Bridger logo"
+            accessibilityHint={
+              unlockAllowed
+                ? 'Tap three times or hold to enter the demo password'
+                : undefined
+            }
+            className="items-center justify-center"
+            hitSlop={16}
           >
-            <Pressable
-              onPress={onLogoPress}
-              onLongPress={onLogoLongPress}
-              delayLongPress={700}
-              disabled={busy !== null}
-              accessibilityRole="imagebutton"
-              accessibilityLabel="Bridger logo"
-              accessibilityHint={
-                unlockAllowed
-                  ? 'Tap three times or hold to enter the demo password'
-                  : undefined
-              }
-              className="items-center justify-center"
-              hitSlop={16}
-            >
-              <Image
-                source={BRIDGER_MARK}
-                style={{ width: 168, height: 220 }}
-                resizeMode="contain"
-                accessibilityIgnoresInvertColors
-              />
-            </Pressable>
-          </View>
+            <Image
+              source={BRIDGER_MARK}
+              style={{ width: 168, height: 220 }}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
+          </Pressable>
+        </View>
 
-          <View
-            className="rounded-t-3xl bg-canvas px-5 pt-5"
-            style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+        <View
+          className="rounded-t-3xl bg-canvas px-5 pt-5"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+        >
+          <AnalyticsRegion
+            analyticsId={AUTH.sign_in.page_title}
+            interactive={false}
+            accessibilityLabel="Sign in"
           >
-            <AnalyticsRegion
-              analyticsId={AUTH.sign_in.page_title}
-              interactive={false}
-              accessibilityLabel="Sign in"
-            >
-              <Text className="mb-3 font-pixel text-[22px] text-ink">Sign in</Text>
-            </AnalyticsRegion>
+            <Text className="mb-1 font-pixel text-[22px] text-ink">Sign in</Text>
+          </AnalyticsRegion>
+          {/* One path for new and returning: Google / Apple create the account if needed. */}
+          <Text className="mb-3 font-sans-sb text-[13px] text-ink-mute">
+            New or returning. Continue with Google or Apple.
+          </Text>
 
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              style={{ maxHeight: 420 }}
-            >
-              {!showManual ? (
-                <>
-                  {/* OAuth is the default: tap Google or Apple to sign in. */}
-                  <View className="gap-3">
-                    <ButtonSecondary
-                      full
-                      size="lg"
-                      onPress={onGoogle}
-                      disabled={busy !== null}
-                      loading={busy === 'google'}
-                      accessibilityLabel="Continue with Google"
-                      analyticsId={AUTH.sign_in.google}
-                      analyticsProps={{ method: 'google' }}
-                    >
-                      Continue with Google
-                    </ButtonSecondary>
-                    <ButtonSecondary
-                      full
-                      size="lg"
-                      onPress={onApple}
-                      disabled={busy !== null}
-                      loading={busy === 'apple'}
-                      accessibilityLabel="Continue with Apple"
-                      analyticsId={AUTH.sign_in.apple}
-                      analyticsProps={{ method: 'apple' }}
-                    >
-                      Continue with Apple
-                    </ButtonSecondary>
-                  </View>
-
-                  {/* Subtle manual path under the OAuth buttons. */}
-                  <Pressable
-                    onPress={() => {
-                      trackClick(AUTH.sign_in.manual_link);
-                      setShowManual(true);
-                    }}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            style={{ maxHeight: 420 }}
+          >
+            {!showManual ? (
+              <>
+                {/* OAuth is the default: first tap creates an account; next time it signs in. */}
+                <View className="gap-3">
+                  <ButtonSecondary
+                    full
+                    size="lg"
+                    onPress={onGoogle}
                     disabled={busy !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel="Sign in with email"
-                    className="mt-5 items-center py-2"
+                    loading={busy === 'google'}
+                    accessibilityLabel="Continue with Google"
+                    analyticsId={AUTH.sign_in.google}
+                    analyticsProps={{ method: 'google' }}
                   >
-                    <Text className="font-sans-sb text-[13px] text-ink-mute underline decoration-ink-mute/40">
-                      Sign in with email
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => {
-                      trackClick(AUTH.sign_in.switch_to_sign_up);
-                      router.replace('/(auth)/sign-up');
-                    }}
+                    Continue with Google
+                  </ButtonSecondary>
+                  <ButtonSecondary
+                    full
+                    size="lg"
+                    onPress={onApple}
                     disabled={busy !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel="Create account"
-                    className="mt-2 items-center py-2"
+                    loading={busy === 'apple'}
+                    accessibilityLabel="Continue with Apple"
+                    analyticsId={AUTH.sign_in.apple}
+                    analyticsProps={{ method: 'apple' }}
                   >
-                    <Text className="font-sans-b text-[13px] text-ink-soft">
-                      New here?{' '}
-                      <Text className="font-sans-sb text-ink underline decoration-ink/30">
-                        Create account
-                      </Text>
-                    </Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  {/* Manual sign-in: email + password only (no confirm). */}
-                  <Pressable
-                    onPress={() => {
-                      setShowManual(false);
-                      setError(null);
-                    }}
-                    disabled={busy !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel="Back to Google and Apple sign in"
-                    className="mb-4 self-start py-1"
-                  >
-                    <Text className="font-sans-sb text-[13px] text-ink-mute">← Back</Text>
-                  </Pressable>
+                    Continue with Apple
+                  </ButtonSecondary>
+                </View>
 
-                  <View className="gap-3">
-                    <TextField
-                      label="Email"
-                      value={email}
-                      onChange={setEmail}
-                      placeholder="you@email.com"
-                      type="email"
-                      autoComplete="email"
-                      analyticsId={AUTH.sign_in.email}
-                    />
-                    <TextField
-                      label="Password"
-                      value={password}
-                      onChange={setPassword}
-                      type="password"
-                      placeholder="Your password"
-                      autoComplete="password"
-                      analyticsId={AUTH.sign_in.password}
-                    />
-                  </View>
-
-                  <View className="mt-5">
-                    <ButtonPrimary
-                      full
-                      size="lg"
-                      onPress={onSignInEmail}
-                      disabled={busy !== null || !email.trim() || !password}
-                      loading={busy === 'email'}
-                      accessibilityLabel="Sign in with email"
-                      analyticsId={AUTH.sign_in.submit}
-                      analyticsProps={{ method: 'email' }}
-                    >
-                      Sign in
-                    </ButtonPrimary>
-                  </View>
-
-                  <Pressable
-                    onPress={() => {
-                      trackClick(AUTH.sign_in.switch_to_sign_up);
-                      router.replace('/(auth)/sign-up');
-                    }}
-                    disabled={busy !== null}
-                    accessibilityRole="button"
-                    accessibilityLabel="Create account"
-                    className="mt-4 items-center py-2"
-                  >
-                    <Text className="font-sans-b text-[13px] text-ink-soft">
-                      New here?{' '}
-                      <Text className="font-sans-sb text-ink underline decoration-ink/30">
-                        Create account
-                      </Text>
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-
-              {error ? (
-                <Text
-                  className="mt-4 font-sans-sb text-[13px] text-coral"
-                  accessibilityLiveRegion="polite"
+                {/* Email stays for people who already have a password account. */}
+                <Pressable
+                  onPress={() => {
+                    trackClick(AUTH.sign_in.manual_link);
+                    setShowManual(true);
+                  }}
+                  disabled={busy !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign in with email"
+                  className="mt-5 items-center py-2"
                 >
-                  {error}
-                </Text>
-              ) : null}
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </ImageBackground>
+                  <Text className="font-sans-sb text-[13px] text-ink-mute underline decoration-ink-mute/40">
+                    Sign in with email
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                {/* Manual sign-in: email + password only (no create-account path). */}
+                <Pressable
+                  onPress={() => {
+                    setShowManual(false);
+                    setError(null);
+                  }}
+                  disabled={busy !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to Google and Apple sign in"
+                  className="mb-4 self-start py-1"
+                >
+                  <Text className="font-sans-sb text-[13px] text-ink-mute">← Back</Text>
+                </Pressable>
+
+                <View className="gap-3">
+                  <TextField
+                    label="Email"
+                    value={email}
+                    onChange={setEmail}
+                    placeholder="you@email.com"
+                    type="email"
+                    autoComplete="email"
+                    analyticsId={AUTH.sign_in.email}
+                  />
+                  <TextField
+                    label="Password"
+                    value={password}
+                    onChange={setPassword}
+                    type="password"
+                    placeholder="Your password"
+                    autoComplete="password"
+                    analyticsId={AUTH.sign_in.password}
+                  />
+                </View>
+
+                <View className="mt-5">
+                  <ButtonPrimary
+                    full
+                    size="lg"
+                    onPress={onSignInEmail}
+                    disabled={busy !== null || !email.trim() || !password}
+                    loading={busy === 'email'}
+                    accessibilityLabel="Sign in with email"
+                    analyticsId={AUTH.sign_in.submit}
+                    analyticsProps={{ method: 'email' }}
+                  >
+                    Sign in
+                  </ButtonPrimary>
+                </View>
+              </>
+            )}
+
+            {error ? (
+              <Text
+                className="mt-4 font-sans-sb text-[13px] text-coral"
+                accessibilityLiveRegion="polite"
+              >
+                {error}
+              </Text>
+            ) : null}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={demoOpen}

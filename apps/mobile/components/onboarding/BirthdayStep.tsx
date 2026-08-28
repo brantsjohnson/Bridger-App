@@ -1,8 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// One question: your birthday. It uses the drill-down picker (year → month →
-// day). Confirming "Yes, that's right" saves and moves on — no separate Continue.
-// Required — no skip. PRIVACY: who can see this is chosen later in the privacy step.
+// One question: your birthday. The screen shows the amber "Friends love a
+// heads-up" tag, the big blue all-caps question, and then the drill-down picker
+// (year, then month, then day). Confirming "Yes, that's right" inside the picker
+// saves and moves on, which is why this screen hides the usual Continue button.
+// Required, so there is no skip. PRIVACY: who can see this is chosen later in
+// the privacy step.
+//
+// LOOK: the frame (tan paper, grid paper, back box, step bar, tag, heading) all
+// comes from the shared onboarding parts. Everything below the question is the
+// picker's own white square cells.
 // ============================================
 import React from 'react';
 import { View } from 'react-native';
@@ -31,13 +38,14 @@ export function BirthdayStep({
       total={total}
       purpose="Friends love a heads-up."
       ask="When's your birthday?"
-      accent="teal"
+      // The picker is taller than a small phone, so this step is allowed to
+      // scroll, and it confirms inside itself instead of using Continue.
       fillBody
       scrollBody
       hideFooter
       onBack={onBack}
     >
-      <View className="min-h-0 flex-1">
+      <View style={{ flex: 1, minHeight: 0 }}>
         <BirthdayPicker
           value={value}
           onChange={onChange}

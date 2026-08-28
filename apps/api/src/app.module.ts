@@ -23,6 +23,7 @@ import { MatchingModule } from './matching/matching.module';
 import { MeModule } from './me/me.module';
 import { MusicModule } from './music/music.module';
 import { NotesModule } from './notes/notes.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PollsModule } from './polls/polls.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { QuizModule } from './quiz/quiz.module';
@@ -40,6 +41,8 @@ import { DemoWeekModule } from './demo-week/demo-week.module';
     ConfigModule.forRoot({ isGlobal: true }),
     // The server's admin connection to Supabase (global).
     SupabaseModule,
+    // Prefs-gated in-app notification writer (global).
+    NotificationsModule,
     // AI gateway enqueue + worker helpers (keys stay server-side).
     AiModule,
     // Opt-in relationship Assistant (personal_agent lane).

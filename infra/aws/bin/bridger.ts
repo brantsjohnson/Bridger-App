@@ -30,10 +30,23 @@ const env = {
 // the service stack imports it by name (no cross-stack construct reference).
 const SERVER_SECRET_NAME = 'bridger/api/server';
 
+// Optional custom domain for the consumer website, supplied at deploy time via
+// environment variables so we don't hardcode it:
+//   WEB_DOMAIN_NAMES="bridger.social,www.bridger.social"
+//   WEB_CERT_ARN="arn:aws:acm:us-east-1:...:certificate/..."
+// Leave both unset to keep serving only on the default *.cloudfront.net address.
+const webDomainNames = (process.env.WEB_DOMAIN_NAMES ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const webCertificateArn = process.env.WEB_CERT_ARN?.trim() || undefined;
+
 new BridgerFoundationStack(app, 'BridgerFoundationStack', {
   env,
   description: 'Bridger secret vault + S3/CloudFront web hosting',
-  serverSecretName: SERVER_SECRET_NAME
+  serverSecretName: SERVER_SECRET_NAME,
+  webDomainNames: webDomainNames.length ? webDomainNames : undefined,
+  webCertificateArn
 });
 
 new BridgerServiceStack(app, 'BridgerServiceStack', {

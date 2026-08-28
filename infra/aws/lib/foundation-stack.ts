@@ -19,10 +19,21 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 export interface BridgerFoundationStackProps extends cdk.StackProps {
   /** Shared Secrets Manager name (must match the service stack). */
   serverSecretName?: string;
+  /**
+   * Custom domain names for the consumer web CDN (e.g. bridger.social + www).
+   * Leave empty to serve only on the default *.cloudfront.net address.
+   */
+  webDomainNames?: string[];
+  /**
+   * ARN of an already-issued ACM certificate (must be in us-east-1) that
+   * covers every name in webDomainNames. Required if webDomainNames is set.
+   */
+  webCertificateArn?: string;
 }
 
 export class BridgerFoundationStack extends cdk.Stack {
@@ -88,9 +99,21 @@ export class BridgerFoundationStack extends cdk.Stack {
       autoDeleteObjects: true
     });
 
+    // --- Our own domain on the consumer CDN (only if we passed one in) ---
+    // If webDomainNames is set, we attach the domain(s) plus the matching HTTPS
+    // certificate so CloudFront answers for bridger.social over HTTPS. The cert
+    // must already exist in us-east-1 (we created it with `aws acm request-certificate`).
+    const webCertificate =
+      props?.webCertificateArn && props.webDomainNames?.length
+        ? acm.Certificate.fromCertificateArn(this, 'WebCert', props.webCertificateArn)
+        : undefined;
+
     // --- CDN for the consumer web app ---
     const distribution = new cloudfront.Distribution(this, 'WebCdn', {
       defaultRootObject: 'index.html',
+      // Our custom domain names, when provided (otherwise only *.cloudfront.net).
+      domainNames: props?.webDomainNames?.length ? props.webDomainNames : undefined,
+      certificate: webCertificate,
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(webBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
@@ -146,7 +169,10 @@ export class BridgerFoundationStack extends cdk.Stack {
     });
     new cdk.CfnOutput(this, 'ServerSecretArn', {
       description: 'ARN of the server secret',
-      value: this.serverSecret.secretArn
+      value: this.serverSecret.secretArn,
+      // Keep this export name matching what is already deployed so a plain
+      // web-domain deploy stays surgical (no output churn / no import breakage).
+      exportName: 'BridgerServerSecretArn'
     });
   }
 }

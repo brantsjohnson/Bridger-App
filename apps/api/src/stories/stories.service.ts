@@ -23,6 +23,7 @@ import type { Reaction, ReactionKind, Tier } from '@bridger/shared';
 import { AiJobsService } from '../ai/ai-jobs.service';
 import { canViewTier, isBlocked } from '../common/visibility';
 import { CoopService } from '../coop/coop.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
 const DAILY_CAP = 3;
@@ -70,7 +71,8 @@ export class StoriesService {
     private readonly supabase: SupabaseService,
     private readonly config: ConfigService,
     private readonly coop: CoopService,
-    private readonly aiJobs: AiJobsService
+    private readonly aiJobs: AiJobsService,
+    private readonly notifications: NotificationsService
   ) {
     this.mediaBucket =
       this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
@@ -547,11 +549,13 @@ export class StoriesService {
     if (error) throw error;
 
     // Notify the story author (not yourself). Payload = opaque ids only.
+    // Prefs gate: skip when they turned "Replies to your update" off.
     if (story.author_id !== userId) {
-      await this.supabase.admin.from('notifications').insert({
-        user_id: story.author_id,
+      await this.notifications.notifyIfAllowed({
+        userId: story.author_id,
         kind: 'story_reply',
-        payload: { story_id: postId, from: userId, post_id: postId } as never
+        payload: { story_id: postId, from: userId, post_id: postId } as never,
+        actorCircle: undefined
       });
     }
 

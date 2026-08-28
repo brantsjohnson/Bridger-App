@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The "Fucks not found." 404 popup from Magic Patterns — an old-Windows dialog
-// with a black X circle and an OK button. Shown when a route is missing or
-// something went wrong on the way (e.g. a broken connection path).
+// The "System says it's fine..." 404 popup from Magic Patterns: an old-Windows
+// dialog with a black X circle and an OK button. Shown when a route is missing
+// or something went wrong on the way (e.g. a broken connection path).
 // ============================================
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -40,7 +40,7 @@ export function NotFoundScreen({
                 <XIcon size={20} color="#FFFFFF" strokeWidth={4} />
               </View>
               <Text className="min-w-0 flex-1 font-pixel text-[19px] leading-tight text-[#1C1B16]">
-                Fucks not found.
+                System says it's fine...
               </Text>
             </View>
           </AnalyticsRegion>

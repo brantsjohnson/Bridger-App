@@ -29,6 +29,7 @@ import type {
 } from '@bridger/shared';
 import { MatchingFeedbackService } from '../matching/matching-feedback.service';
 import { DemoWeekService } from '../demo-week/demo-week.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { TiersService } from '../tiers/tiers.service';
 
@@ -51,7 +52,8 @@ export class ConnectionsService {
     private readonly tiers: TiersService,
     private readonly matchingFeedback: MatchingFeedbackService,
     private readonly demoWeek: DemoWeekService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly notifications: NotificationsService
   ) {
     this.mediaBucket =
       this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
@@ -272,12 +274,12 @@ export class ConnectionsService {
     });
     if (error) throw error;
 
-    const { error: nErr } = await this.supabase.admin.from('notifications').insert({
-      user_id: targetId,
-      kind: 'connection_request',
+    // Prefs gate: skip when they turned connection requests off.
+    await this.notifications.notifyIfAllowed({
+      userId: targetId,
+      kind: 'connect_request',
       payload: { from: userId } as never
     });
-    if (nErr) throw nErr;
 
     return { ok: true };
   }

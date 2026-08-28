@@ -12,7 +12,7 @@ import {
   FREE_BENEFITS,
   HOME,
   MEMBER_BENEFITS,
-  type Accent
+  MEMBER_UNLOCKS
 } from '@bridger/shared';
 import { COOP } from '../../lib/analytics-ids';
 import {
@@ -42,63 +42,8 @@ const ALWAYS_FREE = [
   'Previous-week recap of stories'
 ];
 
-const UNLOCKS: {
-  key: string;
-  title: string;
-  line: string;
-  emoji: string;
-  accent: Accent;
-}[] = [
-  {
-    key: 'personalization',
-    title: 'Make it yours',
-    line: 'Widgets, photos, backgrounds, colors.',
-    emoji: '🎨',
-    accent: 'purple'
-  },
-  {
-    key: 'circles',
-    title: 'Bigger circles',
-    line: '25 Close, 125 Friends, plus named groups.',
-    emoji: '👥',
-    accent: 'teal'
-  },
-  {
-    key: 'video',
-    title: 'Post video',
-    line: 'Video updates and video replies.',
-    emoji: '🎥',
-    accent: 'coral'
-  },
-  {
-    key: 'ask',
-    title: 'Ask the group',
-    line: 'Create polls and open questions.',
-    emoji: '📊',
-    accent: 'purple'
-  },
-  {
-    key: 'recaps',
-    title: 'Daily recaps',
-    line: 'Updated daily, not a week behind.',
-    emoji: '📅',
-    accent: 'amber'
-  },
-  {
-    key: 'storage',
-    title: 'Keep everything',
-    line: 'No 30 day rolling window.',
-    emoji: '📦',
-    accent: 'blue'
-  },
-  {
-    key: 'events',
-    title: 'Host up to 100',
-    line: 'Plus co-hosts, allergies, and assignments.',
-    emoji: '🎉',
-    accent: 'pink'
-  }
-];
+// Member perk cards: shared list so onboarding matches this page.
+const UNLOCKS = MEMBER_UNLOCKS;
 
 const PORTAL_LINKS = [
   { label: 'Vote on what gets built', line: 'One member, one vote' },

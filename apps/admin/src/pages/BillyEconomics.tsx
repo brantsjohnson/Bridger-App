@@ -135,8 +135,8 @@ export function BillyEconomics() {
         </Card>
       ) : null}
 
-      <PageState loading={loading} error={error}>
-        {overview && cfgDraft ? (
+      <PageState loading={loading} error={error} />
+      {!loading && !error && overview && cfgDraft ? (
           <>
             <Card className="p-4">
               <p className="text-sm text-muted">
@@ -207,7 +207,6 @@ export function BillyEconomics() {
             </Card>
           </>
         ) : null}
-      </PageState>
     </div>
   );
 }

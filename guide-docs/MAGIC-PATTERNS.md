@@ -19,7 +19,8 @@ When in doubt: fewer words.
 
 ## Visual language (summary — full spec in DESIGN.md)
 
-- **Canvas:** eggshell white (`#F4F1E7`) light / near-black (`#0E0E0E`) dark. Onboarding & fill-flows may go full color.
+- **Canvas:** eggshell white (`#F4F1E7`) light / near-black (`#0E0E0E`) dark.
+- **Onboarding is its own room.** First run keeps square white boxes with hard navy outlines and a pink Continue pill, but the page canvas matches the app eggshell. Its paint is `apps/mobile/components/onboarding/onboarding-theme.ts` and its parts are `onboarding-ui.tsx`. Full spec in DESIGN.md § "Onboarding is its own room".
 - **Flat & rounded:** no heavy shadows, soft corners, colorful accents on a calm canvas.
 - **Headers:** pixel font (Pixelify Sans) for section titles; clean sans for everything else. Never pixel body copy.
 - **Primary buttons:** 90s-metallic (beveled via borders — light top/left, dark bottom/right; silver face; black text). Everything else flat.

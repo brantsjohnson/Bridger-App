@@ -9,6 +9,13 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  // THIS SECTION DOES: let the browser build read runtime values from our
+  // shared CommonJS package after pnpm resolves its workspace link.
+  build: {
+    commonjsOptions: {
+      include: [/node_modules/, /packages\/shared\/dist/]
+    }
+  },
   server: {
     port: 5174,
     open: false

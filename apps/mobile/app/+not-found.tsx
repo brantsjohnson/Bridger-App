@@ -1,7 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Expo Router's catch-all when a URL does not match any screen. Shows the
-// Magic Patterns "Fucks not found." Windows dialog, records the path trail
+// Magic Patterns "System says it's fine..." Windows dialog, records the path trail
 // for the admin page, and OK / close send you Home.
 // ============================================
 import React, { useEffect, useRef } from 'react';

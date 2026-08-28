@@ -188,6 +188,7 @@ export type Database = {
       }
       admin_config: {
         Row: {
+          demo_week: Json
           home_defaults: Json
           id: string
           live_quiz_slug: string | null
@@ -197,6 +198,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          demo_week?: Json
           home_defaults?: Json
           id?: string
           live_quiz_slug?: string | null
@@ -206,6 +208,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          demo_week?: Json
           home_defaults?: Json
           id?: string
           live_quiz_slug?: string | null
@@ -3117,6 +3120,7 @@ export type Database = {
         Row: {
           author_id: string
           created_at: string
+          event_id: string | null
           expires_at: string | null
           id: string
           /** generated: created_at + 24 hours — leaves Home tray → Profile archive */
@@ -3131,6 +3135,7 @@ export type Database = {
         Insert: {
           author_id: string
           created_at?: string
+          event_id?: string | null
           expires_at?: string | null
           id?: string
           media_id?: string | null
@@ -3143,6 +3148,7 @@ export type Database = {
         Update: {
           author_id?: string
           created_at?: string
+          event_id?: string | null
           expires_at?: string | null
           id?: string
           media_id?: string | null
@@ -3158,6 +3164,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
           {
@@ -3573,7 +3586,9 @@ export type Database = {
           discoverable: boolean
           assistant_enabled: boolean
           always_view_original: boolean
+          can_invite: boolean
           delight_opt_ins: string[]
+          demo_invite_sent_at: string | null
           home_city: string | null
           home_layout: Json | null
           locale: string | null
@@ -3585,6 +3600,9 @@ export type Database = {
           profile_custom_html: Json | null
           profile_custom_code_status: string | null
           profile_custom_code_sanitized_at: string | null
+          profile_color: string | null
+          social_battery: number | null
+          connection_style: Json | null
           theme: string | null
           updated_at: string
           user_id: string
@@ -3593,7 +3611,9 @@ export type Database = {
           discoverable?: boolean
           assistant_enabled?: boolean
           always_view_original?: boolean
+          can_invite?: boolean
           delight_opt_ins?: string[]
+          demo_invite_sent_at?: string | null
           home_city?: string | null
           home_layout?: Json | null
           locale?: string | null
@@ -3605,6 +3625,9 @@ export type Database = {
           profile_custom_html?: Json | null
           profile_custom_code_status?: string | null
           profile_custom_code_sanitized_at?: string | null
+          profile_color?: string | null
+          social_battery?: number | null
+          connection_style?: Json | null
           theme?: string | null
           updated_at?: string
           user_id: string
@@ -3613,7 +3636,9 @@ export type Database = {
           discoverable?: boolean
           assistant_enabled?: boolean
           always_view_original?: boolean
+          can_invite?: boolean
           delight_opt_ins?: string[]
+          demo_invite_sent_at?: string | null
           home_city?: string | null
           home_layout?: Json | null
           locale?: string | null
@@ -3625,6 +3650,9 @@ export type Database = {
           profile_custom_html?: Json | null
           profile_custom_code_status?: string | null
           profile_custom_code_sanitized_at?: string | null
+          profile_color?: string | null
+          social_battery?: number | null
+          connection_style?: Json | null
           theme?: string | null
           updated_at?: string
           user_id?: string

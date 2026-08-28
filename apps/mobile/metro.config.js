@@ -15,7 +15,7 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 const config = getDefaultConfig(projectRoot);
 
 // --- Watch the whole monorepo so edits to shared packages hot-reload ---
-config.watchFolders = [workspaceRoot];
+config.watchFolders = [...new Set([...(config.watchFolders ?? []), workspaceRoot])];
 
 // --- Look for installed packages both here and at the repo root ---
 config.resolver.nodeModulesPaths = [

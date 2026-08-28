@@ -79,6 +79,8 @@ export const ONBOARDING = {
   confirm_profile: {
     first_input: aid('onboarding', 'confirm_profile', 'first_input'),
     last_input: aid('onboarding', 'confirm_profile', 'last_input'),
+    /** big empty/filled photo square that opens the system Take / Upload sheet */
+    photo_square: aid('onboarding', 'confirm_profile', 'photo_square'),
     take: aid('onboarding', 'confirm_profile', 'take'),
     upload: aid('onboarding', 'confirm_profile', 'upload'),
     retake: aid('onboarding', 'confirm_profile', 'retake')
@@ -102,13 +104,17 @@ export const ONBOARDING = {
     /** dead — the animated visual body is not tappable */
     visual: aid('onboarding', 'stat', 'visual'),
     /** dead — the display-font headline is not tappable */
-    headline: aid('onboarding', 'stat', 'headline')
+    headline: aid('onboarding', 'stat', 'headline'),
+    /** dead — the changing "you'll spend X years" line on the life story */
+    caption: aid('onboarding', 'stat', 'caption'),
+    /** screentime only: tap the story to skip to the next beat */
+    advance: aid('onboarding', 'stat', 'advance')
   },
   // Step 5 — connect contacts to find friends already here.
   contacts: {
     sync: aid('onboarding', 'contacts', 'sync'),
     invite: aid('onboarding', 'contacts', 'invite'),
-    /** one of the three Link 1 / 2 / 3 slots (`slot`: 1|2|3) */
+    /** one of the three invite slots #1 / #2 / #3 (`slot`: 1|2|3) */
     invite_slot: aid('onboarding', 'contacts', 'invite_slot'),
     contact_row: aid('onboarding', 'contacts', 'contact_row'),
     contacts_cancel: aid('onboarding', 'contacts', 'contacts_cancel'),
@@ -173,11 +179,12 @@ export const ONBOARDING = {
     apple_pay: aid('onboarding', 'coop', 'apple_pay'),
     google_pay: aid('onboarding', 'coop', 'google_pay'),
     card: aid('onboarding', 'coop', 'card'),
+    /** After invite 3 friends only: continue with free access (no early free-tier skip) */
     use_free: aid('onboarding', 'coop', 'use_free'),
     redeem_open: aid('onboarding', 'coop', 'redeem_open'),
     redeem_input: aid('onboarding', 'coop', 'redeem_input'),
     redeem_submit: aid('onboarding', 'coop', 'redeem_submit'),
-    /** dead — the 2x2 perks grid is not tappable */
+    /** dead — member perk bullet list (same as Co-op page) is not tappable */
     perks_grid: aid('onboarding', 'coop', 'perks_grid')
   },
   welcome_in: {

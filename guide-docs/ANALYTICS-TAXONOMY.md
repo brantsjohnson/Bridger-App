@@ -52,7 +52,7 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `add_friend_sheet` | `friends` | QR vs link vs scan (method) |
 | `invite_access` | post-onboarding gate (demo week) | must invite a friend to unlock app — do they bail? |
 | `invite_contacts_sheet` | `invite_access` | pick one contact to text invite link (on-device only) |
-| `onboarding_invite_contacts_sheet` | `onboarding` | pick a contact for Link 1 / 2 / 3 during onboarding |
+| `onboarding_invite_contacts_sheet` | `onboarding` | pick a contact for invite slot #1 / #2 / #3 during onboarding |
 | `customize` | `profile.settings` | do they customize at all, and for how long (`dwell_ms`) |
 | `friend_options_sheet` | `profile.friend_view` | remove / block / report reach |
 | `create_hub` *(retired)* | — | (removed — do not re-add) |
@@ -116,6 +116,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `quiz_shared` | shared a result | `quiz_id`, `method` (image / link / save_image) — never the result name or card text |
 | `module_started` / `module_completed` | a profile module (basics, hobbies, this-or-that, places, bucket_list, discover_me) | `module`, `items_added`, `time_to_complete_ms` |
 | `module_item_added` | one item added (a hobby, a bucket-list item) | `module`, `friend_tagged` (bool), `visibility` |
+| `place_favorited` | a travel place is starred FAV (onboarding seed or later toggle) | `—` (never place names) |
 | `quick_check_kept` | Announcements quick check: user confirmed the stale fact is still true | `—` (never the question text) |
 | `quick_check_removed` | Announcements quick check: user said the fact is no longer true | `—` (never the question text) |
 | `friend_added` | a connection is **confirmed** (redeem / server create — not share-sheet or scan-button tap) | `method` (qr/link/scan/suggestion), `via` |
@@ -166,6 +167,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `contact_shared` | contact card shared into a thread | `counts_against_cap` (always false) — NEVER include field values |
 | `auth_signed_in` | sign-in succeeds | `method` (google/apple/email) |
 | `auth_signed_up` | account create succeeds | `method` (google/apple/email) |
+| `auth_signed_out` | Log out confirmed in Profile Settings | `method` (`settings`) |
 | `demo_mode_entered` | person confirms logo long-press unlock into fake-data demo | `method` (`logo_long_press`) — no PII |
 | `demo_mode_left` | person leaves runtime demo from Settings | `method` (`settings`) |
 | `screen_not_found` | unmatched route or broken connection path shows the 404 dialog | `missing_path`, `path_trail` (joined routes, no PII), `reason` (`unmatched_route`\|`connection_error`\|`runtime_error`) |
@@ -228,7 +230,8 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | section | elements |
 |---|---|
 | `welcome` | first-open CRT intro (surface `auth`, parent `welcome`): non-interactive, no skip (must be watched); emits `surface_opened` / `surface_dismissed` with `dwell_ms` only. Legacy text-beat ids kept so old events parse: **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead)** |
-| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` |
+| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` (**retired**: Create account merged into Sign in OAuth) |
+| `sign_up` | **retired surface** (route redirects to `sign_in`); IDs kept for historical events only |
 | `sign_up` | **`page_title` (dead)**, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `confirm_password`, `submit`, `switch_to_sign_in` |
 
 ### `chrome` (floating tab bar — global)
@@ -242,19 +245,19 @@ New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] →
 | section | elements |
 |---|---|
 | `chrome` | `continue`, `skip`, `back`, `progress_bar`, **`step_title` (dead)** |
-| `confirm_profile` | `first_input`, `last_input`, `take`, `upload`, `retake` |
+| `confirm_profile` | `first_input`, `last_input`, `photo_square` (opens system Take / Upload sheet), `take`, `upload`, `retake` |
 | `basics` | `answer` (birthday) |
-| `stat` | `info` (opens sources sheet, `variant`), `bridge` ("Let's try again", `variant`), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)** |
+| `stat` | `info` (opens sources sheet from the "i" beside "A quick reality check", `variant`), `bridge` ("Let's try again", `variant`), `advance` (screentime only: tap to the next life-story beat, `page_index` 0–5), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)**, **`caption` (dead — changing "you'll spend X years" line)** |
 | `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, `skip` |
 | `friends_of_friends` | `style` (opaque key via `style`: `humor`\|`values`\|`personality`\|`hobbies`\|`communication`), `all` ("All of the above"), `skip` |
 | `notifications` | `pref` (`pref`: `birthdays`\|`life_updates`\|`meet`\|`activities`\|`messages`\|`reconnect`; method `on`\|`off` via Toggle) |
 | `taste` | `start`, **`preview_list` (dead)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `hometown_input`, `current_town_input`, `favorite_place_input`, `recap_record`, `recap_play`, `recap_type`, `skip` |
 | `review` | `row_audience` (`field`, `tier`), `set_all` (`tier`), `terms`, `privacy_policy` |
-| `coop` | `invite_free` (Option A; props `invites_sent` 0–2 when progress shown), `join_paid` (Option B), `apple_pay`, `google_pay`, `card`, `use_free`, `redeem_open`, `redeem_input`, `redeem_submit`, **`perks_grid` (dead)** |
+| `coop` | `invite_free` (Option A; props `invites_sent` 0–2 when progress shown), `join_paid` (Option B), `apple_pay`, `google_pay`, `card`, `use_free` (only after 3 invites: "Continue with free access"; no early free-tier skip), `redeem_open`, `redeem_input`, `redeem_submit`, **`perks_grid` (dead — member perk bullet list)** |
 | `welcome_in` | `lets_go`, **`next_cards` (dead)** |
 | _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `name.*`, `photo.*`, `groups.*`, `meet.*` |
 
-Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only.
+Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. The screentime stat also emits `flow_step` with `flow_step=stat-screentime` and `page_index` for each life-story beat (0 life, 1 sleep, 2 upkeep, 3 devices, 4 social, 5 cta). Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only.
 
 ### `home`
 | section | elements |
@@ -767,4 +770,5 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-20 | — | `story.viewer.caught_up_body` / `caught_up_done` + `stories_caught_up` | End-of-tray "You're all caught up" screen with confetti |
 | 2026-08-19 | — | `analytics_opted_in` / `analytics_opted_out` | Settings product-analytics consent (PostHog SDK; default off) |
 | 2026-08-27 | — | `onboarding.contacts.invite_slot` / `contact_row` / `contacts_cancel` + surface `onboarding_invite_contacts_sheet` + `invite_link_shared` | Three Link 1/2/3 slots; co-op progress from confirmed SMS/share |
+| 2026-08-27 | — | `onboarding.stat.advance` + **`caption` (dead)** + screentime `page_index` beats | 80-year life story plays one beat at a time; tap skips ahead |
 |

@@ -76,7 +76,10 @@ Organized by domain so it's easy to navigate. Key columns shown (not exhaustive)
 users            id · auth_provider · status · created_at
 user_identity    user_id⟶users · display_name · avatar_media_id⟶media · profile_song    [PII]
 user_contacts    user_id⟶users · email · phone (via Supabase Auth)                        [PII]
-user_settings    user_id⟶users · discoverable · notif_prefs · home_city(coarse) · meet_scope(nearby|anywhere) · theme · locale   [home_city = city only, never street address]
+user_settings    user_id⟶users · discoverable · notif_prefs(jsonb {kinds,circles}) · home_city(coarse)
+                 · meet_scope(nearby|anywhere) · theme · locale · profile_color(#RRGGBB|null)
+                 · social_battery(0..7|null) · connection_style(jsonb opaque FoF keys)
+                 [home_city = city only, never street address; profile_color tints SynthGrid for this user]
 music_connections user_id⟶users · provider(spotify|apple_music) · refresh_token_enc · access_token_enc
                   · scopes · provider_user_id · connected_at
                   [PII / secrets: encrypted by Nest; NOT Supabase Auth login; owner-only; cascade delete]
@@ -88,7 +91,7 @@ music_oauth_states state · user_id⟶users · provider · expires_at   [short-l
 attributes       id · owner_id⟶users · key · value(jsonb) · layer(essential|profile|connection)
                  · visible_to_tier(close|friend|acquaintance|none) · matchable(bool) · updated_at
 ```
-*(hobbies, favs, places, this-or-that, deeper answers, quiz results all live here as rows — **one row per item, unlimited per category**, each independently visible; a person can have hundreds of entries. A **place** row's `value` can carry tags + note + **photo media refs (co-op)**; matching two people's place rows surfaces **shared-place photos** in In-common. A **this-or-that** row's value is `this | that | both`. Synced Spotify top artists also write `music.artist.<id>` rows for reveal overlap.)*
+*(hobbies, favs, places, this-or-that, deeper answers, quiz results all live here as rows — **one row per item, unlimited per category**, each independently visible; a person can have hundreds of entries. A **place** row's `value` can carry tags + note + **photo media refs (co-op)** + optional **`favorite: true`** (FAV star on the map; at most one starred place per person); matching two people's place rows surfaces **shared-place photos** in In-common. Onboarding seeds About Me via `about:about-from` / `about:about-town` / `about:about-job` / `about:about-dream-job` / `about:about-birthday`, and seeds Listening via `currently_song`. A **this-or-that** row's value is `this | that | both`. Synced Spotify top artists also write `music.artist.<id>` rows for reveal overlap.)*
 
 ```
 profile_greatest_hits  id · owner_id⟶users · media_id⟶media · placement_index(0..2)

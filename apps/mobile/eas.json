@@ -12,6 +12,7 @@
       },
       "env": {
         "EXPO_PUBLIC_DEMO_UNLOCK": "1",
+        "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
       }
@@ -27,6 +28,7 @@
       },
       "env": {
         "EXPO_PUBLIC_DEMO_UNLOCK": "1",
+        "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
       }
@@ -40,6 +42,7 @@
       },
       "env": {
         "EXPO_PUBLIC_DEMO_UNLOCK": "0",
+        "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
       }

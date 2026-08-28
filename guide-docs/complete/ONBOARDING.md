@@ -11,26 +11,30 @@ The run was rebuilt to feel full, visual, and animated, with four "the internet 
 **Order** (single container `apps/mobile/app/onboarding/index.tsx`, driven by `hooks/useOnboarding.ts`):
 
 1. **Confirm profile** — first name, last name, profile photo (take or upload). Name required.
-2. **Birthday** — the drill-down picker (year → month → day). Required; no skip.
+2. **Birthday** — the drill-down picker (year → month → day), then a white "Is this right?" panel with the date and two stacked full-width answers ("Yes, that is my birthday" / "No, pick again"). The panel is anchored at the top of the body, the same place the year, month and day cells start, so it does not jump between stages. Required; no skip.
 3. **Stat 1 · Feed reality** — "supposed to connect us, instead it's all about ads." Animated feed of 10 cards, 9 ads / 1 friend. Bridge: "Let's try again."
-4. **Contacts** — "Bridger's a group chat on steroids." Connect contacts (Apple / Android permission, on-device only) + **Invite 3 friends** as three separate slots (Link 1 / Link 2 / Link 3). Each slot opens the contact picker or the system share sheet. Skippable.
+4. **Contacts** — "Bridger's a group chat on steroids." Connect contacts (Apple / Android permission, on-device only) + **Invite 3 friends** as three separate slots labelled "Invite friends #1 / #2 / #3". Each slot opens the contact picker or the system share sheet. On web there is no contacts book and no share sheet, so Connect contacts says so plainly (it does not mark itself connected) and a slot falls back to copying the invite link. A share that cannot happen shows a sentence on the screen, never an error page. Skippable.
 5. **Stat 2 · Isolation** — "supposed to help us make friends, instead it isolated us." 100 people, 65 greyed.
-6. **Friends of friends** — "stop swiping to meet people." Multi-select what to be matched on: humor, values, personality, hobbies, communication. Skippable.
+6. **Friends of friends** — "stop swiping to meet people." Multi-select what to be matched on: humor, values, personality, hobbies, communication, plus "All of the above", which ticks every row in one write. Skippable.
 7. **Stat 3 · Retention** — "supposed to keep us in touch, instead it kept us scrolling." 240 thumbnails, all but 5 dissolve.
-8. **Notifications** — six coarse chips: birthdays, life updates, friends you should meet, activities & hangouts, direct messages, reconnect reminders. Skippable. (Native OS permission dialog is a follow-up; see below.)
+8. **Notifications** — six coarse rows: birthdays, life updates, friends you should meet, activities & hangouts, direct messages, reconnect reminders. Each row carries the phone's own system switch, and **every switch starts off**: nothing is pre-selected for you. Skippable. (Native OS permission dialog is a follow-up; see below.)
 9. **Taste intro** — "supposed to be fun, instead it got addictive." A short, colorful lead-in to the light questions.
-10. **Right now** — current job + dream job. Skippable.
+10. **Right now** — "Let's have some fun!" Current job + dream job on two lines, with "Change anytime. Always optional." Skippable.
 11. **Obsession** — the song on repeat: connect Spotify / Apple Music, or type it. Skippable.
-12. **Social battery** — nights out per week, 0 to 7+. Skippable.
+12. **Social battery** — nights out per week as one bar of cells, **0 through 7+**, so "no nights out" is the 0 cell in the bar rather than a separate opt-out box. Nothing is highlighted until they tap. Skippable.
 13. **Your color** — pick a color; live grid-background preview uses the chosen color. Skippable.
 14. **Your places** — hometown, current town, favorite place visited (towns only). Skippable.
-15. **Recap** — highlight of your week: 20 second voice memo or typed. Skippable.
-16. **Privacy & control** — audience per shared item (birthday, job, dream job, place traveled, song, weekly recap) with Inner Circle / Friends / Friends of Friends + set-all, and a legal footer linking Terms + Privacy.
-17. **Stat 4 · Screen time** — "supposed to help us live life, instead we became the product." 80-year lifespan grid, 21 years lost, adjustable by daily hours.
-18. **Co-op** — Option A: invite 3 friends for free access (shows `N/3 already invited` when some slots were filled on Contacts; hidden when all 3 are done). Option B: join directly, $6/mo (shares profits). Free tier always available ("Get access to free tier" when invites are complete).
+15. **Recap** — share a quick voice update: big heading "Share quick updates with your friends," question by the mic "What's been your highlight?," up to 20 second voice memo (no typing option on this screen). Skippable.
+16. **Privacy & control** — audience per shared item (birthday, job, dream job, place traveled, song, weekly recap) with Close / Friends / Acquaintances + set-all, and a legal footer linking Terms + Privacy. Chip: "Privacy First."
+17. **Stat 4 · Screen time** — "supposed to help us live life, instead we became the product." An 80-year life colors in one beat at a time: the whole life, then sleeping (26.6 years), then upkeep (work and school, daily life, commuting, exercise), then devices (23.3 years), then in-person socializing (4.0 years). "Let's try again" appears only after the last beat. Sources: Eyesafe 2025 (device time) and BLS American Time Use Survey (the rest). Work/school hours are averaged across all 80 years, including childhood, weekends, holidays, and retirement.
+18. **Co-op** — Option A: invite 3 friends for free access (shows `N/3 already invited` when some slots were filled on Contacts; when all 3 are done, shows "Continue with free access"). Option B: join directly, $6/mo (shares profits). Auth code for a free year. No separate "use free tier" skip: free access is only via the invite path. Member perks list matches the Co-op page (`MEMBER_UNLOCKS`). Promise box: "No ads."
 19. **Welcome in** — sets `onboardingComplete`, lands on Home (unchanged).
 
-**Progress bar:** the four stat screens and welcome-in do not count; the bar reflects real question screens only.
+**Progress bar:** the four stat screens and welcome-in do not count; the bar reflects real question screens only. It is the design's segmented bar: a white strip outlined in blue with one segment per question, filling pink, and "3/14" beside it.
+
+**Look:** onboarding has its own visual language, taken from the Magic Patterns "Onboarding Flow" design and documented in DESIGN.md § "Onboarding is its own room". Warm tan paper, huge blue all-caps Big Shoulders questions, square white boxes with hard 2px navy outlines, periwinkle for a chosen answer, and one hot pink Continue pill (rounded like the rest of the app, no offset shadow). The four stat screens invert it (flat blue page, tan type). It is light only, so dark mode never muddies the paper. Nothing in this language is used outside onboarding.
+
+**Layout rule:** every step is pinned to the height of the display, the body takes the leftover room, and the button row is glued to the bottom, so Continue never moves between steps. On iOS it rises above the keyboard. Only birthday and color scroll their body.
 
 **Demo mode:** every save stays in memory (no Supabase writes), so the whole run can be previewed with `EXPO_PUBLIC_DEMO_MODE=1` and a cleared `bridger.onboardingComplete` flag.
 
@@ -102,14 +106,14 @@ One continuous animated sequence — either a required video or an animated type
 ### Behavior
 - Plays automatically on first open.
 - No skip, no scrub, no back.
-- On completion → `router.replace('(auth)/sign-up')`.
+- On completion → `router.replace('(auth)/sign-in')`.
 - Sets `hasSeenWelcome = true` (device-local before account; persisted to the profile once the account exists, so a reinstall on the same account doesn't replay it).
 
 ---
 
-## Phase 1 · Auth (`(auth)/sign-up.tsx`, `sign-in.tsx`)
+## Phase 1 · Auth (`(auth)/sign-in.tsx`)
 
-Create-account / sign-in, owned by the `auth` module. Offers **Sign in with Google** and **Sign in with Apple** (OAuth) alongside email — the fast, familiar paths people expect. On successful **new** account creation → enter `(onboarding)`. On sign-in to an existing, onboarded account → Home.
+One Sign in screen. **Continue with Google** and **Continue with Apple** are the main paths: first use creates the account (then onboarding); returning use signs in and goes Home (or onboarding if incomplete). Email + password stays as a secondary "Sign in with email" for existing password accounts. There is **no separate Create account screen** (old `/sign-up` redirects here).
 
 ---
 
@@ -127,7 +131,7 @@ One screen per step, Typeform-style, in order. **Privacy comes first** — the p
 | 6 | Basics · questions | "A few things friends want to know." | 10 quick questions | Typeform run (below) |
 | 7 | **Meet new people** | "It filled our feeds with strangers. Bridger only ever connects you through friends you already have." | Nearby or anywhere? | choice + city · **skippable** |
 | 8 | **Privacy & visibility** | "You decide who sees what. Always." | Set who sees each answer | per-row audience + set-all |
-| 9 | **How do you want to join?** | "It promised free, then made us the product. Here's how Bridger actually stays alive." | Join the co-op or Free Lite | two cards (below) |
+| 9 | **How do you want to join?** | "It promised free, then made us the product. Here's how Bridger actually stays alive." | Join the co-op, invite 3 for free access, or auth code | join / invite / redeem (below) |
 | 10 | Welcome in | "You're in. We set this up for how you want to stay close." | — | Continue → Home (already seeded) |
 
 ### Step notes
@@ -140,7 +144,7 @@ One screen per step, Typeform-style, in order. **Privacy comes first** — the p
   - **The 10 questions** (below) are simple, tappable where possible, and the things friends actually want to know. Only `name` is required; each question is skippable.
 - **7 · Meet new people (skippable).** The only connection question in onboarding, kept simple. Lead with the promise: **friends of your friends — never strangers.** One choice: **People near me** / **People anywhere** (both friends-of-friends). **City only** if nearby (never a street address; reuses the city from the basics if given). The deep Discover Me questionnaire is **not** here — it runs later in Discover. If this step is skipped, the same nearby/anywhere + city question appears when they first open Discover.
 - **8 · Privacy & visibility.** The summary, and the first time they use the sharing model. Copy: *"These are set to all your friends for now — change any of it, anytime. You'll build custom groups later."* Every answer is a **row with an audience control** (All friends / Close / Friends) plus a **"set all."** They learn the tiers by using them. Writes each answer's `visibleToTier`.
-- **9 · How do you want to join?** Two honest cards: **Join the co-op** or **Free Lite**. Soft join / skippable. See Join screen below and `COOP.md`.
+- **9 · How do you want to join?** **Join the co-op**, **invite 3 friends** for free access, or redeem an **auth code**. Soft join. See Join screen below and `COOP.md`.
 - **10 · Welcome in** — writes `onboardingComplete`, applies the Home layout seed from step 2, lands on Home.
 
 ### The desire step (connection style)
@@ -181,16 +185,16 @@ Bones stay the same for everyone. Desire only changes **order**, **which empty s
 
 Copy (tight):
 
-> **How do you want to join?**
-> Connecting is always free. This is just how Bridger stays alive.
+> **Don't be the product, join the co-op**
+> Members get perks and share the profits. Free access unlocks when you invite 3 friends.
 >
 > - **Join the co-op** · about $6/mo ($72/year)
->   More ways to express yourself, named groups beyond the default three circles, more storage. Video, 25 Close / 125 Friends, keep everything, daily recaps. No ads. You fund it, you own a piece of it.
+>   Member perks match the Co-op page list (`MEMBER_UNLOCKS`): Make it yours, Bigger circles, Post video, Ask the group, Daily recaps, Keep everything, Host up to 100. No ads. You fund it, you own a piece of it.
 >
-> - **Free Lite**
->   All the essentials to stay connected. No ads. Stories, Inside Jokes, Bucket list, 5 Close / 30 Friends, unlimited acquaintances, 30 days of rolling history.
+> - **Invite 3 friends** (free access / Free Lite benefits once complete)
+>   All the essentials to stay connected. No ads. Stories, Inside Jokes, Bucket list, 5 Close / 30 Friends, unlimited acquaintances, 30 days of rolling history. Auth code grants a free year of membership instead.
 
-**Guardrail:** "Limited" applies to **expression and scale only** (rolling 30-day storage, photo/text not video, 5/30 circle caps, weekly not daily recap, host extras). It never limits **connection** (adding people, messaging, meeting people, attending events, viewing content). Soft-join stub today (`COOP.md`); joining is always skippable by choosing Free Lite.
+**Guardrail:** "Limited" applies to **expression and scale only** (rolling 30-day storage, photo/text not video, 5/30 circle caps, weekly not daily recap, host extras). It never limits **connection** (adding people, messaging, meeting people, attending events, viewing content). Soft-join stub today (`COOP.md`). Free Lite is only via invite 3 friends (or an auth code for a free year of co-op); there is no early "use free tier" skip on this screen.
 
 Confirmed outcome (not the first tap that merely opens a payment sheet): product event `onboarding_tier_chosen` with `method: coop | free_lite`, plus `coop_joined` when a soft join / IAP actually completes.
 
@@ -261,7 +265,7 @@ People change. When the model's picture looks **stale or contradicted by newer a
 | `avatar` | media store + `person.avatar` | — | filtered; optional |
 | likes | `attributes` (`ProfileAttribute[]`) | essential | defaults from `permissions/defaults.ts` |
 | notification prefs | `notifications` | — | from Stay in touch |
-| co-op membership | `coop` | — | `coop` or Free Lite ("not now") |
+| co-op membership | `coop` | — | `coop` or Free Lite (via invite 3 / continue after invites) |
 | `onboardingComplete` | `profiles` | — | one-off gate for Phase 2 |
 
 Everything richer — travel, foods, bucket list, more quizzes, Discover Me — is **not** collected here. It flows in later through the profile-depth and connection layers, exactly as designed. Onboarding's job is to make day one non-empty, non-creepy, and already pointed at what they said they want.
@@ -273,7 +277,7 @@ Everything richer — travel, foods, bucket list, more quizzes, Discover Me — 
 ```
 root _layout:
   if !hasSeenWelcome        → (auth)/welcome
-  else if !authenticated    → (auth)/sign-in | sign-up
+  else if !authenticated    → (auth)/sign-in
   else if !onboardingComplete → (onboarding)/privacy
   else                      → (tabs)/home
 ```
@@ -291,7 +295,7 @@ root _layout:
 - [ ] Every screen is one question, Typeform-style, with a progress bar and smooth transitions; tappable/multi-select/image/rank choices are preferred over typing.
 - [ ] Onboarding order: privacy promise → desire → stay-in-touch → name → photo → basics (10) → meet (skippable) → privacy & visibility review → join (co-op / Free Lite) → welcome-in.
 - [ ] Desire step ranks four opaque options and seeds a named Home preset deterministically (no model).
-- [ ] Join screen offers **Join the co-op** or **Free Lite**; Free Lite limits expression/scale only, never connection; no ads tier.
+- [ ] Join screen offers **Join the co-op**, **invite 3 friends** for free access (Continue after 3), or **auth code**; no early free-tier skip; Free Lite limits expression/scale only, never connection; no ads.
 - [ ] The privacy promise is the first screen after login (read-and-continue), before any question.
 - [ ] `name` is required; every other step is skippable (desire may default to `frequency` / `stay_close` if skipped).
 - [ ] The profile photo can be **taken or uploaded** (unlike stories, which are capture-only); skippable.
@@ -316,10 +320,14 @@ apps/mobile/hooks/
 └── useOnboarding.ts                    # order + draft + save-on-advance + progress
 
 apps/mobile/components/onboarding/
+├── onboarding-theme.ts                 # the paint: tan paper, blue, navy, pink, amber
+├── onboarding-ui.tsx                   # the parts: heading, chip, tile, field, CTA, step bar
+├── OnboardingStep.tsx                  # the frame every step sits in (pinned layout)
+├── StepTransition.tsx                  # the slide between steps
 ├── ConfirmProfileStep.tsx              # 1 · name + photo
 ├── BirthdayStep.tsx                    # 2 · birthday (reused)
 ├── StatScreen.tsx                      # the 4 stat interstitials (variant prop)
-├── ContactsStep.tsx                    # 4 · connect contacts + Link 1/2/3 invites
+├── ContactsStep.tsx                    # 4 · connect contacts + invite #1/#2/#3
 ├── FriendsOfFriendsStep.tsx            # 6 · matching-style multi-select
 ├── NotificationsStep.tsx               # 8 · six coarse chips
 ├── TasteIntroStep.tsx                  # 9 · fun lead-in

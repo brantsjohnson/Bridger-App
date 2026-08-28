@@ -31,12 +31,16 @@ import 'react-native-reanimated';
 // --- STYLING: loads Tailwind/NativeWind styles for the whole app (must be here, once) ---
 import '../global.css';
 
-import { registerAvatarPhotoResolver } from '@bridger/ui';
+import { registerAvatarPhotoResolver, GridColorProvider, useGridColor } from '@bridger/ui';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { WELCOME_SEEN_KEY } from '../content/welcome';
 import { getProfilePhoto } from '../data/fixtures/demo-media';
-import { getOnboardingComplete, isOnboardingCompleteCached } from '../data/onboarding';
+import {
+  getOnboardingComplete,
+  hydrateOnboardingComplete,
+  isOnboardingCompleteCached
+} from '../data/onboarding';
 import { getInviteAccess, hydrateDemoAccess } from '../data/access';
 import { DelightHost } from '../delight/_host/DelightHost';
 import { bootstrapAnalytics } from '../lib/analytics-bootstrap';
@@ -57,6 +61,7 @@ import { BillyVoiceProvider, useBillyVoice } from '../providers/billy-voice-prov
 import { PartyCapturePromptSync } from '../components/story/PartyCapturePromptSync';
 import { AgentIsland } from '../components/assistant/AgentIsland';
 import { fetchAssistantSettings } from '../data/assistant';
+import { apiFetch } from '../lib/api';
 
 // Analytics: wire context + (dev) sink once. Capture stays opted-out until Settings.
 bootstrapAnalytics();
@@ -69,7 +74,7 @@ registerAvatarPhotoResolver((personId) => {
   return getProfilePhoto(personId);
 });
 
-// Crashes show the Magic Patterns Windows 404 ("Fucks not found."), not Expo's
+// Crashes show the Magic Patterns Windows 404 ("System says it's fine..."), not Expo's
 // black "Something went wrong" page. Missing routes still use +not-found.tsx.
 export { AppErrorBoundary as ErrorBoundary } from '../components/AppErrorBoundary';
 
@@ -154,12 +159,15 @@ export default function RootLayout() {
   // --- Everything below can now ask "who is logged in?" via useAuth() ---
   // Gesture root: needed so Friends edit-mode drag-and-drop (and other pans) work.
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, width: '100%', height: '100%' }}>
       <AuthProvider>
         <BridgeLiveProvider>
           {/* Shared Billy mic lives above screens so listening survives navigation. */}
           <BillyVoiceProvider>
-            <RootLayoutNav />
+            {/* Personal grid tint from onboarding ColorStep wraps every Screen. */}
+            <GridColorProvider>
+              <RootLayoutNav />
+            </GridColorProvider>
           </BillyVoiceProvider>
         </BridgeLiveProvider>
       </AuthProvider>
@@ -193,7 +201,8 @@ function useProtectedRoute() {
         setSeenWelcome(v === '1');
         setWelcomeReady(true);
       }
-      const done = await getOnboardingComplete();
+      // SECURITY: startup reads only this device until authentication finishes.
+      const done = await hydrateOnboardingComplete();
       setOnbComplete(done);
       setOnbReady(true);
       setAccessReady(true);
@@ -303,6 +312,35 @@ function AnalyticsSessionSync() {
   return null;
 }
 
+// THIS SECTION DOES: after sign-in, load profileColor from settings and tint
+// the drifting SynthGrid. Clears back to default purple when signed out.
+function GridColorSync() {
+  const { session } = useAuth();
+  const { setGridColorHex } = useGridColor();
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setGridColorHex(null);
+      return;
+    }
+    if (isDemoMode()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const s = await apiFetch<{ profileColor?: string | null }>('/me/settings');
+        if (!cancelled) setGridColorHex(s.profileColor ?? null);
+      } catch {
+        if (!cancelled) setGridColorHex(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, setGridColorHex]);
+
+  return null;
+}
+
 // THIS SECTION DOES: once someone is signed in, if they arrived by opening a
 // friend's shared J-name link before making an account, connect them to that
 // friend now (then forget the link). No-op when there is nothing pending.
@@ -329,11 +367,16 @@ function RootLayoutNav() {
       <AnalyticsSessionSync />
       {/* Connect a fresh signup to the friend whose shared link brought them. */}
       <JnameReferralSync />
+      {/* Load personal grid tint after auth so SynthGrid matches ColorStep. */}
+      <GridColorSync />
       {/* Mid-party capture nudges when Random update nudges are on. */}
       <PartyCapturePromptSync />
       {/* Delight gifts mount above navigation so they can play on any screen. */}
       <DelightHost />
-      <View className={colorScheme === 'dark' ? 'dark flex-1' : 'flex-1'}>
+      <View
+        className={colorScheme === 'dark' ? 'dark flex-1' : 'flex-1'}
+        style={{ width: '100%', height: '100%' }}
+      >
         <Stack>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

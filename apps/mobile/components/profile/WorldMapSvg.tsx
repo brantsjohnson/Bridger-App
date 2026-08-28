@@ -1,11 +1,12 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The stylized world for Places traveled — real country outlines, soft fill
-// for tagged countries, and coral pins at each place's lat/lng. Theme-aware
-// strokes so dark mode stays readable. No map SDK; SVG only.
+// for tagged countries, and coral pins at each place's lat/lng. Favorite
+// places get a FAV label above a slightly bigger pin. Theme-aware strokes so
+// dark mode stays readable. No map SDK; SVG only.
 // ============================================
 import React, { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { PROFILE } from '@bridger/shared';
 import { ACCENTS, useThemeColors, withAnalyticsPress } from '@bridger/ui';
@@ -75,24 +76,33 @@ export function WorldMapSvg({
       {mappable.map((p) => {
         const { x, y } = projectLngLat(p.lng, p.lat);
         const selected = activeId === p.id;
+        const fav = !!p.favorite;
         return (
           <Pressable
             key={p.id}
             onPress={withAnalyticsPress(pinAnalyticsId, () => onPinPress(p.id))}
             accessibilityRole="button"
-            accessibilityLabel={p.label}
+            accessibilityLabel={fav ? `${p.label}, favorite` : p.label}
             accessibilityState={{ selected }}
             hitSlop={12}
             style={{
               position: 'absolute',
               left: `${(x / MAP_VB.w) * 100}%`,
               top: `${(y / MAP_VB.h) * 100}%`,
-              marginLeft: -6,
-              marginTop: -12,
-              transform: [{ scale: selected ? 1.2 : 1 }]
+              marginLeft: fav ? -10 : -6,
+              marginTop: fav ? -18 : -12,
+              transform: [{ scale: selected ? 1.2 : 1 }],
+              alignItems: 'center'
             }}
           >
-            <View className="h-3 w-3 rounded-full border-2 border-ink bg-coral" />
+            {fav ? (
+              <View className="items-center">
+                <Text className="font-sans-b text-[8px] text-coral">FAV</Text>
+                <View className="h-3.5 w-3.5 rounded-full border-2 border-ink bg-coral" />
+              </View>
+            ) : (
+              <View className="h-3 w-3 rounded-full border-2 border-ink bg-coral" />
+            )}
           </Pressable>
         );
       })}

@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  ============================================
+  WHAT THIS FILE DOES (plain English):
+  This is the temporary public landing page for bridger.social. It is a simple
+  "we exist / coming soon" page with a link to the Privacy Policy and a contact
+  email. It is deliberately minimal because the real marketing site will be
+  rebuilt later in this repo. Its main jobs right now are: (1) give the domain
+  something to serve, and (2) provide a public link to the Privacy Policy that
+  Google Play (and Apple) require.
+  ============================================
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bridger</title>
+    <meta name="description" content="Bridger is a social app for real-world friendship." />
+    <style>
+      /* THIS SECTION DOES: sets the look (eggshell canvas, black text, no gradients or shadows). */
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 40px 24px;
+        background: #f4f1ea;
+        color: #111111;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        text-align: center;
+      }
+      /* THIS SECTION DOES: the big wordmark. */
+      h1 {
+        font-size: clamp(40px, 12vw, 96px);
+        letter-spacing: -0.02em;
+        margin: 0;
+        font-weight: 800;
+      }
+      /* THIS SECTION DOES: the one-line description under the name. */
+      p.tagline {
+        font-size: clamp(16px, 4vw, 20px);
+        margin: 0;
+        max-width: 30ch;
+        line-height: 1.4;
+      }
+      /* THIS SECTION DOES: the small row of links at the bottom (privacy, contact). */
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      nav a {
+        color: #111111;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        font-size: 15px;
+      }
+      nav a:focus-visible { outline: 2px solid #111111; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <!-- THIS SECTION DOES: shows the brand name and tagline. -->
+    <h1>Bridger</h1>
+    <p class="tagline">A social app for real-world friendship. Something new is coming.</p>
+
+    <!-- THIS SECTION DOES: the public links every app store expects to find. -->
+    <nav>
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="mailto:hello@bridger.social">Contact</a>
+    </nav>
+  </body>
+</html>

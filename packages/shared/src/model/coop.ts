@@ -1,7 +1,12 @@
+import type { Accent } from './person';
+
 /**
  * Co-op membership. The rule: never pay to connect.
  * Membership changes what you can create and organize, never what you can see.
  */
+
+// THIS SECTION DOES: describe free vs member benefits and the shared perk list.
+
 export interface CoopBenefits {
   /** widgets, added photos, backgrounds, colors */
   personalization: boolean;
@@ -46,6 +51,75 @@ export const MEMBER_BENEFITS: CoopBenefits = {
   premiumHostTools: true,
   askTheGroup: true
 };
+
+/**
+ * What members unlock, as short cards / bullets. Used on the Co-op benefits
+ * page and the onboarding join screen so both stay in sync.
+ */
+export const MEMBER_UNLOCKS: ReadonlyArray<{
+  key: string;
+  title: string;
+  line: string;
+  emoji: string;
+  accent: Accent;
+}> = [
+  {
+    key: 'personalization',
+    title: 'Make it yours',
+    line: 'Widgets, photos, backgrounds, colors.',
+    emoji: '🎨',
+    accent: 'purple'
+  },
+  {
+    key: 'circles',
+    title: 'Bigger circles',
+    line: '25 Close, 125 Friends, plus named groups.',
+    emoji: '👥',
+    accent: 'teal'
+  },
+  {
+    key: 'video',
+    title: 'Post video',
+    line: 'Video updates and video replies.',
+    emoji: '🎥',
+    accent: 'coral'
+  },
+  {
+    key: 'ask',
+    title: 'Ask the group',
+    line: 'Create polls and open questions.',
+    emoji: '📊',
+    accent: 'purple'
+  },
+  {
+    key: 'recaps',
+    title: 'Daily recaps',
+    line: 'Updated daily, not a week behind.',
+    emoji: '📅',
+    accent: 'amber'
+  },
+  {
+    key: 'storage',
+    title: 'Keep everything',
+    line: 'No 30 day rolling window.',
+    emoji: '📦',
+    accent: 'blue'
+  },
+  {
+    key: 'events',
+    title: 'Host up to 100',
+    line: 'Plus co-hosts, allergies, and assignments.',
+    emoji: '🎉',
+    accent: 'pink'
+  },
+  {
+    key: 'no_ads',
+    title: 'No ads',
+    line: 'Ever. You are not the product.',
+    emoji: '🚫',
+    accent: 'green'
+  }
+];
 
 export interface CoopMembership {
   member: boolean;
