@@ -42,10 +42,14 @@ COPY --from=pruner /repo/out/full/ ./
 # The package tsconfigs extend the repo-root base config, which turbo prune does
 # not copy into out/full, so bring it in explicitly or tsc cannot find it.
 COPY --from=pruner /repo/tsconfig.base.json ./tsconfig.base.json
-# Shared types must be compiled before the API that imports them.
-RUN pnpm --filter @bridger/shared build && pnpm --filter @bridger/api build
+# Shared types + AI gateway must be compiled before the API that imports them.
+RUN pnpm --filter @bridger/shared build \
+  && pnpm --filter @bridger/ai build \
+  && pnpm --filter @bridger/api build
 # Create a self-contained, production-only folder for the API at /app.
-RUN pnpm --filter @bridger/api deploy --prod /app
+# --legacy: pnpm v10 wants injected workspace packages; our prune layout still
+# uses the classic deploy path.
+RUN pnpm --filter @bridger/api deploy --prod --legacy /app
 
 # --- Stage 4: the tiny image that actually runs in production ---
 FROM node:${NODE_VERSION}-slim AS runner

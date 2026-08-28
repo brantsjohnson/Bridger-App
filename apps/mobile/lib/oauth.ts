@@ -116,16 +116,43 @@ export async function getOAuthProfilePrefill(): Promise<{
     lastName = parts.slice(1).join(' ');
   }
 
+  // Google hands us a tiny thumbnail by default (…=s96-c). Upsize so the
+  // onboarding preview and the saved avatar are sharp, not pixelated.
+  const rawAvatar =
+    strFrom(meta, 'avatar_url') ||
+    strFrom(meta, 'picture') ||
+    strFrom(idData, 'avatar_url') ||
+    strFrom(idData, 'picture') ||
+    null;
+
   return {
     firstName,
     lastName,
-    avatarUrl:
-      strFrom(meta, 'avatar_url') ||
-      strFrom(meta, 'picture') ||
-      strFrom(idData, 'avatar_url') ||
-      strFrom(idData, 'picture') ||
-      null
+    avatarUrl: enlargeGoogleAvatarUrl(rawAvatar)
   };
+}
+
+/**
+ * Turn Google's small profile thumbnail into a larger crop.
+ * Examples: `…=s96-c` → `…=s720-c`, `…?sz=50` → `…?sz=720`.
+ * Non-Google URLs are left alone.
+ */
+function enlargeGoogleAvatarUrl(url: string | null): string | null {
+  if (!url) return null;
+  const isGoogle =
+    /googleusercontent\.com/i.test(url) || /ggpht\.com/i.test(url);
+  if (!isGoogle) return url;
+
+  let next = url;
+  // Size baked into the path: =s96-c, =s64-c-rp, etc.
+  if (/=s\d+(-[a-z]+)*$/i.test(next)) {
+    next = next.replace(/=s\d+(-[a-z]+)*$/i, '=s720-c');
+  } else if (/[?&]sz=\d+/i.test(next)) {
+    next = next.replace(/([?&]sz=)\d+/i, '$1720');
+  } else if (!/[?&]sz=/i.test(next) && !/=s\d+/i.test(next)) {
+    next += (next.includes('?') ? '&' : '?') + 'sz=720';
+  }
+  return next;
 }
 
 /**
