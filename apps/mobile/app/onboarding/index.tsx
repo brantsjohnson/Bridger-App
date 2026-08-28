@@ -43,8 +43,8 @@ import { pickProfilePhoto } from '../../lib/pick-image';
 import { requestNotificationPermission } from '../../lib/notifications';
 
 // Where the legal links point until an in-app legal screen ships.
-const TERMS_URL = 'https://bridger.app/legal/terms';
-const PRIVACY_URL = 'https://bridger.app/legal/privacy';
+const TERMS_URL = 'https://bridger.social/terms.html';
+const PRIVACY_URL = 'https://bridger.social/privacy.html';
 
 export default function OnboardingScreen() {
   const router = useRouter();
