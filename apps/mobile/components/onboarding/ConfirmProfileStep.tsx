@@ -134,7 +134,13 @@ export function ConfirmProfileStep({
 
     bakeServerPhotoFilter(photoUri, serverFilter)
       .then((res) => finish(res.url, res.mediaId))
-      .catch(() => finish(null, null));
+      .catch((err) => {
+        // Surface a quiet failure so a missing API never looks like a broken filter.
+        if (__DEV__) {
+          console.warn('[photo-filter] bake failed', serverFilter, err);
+        }
+        finish(null, null);
+      });
 
     return () => {
       cancelled = true;

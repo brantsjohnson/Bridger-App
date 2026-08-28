@@ -3,8 +3,7 @@
 // The row of four photo looks under the profile photo on Confirm your details.
 // Pop art, X-ray, Comic, and Sepia sit in a capsule track like the home nav
 // bar: tap one and the pink pill highlight moves to that label. Under the row
-// a solid light-blue "100% local processing" badge stays visible for every
-// look, so people know the preview is painted on their device.
+// a privacy badge stays visible so people know the look never goes to an AI.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -105,11 +104,11 @@ export function PhotoFilterPicker({
         })}
       </View>
 
-      {/* THIS SECTION DOES: always-on local-processing reassurance under the row. */}
+      {/* THIS SECTION DOES: privacy reassurance under the row (looks never go to AI). */}
       <AnalyticsRegion
         analyticsId={ONBOARDING.confirm_profile.local_processing_badge}
         interactive={false}
-        accessibilityLabel="100% local processing. This photo look is previewed on your device."
+        accessibilityLabel="Private photo look. Never sent to an AI model."
       >
         <View
           style={{
@@ -144,7 +143,7 @@ export function PhotoFilterPicker({
             className="font-sans-m"
             style={{ fontSize: 13, letterSpacing: -0.2, color: LOCAL_BADGE_INK }}
           >
-            100% local processing
+            Private photo look
           </Text>
         </View>
       </AnalyticsRegion>
