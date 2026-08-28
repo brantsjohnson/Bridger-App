@@ -11,10 +11,10 @@
 // → [screentime stat] → co-op → welcome in. Each screen saves its own slice;
 // the last screen flips the "complete" flag and drops you on Home.
 // ============================================
-import React, { useEffect } from 'react';
-import { Linking } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
-import { openSurface, trackFlowStarted } from '@bridger/shared';
+import { openSurface, trackFlowStarted, trackProduct } from '@bridger/shared';
 import { useGridColor } from '@bridger/ui';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { ConfirmProfileStep } from '../../components/onboarding/ConfirmProfileStep';
@@ -36,6 +36,7 @@ import { WelcomeInStep } from '../../components/onboarding/WelcomeInStep';
 import { StepTransition } from '../../components/onboarding/StepTransition';
 import { joinCoop, type PhotoSource } from '../../data/onboarding';
 import { redeemPromoCode } from '../../data/coop';
+import { fetchMusicStatus, syncTopArtists } from '../../data/music';
 import { connectAppleMusicAccount } from '../../lib/apple-music-connect';
 import { connectSpotifyAccount } from '../../lib/spotify-connect';
 import { shareInviteForAccess } from '../../lib/invite-from-contacts';
@@ -50,6 +51,8 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const flow = useOnboarding(() => router.replace('/home'));
   const { setGridColorHex } = useGridColor();
+  // Which music connect browser sheet is open (null = idle).
+  const [musicBusy, setMusicBusy] = useState<'spotify' | 'apple' | null>(null);
 
   // Open the surface + start the flow once, when the room first appears.
   useEffect(() => {
@@ -61,6 +64,87 @@ export default function OnboardingScreen() {
   // The very first screen has nothing to go back to.
   const back = index > 0 ? goBack : undefined;
 
+  // THIS SECTION DOES: when you land on the song step, ask Nest which music
+  // accounts are already linked so the buttons match the real server state.
+  useEffect(() => {
+    if (step !== 'obsession') return;
+    let cancelled = false;
+    void fetchMusicStatus()
+      .then((s) => {
+        if (cancelled) return;
+        patch({
+          spotifyConnected: s.spotify,
+          appleConnected: s.appleMusic
+        });
+      })
+      .catch(() => {
+        // Stay on the draft flags if status cannot load (offline / unsigned).
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, patch]);
+
+  // THIS SECTION DOES: open Spotify's allow screen, then mark connected + sync taste.
+  const onConnectSpotify = () => {
+    if (musicBusy || draft.spotifyConnected) return;
+    setMusicBusy('spotify');
+    void connectSpotifyAccount()
+      .then(async (r) => {
+        if (r.cancelled) return;
+        if (!r.ok) {
+          Alert.alert(
+            'Could not link Spotify',
+            r.error ? `Something went wrong (${r.error}). Try again.` : 'Try again in a moment.'
+          );
+          return;
+        }
+        patch({ spotifyConnected: true });
+        trackProduct('music_connected', { method: 'spotify' });
+        try {
+          await syncTopArtists();
+          trackProduct('music_taste_synced', { method: 'spotify' });
+        } catch {
+          // Link still succeeded; taste sync can retry later from Settings.
+        }
+      })
+      .catch(() => {
+        Alert.alert('Could not link Spotify', 'Try again in a moment.');
+      })
+      .finally(() => setMusicBusy(null));
+  };
+
+  // THIS SECTION DOES: open Apple Music's allow screen, then mark connected + sync taste.
+  const onConnectApple = () => {
+    if (musicBusy || draft.appleConnected) return;
+    setMusicBusy('apple');
+    void connectAppleMusicAccount()
+      .then(async (r) => {
+        if (r.cancelled) return;
+        if (!r.ok) {
+          Alert.alert(
+            'Could not link Apple Music',
+            r.error
+              ? `Something went wrong (${r.error}). Try again.`
+              : 'Try again in a moment.'
+          );
+          return;
+        }
+        patch({ appleConnected: true });
+        trackProduct('music_connected', { method: 'apple_music' });
+        try {
+          await syncTopArtists();
+          trackProduct('music_taste_synced', { method: 'apple_music' });
+        } catch {
+          // Link still succeeded; taste sync can retry later from Settings.
+        }
+      })
+      .catch(() => {
+        Alert.alert('Could not link Apple Music', 'Try again in a moment.');
+      })
+      .finally(() => setMusicBusy(null));
+  };
+
   // THIS SECTION DOES: save the color step, then tint the live app grid right away.
   const onColorNext = () => {
     if (draft.color) setGridColorHex(draft.color);
@@ -71,6 +155,8 @@ export default function OnboardingScreen() {
   const toggleIn = (list: string[], id: string) =>
     list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   const toggleNotif = (id: string) => patch({ notifPrefs: toggleIn(draft.notifPrefs, id) });
+  // "All of the above" on notifications replaces the whole list in one write.
+  const setNotifs = (ids: string[]) => patch({ notifPrefs: ids });
   const toggleStyle = (id: string) => patch({ connectStyles: toggleIn(draft.connectStyles, id) });
   // "All of the above" replaces the whole list in one write.
   const setStyles = (ids: string[]) => patch({ connectStyles: ids });
@@ -184,6 +270,7 @@ export default function OnboardingScreen() {
             total={formTotal}
             picked={draft.notifPrefs}
             onToggle={toggleNotif}
+            onSetAll={setNotifs}
             onNext={onNotificationsNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}
@@ -223,17 +310,10 @@ export default function OnboardingScreen() {
             song={draft.song}
             spotifyConnected={draft.spotifyConnected}
             appleConnected={draft.appleConnected}
+            connectBusy={musicBusy}
             onChangeSong={(v) => patch({ song: v })}
-          onConnectSpotify={() => {
-            void connectSpotifyAccount().then((r) => {
-              if (r.ok) patch({ spotifyConnected: true });
-            });
-          }}
-          onConnectApple={() => {
-            void connectAppleMusicAccount().then((r) => {
-              if (r.ok) patch({ appleConnected: true });
-            });
-          }}
+            onConnectSpotify={onConnectSpotify}
+            onConnectApple={onConnectApple}
             onNext={goNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}
@@ -273,10 +353,15 @@ export default function OnboardingScreen() {
             total={formTotal}
             hometown={draft.hometown}
             currentTown={draft.currentTown}
-            favoritePlace={draft.favoritePlace}
+            favoritePlaceHit={draft.favoritePlaceHit}
             onChangeHometown={(v) => patch({ hometown: v })}
             onChangeCurrent={(v) => patch({ currentTown: v })}
-            onChangeFavorite={(v) => patch({ favoritePlace: v })}
+            onChangeFavoriteHit={(hit) =>
+              patch({
+                favoritePlaceHit: hit,
+                favoritePlace: hit?.label ?? ''
+              })
+            }
             onNext={goNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}

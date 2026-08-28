@@ -1,34 +1,41 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 7 - "Stop swiping to meet people." Bridger only ever introduces you to
-// friends of friends, never strangers. Here you pick what you want those
-// introductions to be based on: humor, values, personality, hobbies, or
-// communication style. Checkbox rows plus "All of the above." Skippable.
+// Step 7 - "Stop swiping to make friends." Bridger only ever introduces you to
+// friends of friends, never strangers. Here you pick what kind of friend you
+// could use right now (workout, go out, creative, industry, travel, nearby,
+// someone who gets you). Checkbox rows plus "All of the above." Skippable.
 //
-// LOOK: a stack of white rows on tan paper, each with a small square checkbox
-// that fills hot pink with a tick when you pick it. All the paint comes from the
-// shared onboarding parts.
+// LOOK: a stack of compact white rows on eggshell paper, each with an emoji +
+// label and a small square checkbox that fills hot pink with a tick when you
+// pick it. Tapping "All of the above" ticks every row and sprays every option's
+// emoji. A quiet note under the list says answers stay private.
 //
 // PRIVACY: these are opaque preference keys (never free text). They shape which
 // friends-of-friends the matcher surfaces; they are not shown to other people.
 // ============================================
-import React from 'react';
-import { View } from 'react-native';
-import { ONBOARDING } from '@bridger/shared';
+import React, { useRef, useState } from 'react';
+import { Modal, Text, View } from 'react-native';
+import { ONBOARDING, trackClick } from '@bridger/shared';
+import { HobbyEmojiBurst, useReduceMotion } from '@bridger/ui';
+import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
 import { OnboardingStep } from './OnboardingStep';
 import { OB } from './onboarding-theme';
 import { OBTile } from './onboarding-ui';
 
-/** The five ways to be matched. Keys are opaque; labels are what you see. */
-export const CONNECTION_STYLES: Array<{ id: string; label: string }> = [
-  { id: 'humor', label: 'Humor' },
-  { id: 'values', label: 'Values' },
-  { id: 'personality', label: 'Personality' },
-  { id: 'hobbies', label: 'Hobbies' },
-  { id: 'communication', label: 'Communication style' }
+/** Opaque keys + what you see. Keys go to the server; labels stay on-device. */
+export const CONNECTION_STYLES: Array<{ id: string; label: string; emoji: string }> = [
+  { id: 'workout', label: 'Workout friend', emoji: '💪' },
+  { id: 'go_out', label: 'Someone to go out with', emoji: '🪩' },
+  { id: 'creative', label: 'Someone creative', emoji: '🎨' },
+  { id: 'industry', label: 'Someone in my industry', emoji: '🙈' },
+  { id: 'travel', label: 'Travel friend', emoji: '✈️' },
+  { id: 'nearby', label: 'Someone nearby', emoji: '🗺️' },
+  { id: 'gets_me', label: 'Someone who gets me', emoji: '💖' }
 ];
 
 const ALL_IDS = CONNECTION_STYLES.map((s) => s.id);
+/** Every option emoji, used when "All of the above" explodes. */
+const ALL_EMOJIS = CONNECTION_STYLES.map((s) => s.emoji);
 
 export function FriendsOfFriendsStep({
   step,
@@ -50,13 +57,31 @@ export function FriendsOfFriendsStep({
   onSkip: () => void;
   onBack: () => void;
 }) {
+  const reduce = useReduceMotion();
+  const allBtnRef = useRef<View>(null);
+  const [burst, setBurst] = useState<{
+    key: number;
+    origin: { x: number; y: number };
+  } | null>(null);
+
   const allOn = ALL_IDS.every((id) => picked.includes(id));
 
-  // THIS SECTION DOES: turn every style on, or clear them all. This writes the
-  // whole list at once. Flipping them one at a time only ever landed the last
-  // one, which is why tapping "All of the above" used to tick just one row.
+  // THIS SECTION DOES: turn every style on, or clear them all. When turning
+  // them on, spray every option emoji from the "All of the above" row.
   const toggleAll = () => {
-    onSetAll(allOn ? [] : ALL_IDS);
+    trackClick(ONBOARDING.friends_of_friends.all);
+    if (allOn) {
+      onSetAll([]);
+      return;
+    }
+    onSetAll(ALL_IDS);
+    if (reduce) return;
+    allBtnRef.current?.measureInWindow((x, y, width, height) => {
+      setBurst({
+        key: Date.now(),
+        origin: { x: x + width / 2, y: y + height / 2 }
+      });
+    });
   };
 
   return (
@@ -64,39 +89,71 @@ export function FriendsOfFriendsStep({
       step={step}
       total={total}
       purpose="Friends of your friends, never strangers."
-      ask="Stop swiping to meet people"
-      blurb="Bridger finds friends of friends you should know. What should we connect you on?"
+      ask="Stop swiping to make friends"
+      blurb={
+        "Bridger finds friends of friends you should know.\nWhat kind of friend could you use right now?"
+      }
       kicker="Pick any that apply"
+      smallAsk
+      scrollBody
       onContinue={onNext}
       onSkip={onSkip}
       onBack={onBack}
     >
-      {/* THIS SECTION DOES: one checkbox row per matching style, then the
-          shortcut row that ticks every one of them at once. */}
-      <View style={{ gap: 10 }}>
+      {/* Emoji shower when "All of the above" turns everything on. */}
+      <Modal visible={burst != null} transparent animationType="none" pointerEvents="none">
+        <View style={{ flex: 1 }} pointerEvents="none">
+          {burst ? (
+            <HobbyEmojiBurst
+              key={burst.key}
+              play
+              emoji={ALL_EMOJIS}
+              origin={burst.origin}
+              count={28}
+              power="boom"
+              onPlayStart={fireEmojiBurstHaptics}
+              onDone={() => setBurst(null)}
+            />
+          ) : null}
+        </View>
+      </Modal>
+
+      {/* THIS SECTION DOES: one checkbox row per friend type, then the shortcut
+          that ticks every one of them and sprays all the emojis. */}
+      <View style={{ gap: 6 }}>
         {CONNECTION_STYLES.map((s) => (
           <OBTile
             key={s.id}
-            label={s.label}
+            label={`${s.emoji}  ${s.label}`}
             variant="checkbox"
+            compact
             selected={picked.includes(s.id)}
             analyticsId={ONBOARDING.friends_of_friends.style}
             analyticsProps={{ style: s.id }}
             onPress={() => onToggle(s.id)}
           />
         ))}
-        {/* THIS SECTION DOES: give "All of the above" a little extra room
-            above it so it reads as a separate shortcut, not just another row. */}
-        <View style={{ marginTop: 8 }}>
+
+        {/* Measure the row so the burst can start from its center. */}
+        <View ref={allBtnRef} collapsable={false}>
           <OBTile
             label="All of the above"
             variant="checkbox"
+            compact
             selected={allOn}
             idleFill={OB.pinkWash}
-            analyticsId={ONBOARDING.friends_of_friends.all}
+            // We track the click inside toggleAll so the burst can run first.
+            analyticsId={undefined}
             onPress={toggleAll}
           />
         </View>
+
+        <Text
+          className="font-sans-sb text-[12px]"
+          style={{ marginTop: 8, textAlign: 'center', color: OB.inkFaint }}
+        >
+          (all answers are private)
+        </Text>
       </View>
     </OnboardingStep>
   );

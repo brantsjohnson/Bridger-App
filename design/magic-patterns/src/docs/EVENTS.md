@@ -8,7 +8,7 @@ Events is where connection becomes in-person. It has five surfaces: the **gate**
 
 ## 0 · Events gate (first-time host)
 
-Before the user has hosted an event, Events shows a marketing page: headline **Create places where memories happen.**, three scrolling rows of small decorative idea chips (activism / share-ideas first), and **Create an event**. Chips do not prefill create. After the first host event, the normal list + Touch Grass returns.
+Before the user has explored Events (or hosted), Events shows a marketing page: headline **Create places where memories happen.**, three scrolling rows of idea chips centered in the middle, and **Explore Events** at the bottom. Header `+` and messages are hidden on the gate. Chips do not prefill create. After Explore (or the first host event), the normal list + Touch Grass returns.
 
 ---
 

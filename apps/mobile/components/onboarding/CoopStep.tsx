@@ -4,7 +4,8 @@
 //   Option A, invite 3 friends and get free access (progress shows if they
 //             already invited some during contacts).
 //   Option B, join directly, a paid membership ($6/mo).
-//   Auth code for a free year.
+//   Auth code for a free year (quiet link appears after 10 seconds so join
+//   and invite stay the first things people see).
 // Free access is only via inviting 3 friends (no separate "use free tier"
 // skip). When those invites are done, Continue unlocks free access.
 //
@@ -14,7 +15,7 @@
 //
 // PAYMENT: membership is sold in-app. Soft-join stub for now (see COOP.md).
 // ============================================
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { MEMBER_UNLOCKS, ONBOARDING } from '@bridger/shared';
 import { AnalyticsRegion, withAnalyticsPress } from '@bridger/ui';
@@ -23,6 +24,8 @@ import { OB, OB_BORDER } from './onboarding-theme';
 import { OBCTA, OBField, OBHardShadow } from './onboarding-ui';
 
 const INVITE_GOAL = 3;
+/** How long to wait before showing "Have an auth code?" so join stays front and center. */
+const AUTH_CODE_REVEAL_MS = 10_000;
 
 /**
  * A secondary button: a square box with the hard navy outline. "solid" fills it
@@ -137,6 +140,13 @@ export function CoopStep({
   const [showPay, setShowPay] = useState(false);
   const [code, setCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
+  // THIS SECTION DOES: wait 10 seconds before the auth-code link appears.
+  const [authLinkVisible, setAuthLinkVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setAuthLinkVisible(true), AUTH_CODE_REVEAL_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   const clamped = Math.max(0, Math.min(INVITE_GOAL, invitesSent));
   const invitesComplete = clamped >= INVITE_GOAL;
@@ -248,7 +258,8 @@ export function CoopStep({
         </View>
       )}
 
-      {showRedeem ? null : (
+      {/* AUTH LINK: only after 10s on this screen, so join / invite come first. */}
+      {showRedeem || !authLinkVisible ? null : (
         <CoopLink
           label="Have an auth code?"
           analyticsId={ONBOARDING.coop.redeem_open}

@@ -22,8 +22,8 @@ const NEXT: Array<{emoji: string;label: string;line: string;color: string;}> = [
   line: 'Bridger is empty until they are here',
   color: '#6B2FEA'
 },
-{ emoji: '📷', label: 'Post your first story', line: 'One photo, once a day', color: '#FF3E8A' },
-{ emoji: '🌿', label: 'Say when you are free', line: 'The whole point is seeing them', color: '#00A676' }];
+{ emoji: '📷', label: 'Complete your profile', line: 'So friends know who they are talking to', color: '#FF3E8A' },
+{ emoji: '🌿', label: "Say when you're free", line: 'The whole point is seeing them', color: '#00A676' }];
 
 
 /** 9 · The only place onboardingComplete is set. An arrival, not a receipt. */

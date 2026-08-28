@@ -169,7 +169,7 @@ export function PrivacyControlStep({
                 paddingVertical: 10,
                 backgroundColor: OB.paper,
                 borderWidth: OB_BORDER,
-                borderColor: 'rgba(39,64,135,0.55)'
+                borderColor: OB.borderMuted
               }}
             >
               <View style={{ minWidth: 0 }}>

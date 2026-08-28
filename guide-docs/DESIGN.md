@@ -22,7 +22,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 | Main app (home, friends, events, profile, feed) | eggshell / black, with the drifting grid behind it |
 | Onboarding, profile fill modules, empty states | colorful |
 | Discover | the same grid, turned up (see below) |
-| **Intro gates** (Events first look, Discover first look) | **Black** (`Screen tone="intro"`). White type. Same family as Discover's retro first screen. After Explore / Get started, the tab returns to eggshell. |
+| **Intro gates** (Events first look, Discover first look) | **Black** (`Screen tone="intro"`) with the drifting graph grid behind. White type. Same family as Discover's retro first screen. After Explore / Get started, the tab returns to eggshell. |
 | Settings, forms, account | plainest — eggshell, minimal decoration |
 | **Sign in (auth entry)** | Full-bleed brand photography (color bars) + centered Bridger mark; eggshell auth panel in the lower half. Exception to the eggshell main canvas. |
 
@@ -76,19 +76,19 @@ Private measurement quizzes (Your Funny Bone, Your Vibe, The Friend Zone, What G
 
 ---
 
-## Onboarding is its own room (the one full exception)
+## Onboarding is its own room (shape stays special; colors match the app)
 
-First run does **not** use the app look. It has its own complete visual language, taken from the Magic Patterns "Onboarding Flow" design, and it ends the moment you land on Home. This is deliberate: onboarding is a printed workbook you fill in, the app is the place you live afterward. Nothing below is allowed to leak out of `apps/mobile/components/onboarding/`.
+First run keeps its own **shape** language (square boxes, hard outlines, pink Continue pill), taken from the Magic Patterns "Onboarding Flow" design, and it ends the moment you land on Home. **Colors do not invent a second palette.** Every hex comes from the same Bridger tokens as the rest of the app (`THEME` + `ACCENT_HEX` in `packages/ui`), so the handoff into Home stays on-brand. Nothing below is allowed to leak out of `apps/mobile/components/onboarding/`.
 
 - **Canvas:** same eggshell as the main app (`#FAF8F2`), light only (dark mode does not flip it). Faint graph-paper squares sit in two corners instead of the drifting grid.
-- **Type:** the question is **FeloniaPixel, all caps, tight, in blue** (`#143CAB`), same pixel header font as the rest of the app. Body copy stays the normal clean sans. **Big Shoulders Display is only for the four reality-check screens.**
-- **Shape:** square. Hard 2px navy outlines (`#274087`) on white boxes (`#FCFCFC`). **No border radius**, no soft cards, no pills.
-- **Primary button:** hot pink (`#FF3E8A`), all caps **bold sans** (same `font-sans-b` as the rest of Bridger's buttons), **rounded pill**, with a trailing arrow. No offset shadow block behind it. The metallic CTA does not appear in onboarding. On reality-check screens this keeps the CTA a step apart from the Big Shoulders headlines.
-- **Chosen state:** periwinkle fill (`#AEBCFB`) plus a tick or a moved switch knob, so it never reads by color alone.
-- **Accents:** amber (`#FFB515`) for the small "why we're asking" tag, pink for small all-caps hints, orange (`#FF5A1F`) for the reality-check kicker.
-- **The four reality-check screens** invert it: flat blue page, tan type, a faint white grid, Big Shoulders Display for headlines and big numbers, and the pink button's offset block turns periwinkle.
+- **Type:** the question is **FeloniaPixel, all caps, tight, in accent blue** (`#1D6FE8`), same pixel header font as the rest of the app. Body copy stays the normal clean sans. **Big Shoulders Display is only for the four reality-check screens.**
+- **Shape:** square. Hard 2px ink outlines (`#1C1B16`) on white boxes (`#FFFFFF`). **No border radius**, no soft cards, no pills.
+- **Primary button:** hot pink (`#FF3E8A`), all caps **bold sans** (same `font-sans-b` as the rest of Bridger's buttons), **square** like every other onboarding box, with a trailing arrow. No pill rounding. The metallic CTA does not appear in onboarding. On reality-check screens this keeps the CTA a step apart from the Big Shoulders headlines.
+- **Chosen state:** pale blue wash (`#BBD6FB`, same as the app's blue tint) plus a tick or a moved switch knob, so it never reads by color alone.
+- **Accents:** amber (`#FFB515`) for the small "why we're asking" tag, pink for small all-caps hints, coral (`#FF5A1F`) for the reality-check kicker, teal (`#00A676`) for confirmed / on switches.
+- **The four reality-check screens** invert it: flat accent-blue page, white type, a faint white grid, Big Shoulders Display for headlines and big numbers.
 - **Layout is fixed on every step:** the page is pinned to the display height, the body takes the leftover room, and the button is glued to the bottom, so Continue never moves between steps. It rises above the keyboard.
-- Paint lives in `onboarding-theme.ts`; the parts live in `onboarding-ui.tsx`; the frame is `OnboardingStep.tsx`. Build onboarding UI from those, never from `Card` / `ButtonPrimary` / `PixelHeading`.
+- Paint lives in `onboarding-theme.ts` (imported from `@bridger/ui` tokens); the parts live in `onboarding-ui.tsx`; the frame is `OnboardingStep.tsx`. Build onboarding UI from those, never from `Card` / `ButtonPrimary` / `PixelHeading`.
 
 ---
 

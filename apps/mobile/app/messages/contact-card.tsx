@@ -1,23 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Route for your contact card — set up once in Messages, share from any thread.
+// Kept for deep links to /messages/contact-card. Setup now lives as a
+// dropdown on the Messages list (no Share contact here — share from a thread).
 // ============================================
-import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
-import { ContactCardScreen } from '../../components/messages/ContactCardScreen';
+import { Redirect } from 'expo-router';
 
 export default function ContactCardRoute() {
-  const router = useRouter();
-
-  return (
-    <ContactCardScreen
-      onBack={() => router.back()}
-      onShareIntoThread={() => {
-        Alert.alert(
-          'Ready to share',
-          'Open a conversation and tap Share contact to send this card. It never counts against your daily cap.'
-        );
-      }}
-    />
-  );
+  return <Redirect href="/messages" />;
 }

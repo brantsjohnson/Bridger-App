@@ -1,9 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Events tab. First visit shows a marketing gate that explains what Events
-// is for. "Explore Events" opens the normal tab (Touch Grass + calendar) —
-// it does not force you to create right away. Header + still opens create.
-// After you explore once (or host once), the gate does not come back.
+// is for (headline + centered idea chips + Explore at the bottom; no + or
+// messages on that first look). "Explore Events" opens the normal tab
+// (Touch Grass + calendar) — it does not force you to create right away.
+// Header + returns after Explore. After you explore once (or host once), the
+// gate does not come back.
 // Analytics: surface=events; create / event cards / Touch Grass / gate use EVENTS.*.
 // ============================================
 import React, { useEffect, useState } from 'react';
@@ -20,10 +22,12 @@ import {
   ScreenBody,
   ScreenHeader,
   SectionTitle,
+  TAB_COLOR,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { EventCard } from '../../components/EventCard';
+import { CommunityTeaser } from '../../components/event/CommunityTeaser';
 import { EventsGate } from '../../components/event/EventsGate';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { GrassSignalSheet } from '../../components/GrassSignalSheet';
@@ -31,6 +35,7 @@ import { TouchGrassButton } from '../../components/TouchGrassButton';
 import { TouchGrassSheet } from '../../components/TouchGrassSheet';
 import { startThreadWith } from '../../data/messages';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
+import { useTabAttention } from '../../hooks/useTabAttention';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
 
 /** Set EXPO_PUBLIC_FORCE_EVENTS_GATE=1 to preview the gate even with host fixtures. */
@@ -76,6 +81,9 @@ export default function EventsScreen() {
   const c = useThemeColors();
   const { events, onRsvp } = useEventsFeed();
   const { signals, myLive, onSend, onJoin, onDismiss, onEndMine } = useTouchGrass();
+  // THIS SECTION DOES: section title dots after the Events nav-bar badge clears.
+  const { sectionDots } = useTabAttention('events');
+  const eventsDot = TAB_COLOR.events;
 
   const [rsvp, setRsvp] = useState<Record<string, 'going' | 'cant'>>({});
   const [grassOpen, setGrassOpen] = useState(false);
@@ -121,23 +129,28 @@ export default function EventsScreen() {
         titleAnalyticsId={EVENTS.list.page_title}
         profileAnalyticsId={EVENTS.list.profile_icon}
         messagesAnalyticsId={EVENTS.list.messages_icon}
+        // THIS SECTION DOES: on the marketing gate, hide + and messages so the
+        // first look stays title + picture + Explore. After Explore, both return.
+        hideMessages={!!showGate}
         trailing={
-          <Pressable
-            onPress={withAnalyticsPress(EVENTS.list.create, goCreate)}
-            accessibilityRole="button"
-            accessibilityLabel="Create event"
-            className={
-              showGate
-                ? 'h-10 w-10 items-center justify-center rounded-full border border-white/30 bg-white/10 active:opacity-90'
-                : 'h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90'
-            }
-          >
-            <PlusIcon size={18} color={showGate ? '#FFFFFF' : c.canvas} strokeWidth={2.6} />
-          </Pressable>
+          showGate ? undefined : (
+            <Pressable
+              onPress={withAnalyticsPress(EVENTS.list.create, goCreate)}
+              accessibilityRole="button"
+              accessibilityLabel="Create event"
+              className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
+            >
+              <PlusIcon size={18} color={c.canvas} strokeWidth={2.6} />
+            </Pressable>
+          )
         }
       />
 
-      <ScreenBody key={showGate ? 'events-gate' : 'events-list'}>
+      <ScreenBody
+        key={showGate ? 'events-gate' : 'events-list'}
+        scrollEnabled={!showGate}
+        tabBarInset={!showGate}
+      >
         {gateExplored === null && !FORCE_EVENTS_GATE && !everHosted ? null : showGate ? (
           <EventsGate onExplore={exploreEvents} />
         ) : (
@@ -151,6 +164,8 @@ export default function EventsScreen() {
                 parentScreen="events"
                 section="touch_grass"
                 className="mb-2"
+                showDot={!!sectionDots.touch_grass}
+                dotColor={eventsDot}
               />
               {/* Always the big green button — never swap it for the thin live strip. */}
               <TouchGrassButton
@@ -225,6 +240,8 @@ export default function EventsScreen() {
                     parentScreen="events"
                     section={section}
                     className="mb-2"
+                    showDot={!!sectionDots[section]}
+                    dotColor={eventsDot}
                   />
                   <View className="gap-3">
                     {list.map((e) => (
@@ -245,17 +262,7 @@ export default function EventsScreen() {
               );
             })}
 
-            <View className="mt-7">
-              <SectionTitle
-                title="Community"
-                description="Public events around you. Coming soon."
-                infoAnalyticsId={EVENTS.community.info}
-                parentScreen="events"
-                section="community"
-                className="mb-2"
-              />
-              <EmptyState emoji="🏘️" line="Coming soon." />
-            </View>
+            <CommunityTeaser />
           </>
         )}
       </ScreenBody>

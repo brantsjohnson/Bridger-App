@@ -470,7 +470,7 @@ function Crumb({
         style={{
           letterSpacing: 0.6,
           textTransform: 'uppercase',
-          color: active ? OB.blue : 'rgba(0,0,0,0.35)'
+          color: active ? OB.blue : OB.inkFaint
         }}
       >
         {label}
@@ -484,7 +484,7 @@ function Sep() {
   return (
     <Text
       className="font-sans-b text-[14px]"
-      style={{ color: 'rgba(0,0,0,0.25)' }}
+      style={{ color: OB.inkWhisper }}
       accessible={false}
     >
       →

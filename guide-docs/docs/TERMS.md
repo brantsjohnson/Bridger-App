@@ -49,7 +49,7 @@
 - Account creation is through **Continue with Google** or **Continue with Apple** on Sign in (first use creates the account; next time signs you in). Email sign-in remains for existing password accounts. Completing onboarding after first sign-in is required before using the app.
 - The **co-op** is optional membership for richer creation, named groups, and storage. Signup offers **Join the co-op** or **Free Lite**. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
-- During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (humor, values, personality, hobbies, communication). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
+- During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (workout, go out, creative, industry, travel, nearby, someone who gets me). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
 - Onboarding also asks a few optional, skippable "taste" questions (job, dream job, a song, your towns, a favorite trip that may be placed on your map, a weekly highlight, a grid color, nights-out pacing). You choose the audience for each on the Privacy & Control screen, and nothing is required except your name.
 - The co-op join screen offers: **invite 3 friends for free access** (with progress if you already shared some links during the contacts step; when all 3 are done, "Continue with free access"), **join directly for a paid membership ($6/mo)** that shares profits, or redeem an **auth code** for a free year. There is no separate "use free tier" skip; free access is only via the invite path (or an auth code for a free year of membership).
 
@@ -127,7 +127,7 @@
 ### 7.6 Messages
 
 - Intentionally limited (e.g. 5 messages per person per day) to encourage real-world contact exchange.
-- Share contact posts your contact card (the fields you chose). It does not count against the daily cap.
+- Share contact posts your contact card (the fields you chose: Phone, Instagram, Email, Website, Substack, or Other). It does not count against the daily cap.
 - Double-tap a friend's message to heart it. Hearts are reactions, not sent messages, and do not count against the cap.
 - There is no Make a plan action inside a thread. Plans belong on Events / Touch Grass.
 

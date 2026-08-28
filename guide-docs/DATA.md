@@ -76,7 +76,7 @@ Organized by domain so it's easy to navigate. Key columns shown (not exhaustive)
 users            id · auth_provider · status · created_at
 user_identity    user_id⟶users · display_name · avatar_media_id⟶media · profile_song    [PII]
 user_contacts    user_id⟶users · email · phone (via Supabase Auth)                        [PII]
-user_settings    user_id⟶users · discoverable · notif_prefs(jsonb {kinds,circles}) · home_city(coarse)
+user_settings    user_id⟶users · discoverable · notif_prefs(jsonb {kinds,circles}) · home_city(coarse) · onboarding_complete · profile_intro_seen
                  · meet_scope(nearby|anywhere) · theme · locale · profile_color(#RRGGBB|null)
                  · social_battery(0..7|null) · connection_style(jsonb opaque FoF keys)
                  [home_city = city only, never street address; profile_color tints SynthGrid for this user]

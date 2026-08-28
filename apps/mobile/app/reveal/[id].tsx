@@ -139,7 +139,6 @@ export default function RevealRoute() {
   if (!personExists(personId)) {
     return (
       <NotFoundScreen
-        title="Error 404"
         onDismiss={() => {
           if (router.canGoBack()) router.back();
           else router.replace('/discover');

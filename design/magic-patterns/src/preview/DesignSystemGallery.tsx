@@ -244,13 +244,28 @@ export function DesignSystemGallery() {
         <div className="flex flex-wrap items-start gap-6">
           <WindowsDialog title="Error 404">
             <div className="flex items-center gap-3">
+              {/* Classic Windows warning: yellow triangle with a black !. */}
               <span
                 aria-hidden="true"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-[16px] font-bold text-white">
-                
-                ✕
+                className="relative inline-flex h-9 w-10 items-center justify-center"
+              >
+                <span
+                  className="absolute"
+                  style={{
+                    width: 0,
+                    height: 0,
+                    borderLeft: '16px solid transparent',
+                    borderRight: '16px solid transparent',
+                    borderBottom: '28px solid #F5C518'
+                  }}
+                />
+                <span className="relative z-10 text-[15px] font-black leading-none text-ink">
+                  !
+                </span>
               </span>
-              <p className="font-pixel text-[17px] leading-tight text-ink">System says it's fine...</p>
+              <p className="font-pixel text-[15px] leading-tight text-ink">
+                You're invited to suffer
+              </p>
             </div>
             <div className="mt-5 flex justify-center gap-2">
               <WindowsButton autoFocusRing>OK</WindowsButton>

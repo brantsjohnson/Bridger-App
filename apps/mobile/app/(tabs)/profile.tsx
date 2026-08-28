@@ -1,9 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Your own Profile tab — Spotify-artist layout. Square header + Edit / View as
-// sit above the tabs; the composed Profile shell sits under them. Stories /
-// Inside jokes / Bucket / Settings stay as sibling tabs. Pill nav is hidden.
-// Analytics: surface=profile.
+// Your own Profile tab — Spotify-artist layout. Square header with Edit and a
+// Settings gear on the photo; View as + search sit under it. Stories / Inside
+// jokes / Bucket list stay as sibling tabs. Settings opens from the gear (not
+// a tab). Pill nav is hidden. Analytics: surface=profile.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -36,7 +36,7 @@ import {
   PROFILE_TABS_TO_CONTENT
 } from '../../components/profile/profileSpacing';
 
-const TABS = ['Profile', 'Stories', 'Inside jokes', 'Bucket list', 'Settings'];
+const TABS = ['Profile', 'Stories', 'Inside jokes', 'Bucket list'];
 
 function profileTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
@@ -48,8 +48,6 @@ function profileTabAnalyticsId(tab: string): string | undefined {
       return PROFILE.tabs.inside_jokes;
     case 'Bucket list':
       return PROFILE.tabs.bucket_list;
-    case 'Settings':
-      return PROFILE.tabs.settings_gear;
     default:
       return undefined;
   }
@@ -62,6 +60,8 @@ export default function ProfileScreen() {
   const archive = useStoryArchive();
 
   const [tab, setTab] = useState('Profile');
+  // Settings is a gear on the photo, not a tab. When open, hide tab content.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [asTier, setAsTier] = useState<Tier>('close');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -148,6 +148,12 @@ export default function ProfileScreen() {
     return hits;
   }, [profile]);
 
+  // THIS SECTION DOES: leave Settings when the person picks a content tab.
+  const onChangeTab = (next: string) => {
+    setSettingsOpen(false);
+    setTab(next);
+  };
+
   return (
     <Screen tone="canvas">
       <ScreenBody tabBarInset={false} padded={false}>
@@ -166,6 +172,11 @@ export default function ProfileScreen() {
           onToggleEdit={() => {
             setEditing((v) => !v);
             setAsTier('close');
+            setSettingsOpen(false);
+          }}
+          onOpenSettings={() => {
+            setEditing(false);
+            setSettingsOpen(true);
           }}
           onViewAs={setAsTier}
           onOpenStory={() => router.push('/story/me?from=profile')}
@@ -175,14 +186,25 @@ export default function ProfileScreen() {
         <View style={{ marginTop: PROFILE_HEADER_TO_TABS, paddingHorizontal: 16 }}>
           <SegmentedTabs
             tabs={TABS}
-            value={tab}
-            onChange={setTab}
+            // Empty value while Settings is open so no tab looks selected.
+            value={settingsOpen ? '' : tab}
+            onChange={onChangeTab}
             variant="underline"
             analyticsIdForTab={profileTabAnalyticsId}
           />
         </View>
 
-        {tab === 'Profile' ? (
+        {settingsOpen ? (
+          <View className="mt-5 px-4">
+            <ProfileSettings
+              blocked={profile.blocked}
+              storage={archive.storage}
+              onUnblock={(id) => void profile.onUnblock(id)}
+            />
+          </View>
+        ) : null}
+
+        {!settingsOpen && tab === 'Profile' ? (
           <View style={{ marginTop: PROFILE_TABS_TO_CONTENT }}>
             <ProfileCard
               person={profile.me}
@@ -240,7 +262,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {tab === 'Stories' ? (
+        {!settingsOpen && tab === 'Stories' ? (
           <View className="mt-5 px-4">
             <StoryCalendar
               days={archive.days}
@@ -250,7 +272,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {tab === 'Inside jokes' ? (
+        {!settingsOpen && tab === 'Inside jokes' ? (
           <View className="mt-5 px-4">
             <InsideJokesWall
               analyticsIds={{
@@ -263,7 +285,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {tab === 'Bucket list' ? (
+        {!settingsOpen && tab === 'Bucket list' ? (
           <View className="mt-5 px-4">
             <BucketList
               items={bucket.items}
@@ -273,16 +295,6 @@ export default function ProfileScreen() {
               onToggle={bucket.onToggle}
               onUpdate={bucket.onUpdate}
               onDelete={bucket.onDelete}
-            />
-          </View>
-        ) : null}
-
-        {tab === 'Settings' ? (
-          <View className="mt-5 px-4">
-            <ProfileSettings
-              blocked={profile.blocked}
-              storage={archive.storage}
-              onUnblock={(id) => void profile.onUnblock(id)}
             />
           </View>
         ) : null}
@@ -296,7 +308,10 @@ export default function ProfileScreen() {
         open={searchOpen}
         hits={searchHits}
         onClose={() => setSearchOpen(false)}
-        onJump={() => setTab('Profile')}
+        onJump={() => {
+          setSettingsOpen(false);
+          setTab('Profile');
+        }}
       />
     </Screen>
   );

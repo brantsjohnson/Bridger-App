@@ -21,6 +21,7 @@ import {
   ScreenHeader,
   SearchField,
   SectionTitle,
+  TAB_COLOR,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
@@ -37,6 +38,7 @@ import { TierPicker } from '../../components/friends/TierPicker';
 import { RecapRecorder } from '../../components/pod/RecapRecorder';
 import { useFriendPod } from '../../hooks/useFriendPod';
 import { useFriends } from '../../hooks/useFriends';
+import { useTabAttention } from '../../hooks/useTabAttention';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 import { createShareInvite } from '../../data/invites';
 import { getInviteAccess } from '../../data/access';
@@ -51,6 +53,9 @@ export default function FriendsScreen() {
   // THIS SECTION DOES: theme colors for icons in the header.
   const c = useThemeColors();
   const router = useRouter();
+  // THIS SECTION DOES: section title dots after the Friends nav-bar badge clears.
+  const { sectionDots } = useTabAttention('friends');
+  const friendsDot = TAB_COLOR.friends;
 
   // THIS SECTION DOES: load the roster, jokes wall, and this week's Friend Pod.
   const { sections, total, refresh, onMoveTier } = useFriends();
@@ -230,6 +235,8 @@ export default function FriendsScreen() {
                 parentScreen="friends"
                 section="pod"
                 className="mb-2"
+                showDot={!!sectionDots.pod}
+                dotColor={friendsDot}
               />
               <FriendPodWidget
                 size="full"
@@ -247,6 +254,8 @@ export default function FriendsScreen() {
                 parentScreen="friends"
                 section="inside_jokes"
                 className="mb-2"
+                showDot={!!sectionDots.inside_jokes}
+                dotColor={friendsDot}
                 action={
                   // + opens the sheet to post a new sticky note
                   <Pressable

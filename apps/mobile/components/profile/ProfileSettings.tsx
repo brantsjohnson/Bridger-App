@@ -1,10 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Settings tab on your profile: appearance, who sees what, storage,
-// Discover, page customization, notifications (opens per-group prefs), blocked
-// people, account, and Log out. Rows that lead to surfaces we haven't built yet
-// show a small note instead of going nowhere silently. Log out is coral red,
-// asks once, then clears the session (or leaves demo) and opens Sign in.
+// The Settings panel on your profile (opened from the gear next to Edit):
+// appearance, who sees what, storage, Discover, page customization,
+// notifications (opens per-group prefs), blocked people, account, and Log out.
+// Rows that lead to surfaces we haven't built yet show a small note instead of
+// going nowhere silently. Log out is coral red, asks once, then clears the
+// session (or leaves demo) and opens Sign in.
 // Analytics: each row uses PROFILE.settings.* so taps land in PostHog by name.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';

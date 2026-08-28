@@ -58,19 +58,22 @@ export function EventsScreen({
     <Screen tone={showGate ? 'intro' : 'canvas'}>
       <ScreenHeader
         title="Events"
+        hideMessages={showGate}
         trailing={
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            aria-label="Create event"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-white"
-          >
-            <PlusIcon className="h-[18px] w-[18px]" strokeWidth={2.6} />
-          </button>
+          showGate ? undefined : (
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              aria-label="Create event"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-white"
+            >
+              <PlusIcon className="h-[18px] w-[18px]" strokeWidth={2.6} />
+            </button>
+          )
         }
       />
 
-      <ScreenBody>
+      <ScreenBody scrollEnabled={!showGate}>
         {showGate ? (
           <EventsGate onExplore={() => setExploredGate(true)} />
         ) : (

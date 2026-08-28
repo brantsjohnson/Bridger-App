@@ -6,6 +6,9 @@
 // The countdown chip is the lighter version of the same color.
 // Rows are soonest-first (now → Today → Friday → in 7 days).
 //
+// Empty (new user / no friends yet): one quiet line inviting them to add
+// friends so reminders have somewhere to come from.
+//
 // Tap opens that friend's profile page (not the Friends roster).
 // Analytics: each row uses coming_up_card (no names/labels in event props).
 // ============================================
@@ -13,7 +16,12 @@ import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BellIcon, CakeIcon, FlagIcon } from 'lucide-react-native';
 import { HOME, sortUpcomingItems, type UpcomingItem } from '@bridger/shared';
-import { TIER_COLOR, ringToneForTier, withAnalyticsPress } from '@bridger/ui';
+import {
+  AnalyticsRegion,
+  TIER_COLOR,
+  ringToneForTier,
+  withAnalyticsPress
+} from '@bridger/ui';
 import { personById } from '../../data/people';
 
 /** Card fill + chip from the friend's circle — every kind, including birthdays. */
@@ -31,6 +39,21 @@ export function ComingUpWidget({
 }) {
   // Soonest first so "now" and "Today" sit above later chips.
   const ordered = useMemo(() => sortUpcomingItems(items), [items]);
+
+  // THIS SECTION DOES: one-line null state when there is nothing coming up yet.
+  if (ordered.length === 0) {
+    return (
+      <AnalyticsRegion
+        analyticsId={HOME.coming_up.empty_body}
+        interactive={false}
+        accessibilityLabel="Add friends to get reminders"
+      >
+        <Text className="font-sans-sb text-[13px] leading-snug text-ink-mute">
+          Add friends to get reminders.
+        </Text>
+      </AnalyticsRegion>
+    );
+  }
 
   return (
     <View className="gap-2">

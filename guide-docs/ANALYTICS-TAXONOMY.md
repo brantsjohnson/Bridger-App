@@ -66,7 +66,7 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `recap_player` | `friends` (Friend Pod) | full-page weekly podcast — play, speed, filter, jump voices, react; do they bail? (`dwell_ms`) |
 | `add_bucket_sheet` | `profile` (own Bucket list tab) | add a want — do they open then bail? |
 | `edit_bucket_sheet` | `profile` (own Bucket list tab) | edit / delete a want — do they open then bail? |
-| `profile_intro` | `profile` (own, first visit) | mandatory one-time privacy intro before fill |
+| `profile_intro` | `profile` (own, first visit) | mandatory one-time black welcome before fill (Events/Discover vibe) |
 | `profile_search_sheet` | `profile` (own or friend) | search this profile's visible fields — never logs query text |
 | `assistant` | Settings (opt-in only) | relationship Assistant chat — never logs query/note/transcript text |
 
@@ -247,11 +247,11 @@ New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] →
 | `chrome` | `continue`, `skip`, `back`, `progress_bar`, **`step_title` (dead)** |
 | `confirm_profile` | `first_input`, `last_input`, `photo_square` (opens system Take / Upload sheet), `take`, `upload`, `retake`, `filter_pop_art`, `filter_x_ray`, `filter_comic`, `filter_sepia`, `local_processing_badge` (dead — shown when filter preview runs on-device) |
 | `basics` | `answer` (birthday) |
-| `stat` | `info` (opens sources sheet from the "i" beside "A quick reality check", `variant`), `bridge` ("Let's try again", `variant`), `advance` (screentime only: tap to the next life-story beat, `page_index` 0–5), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)**, **`caption` (dead — changing "you'll spend X years" line)** |
+| `stat` | `info` (opens sources sheet from the "i" beside "A quick reality check", `variant`), `bridge` ("Let's try again", `variant`), `advance` (screentime only: tap to the next life-story beat, `page_index`), `band` (screentime only: tap a filled year-band to open/close its years accordion, `page_index`), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)**, **`caption` (dead — changing "you'll spend X years" line)** |
 | `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, `skip` |
-| `friends_of_friends` | `style` (opaque key via `style`: `humor`\|`values`\|`personality`\|`hobbies`\|`communication`), `all` ("All of the above"), `skip` |
-| `notifications` | `pref` (`pref`: `birthdays`\|`life_updates`\|`meet`\|`activities`\|`messages`\|`reconnect`; method `on`\|`off` via Toggle) |
-| `taste` | `start`, **`preview_list` (dead)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `hometown_input`, `current_town_input`, `favorite_place_input`, `recap_record`, `recap_play`, `recap_type`, `skip` |
+| `friends_of_friends` | `style` (opaque key via `style`: `workout`\|`go_out`\|`creative`\|`industry`\|`travel`\|`nearby`\|`gets_me`), `all` ("All of the above"), `skip` |
+| `notifications` | `pref` (`pref`: `birthdays`\|`life_updates`\|`meet`\|`activities`\|`messages`\|`reconnect`; method `on`\|`off` via Toggle), `all` ("All of the above") |
+| `taste` | `start`, **`preview_list` (dead — excited headline)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `hometown_input`, `current_town_input`, `favorite_place_input`, `place_search` (focus favorite-place search; never logs query text), `place_result` (confirmed pick; never place names), `recap_record`, `recap_play`, `recap_type`, `skip` |
 | `review` | `row_audience` (`field`, `tier`), `set_all` (`tier`), `terms`, `privacy_policy` |
 | `coop` | `invite_free` (Option A; props `invites_sent` 0–2 when progress shown), `join_paid` (Option B), `apple_pay`, `google_pay`, `card`, `use_free` (only after 3 invites: "Continue with free access"; no early free-tier skip), `redeem_open`, `redeem_input`, `redeem_submit`, **`perks_grid` (dead — member perk bullet list)** |
 | `welcome_in` | `lets_go`, **`next_cards` (dead)** |
@@ -271,8 +271,8 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `notifications_preview` | `row`, `see_all` (card body or See all → Notifications page), **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "All caught up!")** |
 | `inside_jokes_strip` | `note`, `add`, **`sticky_note_body` (dead — do they tap the note itself?)** |
 | `ask_the_group` | `create_poll`, `ask_question`, `see_previous_polls`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `coming_up` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, `open_events` (empty This week → Events tab), **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `coming_up` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "Add friends to get reminders.")** |
 | `activity` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open`, `heart`, `post` |
 | `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `take`, `open_result`, `share` |
 | `coop` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open_portal`, `join`, `use_free` |
@@ -392,11 +392,11 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 ### `profile` (own)
 | section | elements |
 |---|---|
-| `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list`, `settings_gear` (record `first_interaction` → what they open first) |
-| `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `tier_control`, `edit` (rearrange mode), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
+| `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list` (record `first_interaction` → what they open first) |
+| `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `tier_control`, `edit` (rearrange mode), `settings_gear` (own only: gear next to Edit → Settings), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
 | `card` | `mutuals`, `top5`, `top5_row`, `about_me` (**dead**), `about_me_toggle`, `about_me_edit`, `about_me_bio_more`, `about_me_field_edit`, `about_me_reorder` (method=`up`\|`down`), `upcoming`, `upcoming_row`, `obsession`, `obsession_square`, `favorites`, `favorites_tile`, `favorites_to_start`, `see_all` (pill under top-4 grids), `greatest_hits`, `greatest_hits_photo` (**dead**), `where_met`, `hobbies_widget` (method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin`, `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module`, `widget_edit` (pencil on a widget box), `widget_reorder` (method=`up`\|`down`). `currently` retired (see Renames) |
 | `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `hobby_search` (focus search; never logs query text), **`hobby_category` (dead)**, `hobby_add_own`, `hobby_custom_name`, `hobby_custom_emoji`, `hobby_custom_save`, `hobby_custom_remove`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
-| `intro` *(surface `profile_intro`)* | **`body` (dead)**, `continue` |
+| `intro` *(surface `profile_intro`)* | **`body` (dead)**, `continue` (visible label: Hell yeah; dismisses once forever) |
 | `stories_calendar` | `day` (opens story), `month_nav`, `storage_bar` |
 | `inside_jokes` | `note` (tap → meta), `add`, `filter`, **`note_body` (dead)** |
 | `bucket_list` | `item`, `add`, `check_off`, `edit` (Edit/Done toggle), `edit_item` (open edit sheet), `delete` (method=`swipe`\|`edit_mode`\|`sheet`), `save` |
@@ -445,7 +445,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `hosting` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `going` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `invited` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `community` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `community` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`teaser_card` (dead — Coming soon street illustration, same layout as Discover Local map)** |
 
 ### `event_people_sheet` *(surface — parent `events.detail`)*
 | section | elements |
@@ -526,9 +526,9 @@ Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_se
 | section | elements |
 |---|---|
 | `top_nav` | `page_title` (**dead**), `new_message`, `search`, `profile_icon` |
-| `conversation` | `row`, `section_header` (**dead**), `contact_card_row`, `cap_note` (**dead**), `bubble` (**dead** single tap), `heart` (double-tap; product `message_hearted`), `share_contact`, `make_a_plan` (retired, id kept), `back`, `maxed_notice` |
+| `conversation` | `row`, `section_header` (**dead**), `contact_card_row` (toggles dropdown; `method: dropdown`), `contact_card_chip` (expands shared-card bubble; `method: dropdown`; never opens `tel:`), `cap_note` (**dead**), `bubble` (**dead** single tap), `heart` (double-tap; product `message_hearted`), `share_contact`, `make_a_plan` (retired, id kept), `back`, `maxed_notice` |
 | `composer` | `input`, `send` |
-| `contact_card` | `edit`, `field_toggle`, `share`, `field_row` (**dead**) |
+| `contact_card` | surface opened under Messages dropdown (`parent_screen: messages`); `field_toggle`, `field_input` (focus only; never logs value), `field_row` (**dead**, retired), `edit` / `share` (**retired** — share is `conversation.share_contact`) |
 
 ### `notifications` *(Notifications page — See all from Home)*
 | section | elements |
@@ -621,7 +621,7 @@ Pairs with product events `delight_gifted` / `delight_played` (`delight_slug` on
 | section | elements |
 |---|---|
 | `chrome` | `dismiss` (title-bar X) |
-| `dialog` | **`body` (dead)**, `ok` |
+| `dialog` | **`body` (dead)** ("You're invited to suffer"), `ok` (visible label: OK) |
 
 ### `admin` (operator console)
 | section | elements |
@@ -771,4 +771,13 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-19 | — | `analytics_opted_in` / `analytics_opted_out` | Settings product-analytics consent (PostHog SDK; default off) |
 | 2026-08-27 | — | `onboarding.contacts.invite_slot` / `contact_row` / `contacts_cancel` + surface `onboarding_invite_contacts_sheet` + `invite_link_shared` | Three Link 1/2/3 slots; co-op progress from confirmed SMS/share |
 | 2026-08-27 | — | `onboarding.stat.advance` + **`caption` (dead)** + screentime `page_index` beats | 80-year life story plays one beat at a time; tap skips ahead |
+| 2026-08-28 | `profile.tabs.settings_gear` | `profile.header.settings_gear` | Settings moved from tab bar to gear next to Edit on the photo |
+| 2026-08-28 | — | `onboarding.taste.place_search` / `place_result` | Favorite place map search seeds Places traveled FAV pin |
+| 2026-08-28 | — | `onboarding.stat.band` | Screentime year-band tap opens/closes the years accordion |
+| 2026-08-28 | FoF `style` keys `humor`\|`values`\|`personality`\|`hobbies`\|`communication` | `workout`\|`go_out`\|`creative`\|`industry`\|`travel`\|`nearby`\|`gets_me` | Friends-of-friends ask reframed as "what kind of friend" |
+| 2026-08-28 | — | `onboarding.notifications.all` | All of the above + emoji burst on notifications step |
+| 2026-08-28 | `messages.contact_card` full screen + `edit`/`share` | Messages list dropdown surface `contact_card` (`parent_screen: messages`); share stays `conversation.share_contact` | Setup expands inline; no Share button on the card editor |
+| 2026-08-28 | — | `messages.conversation.contact_card_chip` | Shared-card bubble: Contact card label + message icon; expands fields (`method: dropdown`); never `tel:` |
+| 2026-08-28 | — | `home.this_week.open_events` | Empty This week widget tap opens the Events tab |
+| 2026-08-28 | — | `home.coming_up.empty_body` | Coming up null line: "Add friends to get reminders." |
 |

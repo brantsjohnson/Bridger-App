@@ -106,3 +106,18 @@ export function runVennMergeHaptics(reduced: boolean): () => void {
     for (const id of timers) clearTimeout(id);
   };
 }
+
+/**
+ * One excited tap when a word pops onto the taste-intro line. Later words hit
+ * a little harder so the line builds energy toward the end.
+ */
+export function fireWordRevealHaptic(index: number, total: number): void {
+  if (Platform.OS === 'web') return;
+
+  void AccessibilityInfo.isReduceMotionEnabled().then((reduced) => {
+    if (reduced) return;
+    const last = index >= total - 1;
+    const mid = index >= Math.floor(total / 2);
+    fireTap(last ? 'rigid' : mid ? 'medium' : 'light');
+  });
+}

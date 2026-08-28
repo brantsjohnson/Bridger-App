@@ -36,6 +36,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead
 } from '../../data/feed';
+import { notifyTabAttentionChanged } from '../../data/tab-badges';
 import { pathForNotification } from '../../lib/notification-routes';
 
 export default function NotificationsScreen() {
@@ -79,6 +80,7 @@ export default function NotificationsScreen() {
       } else {
         markNotificationRead(n.id);
       }
+      notifyTabAttentionChanged();
       setItems((prev) =>
         prev.map((row) => (row.id === n.id ? { ...row, unread: false } : row))
       );
@@ -90,6 +92,7 @@ export default function NotificationsScreen() {
   const markAll = useCallback(() => {
     trackClick(NOTIFICATIONS.list.mark_all_read, { filter });
     markAllNotificationsRead(filter);
+    notifyTabAttentionChanged();
     trackProduct('notifications_marked_read', { filter });
     void reload();
   }, [filter, reload]);

@@ -6,6 +6,16 @@ Maps to the `notifications` module, Home's notifications preview (`HOME.md`), th
 
 ---
 
+## Nav-bar dots and section title dots
+
+Each floating-nav tab can show a small matching-color **dot** when that page has unread activity.
+
+- **Open the tab** → the **nav-bar dot for that whole tab clears** (acknowledged for the current unread set). A brand-new alert for that tab lights the nav dot again.
+- **On the page**, a matching little **dot sits beside the section title** the alert belongs to (Stories, Touch grass, Wants to connect, etc.) so you can see where the news is. Those section dots stay until the underlying alerts are read / cleared (Mark all as read, open the reply chip, etc.).
+- **Messages** stay off this system (chat unread is only on the Messages header shortcut).
+
+---
+
 ## Notifications page filters & mark all read
 
 The full **Notifications** page (not the Home preview) can filter by the same pages as the floating nav — so you can see **why a nav dot is lit**:

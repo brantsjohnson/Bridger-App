@@ -27,6 +27,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { PersonAvatar } from '../PersonAvatar';
+import { EventDateChip } from '../event/EventDateChip';
 import { QuizCoverCycler } from './QuizCoverCycler';
 import { meetSuggestionsForEvent } from '../../data/events';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
@@ -121,13 +122,9 @@ export function NextEventWidget({
               accent={event.accent}
             />
           </View>
-          <View className="flex-row items-start gap-3 p-4">
-            <View className="items-center rounded-card bg-canvas-raised px-2.5 py-2">
-              <Text className="font-sans-b text-[11px] uppercase text-ink-mute">
-                {event.day.split(' ')[0]}
-              </Text>
-              <Text className="font-sans-b text-[18px] text-ink">{event.day.split(' ')[1]}</Text>
-            </View>
+            <View className="flex-row items-start gap-3 p-4">
+            {/* Date square: day number on top, weekday under (same as EventDateChip). */}
+            <EventDateChip event={event} />
             <View className="min-w-0 flex-1">
               <Text className="font-sans-b text-[17px] leading-tight tracking-tight text-ink">
                 {event.title}
@@ -596,7 +593,9 @@ export function CoopWidget({
     <Pressable
       onPress={onOpen}
       accessibilityRole="button"
-      accessibilityLabel={member ? 'Member portal' : 'Join the co-op'}
+      accessibilityLabel={
+        member ? 'Member portal' : 'Join the co-op for six dollars a month'
+      }
       className={cn(
         'w-full flex-row items-center gap-3 rounded-card bg-teal px-4 py-4 active:opacity-90',
         size === 'half' && 'min-h-[140px]'
@@ -606,11 +605,14 @@ export function CoopWidget({
         <Text className="text-[20px]">🌉</Text>
       </View>
       <View className="min-w-0 flex-1">
+        {/* Non-members: $6 a month is the hero price (not $72 a year). */}
         <Text className="font-sans-b text-[14px] leading-tight text-onaccent">
-          {member ? 'Member portal' : 'Join the co-op'}
+          {member ? 'Member portal' : '$6 a month'}
         </Text>
         <Text className="font-sans-sb text-[12px] text-onaccent/75" numberOfLines={1}>
-          {member ? 'Votes, feedback, what we are building' : 'You are not the product · $72 a year'}
+          {member
+            ? 'Votes, feedback, what we are building'
+            : 'Join the co-op · you are not the product'}
         </Text>
       </View>
       <ArrowUpRightIcon size={16} color="#1C1B16" strokeWidth={2.8} />

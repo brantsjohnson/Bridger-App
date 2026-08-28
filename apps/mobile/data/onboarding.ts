@@ -275,9 +275,9 @@ export async function saveVisibility(rows: VisibilityRow[]): Promise<void> {
 }
 
 /**
- * Connection style — how you want friends-of-friends matched to you (opaque
- * keys only: humor, values, personality, hobbies, communication). Own-matching
- * preference; never shown to others as free text.
+ * Connection style — what kind of friend you could use right now (opaque
+ * keys only: workout, go_out, creative, industry, travel, nearby, gets_me).
+ * Own-matching preference; never shown to others as free text.
  */
 export async function saveConnectionStyle(styles: string[]): Promise<void> {
   if (isDemoMode()) {
@@ -409,16 +409,27 @@ export async function saveColor(hex: string): Promise<void> {
 
 /**
  * 10E · Your places — hometown + current town become About Me rows; favorite
- * place is geocoded onto the travel map with a FAV star when possible.
- * PRIVACY: towns / place names only, never a street address.
+ * place (when picked from search) pins Places traveled as FAV without
+ * re-geocoding. PRIVACY: towns / place names only, never a street address.
  */
 export async function savePlaces(input: {
   hometown: string;
   currentTown: string;
   favoritePlace: string;
+  favoritePlaceHit?: {
+    label: string;
+    lat: number;
+    lng: number;
+    countryCode: string;
+  } | null;
 }): Promise<void> {
   if (isDemoMode()) {
-    demoDraftSaved.places = { ...input };
+    demoDraftSaved.places = {
+      hometown: input.hometown,
+      currentTown: input.currentTown,
+      favoritePlace: input.favoritePlace,
+      favoritePlaceHit: input.favoritePlaceHit ?? null
+    };
     return;
   }
 
@@ -471,13 +482,10 @@ export async function savePlaces(input: {
     });
   }
 
-  // THIS SECTION DOES: geocode the favorite trip and pin it on the map as FAV.
-  const fav = input.favoritePlace.trim();
-  if (!fav) return;
-
-  const { searchPlaces } = await import('../lib/geocode');
-  const hits = await searchPlaces(fav);
-  const hit = hits[0];
+  // THIS SECTION DOES: pin the favorite trip on the map as FAV when we already
+  // have a search pick (no second geocode). Text-only fallback if they somehow
+  // have a label with no hit.
+  const hit = input.favoritePlaceHit;
   if (
     hit &&
     Number.isFinite(hit.lat) &&
@@ -486,11 +494,11 @@ export async function savePlaces(input: {
   ) {
     const place = {
       id: `pl-onb-${Date.now()}`,
-      label: hit.label || fav,
+      label: hit.label || input.favoritePlace.trim() || 'Favorite place',
       note: 'Favorite place',
       lat: hit.lat,
       lng: hit.lng,
-      countryCode: hit.countryCode,
+      countryCode: hit.countryCode.toUpperCase(),
       emoji: '⭐',
       year: String(new Date().getFullYear()),
       tier: 'friend' as Tier,
@@ -514,7 +522,10 @@ export async function savePlaces(input: {
     return;
   }
 
-  // Geocode failed: keep a text About row so the answer is not lost.
+  const fav = input.favoritePlace.trim();
+  if (!fav) return;
+
+  // No hit: keep a text About row so the answer is not lost.
   await apiFetch('/me/attributes', {
     method: 'POST',
     body: JSON.stringify({

@@ -23,9 +23,9 @@ import { OBHeading } from './onboarding-ui';
  */
 const CELLS = [0, 1, 2, 3, 4, 5, 6, 7];
 
-/** Empty cells and their numbers are a faint navy, straight from the design. */
-const EMPTY_FILL = 'rgba(39,64,135,0.12)';
-const EMPTY_TEXT = 'rgba(39,64,135,0.6)';
+/** Empty cells and their numbers are a faint ink wash, matching the app. */
+const EMPTY_FILL = OB.fillFaint;
+const EMPTY_TEXT = OB.inkFaint;
 
 /** A calm week is blue, a busy one is amber, a packed one is hot pink. */
 function fillColor(nights: number): string {
@@ -102,9 +102,8 @@ export function SocialBatteryStep({
             }}
           >
             {CELLS.map((n) => {
-              // The zero cell only lights up on its own; every other cell fills
-              // up to and including the number they picked.
-              const filled = answered && (n === 0 ? value === 0 : value >= n && n > 0);
+              // Battery fill: every cell from 0 up to and including the pick lights up.
+              const filled = answered && value >= n;
               const cellLabel = n === 7 ? '7+' : String(n);
               const spoken =
                 n === 0

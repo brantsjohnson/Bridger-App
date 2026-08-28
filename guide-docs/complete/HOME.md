@@ -45,7 +45,7 @@ Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboard
 ├─────────────────────────────┤
 │  🖼 Band Tee Week · post →  │  8c · Weekly activity (conditional, admin-hosted)
 ├─────────────────────────────┤
-│  Join the co-op             │  9 · Co-op footer (opens co-op portal)
+│  $6 a month                 │  9 · Co-op footer (opens co-op portal)
 ├─────────────────────────────┤
 │   ( home  cal disc ppl you )│  Floating pill nav (detached, dynamic)
 └─────────────────────────────┘
@@ -65,7 +65,7 @@ Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboard
 | 7 | Your live poll | Your active poll + running results, visible on your own Home | — | hidden when no live poll |
 | 8 | This week | The **quiz**: take → your result + **Share quiz** + **"who got who"** dashboard (see `TOUCHGRASS-AND-QUIZ.md`). The recap **podcast** and **add-your-recap** prompt (the Friend Pod) are **not on Home**; they live on the **Friends** tab (see `RECAP-PODCAST.md`) | — | hidden when nothing active |
 | 8c | Weekly activity | Entry card into the hosted collage (e.g. "Band Tee Week · post yours") | — | **hidden unless an activity is live in admin** |
-| 9 | Co-op footer | "Join the co-op" — opens the co-op portal (also reachable from Profile settings) | — | always shown (non-member) |
+| 9 | Co-op footer | Hero **"$6 a month"** · "Join the co-op · you are not the product" — opens the co-op portal (also reachable from Profile settings) | — | always shown (non-member) |
 
 ### Notifications (header bell)
 
@@ -106,6 +106,13 @@ The top of Home is a single **swipeable carousel** that consolidates what used t
 
 **When there are no announcements, the whole carousel is hidden** — the top of Home is simply empty, and Stories become the first thing. Cards are aggregated from existing sources (`touchgrass`, `coop`, `notifications` for birthdays/reminders, the freshness signal); the carousel is a presentation layer, not a new data store.
 
+### Editable widgets (containers stay)
+
+Home keeps its widget shells for a new user. Quiz, Activity, Stories, Co-op, and Notifications each show their own null copy inside the box. Announcements stay out until something is live.
+
+- **This week** (next-event widget) — when empty, one quiet line; tap opens the **Events** tab.
+- **Coming up** — when empty, one line: **"Add friends to get reminders."** When filled, rows open that friend's profile.
+
 ### Assistant on Home (opt-in)
 
 When the person has turned Assistant on in Settings, the **AgentWidget** (user-facing name: Billy) appears **under Stories** (after the story tiles and the replies row). Short asks can finish on Home; longer threads open the full-screen AgentScreen. If work is still live when they leave Home, **AgentIsland** pins a small capsule at the top (never on Home itself; idle = hidden). Confirmed acts still use Bridger drafts/previews (messages are in-Bridger only). Settings keeps the toggle + Open entry. People who never opted in never see Widget, Screen, or Island. See `AGENT.md` / `AGENT-SCOPE.md` and Magic Patterns `components/assistant/`.
@@ -116,7 +123,7 @@ The header's top-right icon opens **Messages** — Bridger's intentionally-limit
 
 ### Floating nav
 
-The five destinations sit in a **floating elongated capsule** — detached from the bottom edge with a little side margin, and slightly dynamic (Apple's newer style; may tuck on scroll). Active destination = filled elongated pill in that tab's color (Home teal · Friends coral · Events touch-grass green · Discover amber · News purple). A matching-color dot marks unread activity on a tab. See `DESIGN.md`.
+The five destinations sit in a **floating elongated capsule** — detached from the bottom edge with a little side margin, and slightly dynamic (Apple's newer style; may tuck on scroll). Active destination = filled elongated pill in that tab's color (Home teal · Friends coral · Events touch-grass green · Discover amber · News purple). A matching-color dot marks unread activity on a tab; opening the tab clears that nav dot and leaves a matching little dot beside the section title the news is in. See `DESIGN.md` and `NOTIFICATIONS.md`.
 
 ### Co-op portal access
 

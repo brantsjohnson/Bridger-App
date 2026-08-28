@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Onboarding taste of the Friend Pod: record one voice answer with the SAME
-// UI as "Add your recap" (purple progress pills, lavender question card, black
-// mic circle). Question is Q1 of the weekly set ("High of the week?"). Skippable.
+// UI as "Add your recap" (lavender question card, black mic circle). One
+// question only: "Best part of your week?" Skippable.
 //
 // This is a REAL recorder: tapping the mic asks for the microphone in context,
 // records up to 20 seconds, and hands the clip path back so it can upload when
@@ -24,20 +24,17 @@ import {
 } from 'expo-audio';
 import { ONBOARDING } from '@bridger/shared';
 import { withAnalyticsPress } from '@bridger/ui';
-import { RECAP_WEEK } from '../../data/fixtures/catalog';
 import {
   RecapMicButton,
   RecapMicStatus,
-  RecapProgressPills,
   RecapQuestionCard
 } from '../pod/RecapRecordChrome';
 import { OnboardingStep } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
 
 const MAX_SECONDS = 20;
-/** Onboarding samples the first weekly question so it matches Friend Pod Q1. */
-const SAMPLE_TOTAL = RECAP_WEEK.questions.length;
-const SAMPLE_QUESTION = RECAP_WEEK.questions[0] ?? 'High of the week?';
+/** Onboarding asks one question only (the weekly Friend Pod can still ask five). */
+const SAMPLE_QUESTION = 'Best part of your week?';
 
 export function RecapStep({
   step,
@@ -174,15 +171,14 @@ export function RecapStep({
       onSkip={onSkip}
       onBack={onBack}
     >
-      {/* SAME CHROME AS FRIEND POD: pills, lavender card, black mic circle. */}
+      {/* SAME CHROME AS FRIEND POD: lavender card + black mic circle. One question only. */}
       <View style={{ gap: 16, width: '100%' }}>
-        <RecapProgressPills total={SAMPLE_TOTAL} step={0} completed={done ? [0] : []} />
-
         <RecapQuestionCard
           step={0}
-          total={SAMPLE_TOTAL}
+          total={1}
           question={SAMPLE_QUESTION}
           maxSeconds={MAX_SECONDS}
+          showIndex={false}
         />
 
         <View style={{ alignItems: 'center' }}>
