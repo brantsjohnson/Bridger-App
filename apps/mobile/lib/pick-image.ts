@@ -53,8 +53,12 @@ export async function pickProfilePhoto(
     // requestMediaLibraryPermissionsAsync is a no-op that resolves granted on
     // web, so this same path works everywhere.
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) return null;
-    const result = await ImagePicker.launchImageLibraryAsync(OPTIONS);
+    if (!perm.granted && Platform.OS !== 'web') return null;
+    const webOptions =
+      Platform.OS === 'web'
+        ? { ...OPTIONS, allowsEditing: false }
+        : OPTIONS;
+    const result = await ImagePicker.launchImageLibraryAsync(webOptions);
     if (result.canceled || !result.assets?.[0]) return null;
     return { uri: result.assets[0].uri };
   } catch {

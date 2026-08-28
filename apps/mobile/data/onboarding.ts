@@ -129,11 +129,26 @@ export async function saveName(name: string): Promise<void> {
 export async function savePhoto(input: {
   source: PhotoSource;
   uri?: string;
+  /**
+   * A photo the server already rendered (the Comic look) and saved for us. When
+   * present we just point the avatar at it, skipping the upload of the plain photo.
+   */
+  filteredMediaId?: string | null;
 }): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.photo = input.source;
     return;
   }
+
+  // A server look (Comic) is already stored: point identity straight at it.
+  if (input.filteredMediaId) {
+    await apiFetch('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ avatarMediaId: input.filteredMediaId })
+    });
+    return;
+  }
+
   // No file to upload (they picked a source but cancelled the picker): nothing
   // to save, and never crash the run over an optional photo.
   if (!input.uri) return;

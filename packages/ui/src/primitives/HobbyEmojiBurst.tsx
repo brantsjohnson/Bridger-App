@@ -25,6 +25,8 @@ type Props = {
   count?: number;
   /** chip = little upward toss. boom = a wider, louder explode. */
   power?: 'chip' | 'boom';
+  /** Fires once when the shower starts (not when Reduce Motion skips it). */
+  onPlayStart?: () => void;
   onDone?: () => void;
 };
 
@@ -68,6 +70,7 @@ export function HobbyEmojiBurst({
   origin,
   count = 8,
   power = 'chip',
+  onPlayStart,
   onDone
 }: Props) {
   const reduce = useReduceMotion();
@@ -88,6 +91,7 @@ export function HobbyEmojiBurst({
       onDone?.();
       return;
     }
+    onPlayStart?.();
     const runs = progress.map((a) =>
       Animated.timing(a, {
         toValue: 1,

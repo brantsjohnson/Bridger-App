@@ -103,6 +103,41 @@ function wrapMonoLine(text: string, maxChars: number): string {
   return rows.join('\n');
 }
 
+// THIS SECTION DOES: show the right slice of a pre-wrapped line while the typewriter
+// counts characters in the ORIGINAL string (no newline). Auto-wrap swaps a space for
+// "\n" in the layout string, so slicing wrapped[0..n] would show the break too early
+// and make the last word hop between lines. This walks original + wrap rows in sync.
+function visibleFromTypedChars(original: string, maxChars: number, typedChars: number): string {
+  if (typedChars <= 0) return '';
+  // Script already chose the line break (e.g. the final "Let's try / again." line).
+  if (original.includes('\n')) return original.slice(0, typedChars);
+  const wrapped = wrapMonoLine(original, maxChars);
+  if (!wrapped.includes('\n')) return original.slice(0, typedChars);
+
+  const rows = wrapped.split('\n');
+  let origIdx = 0;
+  let result = '';
+  let typed = 0;
+
+  for (let ri = 0; ri < rows.length && typed < typedChars; ri++) {
+    if (ri > 0) {
+      if (typed >= typedChars) break;
+      if (origIdx < original.length && original[origIdx] === ' ') {
+        origIdx += 1;
+        typed += 1;
+      }
+      result += '\n';
+    }
+    const row = rows[ri];
+    for (let ci = 0; ci < row.length && typed < typedChars; ci++) {
+      result += row[ci];
+      origIdx += 1;
+      typed += 1;
+    }
+  }
+  return result;
+}
+
 type CrtIntroProps = {
   /** Called once when the movie finishes. There is no skip: it must be watched. */
   onDone: () => void;
@@ -309,8 +344,7 @@ export function CrtIntro({ onDone }: CrtIntroProps) {
       // Monospace character width estimate (matches the web piece's ~0.635 * fs).
       const charW = fs * 0.6 + letterSpacing;
       const maxChars = Math.max(8, Math.floor(textWidth / charW));
-      const wrapped = wrapMonoLine(line.text, maxChars);
-      const visible = wrapped.slice(0, chars);
+      const visible = visibleFromTypedChars(line.text, maxChars, chars);
 
       return (
         <View

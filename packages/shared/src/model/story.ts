@@ -1,6 +1,19 @@
-import type { ImageSourcePropType } from 'react-native';
 import { Accent } from './person';
 import { Cover } from './cover';
+
+// THIS SECTION DOES: describe a bundled image/video asset without pulling in
+// react-native. `@bridger/shared` is compiled into the server too, so it must
+// stay platform-neutral. This shape mirrors the parts of React Native's
+// `ImageSourcePropType` we actually use: a require()'d asset (a number) or an
+// object with a uri (and optional size). It stays two-way compatible with RN's
+// type on the mobile side.
+export interface AssetURISource {
+  uri?: string;
+  width?: number;
+  height?: number;
+  scale?: number;
+}
+export type AssetSource = number | AssetURISource | AssetURISource[];
 
 export interface Story {
   id: string;
@@ -34,7 +47,7 @@ export interface StoryPost {
    * the player shows this instead of the emoji placeholder. We keep the asset
    * itself (not a URI string) so it works on web and native alike.
    */
-  media?: ImageSourcePropType;
+  media?: AssetSource;
 }
 
 export type ReactionKind = 'circleVideo' | 'text' | 'sticker';
@@ -56,7 +69,7 @@ export interface Reaction {
    * Demo seeds use this so the purple "missing clip" badge does not show.
    * Live replies use videoUri instead.
    */
-  videoMedia?: ImageSourcePropType;
+  videoMedia?: AssetSource;
   /** how long that clip runs, capped at 10 */
   videoSeconds?: number;
   parentReactionId?: string;

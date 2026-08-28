@@ -40,7 +40,7 @@ const BIG_IDEAS = new Set<string>([
   'YOU DID.',
   'we got further apart.',
   'But YOU make the connections meaningful.',
-  ">> Let's try again."
+  ">> Let's try\nagain."
 ]);
 
 // THIS SECTION DOES: the actual words, in order. Each block is one screen.
@@ -99,7 +99,7 @@ const RAW_BLOCKS: CrtBlock[] = [
   },
   {
     cue: 'TryAgain',
-    lines: [{ text: ">> Let's try again.", kind: 'emph', dur: 3.0 }]
+    lines: [{ text: ">> Let's try\nagain.", kind: 'emph', dur: 3.0 }]
   }
 ];
 

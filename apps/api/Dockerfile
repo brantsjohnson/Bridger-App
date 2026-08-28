@@ -39,6 +39,9 @@ WORKDIR /repo
 RUN corepack enable
 COPY --from=installer /repo/ ./
 COPY --from=pruner /repo/out/full/ ./
+# The package tsconfigs extend the repo-root base config, which turbo prune does
+# not copy into out/full, so bring it in explicitly or tsc cannot find it.
+COPY --from=pruner /repo/tsconfig.base.json ./tsconfig.base.json
 # Shared types must be compiled before the API that imports them.
 RUN pnpm --filter @bridger/shared build && pnpm --filter @bridger/api build
 # Create a self-contained, production-only folder for the API at /app.
@@ -48,6 +51,11 @@ RUN pnpm --filter @bridger/api deploy --prod /app
 FROM node:${NODE_VERSION}-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+# ImageMagick powers the server-side photo looks (e.g. the Comic profile filter).
+# Installed as root before we drop to the non-root user below.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends imagemagick \
+  && rm -rf /var/lib/apt/lists/*
 # Run as the built-in non-root "node" user for safety.
 COPY --from=builder --chown=node:node /app ./
 USER node

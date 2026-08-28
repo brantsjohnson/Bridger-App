@@ -15,6 +15,7 @@ import {
   useWindowDimensions
 } from 'react-native';
 import { NATIVE_DRIVER, useReduceMotion } from '@bridger/ui';
+import { fireEmojiBurstHaptics } from '../../../lib/celebration-haptics';
 
 /** How many emoji fly per pick — enough to feel like a real shower. */
 const COUNT = 26;
@@ -86,6 +87,7 @@ export function EmojiBurst({ play, emoji, origin, onDone }: Props) {
       onDone?.();
       return;
     }
+    fireEmojiBurstHaptics();
     const runs = progress.map((a, i) =>
       Animated.timing(a, {
         toValue: 1,

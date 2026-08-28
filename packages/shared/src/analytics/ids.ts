@@ -83,7 +83,13 @@ export const ONBOARDING = {
     photo_square: aid('onboarding', 'confirm_profile', 'photo_square'),
     take: aid('onboarding', 'confirm_profile', 'take'),
     upload: aid('onboarding', 'confirm_profile', 'upload'),
-    retake: aid('onboarding', 'confirm_profile', 'retake')
+    retake: aid('onboarding', 'confirm_profile', 'retake'),
+    filter_pop_art: aid('onboarding', 'confirm_profile', 'filter_pop_art'),
+    filter_x_ray: aid('onboarding', 'confirm_profile', 'filter_x_ray'),
+    filter_comic: aid('onboarding', 'confirm_profile', 'filter_comic'),
+    filter_sepia: aid('onboarding', 'confirm_profile', 'filter_sepia'),
+    /** dead — reassurance row under the filter pills when preview is on-device */
+    local_processing_badge: aid('onboarding', 'confirm_profile', 'local_processing_badge')
   },
   groups: {
     invite: aid('onboarding', 'groups', 'invite'),

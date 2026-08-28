@@ -10,13 +10,9 @@
 // canvas matches Home so first-run does not feel like a different app. It is
 // light-only on purpose, so dark mode never washes out the page.
 //
-// LAYOUT (this is what keeps Continue still): the screen is pinned to the real
-// height of the display, so it is always one full page, never as short as
-// whatever happens to be on it. Inside, the order is fixed: top bar, question,
-// body (takes all the leftover room), then the button glued to the bottom.
-// Because the body absorbs the leftover space, the button sits in the exact same
-// spot on every step instead of sliding up and down. When the keyboard opens the
-// button rises with it, the way a normal app behaves.
+// LAYOUT: the screen is pinned to the display height. The body scrolls (or fills)
+// inside a KeyboardAvoidingView; Continue stays pinned below that area so the
+// keyboard never shoves the button up over the fields you are typing in.
 //
 // By default the body does NOT scroll: the whole screen must fit. Birthday,
 // color, and co-op opt into scrolling because their content is too tall. When
@@ -207,77 +203,78 @@ export function OnboardingStep({
         {kicker ? <OBKicker>{kicker}</OBKicker> : null}
       </View>
 
-      {/* THIS SECTION DOES: everything under the question lives in one column -
-          the body first, taking all the leftover room, then the buttons. That is
-          what keeps the buttons parked at the bottom on every single step. */}
-      <KeyboardAvoidingView
-        style={{ flex: 1, minHeight: 0 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {bodyFills ? (
-          <View style={{ flex: 1, minHeight: 0, paddingHorizontal: PAGE_X, paddingTop: 8 }}>
-            {children}
-          </View>
-        ) : (
-          <View style={{ flex: 1, minHeight: 0 }}>
-            <ScrollView
-              style={{ flex: 1, minHeight: 0, backgroundColor: 'transparent' }}
-              // Show the bar so a long list (co-op perks) does not look finished.
-              showsVerticalScrollIndicator
-              keyboardShouldPersistTaps="handled"
-              onLayout={(e) => {
-                layoutH.current = e.nativeEvent.layout.height;
-                refreshMoreBelow();
-              }}
-              onContentSizeChange={(_w, h) => {
-                contentH.current = h;
-                refreshMoreBelow();
-              }}
-              onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                scrollY.current = e.nativeEvent.contentOffset.y;
-                refreshMoreBelow();
-              }}
-              scrollEventThrottle={16}
-              contentContainerStyle={{
-                flexGrow: 1,
-                paddingHorizontal: PAGE_X,
-                paddingTop: 8,
-                // Extra air so the last perk can peek under the fade.
-                paddingBottom: 28
-              }}
-            >
+      {/* THIS SECTION DOES: the scrollable body shrinks when the keyboard opens.
+          Continue stays pinned below it so it never slides up over the fields. */}
+      <View style={{ flex: 1, minHeight: 0 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1, minHeight: 0 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {bodyFills ? (
+            <View style={{ flex: 1, minHeight: 0, paddingHorizontal: PAGE_X, paddingTop: 8 }}>
               {children}
-            </ScrollView>
-            {/* Soft fade + chevron: only while there is still content below. */}
-            {moreBelow ? (
-              <View
-                pointerEvents="none"
-                accessible={false}
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  height: 56,
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  paddingBottom: 4
+            </View>
+          ) : (
+            <View style={{ flex: 1, minHeight: 0 }}>
+              <ScrollView
+                style={{ flex: 1, minHeight: 0, backgroundColor: 'transparent' }}
+                // Show the bar so a long list (co-op perks) does not look finished.
+                showsVerticalScrollIndicator
+                keyboardShouldPersistTaps="handled"
+                onLayout={(e) => {
+                  layoutH.current = e.nativeEvent.layout.height;
+                  refreshMoreBelow();
+                }}
+                onContentSizeChange={(_w, h) => {
+                  contentH.current = h;
+                  refreshMoreBelow();
+                }}
+                onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  scrollY.current = e.nativeEvent.contentOffset.y;
+                  refreshMoreBelow();
+                }}
+                scrollEventThrottle={16}
+                contentContainerStyle={{
+                  flexGrow: 1,
+                  paddingHorizontal: PAGE_X,
+                  paddingTop: 8,
+                  // Extra air so the last field can scroll above the keyboard.
+                  paddingBottom: 28
                 }}
               >
-                <LinearGradient
-                  colors={['rgba(250,248,242,0)', OB.canvas]}
-                  style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
-                />
-                <Text
-                  className="font-sans-sb text-[11px]"
-                  style={{ letterSpacing: 1, textTransform: 'uppercase', color: OB.navy }}
+                {children}
+              </ScrollView>
+              {/* Soft fade + chevron: only while there is still content below. */}
+              {moreBelow ? (
+                <View
+                  pointerEvents="none"
+                  accessible={false}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 56,
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingBottom: 4
+                  }}
                 >
-                  Scroll
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        )}
+                  <LinearGradient
+                    colors={['rgba(250,248,242,0)', OB.canvas]}
+                    style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
+                  />
+                  <Text
+                    className="font-sans-sb text-[11px]"
+                    style={{ letterSpacing: 1, textTransform: 'uppercase', color: OB.navy }}
+                  >
+                    Scroll
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </KeyboardAvoidingView>
 
         {hideFooter ? null : (
           <View
@@ -307,7 +304,7 @@ export function OnboardingStep({
             )}
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }

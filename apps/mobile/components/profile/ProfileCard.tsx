@@ -26,6 +26,7 @@ import {
   type ModuleVisibility
 } from '@bridger/ui';
 import { PROFILE_MODULES, type ProfileModuleId } from '../../data/profile-modules';
+import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
 import type {
   AboutField,
   FavGroup,
@@ -353,6 +354,7 @@ export function ProfileCard({
         searchPlaces={searchPlaces}
         placeSearchAnalyticsId={PROFILE.module.place_search}
         placeResultAnalyticsId={PROFILE.module.place_result}
+        onBurstStart={fireEmojiBurstHaptics}
         onClose={() => {
           moduleStartedAt.current = null;
           setModule(null);

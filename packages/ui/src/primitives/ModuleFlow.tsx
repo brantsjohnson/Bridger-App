@@ -112,7 +112,8 @@ export function ModuleFlow({
   matchableRowAnalyticsId,
   searchPlaces,
   placeSearchAnalyticsId,
-  placeResultAnalyticsId
+  placeResultAnalyticsId,
+  onBurstStart
 }: {
   open: boolean;
   title: string;
@@ -137,6 +138,8 @@ export function ModuleFlow({
   searchPlaces?: (query: string, signal?: AbortSignal) => Promise<GeocodeHit[]>;
   placeSearchAnalyticsId?: string;
   placeResultAnalyticsId?: string;
+  /** Optional buzz when a hobby chip sprays emoji (mobile wires fireworks haptics). */
+  onBurstStart?: () => void;
 }) {
   const isPrivate = mode === 'private';
   const insets = useSafeAreaInsets();
@@ -306,6 +309,7 @@ export function ModuleFlow({
             play
             emoji={b.emoji}
             origin={b.origin}
+            onPlayStart={onBurstStart}
             onDone={() =>
               setHobbyBursts((prev) => prev.filter((x) => x.key !== b.key))
             }

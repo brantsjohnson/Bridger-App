@@ -13,6 +13,7 @@ import Svg, { Circle, ClipPath, Defs, G } from 'react-native-svg';
 import type { Accent } from '@bridger/shared';
 import { REVEAL } from '@bridger/shared';
 import { Avatar, AnalyticsRegion } from '@bridger/ui';
+import { runVennMergeHaptics } from '../../lib/celebration-haptics';
 
 type Props = {
   /** You */
@@ -71,6 +72,8 @@ export function RevealOrbs({ me, them, label }: Props) {
     faces.setValue(0);
     circles.setValue(0);
 
+    const cancelHaptics = runVennMergeHaptics(false);
+
     const run = Animated.sequence([
       // 1) float the two faces in from opposite sides
       Animated.parallel([
@@ -86,7 +89,10 @@ export function RevealOrbs({ me, them, label }: Props) {
       ])
     ]);
     run.start();
-    return () => run.stop();
+    return () => {
+      run.stop();
+      cancelHaptics();
+    };
   }, [reduceMotion, meX, themX, faces, circles]);
 
   return (

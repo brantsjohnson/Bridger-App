@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { trackFlowCompleted, trackFlowStep, type Tier } from '@bridger/shared';
 import { clearDevPreview, getDemoOnboardSeed, isDemoMode } from '../lib/demo';
 import { getOAuthProfilePrefill } from '../lib/oauth';
+import { supabase } from '../lib/supabase';
 import {
   buildPrivacyRows,
   saveBirthday,
@@ -37,6 +38,7 @@ import {
   type PhotoSource,
   type VisibilityRow
 } from '../data/onboarding';
+import type { PhotoFilterKey } from '../components/onboarding/PhotoFilterPicker';
 
 export type OnboardingStepKey =
   | 'confirm-profile'
@@ -101,6 +103,10 @@ type Draft = {
   photoUri: string | null;
   /** Demo-only: an emoji shown as the avatar when there is no real photo. */
   photoEmoji: string | null;
+  /** Which look is picked under the photo (Pop art / X-ray / Comic / Sepia). */
+  photoFilter: PhotoFilterKey;
+  /** Server-baked picture id to save as the avatar (Comic), or null for plain. */
+  filteredMediaId: string | null;
   birthday: string;
   contactsSynced: boolean;
   invited: boolean;
@@ -131,6 +137,8 @@ const EMPTY_DRAFT: Draft = {
   photoSource: null,
   photoUri: null,
   photoEmoji: null,
+  photoFilter: 'pop_art',
+  filteredMediaId: null,
   birthday: '',
   contactsSynced: false,
   invited: false,
@@ -178,13 +186,19 @@ export function useOnboarding(onDone: () => void) {
   // THIS SECTION DOES: for real (non-demo) sign-ins, pre-fill the first name,
   // last name, and profile photo from the Google/Apple account so the person
   // just confirms instead of retyping. We only fill blanks, so anything they
-  // have already typed is never overwritten. A remote avatar URL previews right
-  // away and uploads when the step is saved.
+  // have already typed is never overwritten. Re-runs when auth session arrives
+  // (the first mount can beat the OAuth hand-off).
   useEffect(() => {
     if (isDemoMode()) return;
     let cancelled = false;
-    void (async () => {
+
+    const applyPrefill = async () => {
       try {
+        const {
+          data: { session }
+        } = await supabase.auth.getSession();
+        if (!session?.user || cancelled) return;
+
         const prefill = await getOAuthProfilePrefill();
         if (cancelled) return;
         setDraft((d) => ({
@@ -197,9 +211,18 @@ export function useOnboarding(onDone: () => void) {
       } catch {
         // No prefill available (e.g. email sign-up): leave the form empty.
       }
-    })();
+    };
+
+    void applyPrefill();
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) void applyPrefill();
+    });
+
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, []);
   // THIS SECTION DOES: remember which way we moved so the slide animation
@@ -239,7 +262,8 @@ export function useOnboarding(onDone: () => void) {
           if (draft.photoSource)
             await savePhoto({
               source: draft.photoSource,
-              uri: draft.photoUri ?? undefined
+              uri: draft.photoUri ?? undefined,
+              filteredMediaId: draft.filteredMediaId
             });
           break;
         case 'birthday':

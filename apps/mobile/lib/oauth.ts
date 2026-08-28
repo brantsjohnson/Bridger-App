@@ -54,7 +54,9 @@ async function signInWithOAuthProvider(provider: Provider) {
     provider,
     options: {
       redirectTo: authRedirectTo,
-      skipBrowserRedirect: true
+      skipBrowserRedirect: true,
+      // Ask Google for profile + photo, not just email.
+      scopes: provider === 'google' ? 'email profile' : undefined
     }
   });
   if (error) return { error: error.message };
@@ -90,23 +92,40 @@ export async function getOAuthProfilePrefill(): Promise<{
   avatarUrl: string | null;
 }> {
   const { data } = await supabase.auth.getUser();
-  const meta = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+  const user = data.user;
+  const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const identity = user?.identities?.find(
+    (i) => i.provider === 'google' || i.provider === 'apple'
+  );
+  const idData = (identity?.identity_data ?? {}) as Record<string, unknown>;
 
-  const str = (key: string) =>
-    typeof meta[key] === 'string' ? (meta[key] as string).trim() : '';
+  const strFrom = (bag: Record<string, unknown>, key: string) =>
+    typeof bag[key] === 'string' ? (bag[key] as string).trim() : '';
 
   // Prefer the split names Google usually provides; otherwise split the full name.
-  let firstName = str('given_name');
-  let lastName = str('family_name');
-  const fullName = str('full_name') || str('name');
+  let firstName = strFrom(meta, 'given_name') || strFrom(idData, 'given_name');
+  let lastName = strFrom(meta, 'family_name') || strFrom(idData, 'family_name');
+  const fullName =
+    strFrom(meta, 'full_name') ||
+    strFrom(meta, 'name') ||
+    strFrom(idData, 'full_name') ||
+    strFrom(idData, 'name');
   if (!firstName && !lastName && fullName) {
     const parts = fullName.split(/\s+/);
     firstName = parts[0] ?? '';
     lastName = parts.slice(1).join(' ');
   }
 
-  const avatarUrl = str('avatar_url') || str('picture') || null;
-  return { firstName, lastName, avatarUrl };
+  return {
+    firstName,
+    lastName,
+    avatarUrl:
+      strFrom(meta, 'avatar_url') ||
+      strFrom(meta, 'picture') ||
+      strFrom(idData, 'avatar_url') ||
+      strFrom(idData, 'picture') ||
+      null
+  };
 }
 
 /**
@@ -145,7 +164,25 @@ export async function signInWithApple() {
         token: credential.identityToken,
         nonce: rawNonce
       });
-      return { error: error?.message ?? null };
+      if (error) return { error: error.message };
+
+      // Apple only sends the person's name the FIRST time they approve. Save it
+      // into Supabase metadata now so onboarding can pre-fill on this screen.
+      const given = credential.fullName?.givenName?.trim() ?? '';
+      const family = credential.fullName?.familyName?.trim() ?? '';
+      if (given || family) {
+        const full_name = [given, family].filter(Boolean).join(' ');
+        await supabase.auth.updateUser({
+          data: {
+            given_name: given,
+            family_name: family,
+            full_name,
+            name: full_name
+          }
+        });
+      }
+
+      return { error: null };
     } catch (e: unknown) {
       // Apple throws when the user cancels — treat that as a quiet cancel.
       const code = typeof e === 'object' && e && 'code' in e ? String((e as { code: string }).code) : '';

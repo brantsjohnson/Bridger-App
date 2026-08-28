@@ -109,6 +109,9 @@ export default function OnboardingScreen() {
             photoSource={draft.photoSource}
             photoUri={draft.photoUri}
             photoEmoji={draft.photoEmoji}
+            photoFilter={draft.photoFilter}
+            onChangePhotoFilter={(f) => patch({ photoFilter: f })}
+            onFilteredMediaIdChange={(id) => patch({ filteredMediaId: id })}
             onChangeFirst={(v) => patch({ firstName: v })}
             onChangeLast={(v) => patch({ lastName: v })}
             onPickPhoto={onPickPhoto}

@@ -10,6 +10,7 @@ import {
   loadAppleMusicPrivateKey,
   mintAppleMusicDeveloperToken
 } from '../music/apple-music-jwt';
+import { PhotoFiltersService } from '../photo-filters/photo-filters.service';
 import { PosthogService } from '../posthog/posthog.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -39,7 +40,8 @@ export class IntegrationsHealthService {
   constructor(
     private readonly config: ConfigService,
     private readonly supabase: SupabaseService,
-    private readonly posthog: PosthogService
+    private readonly posthog: PosthogService,
+    private readonly photoFilters: PhotoFiltersService
   ) {}
 
   async checkAll(): Promise<IntegrationsHealthReport> {
@@ -63,6 +65,7 @@ export class IntegrationsHealthService {
       )
     );
     checks.push(await this.posthogCheck(checkedAt));
+    checks.push(await this.imageMagickCheck(checkedAt));
 
     const overall = rollup(checks);
     return { checkedAt, overall, checks };
@@ -262,6 +265,33 @@ export class IntegrationsHealthService {
       kind: result.kind,
       checkedAt
     };
+  }
+
+  // THIS SECTION DOES: confirm ImageMagick (the comic photo filter engine) is
+  // installed in this container. It is a local tool, not an outbound API.
+  private async imageMagickCheck(checkedAt: string): Promise<IntegrationCheck> {
+    try {
+      const ok = await this.photoFilters.isAvailable();
+      return {
+        id: 'imagemagick',
+        label: 'ImageMagick (photo filters)',
+        status: ok ? 'ok' : 'error',
+        detail: ok
+          ? 'ImageMagick binary is available for server-side photo looks.'
+          : 'ImageMagick is not installed; the Comic photo filter will fail.',
+        kind: 'self',
+        checkedAt
+      };
+    } catch {
+      return {
+        id: 'imagemagick',
+        label: 'ImageMagick (photo filters)',
+        status: 'error',
+        detail: 'Could not check for ImageMagick.',
+        kind: 'self',
+        checkedAt
+      };
+    }
   }
 
   // THIS SECTION DOES: confirm a secret env var is set (never echo the value).

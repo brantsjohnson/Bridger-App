@@ -44,6 +44,7 @@ import {
 } from '../../lib/demo';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/auth-provider';
+import { AppleSignInMark, GoogleMark } from '../../components/auth/AuthBrandMarks';
 
 /**
  * After Google / Apple succeeds, decide signup vs sign-in for analytics.
@@ -62,10 +63,9 @@ async function trackAuthOutcome(method: 'google' | 'apple') {
   }
 }
 
-// Full-bleed glitch art that fills the whole frame (no baked-in white band).
-// The old login-screen.png had white in its lower half, which showed as a gap
-// between the color bars and the sign-in sheet; login-bg.jpg is edge-to-edge.
-const LOGIN_BG = require('../../assets/brand/login-bg.jpg');
+// Full-bleed login art (1080×1920). Placed absolute + cover behind the sheet;
+// no crop hacks needed because the asset is edge-to-edge color bars.
+const LOGIN_BG = require('../../assets/brand/login-screen.png');
 const BRIDGER_MARK = require('../../assets/brand/bridger-mark.png');
 
 export default function SignInScreen() {
@@ -195,34 +195,33 @@ export default function SignInScreen() {
   }
 
   return (
-    <Screen tone="plain">
-      {/*
-        Full-bleed art sits ABSOLUTE behind everything and crops with cover, so
-        it always meets the sign-in sheet. ImageBackground + flex left a white
-        band on some devices when the image did not stretch to the sheet.
-      */}
-      <Image
-        source={LOGIN_BG}
-        resizeMode="cover"
-        style={[
-          StyleSheet.absoluteFill,
-          // Width/height 100% keeps cover painting edge-to-edge on web too.
-          { width: '100%', height: '100%' }
-        ]}
-        accessibilityIgnoresInvertColors
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-      />
+    // Dark fallback behind the art so a layout seam never flashes eggshell white.
+    <Screen tone="plain" className="bg-canvas-dark">
+      {/* Full-bleed art sits absolute behind everything; cover fills the screen. */}
+      <View className="flex-1 overflow-hidden">
+        <Image
+          source={LOGIN_BG}
+          resizeMode="cover"
+          style={[
+            StyleSheet.absoluteFill,
+            // Width/height 100% keeps cover painting edge-to-edge on web too.
+            { width: '100%', height: '100%' }
+          ]}
+          accessibilityIgnoresInvertColors
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Logo floats over the art; sheet sits below and covers the lower art. */}
-        <View
-          className="flex-1 items-center justify-center px-8"
-          style={{ paddingTop: insets.top + 12 }}
+        <KeyboardAvoidingView
+          className="flex-1"
+          style={{ backgroundColor: 'transparent' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          {/* Logo floats over the art; sign-in sheet sits at the bottom. */}
+          <View
+            className="flex-1 items-center justify-center px-8"
+            style={{ paddingTop: insets.top + 12, backgroundColor: 'transparent' }}
+          >
           <Pressable
             onPress={onLogoPress}
             onLongPress={onLogoLongPress}
@@ -247,10 +246,10 @@ export default function SignInScreen() {
           </Pressable>
         </View>
 
-        <View
-          className="rounded-t-3xl bg-canvas px-5 pt-5"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
-        >
+          <View
+            className="rounded-t-3xl bg-canvas px-5 pt-5"
+            style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+          >
           <AnalyticsRegion
             analyticsId={AUTH.sign_in.page_title}
             interactive={false}
@@ -282,6 +281,7 @@ export default function SignInScreen() {
                     accessibilityLabel="Continue with Google"
                     analyticsId={AUTH.sign_in.google}
                     analyticsProps={{ method: 'google' }}
+                    icon={<GoogleMark size={20} />}
                   >
                     Continue with Google
                   </ButtonSecondary>
@@ -294,6 +294,7 @@ export default function SignInScreen() {
                     accessibilityLabel="Continue with Apple"
                     analyticsId={AUTH.sign_in.apple}
                     analyticsProps={{ method: 'apple' }}
+                    icon={<AppleSignInMark size={20} />}
                   >
                     Continue with Apple
                   </ButtonSecondary>
@@ -378,8 +379,9 @@ export default function SignInScreen() {
               </Text>
             ) : null}
           </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
 
       <Modal
         visible={demoOpen}

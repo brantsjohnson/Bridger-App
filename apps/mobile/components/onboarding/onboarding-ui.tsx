@@ -23,8 +23,9 @@
 // (grid, shadow) are hidden from screen readers. Nothing here relies on color
 // alone: picked rows also get a tick or a switched-on toggle.
 // ============================================
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
+  Modal,
   Pressable,
   Switch,
   Text,
@@ -34,9 +35,15 @@ import {
   type TextStyle,
   type ViewStyle
 } from 'react-native';
-import { trackUi } from '@bridger/shared';
-import { AnalyticsRegion, withAnalyticsPress } from '@bridger/ui';
+import { trackClick, trackUi } from '@bridger/shared';
+import { AnalyticsRegion, HobbyEmojiBurst, useReduceMotion, withAnalyticsPress } from '@bridger/ui';
+import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
 import { OB, OB_BORDER, OB_HEADING, OB_HEADING_SM, OB_SHADOW_OFFSET } from './onboarding-theme';
+
+/** Party mix for Continue / Let's try again taps in onboarding. */
+const ONBOARDING_BURST_EMOJIS = ['🎉', '🎊', '🎈'];
+/** Short beat so the shower is visible before the next step loads. */
+const ONBOARDING_BURST_ADVANCE_MS = 380;
 
 /** The grey the system switch shows when it is off. */
 const OB_SWITCH_OFF = 'rgba(39,64,135,0.25)';
@@ -427,42 +434,85 @@ export function OBCTA({
   shadowColor?: string;
   accessibilityLabel?: string;
 }) {
+  const reduce = useReduceMotion();
+  const btnRef = useRef<View>(null);
+  const [burst, setBurst] = useState<{ key: number; origin: { x: number; y: number } } | null>(
+    null
+  );
+
+  const handlePress = () => {
+    if (!onPress || disabled) return;
+    trackClick(analyticsId, analyticsProps);
+
+    if (reduce) {
+      onPress();
+      return;
+    }
+
+    btnRef.current?.measureInWindow((x, y, width, height) => {
+      setBurst({
+        key: Date.now(),
+        origin: { x: x + width / 2, y: y + height / 2 }
+      });
+    });
+    setTimeout(onPress, ONBOARDING_BURST_ADVANCE_MS);
+  };
+
   return (
-    <Pressable
-      onPress={onPress ? withAnalyticsPress(analyticsId, onPress, { analyticsProps }) : undefined}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled }}
-      style={{
-        minHeight: 56,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 12,
-        paddingVertical: 14,
-        paddingHorizontal: 22,
-        borderRadius: 999,
-        backgroundColor: OB.pink,
-        opacity: disabled ? 0.5 : 1
-      }}
-    >
-      <Text
-        className="font-sans-b"
+    <>
+      <Modal visible={burst != null} transparent animationType="none" pointerEvents="none">
+        <View style={{ flex: 1 }} pointerEvents="none">
+          {burst ? (
+            <HobbyEmojiBurst
+              key={burst.key}
+              play
+              emoji={ONBOARDING_BURST_EMOJIS}
+              origin={burst.origin}
+              count={22}
+              power="boom"
+              onPlayStart={fireEmojiBurstHaptics}
+              onDone={() => setBurst(null)}
+            />
+          ) : null}
+        </View>
+      </Modal>
+      <Pressable
+        ref={btnRef}
+        onPress={handlePress}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityState={{ disabled }}
         style={{
-          fontSize: 17,
-          lineHeight: 22,
-          letterSpacing: 0.4,
-          textTransform: 'uppercase',
-          color: OB.onColor
+          minHeight: 56,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          paddingVertical: 14,
+          paddingHorizontal: 22,
+          borderRadius: 999,
+          backgroundColor: OB.pink,
+          opacity: disabled ? 0.5 : 1
         }}
       >
-        {label}
-      </Text>
-      <Text className="font-sans-b text-[19px]" style={{ color: OB.onColor }} accessible={false}>
-        →
-      </Text>
-    </Pressable>
+        <Text
+          className="font-sans-b"
+          style={{
+            fontSize: 17,
+            lineHeight: 22,
+            letterSpacing: 0.4,
+            textTransform: 'uppercase',
+            color: OB.onColor
+          }}
+        >
+          {label}
+        </Text>
+        <Text className="font-sans-b text-[19px]" style={{ color: OB.onColor }} accessible={false}>
+          →
+        </Text>
+      </Pressable>
+    </>
   );
 }
 

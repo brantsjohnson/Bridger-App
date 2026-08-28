@@ -28,6 +28,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { MANIFEST } from './manifest';
+import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
 
 /** Deep navy for the question slab. White gutters sit between the blocks. */
 const NAVY = '#001146';
@@ -64,6 +65,7 @@ export function EmojiBurstLayer({
           origin={b.origin}
           count={18}
           power="boom"
+          onPlayStart={fireEmojiBurstHaptics}
           onDone={() => onDone(b.key)}
         />
       ))}

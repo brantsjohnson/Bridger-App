@@ -24,6 +24,7 @@ import { MeModule } from './me/me.module';
 import { MusicModule } from './music/music.module';
 import { NotesModule } from './notes/notes.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PhotoFiltersModule } from './photo-filters/photo-filters.module';
 import { PollsModule } from './polls/polls.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { QuizModule } from './quiz/quiz.module';
@@ -54,6 +55,7 @@ import { DemoWeekModule } from './demo-week/demo-week.module';
     MusicModule,
     MatchingModule,
     ProfilesModule,
+    PhotoFiltersModule,
     TiersModule,
     ConnectionsModule,
     StoriesModule,
