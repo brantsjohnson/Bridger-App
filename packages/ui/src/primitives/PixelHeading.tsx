@@ -6,7 +6,7 @@
 // about it is deliberately plain.
 // ============================================
 import React from 'react';
-import { Text, type TextStyle } from 'react-native';
+import { Text, type LayoutChangeEvent, type TextStyle } from 'react-native';
 import { cn } from '../lib/cn';
 
 type Size = 'lg' | 'md' | 'sm';
@@ -24,7 +24,8 @@ export function PixelHeading({
   size = 'md',
   className,
   numberOfLines,
-  style
+  style,
+  onLayout
 }: {
   children: React.ReactNode;
   size?: Size;
@@ -32,10 +33,12 @@ export function PixelHeading({
   numberOfLines?: number;
   /** Extra paint (e.g. white type on the black intro gates). */
   style?: TextStyle;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   return (
     <Text
       numberOfLines={numberOfLines}
+      onLayout={onLayout}
       className={cn('font-pixel text-ink', sizes[size], className)}
       style={style}
     >

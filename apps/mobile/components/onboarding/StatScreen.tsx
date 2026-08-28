@@ -5,16 +5,18 @@
 // colorful animated picture of that stat, counts the big number up from zero,
 // lets you tap a small "i" next to "A quick reality check" to see the sources,
 // and ends with "Let's try again." The screen-time one is a story: an 80-year
-// life colors in beat by beat, and the pink button waits until the last number
+// life colors in beat by beat, and the green button waits until the last number
 // lands.
 //
-// The feed screen is special: Instagram-style square posts snap upward one at
-// a time (ads in orange, the one FRIEND post in green), with like and comment
-// chrome. The post window sits ABOVE the counting 18% and grows to fill most
-// of the leftover screen so it is the main thing you see.
+// The feed screen is special: Instagram-style posts snap upward one at a time
+// (ads in orange, the one FRIEND post in green), with like and comment chrome.
+// The post sits in the middle of the page as a fuller square (square photo
+// area, header and likes around it), with the counting 18% right under it.
 //
-// LOOK: flat blue page with a faint white grid over it, the display font for the
-// headline, and the shared pink rounded Continue pill at the bottom.
+// LOOK: flat blue page (no graph-paper overlay), cream display type that stays
+// light in dark mode, light red for accent type on blue,
+// the display font for the headline, and a green
+// square "Let's try again" button at the bottom.
 //
 // ACCESSIBILITY: all the moving art is marked decorative and the stat is always
 // shown as plain text too. When the phone asks for reduced motion, the art
@@ -32,7 +34,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Path, Line } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 import {
   BookmarkIcon,
   HeartIcon,
@@ -51,6 +53,13 @@ import {
 import { OB, OB_BORDER } from "./onboarding-theme";
 import { OBCTA } from "./onboarding-ui";
 import { ScreenTimeVisual } from "./ScreenTimeVisual";
+
+// THIS SECTION DOES: cream type that stays light on the blue page in both themes.
+// Never use text-canvas / text-ink here. Those flip in dark mode and go black on blue.
+// Accent type (big %, eyebrow, FIVE) is light red on the blue canvas.
+const ON_BLUE = OB.onColor;
+const ON_BLUE_MUTE = "rgba(255,255,255,0.68)";
+const ON_BLUE_ACCENT = OB.redOnBlue;
 
 /** Which of the four stat pictures to show. */
 export type StatVariant = "feed" | "isolation" | "retention" | "screentime";
@@ -76,7 +85,7 @@ const CONTENT: Record<StatVariant, StatContent> = {
       "WSJ: How Social Feeds Shifted From Friends to Algorithms",
       "Pew Research Center: Social Media Algorithms & Feeds",
     ],
-    numberColor: "#FF3E8A",
+    numberColor: ON_BLUE_ACCENT,
   },
   isolation: {
     line1: {
@@ -84,13 +93,15 @@ const CONTENT: Record<StatVariant, StatContent> = {
       underline: "make friends",
     },
     line2: { text: "Instead, it ", underline: "isolated us" },
-    number: "65%",
-    caption: "of adults have only 0-4 close friends",
+    // Isolation draws its own top/bottom "1 in X" stats + pie; these stay empty.
+    number: "",
+    caption: "",
     sources: [
-      "Survey Center on American Life: Friendship Survey",
-      "Pew Research Center: Close Friendships in America",
+      "Survey Center on American Life: The State of American Friendship (2021)",
+      "12% of Americans have no close friends (about 1 in 12)",
+      "48% have only 1–4 close friends (about 1 in 2)",
     ],
-    numberColor: "#FF3E8A",
+    numberColor: ON_BLUE_ACCENT,
   },
   retention: {
     line1: {
@@ -105,8 +116,9 @@ const CONTENT: Record<StatVariant, StatContent> = {
       "PsyPost: Neuroscientists on the illusion of learning from short videos",
       "VICE: TikToks, Shorts, and Reels Are Melting Your Attention Span",
     ],
-    // Pink like the video squares; the five you'll remember share RETENTION_YELLOW.
-    numberColor: "#FF3E8A",
+    // Purple matches the 235 forgotten squares (the bulk of the 240).
+    // FIVE stays yellow with the five remembered squares under the grid.
+    numberColor: OB.purple,
   },
   screentime: {
     line1: {
@@ -118,10 +130,10 @@ const CONTENT: Record<StatVariant, StatContent> = {
     caption: "",
     sources: [
       "Eyesafe Report: 7 hours a day on screens, 23.3 years over an 80-year life (2025)",
-      "U.S. Bureau of Labor Statistics: American Time Use Survey (sleep, work, daily life, commuting, exercise, in-person socializing)",
+      "U.S. Bureau of Labor Statistics: American Time Use Survey (sleep, work, chores, commuting, exercise, in-person socializing)",
       "Work and school hours are averaged across all 80 years, including childhood, weekends, holidays, and retirement",
     ],
-    numberColor: "#FF3E8A",
+    numberColor: ON_BLUE_ACCENT,
   },
 };
 
@@ -136,36 +148,32 @@ export function StatScreen({
 }) {
   const c = CONTENT[variant];
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  // Screen-time waits for the last life-story beat before the button appears.
+  // Screen-time waits until the final "4.0 years…" caption finishes typing.
   const [lifeReady, setLifeReady] = useState(variant !== "screentime");
   const reduce = useReduceMotion();
   const showFooter = variant !== "screentime" || lifeReady;
   const insets = useSafeAreaInsets();
-  // Window size for pictures that need a real pixel measure (the isolation pie
-  // card). The page itself fills 100% of the display so it stays dynamic.
-  const { width: windowWidth } = useWindowDimensions();
-  // Stable so ScreenTimeVisual's "I'm done" timer does not reset every render.
+  // Stable so ScreenTimeVisual's "I'm done" callback does not reset every render.
   const onLifeComplete = () => setLifeReady(true);
 
   // THIS SECTION DOES: staggered entrance for the two headline lines + number.
   const line1 = useRise(80, reduce);
   const line2 = useRise(560, reduce);
-  // Isolation waits for the pie to finish filling before the % starts counting.
-  const pieFillMs = 1000;
-  const numberDelay = variant === "isolation" ? 1080 + pieFillMs + 120 : 1080;
+  const numberDelay = 1080;
   const numberAnim = useCount(numberDelay, reduce);
-  // Counts 0 → 18 (or 65 / 240) so the big number feels like it is climbing.
+  // Counts 0 → 18 (or 240) so the big number feels like it is climbing.
   const countedNumber = useCountUp(c.number, numberDelay, reduce);
   // Every variant puts the picture first, then the big number under it. The feed
-  // card is the star of that screen, so it sits above the 18% and grows tall.
+  // card is the star: a fuller square in the middle band, with 18% under it.
+  // Gaps stay roomy so the headline, card, %, caption, and button never stack flush.
   const stackGap =
     variant === "isolation"
-      ? 8
+      ? 12
       : variant === "feed"
         ? 16
         : variant === "retention"
-          ? 28
-          : 12;
+          ? 20
+          : 20;
 
   const numberBlock = c.number ? (
     <Animated.View
@@ -176,35 +184,50 @@ export function StatScreen({
           variant === "isolation"
             ? "font-display text-[104px] leading-[0.8] tracking-tight"
             : variant === "feed"
-              ? "font-display text-[72px] leading-[0.84] tracking-tight"
-              : "font-display text-[96px] leading-[0.84] tracking-tight"
+              ? "font-display text-[58px] leading-[0.86] tracking-tight"
+              : variant === "retention"
+                ? "font-display text-[72px] leading-[0.84] tracking-tight"
+                : "font-display text-[88px] leading-[0.84] tracking-tight"
         }
         style={{ color: c.numberColor, letterSpacing: -3 }}
         accessibilityRole="header"
       >
         {countedNumber}
       </Text>
-      {/* Retention: TWO caption lines with a gap; FIVE uses the same yellow as the
-            five remembered squares in the grid (shared RETENTION_YELLOW). */}
+      {/* Retention: TWO caption lines with a gap; FIVE matches the five yellow
+            squares. The big 240 is purple like the forgotten grid. */}
       {variant === "retention" ? (
         <View
-          style={{ marginTop: 8, maxWidth: 320, alignItems: "center", gap: 12 }}
+          style={{ marginTop: 14, maxWidth: 320, alignItems: "center", gap: 12 }}
         >
-          <Text className="text-center font-sans-sb text-[16px] leading-snug text-canvas">
+          <Text
+            className="text-center font-sans-sb text-[16px] leading-snug"
+            style={{ color: ON_BLUE }}
+          >
             videos watched an hour.
           </Text>
-          <Text className="text-center font-sans-sb text-[16px] leading-snug text-canvas">
+          <Text
+            className="text-center font-sans-sb text-[16px] leading-snug"
+            style={{ color: ON_BLUE }}
+          >
             {"You'll remember fewer than "}
-            <Text style={{ color: RETENTION_YELLOW }}>FIVE</Text>.
+            <Text
+              className="font-sans-b text-[16px]"
+              style={{ color: OB.amber }}
+            >
+              FIVE
+            </Text>
+            .
           </Text>
         </View>
       ) : (
         <Text
           className={
             variant === "isolation"
-              ? "mt-2 max-w-[290px] text-center font-sans-sb text-[18px] leading-snug text-canvas"
-              : "mt-1.5 max-w-[320px] text-center font-sans-sb text-[16px] leading-snug text-canvas"
+              ? "mt-3 max-w-[290px] text-center font-sans-sb text-[18px] leading-snug"
+              : "mt-3 max-w-[320px] text-center font-sans-sb text-[16px] leading-snug"
           }
+          style={{ color: ON_BLUE }}
         >
           {c.caption}
         </Text>
@@ -226,14 +249,14 @@ export function StatScreen({
         overflow: "hidden",
       }}
     >
-      {/* THE PAPER: the faint white grid the design draws over the blue. */}
-      <StatGrid />
-
       <View
         style={{
           flex: 1,
           width: "100%",
+          // Space-between keeps the headline up, the post + % in the middle, and
+          // the green button at the bottom (feed included, so the square is centered).
           justifyContent: "space-between",
+          gap: 22,
           paddingHorizontal: 24,
           paddingTop: insets.top + 14,
           paddingBottom: Math.max(insets.bottom, 16) + 16,
@@ -241,9 +264,12 @@ export function StatScreen({
       >
         {/* THIS SECTION DOES: the "A quick reality check" eyebrow, with a small
             info button that opens the citations sheet. */}
-        <View style={{ gap: 12, flexShrink: 0 }}>
+        <View style={{ gap: 18, flexShrink: 0 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-            <Text className="font-sans-sb text-[12px] uppercase tracking-[1.6px] text-coral">
+            <Text
+              className="font-sans-sb text-[12px] uppercase tracking-[1.6px]"
+              style={{ color: ON_BLUE_ACCENT }}
+            >
               A quick reality check
             </Text>
             {/* ACCESSIBILITY: 44pt tap target around a small "i" so the sources
@@ -280,32 +306,28 @@ export function StatScreen({
           >
             <View>
               <Animated.View style={line1}>
-                <DisplayLine line={c.line1} />
+                <DisplayLine line={c.line1} compact={variant === "feed"} />
               </Animated.View>
-              <Animated.View style={[{ marginTop: 12 }, line2]}>
-                <DisplayLine line={c.line2} />
+              <Animated.View
+                style={[{ marginTop: variant === "feed" ? 8 : 16 }, line2]}
+              >
+                <DisplayLine line={c.line2} compact={variant === "feed"} />
               </Animated.View>
             </View>
           </AnalyticsRegion>
         </View>
 
         {/* THIS SECTION DOES: the animated picture, then the big counting number
-            under it. On the feed screen the post window grows to fill most of
-            the leftover height so it is the main thing you see. Screen time
-            also fills the leftover height so its 80 year lines can shrink to fit. */}
+            under it. Feed centers the square post in the middle band. Screen time
+            fills the leftover height so its 80 year lines can shrink to fit. */}
         <View
           style={{
             flex: 1,
             minHeight: 0,
             width: "100%",
-            marginVertical: 10,
             gap: stackGap,
-            justifyContent:
-              variant === "feed" ||
-              variant === "screentime" ||
-              variant === "retention"
-                ? "flex-start"
-                : "center",
+            justifyContent: variant === "screentime" ? "flex-start" : "center",
+            alignItems: "center",
           }}
         >
           <View
@@ -314,11 +336,11 @@ export function StatScreen({
               variant === "screentime" ? "yes" : "no-hide-descendants"
             }
             style={
-              variant === "feed" ||
-              variant === "screentime" ||
-              variant === "retention"
+              variant === "screentime"
                 ? { flex: 1, minHeight: 0, width: "100%" }
-                : { width: "100%" }
+                : variant === "feed" || variant === "retention"
+                  ? { width: "100%", flexShrink: 0, alignItems: "center" }
+                  : { width: "100%" }
             }
           >
             {variant === "feed" ? <FeedVisual reduceMotion={reduce} /> : null}
@@ -332,28 +354,50 @@ export function StatScreen({
               />
             ) : null}
           </View>
-          {/* Isolation keeps the ring + elbow + 65% together so the line can
-              land on the number. The number is real content, so it is not
-              marked decorative. */}
+          {/* Isolation: top "1 in 12", pie (12% + 48%), bottom "1 in 2". */}
           {variant === "isolation" ? (
-            <IsolationVisual
-              reduceMotion={reduce}
-              number={countedNumber}
-              caption={c.caption}
-              numberColor={c.numberColor}
-              numberAnim={numberAnim}
-            />
+            <IsolationVisual reduceMotion={reduce} />
           ) : null}
-          {/* Isolation draws its own 65% under the ring so the elbow can land on it. */}
+          {/* Isolation draws its own numbers; other variants use the shared block. */}
           {variant !== "isolation" ? numberBlock : null}
         </View>
 
-        {/* THIS SECTION DOES: the pink "Let's try again" CTA. On screen-time it
-            waits until the life story finishes. Back stays so you are never stuck. */}
-        <View style={{ gap: 12, flexShrink: 0, width: "100%" }}>
-          {showFooter ? (
+        {/* THIS SECTION DOES: the green "Let's try again" CTA on the blue page.
+            On screen-time it waits until the 4.0 caption finishes typing. The
+            button slot is always reserved so the life bars do not jump when it
+            fades in. Back stays so you are never stuck. */}
+        <View
+          style={{
+            gap: 16,
+            flexShrink: 0,
+            width: "100%",
+          }}
+        >
+          {variant === "screentime" ? (
+            <View
+              // Invisible until ready: same height as OBCTA so space-between
+              // never reflows the year bars when the CTA appears.
+              pointerEvents={showFooter ? "auto" : "none"}
+              accessible={showFooter}
+              accessibilityElementsHidden={!showFooter}
+              importantForAccessibility={
+                showFooter ? "yes" : "no-hide-descendants"
+              }
+              style={{ opacity: showFooter ? 1 : 0 }}
+            >
+              <OBCTA
+                label="Let's try again"
+                tone="green"
+                analyticsId={ONBOARDING.stat.bridge}
+                analyticsProps={{ variant }}
+                onPress={onBridge}
+                accessibilityLabel="Let's try again"
+              />
+            </View>
+          ) : showFooter ? (
             <OBCTA
               label="Let's try again"
+              tone="green"
               analyticsId={ONBOARDING.stat.bridge}
               analyticsProps={{ variant }}
               onPress={onBridge}
@@ -365,9 +409,12 @@ export function StatScreen({
               onPress={withAnalyticsPress(ONBOARDING.chrome.back, onBack)}
               accessibilityRole="button"
               accessibilityLabel="Go back"
-              className="items-center py-1"
+              className="items-center py-2"
             >
-              <Text className="font-sans-sb text-[13px] text-canvas/60">
+              <Text
+                className="font-sans-sb text-[13px]"
+                style={{ color: ON_BLUE_MUTE }}
+              >
                 Back
               </Text>
             </Pressable>
@@ -448,60 +495,27 @@ export function StatScreen({
     </View>
   );
 }
-/**
- * The faint white graph paper the design lays over the blue page: thin lines
- * every 46 points, both ways. Pure decoration, so it is hidden from screen
- * readers and never eats a tap.
- */
-function StatGrid() {
-  const { width, height } = useWindowDimensions();
-  const step = 46;
-  const cols = Math.ceil(width / step);
-  const rows = Math.ceil(height / step);
-  return (
-    <View
-      pointerEvents="none"
-      accessible={false}
-      style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
-    >
-      {Array.from({ length: cols }, (_, i) => (
-        <View
-          key={`v${i}`}
-          style={{
-            position: "absolute",
-            left: i * step,
-            top: 0,
-            bottom: 0,
-            width: 1,
-            backgroundColor: "rgba(255,255,255,0.12)",
-          }}
-        />
-      ))}
-      {Array.from({ length: rows }, (_, i) => (
-        <View
-          key={`h${i}`}
-          style={{
-            position: "absolute",
-            top: i * step,
-            left: 0,
-            right: 0,
-            height: 1,
-            backgroundColor: "rgba(255,255,255,0.12)",
-          }}
-        />
-      ))}
-    </View>
-  );
-}
 
 /** One headline line with an optional underlined key phrase. */
-function DisplayLine({ line }: { line: StatLine }) {
+function DisplayLine({
+  line,
+  compact = false,
+}: {
+  line: StatLine;
+  /** Slightly smaller on the feed screen so the post graphic fits below. */
+  compact?: boolean;
+}) {
   return (
     // Line height stays a hair above the font size so wrapped lines never sit
     // on top of each other (leading under 1.0 was crushing "live life" / "product").
+    // Color is fixed cream so dark mode cannot turn this black on the blue page.
     <Text
-      className="font-display text-[34px] uppercase tracking-tight text-canvas"
-      style={{ lineHeight: 38 }}
+      className={
+        compact
+          ? "font-display text-[26px] uppercase tracking-tight"
+          : "font-display text-[30px] uppercase tracking-tight"
+      }
+      style={{ lineHeight: compact ? 30 : 34, color: ON_BLUE }}
     >
       {line.text}
       {line.underline ? (
@@ -588,7 +602,7 @@ function useCount(delay: number, reduce: boolean) {
 }
 
 /**
- * Count the digits from 0 up to the target ("18%", "65%", "240"), so the big
+ * Count the digits from 0 up to the target ("18%", "240", "12"), so the big
  * number feels like it is climbing. Reduced motion skips straight to the end.
  */
 function useCountUp(target: string, delay: number, reduce: boolean): string {
@@ -634,7 +648,8 @@ function useCountUp(target: string, delay: number, reduce: boolean): string {
 // ============================================
 // VARIANT 1, FEED: Instagram-style posts that snap upward one card at a time
 // (ads in orange, the one FRIEND post in green), with like + comment chrome.
-// The window sits ABOVE the 18% and grows to fill most of the leftover screen.
+// The photo area is a real square; the whole post sits fuller in the middle
+// of the page above the counting 18%.
 // ============================================
 const FEED_CARDS = [
   { tag: "AD", name: "sponsored_brand", friend: false, likes: "585" },
@@ -646,25 +661,27 @@ const FEED_CARDS = [
   { tag: "AD", name: "sponsored_brand", friend: false, likes: "585" },
 ];
 
-/** How the tall post is carved up: header, photo, and the like row. */
-const FEED_HEADER_H = 44;
-const FEED_FOOTER_H = 64;
+/** How the post card is carved up: header, square photo, and the like row. */
+const FEED_HEADER_H = 40;
+const FEED_FOOTER_H = 54;
+/** Cap on the square photo side so the post stays big but leaves room for 18%. */
+const FEED_MEDIA_MAX = 300;
 
 function FeedVisual({ reduceMotion }: { reduceMotion: boolean }) {
-  // Measure the leftover room so the post can grow with the phone, not stay a
-  // fixed postage stamp under the big number.
-  const { width: windowWidth } = useWindowDimensions();
-  const [box, setBox] = useState({ w: 0, h: 0 });
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const translateY = useRef(new Animated.Value(0)).current;
   const steps = FEED_CARDS.length - 1;
 
-  // Nearly full width, and as tall as the room will allow (leave a little air).
-  const cardW = Math.max(
-    260,
-    Math.min(windowWidth - 40, box.w > 0 ? box.w : windowWidth - 40),
+  // THIS SECTION DOES: size a real square photo, then add header + likes around it.
+  // Side grows with the phone (fuller), but never past FEED_MEDIA_MAX or ~36% of height.
+  const mediaSide = Math.min(
+    FEED_MEDIA_MAX,
+    windowWidth - 48,
+    Math.max(220, Math.floor(windowHeight * 0.36)),
   );
-  const cardH = Math.max(320, box.h > 0 ? Math.floor(box.h * 0.98) : 360);
-  const mediaH = Math.max(180, cardH - FEED_HEADER_H - FEED_FOOTER_H);
+  const cardW = mediaSide;
+  const mediaH = mediaSide;
+  const cardH = FEED_HEADER_H + mediaH + FEED_FOOTER_H;
 
   useEffect(() => {
     if (reduceMotion) return;
@@ -705,18 +722,10 @@ function FeedVisual({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <View
       style={{
-        flex: 1,
-        minHeight: 0,
         width: "100%",
         alignItems: "center",
-        justifyContent: "center",
       }}
       accessible={false}
-      onLayout={(e) => {
-        const { width, height } = e.nativeEvent.layout;
-        if (width !== box.w || height !== box.h)
-          setBox({ w: width, h: height });
-      }}
     >
       {/* One big post at a time in a square-corner window. */}
       <View
@@ -773,35 +782,35 @@ function FeedCard({
           height: FEED_HEADER_H,
           flexDirection: "row",
           alignItems: "center",
-          gap: 10,
-          paddingHorizontal: 14,
+          gap: 8,
+          paddingHorizontal: 12,
         }}
       >
         <View
           style={{
-            width: 26,
-            height: 26,
+            width: 22,
+            height: 22,
             backgroundColor: OB.canvas,
             borderWidth: OB_BORDER,
             borderColor: card.friend ? OB.green : OB.pink,
           }}
         />
         <Text
-          className="font-sans-sb text-[14px]"
+          className="font-sans-sb text-[12px]"
           style={{ flex: 1, color: OB.ink }}
           numberOfLines={1}
         >
           {card.name}
         </Text>
         <Text
-          className="font-sans-b text-[16px]"
+          className="font-sans-b text-[14px]"
           style={{ color: "rgba(0,0,0,0.5)" }}
         >
           ⋮
         </Text>
       </View>
 
-      {/* The photo stand-in: orange for ads, green for the one friend. Grows with the card. */}
+      {/* The photo stand-in: orange for ads, green for the one friend. */}
       <View
         style={{
           width,
@@ -812,8 +821,8 @@ function FeedCard({
         }}
       >
         <Text
-          className="font-sans-b text-[28px]"
-          style={{ letterSpacing: 3, color: tagColor }}
+          className="font-sans-b text-[18px]"
+          style={{ letterSpacing: 2.2, color: tagColor }}
         >
           {card.tag}
         </Text>
@@ -823,24 +832,24 @@ function FeedCard({
       <View
         style={{
           height: FEED_FOOTER_H,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          gap: 6,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          gap: 4,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <HeartIcon
-            size={20}
+            size={17}
             color={OB.pink}
             fill={OB.pink}
             strokeWidth={2.2}
           />
-          <MessageCircleIcon size={20} color={OB.ink} strokeWidth={2.2} />
-          <SendIcon size={20} color={OB.ink} strokeWidth={2.2} />
+          <MessageCircleIcon size={17} color={OB.ink} strokeWidth={2.2} />
+          <SendIcon size={17} color={OB.ink} strokeWidth={2.2} />
           <View style={{ flex: 1 }} />
-          <BookmarkIcon size={20} color={OB.ink} strokeWidth={2.2} />
+          <BookmarkIcon size={17} color={OB.ink} strokeWidth={2.2} />
         </View>
-        <Text className="font-sans-sb text-[14px]" style={{ color: OB.ink }}>
+        <Text className="font-sans-sb text-[12px]" style={{ color: OB.ink }}>
           {card.likes} likes
         </Text>
       </View>
@@ -849,69 +858,56 @@ function FeedCard({
 }
 
 // ============================================
-// VARIANT 2, ISOLATION: a pink/lavender ring that fills to 65%, with an elbow
-// line from the pink rim down to the big counting number underneath.
+// VARIANT 2, ISOLATION: two "1 in X" stats with a pie between them.
+// Top: 1 in 12 Americans have no close friends (12%).
+// Pie: 12% purple + 48% lavender, rest faint (Survey Center on American Life 2021).
+// Bottom: 1 in 2 have only 1–4 close friends (48%).
 // ============================================
 
-function IsolationVisual({
-  reduceMotion,
-  number,
-  caption,
-  numberColor,
-  numberAnim,
-}: {
-  reduceMotion: boolean;
-  number: string;
-  caption: string;
-  numberColor: string;
-  /** Fade + rise style from useCount, applied to the 65% block. */
-  numberAnim: object;
-}) {
+/** Share of adults with zero close friends (pie + "1 in 12"). */
+const ISOLATION_NONE_PCT = 0.12;
+/** Share of adults with only 1–4 close friends (pie + "1 in 2"). */
+const ISOLATION_FEW_PCT = 0.48;
+
+function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   // Ring size and thickness, matched to the look of the design screenshot.
-  const size = 220;
-  const stroke = 34;
+  const size = 200;
+  const stroke = 32;
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
   const circ = 2 * Math.PI * r;
 
-  // Extra room on the right so the elbow can jog out before dropping down.
-  const padRight = 56;
-  const gap = 22;
-  const canvasW = size + padRight;
-  const circleLeft = 0;
+  const noneLen = circ * ISOLATION_NONE_PCT;
+  const fewLen = circ * ISOLATION_FEW_PCT;
+  const filledLen = noneLen + fewLen;
 
-  // Attach on the pink arc, about halfway through it (near 3 o'clock), on the
-  // outer rim so the line clearly leaves the pink, not the hole.
-  const attachDeg = -90 + 360 * 0.65 * 0.5;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const attachR = r + stroke / 2;
-  const ax = circleLeft + cx + attachR * Math.cos(toRad(attachDeg));
-  const ay = cy + attachR * Math.sin(toRad(attachDeg));
-  // Elbow: out to the right, then down, then in to the center above "65%".
-  const elbowX = ax + 40;
-  const dropY = size + gap + 8;
-  const tipX = circleLeft + cx;
-  const tipY = dropY;
+  // Top number lands first; pie fills next; bottom number waits for the pie.
+  const topDelay = 900;
+  const pieDelay = 1200;
+  const pieFillMs = 1000;
+  const bottomDelay = pieDelay + pieFillMs + 80;
 
-  const [pinkLen, setPinkLen] = useState(reduceMotion ? circ * 0.65 : 0);
-  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const topAnim = useCount(topDelay, reduceMotion);
+  const bottomAnim = useCount(bottomDelay, reduceMotion);
+  const topDenom = useCountUp("12", topDelay, reduceMotion);
+  const bottomDenom = useCountUp("2", bottomDelay, reduceMotion);
+
+  const [arcLen, setArcLen] = useState(reduceMotion ? filledLen : 0);
+  const pieOpacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
 
   useEffect(() => {
     if (reduceMotion) {
-      setPinkLen(circ * 0.65);
-      opacity.setValue(1);
+      setArcLen(filledLen);
+      pieOpacity.setValue(1);
       return;
     }
-    // Fade the ring in, then grow the pink arc from empty to 65%.
+    // THIS SECTION DOES: fade the ring in, then grow both slices together.
     let raf = 0;
     let startAt = 0;
-    const fillDuration = 1000;
-    const fillDelay = 1080;
-    const target = circ * 0.65;
-    const fade = Animated.timing(opacity, {
+    const fade = Animated.timing(pieOpacity, {
       toValue: 1,
-      delay: fillDelay,
+      delay: pieDelay,
       duration: 280,
       useNativeDriver: NATIVE_DRIVER,
     });
@@ -919,110 +915,142 @@ function IsolationVisual({
     const timer = setTimeout(() => {
       const tick = (now: number) => {
         if (!startAt) startAt = now;
-        const t = Math.min(1, (now - startAt) / fillDuration);
+        const t = Math.min(1, (now - startAt) / pieFillMs);
         const eased = 1 - Math.pow(1 - t, 3);
-        setPinkLen(target * eased);
+        setArcLen(filledLen * eased);
         if (t < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
-    }, fillDelay);
+    }, pieDelay);
     return () => {
       fade.stop();
       clearTimeout(timer);
       cancelAnimationFrame(raf);
     };
-  }, [reduceMotion, opacity, circ]);
+  }, [reduceMotion, pieOpacity, filledLen]);
 
-  // Only draw the elbow once the pink has mostly filled, so it points at a real
-  // pink band rather than empty air.
-  const showElbow = pinkLen > circ * 0.5;
+  // Split the growing arc into the 12% slice, then the 48% slice.
+  const shownNone = Math.min(arcLen, noneLen);
+  const shownFew = Math.max(0, arcLen - noneLen);
 
   return (
-    <Animated.View style={{ alignItems: "center", opacity }}>
-      {/* THE RING + ELBOW: one SVG so the line can leave the pink and drop. */}
-      <Svg width={canvasW} height={size + gap + 16} accessible={false}>
-        {/* Lavender full ring, then pink arc starting at 12 o'clock. */}
-        <Circle
-          cx={circleLeft + cx}
-          cy={cy}
-          r={r}
-          stroke="#AEBCFB"
-          strokeWidth={stroke}
-          fill="none"
-        />
-        <Circle
-          cx={circleLeft + cx}
-          cy={cy}
-          r={r}
-          stroke="#FF3E8A"
-          strokeWidth={stroke}
-          fill="none"
-          strokeDasharray={`${pinkLen} ${circ}`}
-          strokeLinecap="butt"
-          rotation={-90}
-          origin={`${circleLeft + cx}, ${cy}`}
-        />
-
-        {/* THIS SECTION DOES: the pink elbow from the rim down to the 65%. */}
-        {showElbow ? (
-          <>
-            {/* Dot where the line leaves the pink. */}
-            <Circle cx={ax} cy={ay} r={4.5} fill="#FF3E8A" />
-            <Path
-              d={`M ${ax} ${ay} L ${elbowX} ${ay} L ${elbowX} ${tipY} L ${tipX - 10} ${tipY}`}
-              stroke="#FF3E8A"
-              strokeWidth={2.5}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </>
-        ) : null}
-      </Svg>
-
-      {/* THE NUMBER: the elbow tip points right at this 65%. */}
-      <Animated.View
-        style={[{ alignItems: "center", marginTop: -4 }, numberAnim as object]}
-      >
+    <View style={{ width: "100%", alignItems: "center", gap: 14 }}>
+      {/* TOP STAT: 1 in 12 have no close friends. */}
+      <Animated.View style={[{ alignItems: "center" }, topAnim]}>
         <Text
-          className="font-display text-[104px] leading-[0.8] tracking-tight"
-          style={{ color: numberColor, letterSpacing: -3 }}
+          className="font-display text-[56px] leading-[0.86] tracking-tight"
+          style={{ color: ON_BLUE_ACCENT, letterSpacing: -2 }}
           accessibilityRole="header"
         >
-          {number}
+          {`1 IN ${topDenom}`}
         </Text>
-        <Text className="mt-2 max-w-[290px] text-center font-sans-sb text-[18px] leading-snug text-canvas">
-          {caption}
+        <Text
+          className="mt-2 max-w-[300px] text-center font-sans-sb text-[16px] leading-snug"
+          style={{ color: ON_BLUE }}
+        >
+          Americans have no close friends.
         </Text>
       </Animated.View>
-    </Animated.View>
+
+      {/* THE PIE: faint rest, purple 12%, lavender 48%. Decorative only. */}
+      <Animated.View style={{ opacity: pieOpacity }}>
+        <View
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {/*
+            WEB NOTE: do not use transform={`rotate(-90 cx cy)`} on Circle.
+            NativeWind's JSX runtime treats `transform` like CSS and emits a
+            kebab-case `transform-origin` DOM prop, which React rejects.
+            strokeDashoffset shifts the dash start the same way (12 o'clock
+            is one quarter of the ring; the purple slice starts after 12%).
+          */}
+          <Svg width={size} height={size}>
+            {/* Rest of adults (about 40%) — quiet base ring. */}
+            <Circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              stroke="rgba(255,255,255,0.28)"
+              strokeWidth={stroke}
+              fill="none"
+            />
+            {/* 12% — no close friends (matches the top "1 in 12"). */}
+            <Circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              stroke={ON_BLUE_ACCENT}
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={`${shownNone} ${circ}`}
+              strokeDashoffset={circ * 0.25}
+              strokeLinecap="butt"
+            />
+            {/* 48% — only 1–4 close friends (matches the bottom "1 in 2"). */}
+            <Circle
+              cx={cx}
+              cy={cy}
+              r={r}
+              stroke={OB.purple}
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={`${shownFew} ${circ}`}
+              strokeDashoffset={circ * 0.25 - noneLen}
+              strokeLinecap="butt"
+            />
+          </Svg>
+        </View>
+      </Animated.View>
+
+      {/* BOTTOM STAT: 1 in 2 have only 1–4 close friends. */}
+      <Animated.View style={[{ alignItems: "center" }, bottomAnim]}>
+        <Text
+          className="font-display text-[56px] leading-[0.86] tracking-tight"
+          style={{ color: OB.purple, letterSpacing: -2 }}
+          accessibilityRole="header"
+        >
+          {`1 IN ${bottomDenom}`}
+        </Text>
+        <Text
+          className="mt-2 max-w-[300px] text-center font-sans-sb text-[16px] leading-snug"
+          style={{ color: ON_BLUE }}
+        >
+          have only 1–4 close friends.
+        </Text>
+      </Animated.View>
+    </View>
   );
 }
 
 // ============================================
-// VARIANT 3, RETENTION: a 12×20 grid (240 cells). Taller than wide so it fills
-// the leftover height. Pink = videos watched; the last 5 yellow = the ones
-// you'll actually remember. Cell size scales to the available width.
+// VARIANT 3, RETENTION: 235 purple squares + 5 yellow on a separate row
+// (240 total). Big 240 is purple like the grid; FIVE matches the yellow row.
 // ============================================
-/** Same yellow for the five "remembered" squares and the word FIVE. */
-const RETENTION_YELLOW = "#FFB515";
-const RETENTION_COLS = 12;
-const RETENTION_ROWS = 20;
-const RETENTION_TOTAL = RETENTION_COLS * RETENTION_ROWS;
-const RETENTION_GAP = 4;
+/** Yellow fill for the five remembered video squares (same as FIVE). */
+const RETENTION_REMEMBER_COLOR = OB.amber;
+const RETENTION_COLS = 16;
+/** Forgotten-video rows; the five remembered squares sit under the grid. */
+const RETENTION_FORGOT_ROWS = 14;
+const RETENTION_FORGOT_PARTIAL = 11;
+const RETENTION_FORGOT_TOTAL =
+  RETENTION_FORGOT_ROWS * RETENTION_COLS + RETENTION_FORGOT_PARTIAL;
+const RETENTION_REMEMBERED = 5;
+const RETENTION_TOTAL = RETENTION_FORGOT_TOTAL + RETENTION_REMEMBERED;
+/** Tight gap so the squares sit close together. */
+const RETENTION_GAP = 2;
+/** Largest square we allow on small phones. */
+const RETENTION_CELL_MAX = 14;
 /** How long the whole 240-cell fill takes once it starts. */
 const RETENTION_FILL_MS = 900;
 /** Wait so the headline can land before the squares start racing in. */
 const RETENTION_START_DELAY_MS = 400;
 
 function RetentionVisual({ reduceMotion }: { reduceMotion: boolean }) {
-  // How many squares are visible right now (0 → 240).
+  const { width: windowWidth } = useWindowDimensions();
   const [shown, setShown] = useState(reduceMotion ? RETENTION_TOTAL : 0);
-  // Available box for the grid (grows with the leftover middle of the screen).
-  const [box, setBox] = useState({ w: 0, h: 0 });
 
-  // THIS SECTION DOES: race the squares in left-to-right, top-to-bottom.
-  // One counter drives every cell so we do not spin up 240 Animated values.
   useEffect(() => {
     if (reduceMotion) {
       setShown(RETENTION_TOTAL);
@@ -1047,47 +1075,34 @@ function RetentionVisual({ reduceMotion }: { reduceMotion: boolean }) {
     };
   }, [reduceMotion]);
 
-  // THIS SECTION DOES: pick the biggest square size that still fits 12 across
-  // and 20 down inside the leftover area (with a little breathing room).
-  const cellFromW =
-    box.w > 0
-      ? Math.floor(
-          (box.w - (RETENTION_COLS - 1) * RETENTION_GAP) / RETENTION_COLS,
-        )
-      : 0;
-  const cellFromH =
-    box.h > 0
-      ? Math.floor(
-          (box.h - (RETENTION_ROWS - 1) * RETENTION_GAP) / RETENTION_ROWS,
-        )
-      : 0;
-  const cell = Math.max(10, Math.min(cellFromW || 18, cellFromH || 18));
-  const gridW = RETENTION_COLS * cell + (RETENTION_COLS - 1) * RETENTION_GAP;
-
-  const cells = Array.from(
-    { length: RETENTION_TOTAL },
-    (_, i) => i >= RETENTION_TOTAL - 5,
+  const availW = Math.max(0, windowWidth - 48);
+  const cell = Math.max(
+    10,
+    Math.min(
+      RETENTION_CELL_MAX,
+      Math.floor(
+        (availW - (RETENTION_COLS - 1) * RETENTION_GAP) / RETENTION_COLS,
+      ),
+    ),
   );
+  const gridW = RETENTION_COLS * cell + (RETENTION_COLS - 1) * RETENTION_GAP;
+  const rememberedW =
+    RETENTION_REMEMBERED * cell +
+    (RETENTION_REMEMBERED - 1) * RETENTION_GAP;
+
+  const forgotCells = RETENTION_FORGOT_TOTAL;
+  const rememberedCells = RETENTION_REMEMBERED;
 
   return (
     <View
       style={{
-        flex: 1,
-        minHeight: 0,
         width: "100%",
         alignItems: "center",
-        justifyContent: "center",
-      }}
-      onLayout={(e) => {
-        const { width, height } = e.nativeEvent.layout;
-        setBox((prev) =>
-          prev.w === width && prev.h === height
-            ? prev
-            : { w: width, h: height },
-        );
+        paddingVertical: 4,
+        gap: RETENTION_GAP + 2,
       }}
     >
-      {/* Fixed width locks the wrap to exactly 12 columns. */}
+      {/* Forgotten block: 14 full rows + 11 on the last row (235 videos). */}
       <View
         style={{
           width: gridW,
@@ -1097,18 +1112,44 @@ function RetentionVisual({ reduceMotion }: { reduceMotion: boolean }) {
         }}
         accessibilityLabel="Two hundred forty video squares, five you'll remember"
       >
-        {cells.map((kept, i) => (
+        {Array.from({ length: forgotCells }, (_, i) => (
           <View
-            key={i}
+            key={`p-${i}`}
             style={{
               width: cell,
               height: cell,
-              borderRadius: 3,
-              backgroundColor: kept ? RETENTION_YELLOW : "#FF3E8A",
+              borderRadius: 2,
+              backgroundColor: OB.purple,
               opacity: i < shown ? 1 : 0,
             }}
           />
         ))}
+      </View>
+
+      {/* Five remembered: own row under the grid, same yellow as FIVE. */}
+      <View
+        style={{
+          width: rememberedW,
+          flexDirection: "row",
+          gap: RETENTION_GAP,
+          justifyContent: "center",
+        }}
+      >
+        {Array.from({ length: rememberedCells }, (_, i) => {
+          const index = forgotCells + i;
+          return (
+            <View
+              key={`y-${i}`}
+              style={{
+                width: cell,
+                height: cell,
+                borderRadius: 2,
+                backgroundColor: RETENTION_REMEMBER_COLOR,
+                opacity: index < shown ? 1 : 0,
+              }}
+            />
+          );
+        })}
       </View>
     </View>
   );

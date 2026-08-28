@@ -1,14 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Events marketing page before you have looked around. Black intro canvas
-// (same family as Discover's first look). Big headline,
-// three slow-scrolling rows of idea chips (plus tiny Touch Grass marks), and
-// an Explore Events button that opens the normal Events tab (Touch Grass +
-// calendar). Chips are decoration only — they do not fill in the create
-// wizard for you. Creating still lives on the header +.
+// with the drifting graph grid behind it (same family as Discover's first
+// look). Big headline at the top, three slow-scrolling rows of idea chips
+// centered in the middle, and Explore Events pinned near the bottom. Chips
+// are decoration only — they do not fill in the create wizard. Creating
+// lives on the header + after you explore.
 // ============================================
 import React, { useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EVENTS } from '@bridger/shared';
 import {
   AnalyticsRegion,
@@ -17,6 +18,14 @@ import {
 } from '@bridger/ui';
 import { EVENT_IDEAS, type EventIdea } from '../../data/fixtures/event-ideas';
 import { IdeaMarqueeRow } from './IdeaMarqueeRow';
+
+/** Match ScreenHeader spacing so we size the gate under the title row. */
+const HEADER_TOP_PAD = 16;
+const HEADER_BOTTOM_PAD = 8;
+const GAP_BELOW_HEADER = 10;
+const HEADER_ROW = 44;
+/** Room for the floating tab bar so the CTA sits above it. */
+const TAB_BAR_CLEARANCE = 120;
 
 /** Split the catalog into three interleaved rows so each row feels different. */
 function splitRows(ideas: EventIdea[]): [EventIdea[], EventIdea[], EventIdea[]] {
@@ -33,9 +42,20 @@ function splitRows(ideas: EventIdea[]): [EventIdea[], EventIdea[], EventIdea[]] 
 
 export function EventsGate({ onExplore }: { onExplore: () => void }) {
   const [rowA, rowB, rowC] = useMemo(() => splitRows(EVENT_IDEAS), []);
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+
+  // THIS SECTION DOES: fill the open canvas under the header so the chip wall
+  // can sit in the vertical middle and the CTA can sit at the bottom.
+  const headerBlock =
+    insets.top + HEADER_TOP_PAD + HEADER_ROW + HEADER_BOTTOM_PAD + GAP_BELOW_HEADER;
+  const contentMinHeight = Math.max(
+    windowHeight - headerBlock - TAB_BAR_CLEARANCE,
+    420
+  );
 
   return (
-    <View className="gap-5 pb-8 pt-2">
+    <View style={{ minHeight: contentMinHeight }} className="pt-2">
       {/* THIS SECTION DOES: the hero line that explains what Events is for */}
       <AnalyticsRegion
         analyticsId={EVENTS.gate.headline}
@@ -53,7 +73,7 @@ export function EventsGate({ onExplore }: { onExplore: () => void }) {
 
       <AnalyticsRegion analyticsId={EVENTS.gate.body} interactive={false}>
         <Text
-          className="font-sans-sb text-[14px] leading-relaxed text-white/80"
+          className="mt-5 font-sans-sb text-[14px] leading-relaxed text-white/80"
           style={{ color: 'rgba(255,255,255,0.8)' }}
         >
           Plans, dinners, clubs, nights out. Start something people can return
@@ -61,17 +81,20 @@ export function EventsGate({ onExplore }: { onExplore: () => void }) {
         </Text>
       </AnalyticsRegion>
 
-      {/* THIS SECTION DOES: full-bleed marquees that clip at the screen edges.
-          pointerEvents none so the scrolling chips cannot steal the Explore tap
-          or open a dead-click region over the button. */}
-      <View className="-mx-5 gap-2.5" pointerEvents="none">
+      {/* THIS SECTION DOES: full-bleed marquees centered in the leftover space.
+          pointerEvents none so the scrolling chips cannot steal the Explore tap. */}
+      <View
+        className="-mx-5 gap-2.5"
+        pointerEvents="none"
+        style={{ flex: 1, justifyContent: 'center', minHeight: 160 }}
+      >
         <IdeaMarqueeRow items={rowA} direction={1} durationSec={34} />
         <IdeaMarqueeRow items={rowB} direction={-1} durationSec={40} />
         <IdeaMarqueeRow items={rowC} direction={1} durationSec={36} />
       </View>
 
       {/* THIS SECTION DOES: leave the gate and open the normal Events list */}
-      <View className="z-10 gap-2.5">
+      <View className="z-10 pb-2">
         <ButtonPrimary
           full
           size="lg"
@@ -81,12 +104,6 @@ export function EventsGate({ onExplore }: { onExplore: () => void }) {
         >
           Explore Events
         </ButtonPrimary>
-        <Text
-          className="text-center font-sans-sb text-[12px] leading-snug text-white/60"
-          style={{ color: 'rgba(255,255,255,0.6)' }}
-        >
-          Even two people counts. Or use Touch Grass when you are free tonight.
-        </Text>
       </View>
     </View>
   );

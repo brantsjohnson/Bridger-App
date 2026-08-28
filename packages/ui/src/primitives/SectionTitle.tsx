@@ -6,6 +6,8 @@
 // floats just under the title. An optional count sits next to the title.
 // Optional action controls (e.g. "+") sit BESIDE the tip trigger — never inside
 // it — so we do not nest buttons on web (HTML forbids button-in-button).
+// Optional showDot puts a small colored "new here" mark beside the title after
+// you clear the tab's nav-bar badge (so you can see which section the news is in).
 // ============================================
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -28,7 +30,9 @@ export function SectionTitle({
   leading,
   numberOfLines,
   className,
-  action
+  action,
+  showDot = false,
+  dotColor
 }: {
   /** Pixel heading text shown to the user. */
   title: string;
@@ -51,6 +55,10 @@ export function SectionTitle({
   className?: string;
   /** Optional control on the right (e.g. the "+" next to Inside jokes). */
   action?: React.ReactNode;
+  /** Little "new in this section" dot (same colors as the floating tab bar). */
+  showDot?: boolean;
+  /** Fill color for showDot (defaults to teal). */
+  dotColor?: string;
 }) {
   return (
     <View className={cn('flex-row items-center justify-between gap-3', className)}>
@@ -68,7 +76,7 @@ export function SectionTitle({
       >
         <View className="flex-row items-center gap-2">
           {leading}
-          <View className="min-w-0 flex-row items-baseline gap-2">
+          <View className="min-w-0 flex-row items-center gap-2">
             {/* Teal dashed underline = "tap / hover me for a short explanation" */}
             <View className="border-b border-dashed border-teal/70 pb-0.5">
               <PixelHeading size={size} numberOfLines={numberOfLines}>
@@ -82,6 +90,17 @@ export function SectionTitle({
               >
                 {count}
               </Text>
+            ) : null}
+            {/* THIS SECTION DOES: mark which heading still has unread after the
+                tab's nav-bar dot was cleared by opening the tab. */}
+            {showDot ? (
+              <View
+                accessibilityLabel="New activity in this section"
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+                style={{ backgroundColor: dotColor ?? '#00A676' }}
+                className="h-2 w-2 shrink-0 rounded-full"
+              />
             ) : null}
           </View>
         </View>

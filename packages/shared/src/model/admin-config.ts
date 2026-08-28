@@ -73,7 +73,7 @@ export const DEFAULT_HOME_LAYOUT: HomeWidgetDefault[] = [
   { key: 'alerts', size: 'half' },
   { key: 'comingup', size: 'full' },
   { key: 'ask', size: 'full' },
-  { key: 'activity', size: 'full' },
   { key: 'quiz', size: 'full' },
+  { key: 'activity', size: 'full' },
   { key: 'coop', size: 'full' }
 ];

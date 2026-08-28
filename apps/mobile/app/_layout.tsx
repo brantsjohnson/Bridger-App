@@ -74,7 +74,7 @@ registerAvatarPhotoResolver((personId) => {
   return getProfilePhoto(personId);
 });
 
-// Crashes show the Magic Patterns Windows 404 ("System says it's fine..."), not Expo's
+// Crashes show the Magic Patterns Windows 404 ("Error 404 / You're invited to suffer"), not Expo's
 // black "Something went wrong" page. Missing routes still use +not-found.tsx.
 export { AppErrorBoundary as ErrorBoundary } from '../components/AppErrorBoundary';
 

@@ -3595,6 +3595,7 @@ export type Database = {
           meet_scope: string
           notif_prefs: Json
           onboarding_complete: boolean
+          profile_intro_seen: boolean
           profile_presentation: Json | null
           profile_custom_css: string | null
           profile_custom_html: Json | null
@@ -3620,6 +3621,7 @@ export type Database = {
           meet_scope?: string
           notif_prefs?: Json
           onboarding_complete?: boolean
+          profile_intro_seen?: boolean
           profile_presentation?: Json | null
           profile_custom_css?: string | null
           profile_custom_html?: Json | null
@@ -3645,6 +3647,7 @@ export type Database = {
           meet_scope?: string
           notif_prefs?: Json
           onboarding_complete?: boolean
+          profile_intro_seen?: boolean
           profile_presentation?: Json | null
           profile_custom_css?: string | null
           profile_custom_html?: Json | null

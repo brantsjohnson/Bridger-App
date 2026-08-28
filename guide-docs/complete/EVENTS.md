@@ -12,20 +12,23 @@ Before the user has **explored Events** (or ever hosted), the Events tab shows a
 
 ```
 ┌─────────────────────────────┐
-│  Events              [+]    │
+│  Events                     │  no + / messages on the gate
 ├─────────────────────────────┤
 │  Create places where        │
 │  memories happen.           │
 │  Plans, dinners, clubs…     │
-│  [=== idea chips scrolling] │  3 rows, ~3–4 visible each
-│  [ Explore Events ]         │
+│                             │
+│  [=== idea chips scrolling] │  centered in the middle
+│                             │
+│  [ Explore Events ]         │  pinned at the bottom
 └─────────────────────────────┘
 ```
 
 - **Headline:** "Create places where memories happen."
-- **Wall:** three offset horizontal marquees of small decorative idea chips (political activism / share-ideas first, then book club, game night, Sunday dinner, cocktail night, movie night, poetry, etc.) plus miniature Touch Grass marks (same green Sprout icon as the Touch Grass button). Chips bleed off the screen edges and loop seamlessly (no hard restart). Chips are **not** tappable for prefill.
-- **Canvas:** black intro (`Screen tone="intro"`), same family as the Discover gate. Headline and body are white. After Explore, Events returns to the eggshell canvas.
-- **CTA:** "Explore Events" dismisses the gate and opens the normal Events list (Touch Grass + calendar). It does **not** open the create wizard. Header `+` still opens create whenever they want.
+- **Wall:** three offset horizontal marquees of small decorative idea chips (political activism / share-ideas first, then book club, game night, Sunday dinner, cocktail night, movie night, poetry, etc.) plus miniature Touch Grass marks (same green Sprout icon as the Touch Grass button). Chips bleed off the screen edges and loop seamlessly (no hard restart). Chips are **not** tappable for prefill. The wall sits in the **vertical middle** of the screen.
+- **Chrome:** gate hides header `+` and messages so the first look stays title + picture + Explore. After Explore, both shortcuts return on the normal list.
+- **Canvas:** black intro (`Screen tone="intro"`), same family as the Discover gate, with the drifting graph-paper grid behind the headline and chips. Headline and body are white. After Explore, Events returns to the eggshell canvas.
+- **CTA:** "Explore Events" sits at the **bottom** (above the tab bar), dismisses the gate, and opens the normal Events list (Touch Grass + calendar). It does **not** open the create wizard. Header `+` opens create on the list after Explore.
 - **Exit:** after Explore once (saved on device) or after the user hosts their first event, the gate never returns. The normal list appears (real Touch Grass, Hosting/Going/Invited, calendar empty state when empty).
 - **Reduce Motion:** freeze marquees (chips stay visible).
 - **QA:** `EXPO_PUBLIC_FORCE_EVENTS_GATE=1` shows the gate even when host fixtures exist. Tapping Explore Events still dismisses it. The flag must not pin the user on the marketing page.
@@ -43,11 +46,11 @@ Sectioned, closest-first:
 │  Hosting     ▸ your events   │
 │  Going       ▸ RSVP'd yes    │
 │  Invited     ▸ RSVP pending  │
-│  Community   ▸ coming soon   │  dormant placeholder
+│  Community   ▸ coming soon   │  same teaser layout as Discover Local map (art card + Coming soon chip)
 └─────────────────────────────┘
 ```
 
-Each card: a date chip, title, time + place, and a peek of **who you know going** (avatars + "3 friends going") — never a raw invited/going total. Invited cards carry inline Going / Can't buttons. **Community** stays a dormant "coming soon" placeholder — the reserved slot for a future third-party/community-events plug-in, matching the architecture.
+Each card: a date chip, title, time + place, and a peek of **who you know going** (avatars + "3 friends going") — never a raw invited/going total. Invited cards carry inline Going / Can't buttons. **Community** stays a dormant "coming soon" placeholder in the same card style as Discover's Local map teaser (pixel street art + short promise) — the reserved slot for a future third-party/community-events plug-in, matching the architecture.
 
 ---
 
@@ -223,8 +226,8 @@ interface RsvpInput {
 
 ## Acceptance criteria
 
-- [ ] First-time visitors (not yet explored, no hosted events) see the Events gate (headline + three-row idea wall + Explore Events CTA), not the empty calendar alone.
-- [ ] Explore Events opens the normal Events list without opening create; header + still creates. After Explore once (or hosting once), the gate never returns; post-gate Events still has Touch Grass + calendar EmptyState when empty.
+- [ ] First-time visitors (not yet explored, no hosted events) see the Events gate (headline + three-row idea wall centered in the middle + Explore Events CTA at the bottom; header + and messages hidden), not the empty calendar alone.
+- [ ] Explore Events opens the normal Events list without opening create; header + and messages return on the list. After Explore once (or hosting once), the gate never returns; post-gate Events still has Touch Grass + calendar EmptyState when empty.
 - [ ] Idea chips are decorative only (no create prefill); Reduce Motion freezes the marquees.
 - [ ] List groups events into Hosting / Going / Invited; Community is a dormant "coming soon" placeholder.
 - [ ] Create Details can mark an event as repeating (weekly / monthly day or Nth weekday / yearly + ends); Preview and detail show the human label; `event_created` includes `has_recurrence` (and optional `recurrence_freq` enum only).

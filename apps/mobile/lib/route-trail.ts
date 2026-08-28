@@ -1,7 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Remembers the last few screens someone visited, and when they hit the 404
-// ("System says it's fine...") it posts that path trail to the API so the admin page
+// ("Error 404 / You're invited to suffer") it posts that path trail to the API so the admin page
 // can show how they got there. PRIVACY: route paths only — no names or content.
 // ============================================
 import {

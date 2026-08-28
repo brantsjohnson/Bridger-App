@@ -4,16 +4,16 @@
 // Spotify or Apple Music (with the real brand marks) to pull it automatically,
 // or just type it. Skippable.
 //
-// Connecting a music account is an outbound integration; the actual OAuth link
-// runs through data/music (demo mode fakes a connected state). This screen only
-// shows the choice and the typed fallback.
+// Connecting a music account is an outbound integration. Tapping a box opens
+// the real Spotify / Apple Music allow screen (via data/music + Nest). Demo mode
+// fakes a connected state so the UI can still be clicked through without keys.
 //
 // LOOK: two white connect boxes with a hard navy outline and navy text, each
 // with its brand mark on its own brand-colored square, then an "Or type it"
 // divider and one white typing box for the song.
 // ============================================
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
 import { withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
@@ -28,7 +28,7 @@ const SPOTIFY_GREEN = '#1DB954';
 const APPLE_BLACK = '#000000';
 
 /** The hairline that trails off after the "Or type it" label. */
-const DIVIDER_LINE = 'rgba(39,64,135,0.35)';
+const DIVIDER_LINE = OB.borderMuted;
 
 /**
  * One of the two connect boxes. A white box with a hard navy outline, the brand
@@ -37,6 +37,8 @@ const DIVIDER_LINE = 'rgba(39,64,135,0.35)';
 function MusicConnectButton({
   label,
   connected,
+  busy,
+  disabled,
   brandColor,
   mark,
   analyticsId,
@@ -44,17 +46,22 @@ function MusicConnectButton({
 }: {
   label: string;
   connected: boolean;
+  /** True while the browser sheet is open or Nest is finishing the link. */
+  busy?: boolean;
+  disabled?: boolean;
   brandColor: string;
   mark: React.ReactNode;
   analyticsId: string;
   onPress: () => void;
 }) {
+  const inert = !!busy || !!disabled;
   return (
     <Pressable
       onPress={withAnalyticsPress(analyticsId, onPress)}
+      disabled={inert}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ selected: connected }}
+      accessibilityState={{ selected: connected, disabled: inert, busy: !!busy }}
       style={{
         minHeight: 52,
         flexDirection: 'row',
@@ -65,7 +72,8 @@ function MusicConnectButton({
         paddingVertical: 14,
         backgroundColor: connected ? OB.periwinkle : OB.paper,
         borderWidth: OB_BORDER,
-        borderColor: OB.navy
+        borderColor: OB.navy,
+        opacity: inert && !connected ? 0.7 : 1
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
@@ -85,11 +93,13 @@ function MusicConnectButton({
           {mark}
         </View>
         <Text className="font-sans-sb text-[16px]" style={{ color: OB.navy, flexShrink: 1 }}>
-          {label}
+          {busy ? 'Connecting…' : label}
         </Text>
       </View>
-      {/* A tick, so "connected" never depends on the fill color alone. */}
-      {connected ? (
+      {/* Spinner while OAuth runs; tick once Nest confirms the link. */}
+      {busy ? (
+        <ActivityIndicator size="small" color={OB.navy} />
+      ) : connected ? (
         <Text className="font-sans-b text-[15px]" style={{ color: OB.navy }} accessible={false}>
           ✓
         </Text>
@@ -104,6 +114,7 @@ export function ObsessionStep({
   song,
   spotifyConnected,
   appleConnected,
+  connectBusy,
   onChangeSong,
   onConnectSpotify,
   onConnectApple,
@@ -116,6 +127,8 @@ export function ObsessionStep({
   song: string;
   spotifyConnected: boolean;
   appleConnected: boolean;
+  /** Which connect flow is in progress (blocks the other button too). */
+  connectBusy?: 'spotify' | 'apple' | null;
   onChangeSong: (v: string) => void;
   onConnectSpotify: () => void;
   onConnectApple: () => void;
@@ -124,6 +137,7 @@ export function ObsessionStep({
   onBack: () => void;
 }) {
   const connected = spotifyConnected || appleConnected;
+  const anyBusy = connectBusy != null;
 
   return (
     <OnboardingStep
@@ -136,11 +150,13 @@ export function ObsessionStep({
       onBack={onBack}
     >
       <View style={{ gap: 26, paddingTop: 12 }}>
-        {/* THIS SECTION DOES: brand-correct Connect buttons for Spotify + Apple Music. */}
+        {/* THIS SECTION DOES: real Connect buttons for Spotify + Apple Music. */}
         <View style={{ gap: 11 }}>
           <MusicConnectButton
             label={spotifyConnected ? 'Spotify connected' : 'Connect Spotify'}
             connected={spotifyConnected}
+            busy={connectBusy === 'spotify'}
+            disabled={anyBusy || spotifyConnected}
             brandColor={SPOTIFY_GREEN}
             mark={<SpotifyMark size={20} />}
             analyticsId={ONBOARDING.taste.spotify}
@@ -149,6 +165,8 @@ export function ObsessionStep({
           <MusicConnectButton
             label={appleConnected ? 'Apple Music connected' : 'Connect Apple Music'}
             connected={appleConnected}
+            busy={connectBusy === 'apple'}
+            disabled={anyBusy || appleConnected}
             brandColor={APPLE_BLACK}
             mark={<AppleMusicMark size={19} />}
             analyticsId={ONBOARDING.taste.apple}

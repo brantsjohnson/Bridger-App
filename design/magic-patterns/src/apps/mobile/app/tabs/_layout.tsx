@@ -284,8 +284,7 @@ export function TabsLayout({ initialTab = 'home' }: {initialTab?: TabRoute;}) {
           {route === 'messages' &&
             <MessagesScreen
               onBack={() => setRoute('home')}
-              onOpenThread={() => setRoute('thread')}
-              onOpenContactCard={() => setRoute('contact-card')} />
+              onOpenThread={() => setRoute('thread')} />
 
             }
           {route === 'messages-empty' &&

@@ -62,10 +62,7 @@ export function ConnectionDetail({
 
   if (!personExists(personId)) {
     return (
-      <NotFoundScreen
-        title="Error 404"
-        onDismiss={onBack}
-      />
+      <NotFoundScreen onDismiss={onBack} />
     );
   }
 

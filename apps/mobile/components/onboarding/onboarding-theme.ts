@@ -1,43 +1,67 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The paint box for onboarding, and only onboarding. The first-run screens keep
-// their own boxes and pink Continue, but they sit on the same eggshell canvas
-// as the rest of Bridger so the handoff into Home does not feel like a new app.
+// The paint box for onboarding. The first-run screens still have their own
+// square boxes and pink Continue, but every color comes from the same Bridger
+// palette as the rest of the app (THEME + ACCENT_HEX in packages/ui). That way
+// the handoff into Home never feels like a different brand.
 //
-// WHY IT LIVES HERE AND NOT IN THE APP THEME: onboarding still has its own
-// outlines, chips, and pink CTA. Those values stay in this one file instead of
-// leaking into the app-wide tokens. If a value needs changing, change it here
-// once.
+// Shape and layout stay onboarding-only (hard 2px outlines, no radius). Color
+// does not: if a brand hex changes in tokens, onboarding picks it up here.
 // ============================================
+import { ACCENT_HEX, THEME } from '@bridger/ui';
 
-/** The colors used across every onboarding step. */
+/** Light-mode surface colors (onboarding stays light-only, no dark flip). */
+const light = THEME.light;
+
+/** Soft blue fill used when a tile is picked (same pale blue as ACCENTS.blue.tintSolid). */
+const BLUE_WASH = '#BBD6FB';
+/** Soft pink fill for callouts (same pale pink as ACCENTS.pink.tintSolid). */
+const PINK_WASH = '#FFC0D7';
+
+/** The colors used across every onboarding step. Mirrors the main app tokens. */
 export const OB = {
-  /** Same eggshell as the main app canvas (`tokens` light canvas). */
-  canvas: '#FAF8F2',
-  /** The white boxes: fields, option tiles, the progress bar. */
-  paper: '#FCFCFC',
-  /** Headings and the progress outline. */
-  blue: '#143CAB',
-  /** Outlines and small labels. A quieter navy than the heading blue. */
-  navy: '#274087',
-  /** The "picked it" fill on tiles and the pressed state on buttons. */
-  periwinkle: '#AEBCFB',
-  /** The main action color (Continue, big numbers). */
-  pink: '#FF3E8A',
-  /** A very light pink wash for callout rows (e.g. "All of the above"). */
-  pinkWash: '#FFE8F1',
+  /** Eggshell canvas: same token Home uses (`THEME` / `bg-canvas`). */
+  canvas: light.canvas,
+  /** White boxes: fields, option tiles, the progress bar. */
+  paper: light.surface,
+  /** Headings and the progress outline (app accent blue). */
+  blue: ACCENT_HEX.blue,
+  /** Outlines and small labels (app ink, not a separate navy). */
+  navy: light.ink,
+  /** The "picked it" fill on tiles (pale blue wash from the accent set). */
+  periwinkle: BLUE_WASH,
+  /** The main action color (Continue, big numbers): app pink. */
+  pink: ACCENT_HEX.pink,
+  /** A soft pink wash for callout rows (e.g. "All of the above"). */
+  pinkWash: PINK_WASH,
+  /** Brand purple (News accent). Used for fills like the isolation ring. */
+  purple: ACCENT_HEX.purple,
+  /** Light red for big numbers and accent type on the blue reality-check canvas. */
+  redOnBlue: '#FF8A94',
   /** The little "why we ask" chips above a question. */
-  amber: '#FFB515',
-  /** The all-caps kicker on the reality-check screens. */
-  orange: '#FF5A1F',
-  /** Type that sits on pink or blue. */
-  onColor: '#FCFAF4',
+  amber: ACCENT_HEX.amber,
+  /** The all-caps kicker on the reality-check screens (app coral). */
+  orange: ACCENT_HEX.coral,
+  /** Type that sits on pink or blue (white, same as accent `text-white`). */
+  onColor: '#FFFFFF',
   /** Plain body text inside white boxes. */
-  ink: '#000000',
-  /** A confirmed / done green (used sparingly, e.g. invite sent). */
-  green: '#00A676',
-  /** The faint grid lines drawn in the corners. */
-  gridLine: 'rgba(53,92,125,0.22)'
+  ink: light.ink,
+  /** Confirmed / done green (app teal, same as toggles). */
+  green: ACCENT_HEX.teal,
+  /** The faint grid lines drawn in the corners (ink at low opacity). */
+  gridLine: 'rgba(28,27,22,0.18)',
+  /** Soft outline for quiet panels (ink at mid opacity). */
+  borderMuted: 'rgba(28,27,22,0.35)',
+  /** Quiet fill for empty cells (ink at low opacity). */
+  fillFaint: 'rgba(28,27,22,0.12)',
+  /** Quiet label on empty cells. */
+  inkFaint: 'rgba(28,27,22,0.55)',
+  /** Very quiet type (inactive picker labels). */
+  inkWhisper: 'rgba(28,27,22,0.25)',
+  /** Soft body copy on white paper. */
+  inkSoft: light.inkSoft,
+  /** Off-track tint for the system switch (ink at low opacity). */
+  switchOff: 'rgba(28,27,22,0.22)'
 } as const;
 
 /** Kept for older hard-shadow call sites (mic, confirm panel). Not used on Continue. */

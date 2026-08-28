@@ -13,7 +13,9 @@ import {
   Screen,
   ScreenBody,
   ScreenHeader,
-  SectionTitle
+  SectionTitle,
+  TAB_COLOR,
+  withAnalyticsPress
 } from '@bridger/ui';
 import {
   DEFAULT_HOME_LAYOUT,
@@ -51,10 +53,15 @@ import { StoryRepliesRow } from '../../components/home/StoryRepliesRow';
 import { fetchAssistantSettings } from '../../data/assistant';
 import { getHomeLayout, saveHomeLayout, clearStoryReplyNotifications } from '../../data/feed';
 import { startThreadWith } from '../../data/messages';
+import {
+  notifyTabAttentionChanged,
+  type AttentionSection
+} from '../../data/tab-badges';
 import { isDemoMode } from '../../lib/demo';
 import { DevPreviewBar } from '../../components/home/DevPreviewBar';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
+import { useTabAttention } from '../../hooks/useTabAttention';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
 
 type WidgetKey = 'event' | 'alerts' | 'ask' | 'comingup' | 'activity' | 'quiz' | 'coop';
@@ -122,6 +129,9 @@ export default function HomeScreen() {
   const { events } = useEventsFeed();
   // Answer path only — send button stays on Events.
   const { signals, onJoin, onDismiss } = useTouchGrass();
+  // THIS SECTION DOES: section title dots after the Home nav-bar badge clears.
+  const { sectionDots } = useTabAttention('home');
+  const homeDot = TAB_COLOR.home;
 
   const { empty, member } = feed;
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -290,6 +300,7 @@ export default function HomeScreen() {
   function renderBody(widget: WidgetState) {
     switch (widget.key) {
       case 'event':
+        // THIS SECTION DOES: show the next event, or a tap that opens Events.
         return nextEvent ? (
           <NextEventWidget
             event={nextEvent}
@@ -299,9 +310,18 @@ export default function HomeScreen() {
             }
           />
         ) : (
-          <Text className="font-sans-sb text-[13px] text-ink-mute">
-            Nothing this week yet.
-          </Text>
+          <Pressable
+            onPress={withAnalyticsPress(HOME.this_week.open_events, () =>
+              router.push('/(tabs)/events')
+            )}
+            accessibilityRole="button"
+            accessibilityLabel="Nothing this week yet. Open Events."
+            className="min-h-[44px] justify-center active:opacity-90"
+          >
+            <Text className="font-sans-sb text-[13px] text-ink-mute">
+              Nothing this week yet.
+            </Text>
+          </Pressable>
         );
       case 'alerts':
         return (
@@ -409,6 +429,8 @@ export default function HomeScreen() {
             parentScreen="home"
             section="stories_row"
             className="mb-2"
+            showDot={!!sectionDots.stories_row}
+            dotColor={homeDot}
           />
           {/*
             Bleed past ScreenBody's side padding so story tiles can scroll off
@@ -470,11 +492,13 @@ export default function HomeScreen() {
               onOpenHeader={() => {
                 // Header = open the whole inbox → clear every waiting chip.
                 clearStoryReplyNotifications();
+                notifyTabAttentionChanged();
                 router.push('/story/me?comments=1');
               }}
               onOpenChip={(personId) => {
                 // One chip → only that person leaves the row (NOTIFICATIONS.md).
                 clearStoryReplyNotifications({ personId });
+                notifyTabAttentionChanged();
                 router.push(`/story/me?comments=1&replyAuthor=${personId}`);
               }}
             />
@@ -511,6 +535,8 @@ export default function HomeScreen() {
               onMoveUp={() => moveWidget(layout.indexOf(widget), -1)}
               onMoveDown={() => moveWidget(layout.indexOf(widget), 1)}
               onToggleSize={() => toggleSize(layout.findIndex((w) => w.key === widget.key))}
+              showDot={!!sectionDots[INFO[widget.key].section as AttentionSection]}
+              dotColor={homeDot}
             >
               {renderBody(widget)}
             </HomeWidget>

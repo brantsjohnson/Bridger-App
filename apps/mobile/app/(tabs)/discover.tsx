@@ -20,6 +20,7 @@ import {
   ScreenBody,
   ScreenHeader,
   SectionTitle,
+  TAB_COLOR,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
@@ -33,6 +34,7 @@ import { PersonAvatar } from '../../components/PersonAvatar';
 import type { Commonality } from '../../data/discover';
 import { personById } from '../../data/people';
 import { useDiscover } from '../../hooks/useDiscover';
+import { useTabAttention } from '../../hooks/useTabAttention';
 
 type DiscoverView = 'gate' | 'main' | 'detail';
 
@@ -47,6 +49,9 @@ type Selection = {
 export default function DiscoverScreen() {
   const c = useThemeColors();
   const router = useRouter();
+  // THIS SECTION DOES: section title dots after the Discover nav-bar badge clears.
+  const { sectionDots } = useTabAttention('discover');
+  const discoverDot = TAB_COLOR.discover;
   const {
     settings,
     suggestions,
@@ -79,6 +84,9 @@ export default function DiscoverScreen() {
     if (!settings.discoverable && view !== 'gate') {
       setView('gate');
       setSelected(null);
+      // THIS SECTION DOES: close settings if matching was flipped off from the
+      // sheet toggle, so Get started does not reopen a stale open sheet.
+      setSettingsOpen(false);
     }
     if (settings.discoverable && view === 'gate') {
       // stay on gate until Get started — unless we just turned it on from gate
@@ -87,7 +95,10 @@ export default function DiscoverScreen() {
 
   // First paint: if demo settings say discoverable, show main.
   useEffect(() => {
-    if (settings && !settings.discoverable) setView('gate');
+    if (settings && !settings.discoverable) {
+      setView('gate');
+      setSettingsOpen(false);
+    }
   }, [settings?.discoverable]);
 
   const openDetail = async (sel: Selection) => {
@@ -108,14 +119,22 @@ export default function DiscoverScreen() {
   }
 
   if (view === 'gate' || !settings.discoverable) {
+    // THIS SECTION DOES: same top chrome as every other tab (profile + Discover
+    // title + messages). Gate art is full-bleed under that chrome (stars, not a
+    // solid black header bar).
     return (
       <Screen tone="intro">
-        <DiscoverGate
-          onStart={() => {
-            void onSetDiscoverable(true);
-            setView('main');
-          }}
-        />
+        <ScreenHeader title="Discover" analyticsSurface="discover" />
+        <ScreenBody padded={false} scrollEnabled={false} tabBarInset={false}>
+          <DiscoverGate
+            onStart={() => {
+              // Never carry a leftover settings-open flag onto main.
+              setSettingsOpen(false);
+              void onSetDiscoverable(true);
+              setView('main');
+            }}
+          />
+        </ScreenBody>
       </Screen>
     );
   }
@@ -211,6 +230,8 @@ export default function DiscoverScreen() {
                   infoAnalyticsId={DISCOVER.wants_to_connect.info}
                   parentScreen="discover"
                   section="wants_to_connect"
+                  showDot={!!sectionDots.wants_to_connect}
+                  dotColor={discoverDot}
                 />
               </View>
               <Badge tone="new">{requests.length}</Badge>
@@ -251,6 +272,8 @@ export default function DiscoverScreen() {
             parentScreen="discover"
             section="people_to_meet"
             className="mb-3"
+            showDot={!!sectionDots.people_to_meet}
+            dotColor={discoverDot}
           />
           <View className="gap-2.5">
             {suggestions.length === 0 ? (
@@ -296,6 +319,7 @@ export default function DiscoverScreen() {
         onSetDiscoverable={(on) => void onSetDiscoverable(on)}
         onSetSources={(patch) => void onSetSources(patch)}
         onTurnOff={() => {
+          setSettingsOpen(false);
           void onSetDiscoverable(false);
           setView('gate');
         }}

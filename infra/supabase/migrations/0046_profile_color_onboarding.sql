@@ -36,4 +36,4 @@ comment on column public.user_settings.profile_color is
 comment on column public.user_settings.social_battery is
   'Nights out per week from onboarding (0..7; 7 means 7+). Own pacing only.';
 comment on column public.user_settings.connection_style is
-  'Opaque FoF matching style keys from onboarding (humor, values, …).';
+  'Opaque FoF matching style keys from onboarding (workout, go_out, creative, industry, travel, nearby, gets_me).';

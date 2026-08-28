@@ -10,7 +10,7 @@ Build doc for **both profile surfaces** — your **own profile** (the Profile ta
 
 ## 0 · Mandatory intro (once, before first fill)
 
-Before the profile can be filled, a **required, non-skippable intro** plays once (same pattern as onboarding's welcome). Its message: *you decide what each group of friends knows, and you can delete anything at any time — it's removed from Bridger's database.*
+Before the profile can be filled, a **required, non-skippable intro** plays once (same pattern as onboarding's welcome). Its message: *you decide what each group of friends knows, and you can delete anything at any time — it's removed from Bridger's database.* The CTA is **Hell yeah**; tapping it sets `user_settings.profile_intro_seen` (and a device flag in demo) so the intro never returns for that account.
 
 ---
 
@@ -24,7 +24,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 | **Following** button | **Friend-level (tier) control** | On a friend's page: shows your current tier with them (Close / Friend / Acquaintance) and taps to change it right there; **`+ group`** makes a new custom group (co-op). On your own page this slot is **Edit / View as**. |
 | Shuffle / **▶ Play** (green) | **▶ Play their recap** | Appears only if they have a recap/podcast entry to listen to (`RECAP-PODCAST.md`). |
 | Little square by "Following" | **Their current story** | Home-style story cover tile (not a face Avatar). Tap to watch; ring if unseen. |
-| Music / Video / Events / Merch tabs | **Profile · Stories · Inside jokes · Bucket list · (⚙ Settings)** | The page's tab bar. Settings is a gear on your own profile only. |
+| Music / Video / Events / Merch tabs | **Profile · Stories · Inside jokes · Bucket list** | The page's tab bar. Settings is a gear next to Edit on your own profile only. |
 | Top-right (none) | **🔍 Search** | In the action row (fills width after the compact tier / View as pill). Searches this profile's visible fields. |
 | "You liked · 31 songs" | **Mutuals** | The mutual friends row. Tap → who you both know. |
 | **Popular** (top tracks) | **Top 5** | "5 things anyone who knows you well needs to know about you." |
@@ -47,7 +47,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 │██     full-bleed header photo (edge→edge)██│  square cover from onboarding
 │███████████████████████████████████████████│
 │                                           │
-│   Priya Shah                     Edit  ▶  │  pixel name · Edit (own) · play recap
+│   Priya Shah                  Edit  ⚙  ▶  │  pixel name · Edit + gear (own) · play recap
 │   📍 Denver, CO                           │  pin + city
 │                                           │
 │   ┌────┐ ┌──────┐ ┌─────────────────────┐ │
@@ -55,7 +55,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 │   │tile │ │     │ │                     │ │  View as / tier pill · search fills row
 │   └────┘ └──────┘ └─────────────────────┘ │
 │                                           │
-│   Profile   Stories   Jokes   Bucket   ⚙  │  tab bar (⚙ own profile only)
+│   Profile   Stories   Jokes   Bucket      │  tab bar (Settings is the gear, not a tab)
 ├───────────────────────────────────────────┤
 │  Mutuals (avatar row)                     │  you both know…
 │  ┌─ widget box ─────────────────────────┐ │  every section is a clear container
@@ -104,12 +104,13 @@ The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → 
 - **Name** — large **pixel** font, overlaid bottom-left on the photo (white on a dark fade).
 - **City** — pin icon + city overlaid under the name on the photo (the "Verified Artist" slot).
 - **Edit** (own) — overlaid top-right on the photo; toggles rearrange mode. Theme/CSS stay on Settings → Customize / Customize look.
+- **⚙ Settings** (own) — gear to the right of Edit on the photo; opens Settings (§14). Not a tab.
 - **▶ Play recap** — appears only when the person has a recap/podcast entry; opens the player (`RECAP-PODCAST.md`).
 - **Story tile** — Home-style cover (story media), not a second face Avatar. Ring if unseen.
 - **Compact pill** — View as (own) or friend-level tier (friend), small, to the left of search.
 - **Search** — fills the rest of the action row; searches visible fields on *this* profile (never logs query text). Replaces the old top-right / overflow search slot.
 - **Tier / View as pill** — compact control left of search. Friend: re-tier (fires `friend_retiered` on change). Own: View as Close / Friends / Everyone. Message stays in the friend screen header.
-- **Tab bar** — Profile · Stories · Inside jokes · Bucket list · (⚙ Settings, own only).
+- **Tab bar** — Profile · Stories · Inside jokes · Bucket list.
 
 ---
 
@@ -256,8 +257,8 @@ Same page; the differences:
 
 | | Own profile | Friend profile (`person/[id]`) |
 |---|---|---|
-| Tabs | Profile · Stories · Inside jokes · Bucket list · ⚙ | About them · In common · Inside jokes · Bucket list |
-| Header action | Edit · **View as ▾** | **Tier control** · Message · … |
+| Tabs | Profile · Stories · Inside jokes · Bucket list | About them · In common · Inside jokes · Bucket list |
+| Header action | Edit · ⚙ Settings · **View as ▾** | **Tier control** · Message · … |
 | Editing | Every field inline | None |
 | Tier filter | You see all; preview via View as | Filtered to your tier with them |
 | Stories tab | Your **calendar archive** (tap a day → play) | — |
@@ -350,7 +351,7 @@ Every field is an `Attribute` with its own `visibleToTier` **and** `matchable` f
 ## Acceptance criteria
 
 - [ ] Own and friend profiles render the **same Spotify-style composition**; differences are edit access, tier filtering, and tabs.
-- [ ] Header: square photo, name, city line, ▶ recap (only if present), current-story square, **tier control** (friend) / **Edit + View as** (own), overflow, and a **search** icon that searches this profile's content.
+- [ ] Header: square photo, name, city line, ▶ recap (only if present), current-story square, **tier control** (friend) / **Edit + ⚙ Settings + View as** (own), and a **search** control that searches this profile's content.
 - [ ] The page order matches §2: Mutuals → Top 5 → About me → Upcoming → Current Obsession → Favorites (+hobbies) → Places → Where you met.
 - [ ] **Top 5** captures up to 5 ordered "things to know," each optionally imaged, each tier-visible.
 - [ ] **About me** sits under Top 5, shows city when collapsed, and expands to bio-first + a grid of fields; no follower/follow UI.

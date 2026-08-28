@@ -23,7 +23,7 @@ import {
   ChevronLeftIcon,
   ClockIcon,
   HeartIcon,
-  PhoneIcon,
+  MessageSquareIcon,
   SendIcon,
   UserRoundPlusIcon
 } from 'lucide-react-native';
@@ -124,8 +124,8 @@ export function ThreadScreen({
     }
   };
 
-  // Share contact posts the card into the thread (uncounted). Setup lives on
-  // the Messages list "Your contact card" row — don't yank them out mid-chat.
+  // Share contact posts the card into the thread (uncounted). Setup is the
+  // Messages list "Your contact card" dropdown — don't yank them out mid-chat.
   const share = async () => {
     await onShareContact();
   };
@@ -301,8 +301,20 @@ function MessageBubble({
   const reduceMotion = useReduceMotion();
   const lastTap = useRef(0);
   const pop = useRef(new Animated.Value(0)).current;
+  const [cardOpen, setCardOpen] = useState(false);
   const showHeart = bubble.from === 'them' ? bubble.heartedByMe : bubble.heartedByThem;
   const canHeart = bubble.from === 'them';
+  // Shared contact card chip — never a phone-call shortcut.
+  const isContactCard =
+    bubble.kind === 'contactCard' ||
+    !!(bubble.contactFields && bubble.contactFields.length > 0) ||
+    !!bubble.phone;
+  const cardFields =
+    bubble.contactFields && bubble.contactFields.length > 0
+      ? bubble.contactFields
+      : bubble.phone
+        ? [{ label: 'Phone', value: bubble.phone, kind: 'phone' as const }]
+        : [];
 
   function popHeart() {
     if (reduceMotion) return;
@@ -342,6 +354,29 @@ function MessageBubble({
     } else {
       lastTap.current = now;
       trackDeadClick(MESSAGES.conversation.bubble);
+    }
+  }
+
+  function openFieldLink(kind: string, value: string) {
+    const v = value.trim();
+    if (!v) return;
+    if (kind === 'phone') {
+      // Text, never call — matches the message icon on the chip.
+      void Linking.openURL(`sms:${v.replace(/[^\d+]/g, '')}`);
+      return;
+    }
+    if (kind === 'email') {
+      void Linking.openURL(`mailto:${v}`);
+      return;
+    }
+    if (kind === 'website' || kind === 'substack') {
+      const url = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+      void Linking.openURL(url);
+      return;
+    }
+    if (kind === 'instagram') {
+      const handle = v.replace(/^@/, '');
+      void Linking.openURL(`https://instagram.com/${handle}`);
     }
   }
 
@@ -392,18 +427,54 @@ function MessageBubble({
         >
           {bubble.text}
         </Text>
-        {bubble.phone ? (
-          <Pressable
-            onPress={() => void Linking.openURL(`tel:${bubble.phone}`)}
-            accessibilityRole="link"
-            accessibilityLabel={`Call ${bubble.phone}`}
-            className="mt-1 flex-row items-center gap-1"
-          >
-            <Text className="font-sans-b text-[14px] text-success underline">
-              {bubble.phone}
-            </Text>
-            <PhoneIcon size={14} color="#2FA85B" strokeWidth={2.6} />
-          </Pressable>
+        {isContactCard ? (
+          <View className="mt-1.5">
+            <Pressable
+              onPress={() => {
+                trackClick(MESSAGES.conversation.contact_card_chip, {
+                  method: 'dropdown'
+                });
+                setCardOpen((v) => !v);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: cardOpen }}
+              accessibilityLabel="Contact card"
+              className="flex-row items-center gap-1.5 self-start"
+            >
+              <Text className="font-sans-b text-[14px] text-success underline">Contact card</Text>
+              <MessageSquareIcon size={14} color="#2FA85B" strokeWidth={2.6} />
+            </Pressable>
+            {cardOpen && cardFields.length > 0 ? (
+              <View className="mt-2 gap-1.5 border-t border-white/25 pt-2">
+                {cardFields.map((f) => (
+                  <Pressable
+                    key={`${f.label}-${f.value}`}
+                    onPress={() => openFieldLink(f.kind, f.value)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${f.label}: ${f.value}`}
+                    className="min-h-[36px] justify-center"
+                  >
+                    <Text
+                      className={cn(
+                        'font-sans-b text-[11px] uppercase tracking-wide',
+                        bubble.from === 'me' ? 'opacity-70' : 'text-ink-mute'
+                      )}
+                    >
+                      {f.label}
+                    </Text>
+                    <Text
+                      className={cn(
+                        'font-sans-sb text-[14px] underline',
+                        bubble.from === 'me' ? token.text : 'text-[#1C1B16]'
+                      )}
+                    >
+                      {f.value}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+          </View>
         ) : null}
         {showHeart ? (
           <View

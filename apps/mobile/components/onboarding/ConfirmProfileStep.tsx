@@ -245,11 +245,7 @@ export function ConfirmProfileStep({
             )}
           </Pressable>
 
-          <PhotoFilterPicker
-            value={photoFilter}
-            onChange={onChangePhotoFilter}
-            showLocalBadge={isDemoMode() || photoFilter === 'pop_art'}
-          />
+          <PhotoFilterPicker value={photoFilter} onChange={onChangePhotoFilter} />
         </View>
 
         {/* THE NAME: first + last, the only required answers. */}

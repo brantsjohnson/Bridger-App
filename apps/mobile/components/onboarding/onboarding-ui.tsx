@@ -14,7 +14,7 @@
 //   OBField      - a white box you type in, with a hard navy outline
 //   OBTile       - a tappable white row: plain, with a checkbox, or with a switch
 //   OBNote       - the quiet white panel used for privacy / reassurance copy
-//   OBCTA        - the hot pink Continue pill (rounded, no hard shadow)
+//   OBCTA        - the hot pink Continue button (square, no hard shadow)
 //   OBSkipLink   - the underlined "Skip for now" under the button
 //   OBProgress   - the segmented step bar with "3/14" beside it
 //
@@ -27,7 +27,6 @@ import React, { useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
-  Switch,
   Text,
   TextInput,
   View,
@@ -45,8 +44,8 @@ const ONBOARDING_BURST_EMOJIS = ['🎉', '🎊', '🎈'];
 /** Short beat so the shower is visible before the next step loads. */
 const ONBOARDING_BURST_ADVANCE_MS = 380;
 
-/** The grey the system switch shows when it is off. */
-const OB_SWITCH_OFF = 'rgba(39,64,135,0.25)';
+/** The grey the system switch shows when it is off (app ink at low opacity). */
+const OB_SWITCH_OFF = OB.switchOff;
 
 // ============================================
 // THE PAPER: faint graph-paper squares, drawn as thin lines in a corner. Purely
@@ -204,11 +203,11 @@ export function OBNote({ children }: { children: React.ReactNode }) {
       style={{
         backgroundColor: OB.paper,
         borderWidth: OB_BORDER,
-        borderColor: 'rgba(39,64,135,0.55)',
+        borderColor: OB.borderMuted,
         padding: 16
       }}
     >
-      <Text style={{ fontSize: 13.5, lineHeight: 20, color: 'rgba(0,0,0,0.72)' }}>{children}</Text>
+      <Text style={{ fontSize: 13.5, lineHeight: 20, color: OB.inkSoft }}>{children}</Text>
     </View>
   );
 }
@@ -224,7 +223,8 @@ export function OBField({
   analyticsId,
   keyboardType,
   autoCapitalize = 'sentences',
-  multiline = false
+  multiline = false,
+  accessibilityLabel
 }: {
   label?: string;
   value: string;
@@ -235,6 +235,8 @@ export function OBField({
   keyboardType?: 'default' | 'email-address' | 'number-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   multiline?: boolean;
+  /** Spoken name when the visible label is omitted (e.g. the heading above). */
+  accessibilityLabel?: string;
 }) {
   return (
     <View style={{ gap: 7 }}>
@@ -255,7 +257,7 @@ export function OBField({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         multiline={multiline}
-        accessibilityLabel={label}
+        accessibilityLabel={accessibilityLabel ?? label}
         style={{
           backgroundColor: OB.paper,
           borderWidth: OB_BORDER,
@@ -291,7 +293,9 @@ export function OBTile({
   accessibilityLabel,
   disabled = false,
   /** Idle fill when not selected (default white paper). */
-  idleFill
+  idleFill,
+  /** Shorter row for dense lists (still ≥ 44pt tall). */
+  compact = false
 }: {
   label: string;
   selected?: boolean;
@@ -306,6 +310,7 @@ export function OBTile({
   accessibilityLabel?: string;
   disabled?: boolean;
   idleFill?: string;
+  compact?: boolean;
 }) {
   const role = variant === 'checkbox' ? 'checkbox' : variant === 'switch' ? 'switch' : 'button';
   return (
@@ -322,23 +327,32 @@ export function OBTile({
         variant === 'plain' ? { disabled, selected } : { disabled, checked: selected }
       }
       style={{
-        minHeight: 52,
+        // ACCESSIBILITY: compact stays at least 44pt so taps stay comfortable.
+        minHeight: compact ? 44 : 52,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 15,
+        gap: compact ? 10 : 14,
+        paddingHorizontal: compact ? 12 : 16,
+        paddingVertical: compact ? 9 : 15,
         backgroundColor: selected ? OB.periwinkle : idleFill ?? OB.paper,
         borderWidth: OB_BORDER,
         borderColor: OB.navy,
         opacity: disabled ? 0.55 : 1
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-        {variant === 'checkbox' ? <OBCheckBox checked={selected} /> : null}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: compact ? 10 : 14,
+          flex: 1,
+          minWidth: 0
+        }}
+      >
+        {variant === 'checkbox' ? <OBCheckBox checked={selected} size={compact ? 18 : 22} /> : null}
         <Text
-          className="font-sans-sb text-[16px]"
+          className={compact ? 'font-sans-sb text-[14px]' : 'font-sans-sb text-[16px]'}
           style={{ color: OB.navy, flexShrink: 1 }}
           numberOfLines={2}
         >
@@ -356,14 +370,14 @@ export function OBTile({
   );
 }
 
-/** The 22px square that fills in when a row is picked. */
-function OBCheckBox({ checked }: { checked: boolean }) {
+/** The square that fills in when a row is picked. */
+function OBCheckBox({ checked, size = 22 }: { checked: boolean; size?: number }) {
   return (
     <View
       accessible={false}
       style={{
-        width: 22,
-        height: 22,
+        width: size,
+        height: size,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: checked ? OB.pink : 'transparent',
@@ -372,7 +386,10 @@ function OBCheckBox({ checked }: { checked: boolean }) {
       }}
     >
       {checked ? (
-        <Text className="font-sans-b text-[13px]" style={{ color: OB.onColor }}>
+        <Text
+          className={size <= 18 ? 'font-sans-b text-[11px]' : 'font-sans-b text-[13px]'}
+          style={{ color: OB.onColor }}
+        >
           ✓
         </Text>
       ) : null}
@@ -381,10 +398,9 @@ function OBCheckBox({ checked }: { checked: boolean }) {
 }
 
 /**
- * The on/off control on notification rows. This is the phone's own switch (iOS
- * and Android each draw their own). When it is on, the track fills green and
- * the knob stays white, so it reads like a clear "yes" without swapping colors
- * on the circle.
+ * The on/off control on notification rows. Custom drawn (not the phone's Switch)
+ * so the knob stays white on iOS, Android, and web. When it is on, only the
+ * track fills green.
  *
  * ACCESSIBILITY: the whole row is the switch as far as a screen reader is
  * concerned, so the control itself is hidden from it and ignores taps. Tapping
@@ -397,25 +413,38 @@ function OBSwitchMark({ on }: { on: boolean }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
-      style={{ flexShrink: 0 }}
+      style={{
+        width: 48,
+        height: 28,
+        borderRadius: 999,
+        padding: 3,
+        justifyContent: 'center',
+        // Green track when on; quiet grey when off.
+        backgroundColor: on ? OB.green : OB_SWITCH_OFF,
+        alignItems: on ? 'flex-end' : 'flex-start'
+      }}
     >
-      <Switch
-        value={on}
-        trackColor={{ false: OB_SWITCH_OFF, true: OB.green }}
-        // White knob on both platforms. Android needs this set or it paints the
-        // thumb green from the system accent.
-        thumbColor={OB.paper}
-        ios_backgroundColor={OB_SWITCH_OFF}
+      {/* White circle knob. Never inherits the track color. */}
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 999,
+          backgroundColor: '#FFFFFF',
+          borderWidth: 1,
+          borderColor: 'rgba(28,27,22,0.08)'
+        }}
       />
     </View>
   );
 }
 
 // ============================================
-// THE BUTTON: hot pink, all-caps, same clean bold sans as every other Bridger
-// button (not the pixel header, not Big Shoulders). Rounded pill with an arrow.
-// On reality-check pages that keeps "Let's try again" a bit different from the
-// big display headlines above it.
+// THE BUTTON: hot pink by default, all-caps, same clean bold sans as every
+// other Bridger button (not the pixel header, not Big Shoulders). Square
+// corners like every other onboarding box, with a trailing arrow. No pill
+// rounding. Reality-check screens pass tone="green" so the blue page is not
+// capped with another pink bar.
 // ============================================
 export function OBCTA({
   label,
@@ -423,7 +452,8 @@ export function OBCTA({
   analyticsId,
   analyticsProps,
   disabled = false,
-  accessibilityLabel
+  accessibilityLabel,
+  tone = 'pink'
 }: {
   label: string;
   onPress?: () => void;
@@ -433,12 +463,15 @@ export function OBCTA({
   /** Kept so older call sites still compile; the hard shadow is gone. */
   shadowColor?: string;
   accessibilityLabel?: string;
+  /** Pink for question Continues; green for "Let's try again" on the blue stats. */
+  tone?: 'pink' | 'green';
 }) {
   const reduce = useReduceMotion();
   const btnRef = useRef<View>(null);
   const [burst, setBurst] = useState<{ key: number; origin: { x: number; y: number } } | null>(
     null
   );
+  const fill = tone === 'green' ? OB.green : OB.pink;
 
   const handlePress = () => {
     if (!onPress || disabled) return;
@@ -491,8 +524,9 @@ export function OBCTA({
           gap: 12,
           paddingVertical: 14,
           paddingHorizontal: 22,
-          borderRadius: 999,
-          backgroundColor: OB.pink,
+          // Square like every other onboarding box (fields, tiles, progress).
+          borderRadius: 0,
+          backgroundColor: fill,
           opacity: disabled ? 0.5 : 1
         }}
       >

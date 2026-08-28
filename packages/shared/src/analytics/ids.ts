@@ -69,7 +69,9 @@ export const ONBOARDING = {
     acknowledge: aid('onboarding', 'privacy', 'acknowledge')
   },
   notifications: {
-    pref: aid('onboarding', 'notifications', 'pref')
+    pref: aid('onboarding', 'notifications', 'pref'),
+    /** tap that turns every reminder on (or clears them all) */
+    all: aid('onboarding', 'notifications', 'all')
   },
   name: {
     first_input: aid('onboarding', 'name', 'first_input'),
@@ -114,7 +116,9 @@ export const ONBOARDING = {
     /** dead — the changing "you'll spend X years" line on the life story */
     caption: aid('onboarding', 'stat', 'caption'),
     /** screentime only: tap the story to skip to the next beat */
-    advance: aid('onboarding', 'stat', 'advance')
+    advance: aid('onboarding', 'stat', 'advance'),
+    /** screentime only: tap a filled color band to open/close its years row */
+    band: aid('onboarding', 'stat', 'band')
   },
   // Step 5 — connect contacts to find friends already here.
   contacts: {
@@ -153,7 +157,7 @@ export const ONBOARDING = {
   // Step 10 — "Taste of Bridger" intro + its light sub-questions.
   taste: {
     start: aid('onboarding', 'taste', 'start'),
-    /** dead — the "what's coming up" preview list is not tappable */
+    /** dead — the excited "Let's fill out your profile a bit" headline */
     preview_list: aid('onboarding', 'taste', 'preview_list'),
     current_input: aid('onboarding', 'taste', 'current_input'),
     dream_input: aid('onboarding', 'taste', 'dream_input'),
@@ -165,6 +169,10 @@ export const ONBOARDING = {
     hometown_input: aid('onboarding', 'taste', 'hometown_input'),
     current_town_input: aid('onboarding', 'taste', 'current_town_input'),
     favorite_place_input: aid('onboarding', 'taste', 'favorite_place_input'),
+    /** Focus the favorite-place search box (never logs query text). */
+    place_search: aid('onboarding', 'taste', 'place_search'),
+    /** Confirmed pick from favorite-place search results (never place names). */
+    place_result: aid('onboarding', 'taste', 'place_result'),
     recap_record: aid('onboarding', 'taste', 'recap_record'),
     recap_play: aid('onboarding', 'taste', 'recap_play'),
     recap_type: aid('onboarding', 'taste', 'recap_type'),
@@ -320,12 +328,16 @@ export const HOME = {
     add_recap: aid('home', 'this_week', 'add_recap'),
     take_quiz: aid('home', 'this_week', 'take_quiz'),
     next_event: aid('home', 'this_week', 'next_event'),
+    /** Empty This week tap → Events tab. */
+    open_events: aid('home', 'this_week', 'open_events'),
     section_header: aid('home', 'this_week', 'section_header'),
     info: aid('home', 'this_week', 'info')
   },
   coming_up: {
     section_header: aid('home', 'coming_up', 'section_header'),
-    info: aid('home', 'coming_up', 'info')
+    info: aid('home', 'coming_up', 'info'),
+    /** Dead-click target for the "Add friends to get reminders" null line. */
+    empty_body: aid('home', 'coming_up', 'empty_body')
   },
   activity: {
     section_header: aid('home', 'activity', 'section_header'),
@@ -715,8 +727,7 @@ export const PROFILE = {
     profile: aid('profile', 'tabs', 'profile'),
     stories: aid('profile', 'tabs', 'stories'),
     inside_jokes: aid('profile', 'tabs', 'inside_jokes'),
-    bucket_list: aid('profile', 'tabs', 'bucket_list'),
-    settings_gear: aid('profile', 'tabs', 'settings_gear')
+    bucket_list: aid('profile', 'tabs', 'bucket_list')
   },
   header: {
     avatar: aid('profile', 'header', 'avatar'),
@@ -727,6 +738,8 @@ export const PROFILE = {
     mutuals: aid('profile', 'header', 'mutuals'),
     /** @deprecated Superseded by Current Obsession / play_recap. Kept for history. */
     song: aid('profile', 'header', 'song'),
+    /** Own profile: gear next to Edit (opens Settings). Was profile.tabs.settings_gear. */
+    settings_gear: aid('profile', 'header', 'settings_gear'),
     play_recap: aid('profile', 'header', 'play_recap'),
     story_tile: aid('profile', 'header', 'story_tile'),
     tier_control: aid('profile', 'header', 'tier_control'),
@@ -1080,7 +1093,9 @@ export const EVENTS = {
   },
   community: {
     section_header: aid('events', 'community', 'section_header'),
-    info: aid('events', 'community', 'info')
+    info: aid('events', 'community', 'info'),
+    // dead: the Coming soon teaser card (street illustration + copy)
+    teaser_card: aid('events', 'community', 'teaser_card')
   }
 } as const;
 
@@ -1278,6 +1293,8 @@ export const MESSAGES = {
     /** Double-tap a friend's bubble to heart. Does not count as a send. */
     heart: aid('messages', 'conversation', 'heart'),
     share_contact: aid('messages', 'conversation', 'share_contact'),
+    /** Tap the Contact card chip on a shared-card bubble (opens dropdown). */
+    contact_card_chip: aid('messages', 'conversation', 'contact_card_chip'),
     /** Retired: Make a plan left Messages. Id kept so old events still group. */
     make_a_plan: aid('messages', 'conversation', 'make_a_plan'),
     back: aid('messages', 'conversation', 'back'),
@@ -1298,8 +1315,12 @@ export const MESSAGES = {
     profile_icon: aid('messages', 'top_nav', 'profile_icon')
   },
   contact_card: {
+    /** Retired: Share contact is `conversation.share_contact` on the thread. */
     edit: aid('messages', 'contact_card', 'edit'),
     field_toggle: aid('messages', 'contact_card', 'field_toggle'),
+    /** Focus a field value box (never logs the typed text). */
+    field_input: aid('messages', 'contact_card', 'field_input'),
+    /** Retired: Share contact is `conversation.share_contact` on the thread. */
     share: aid('messages', 'contact_card', 'share'),
     field_row: aid('messages', 'contact_card', 'field_row')
   }

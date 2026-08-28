@@ -383,22 +383,30 @@ export default function SignInScreen() {
         </KeyboardAvoidingView>
       </View>
 
+      {/* THIS SECTION DOES: the demo password sheet. On web, Pressable with
+          accessibilityRole="button" becomes a real <button>, so the dimmed
+          backdrop cannot wrap the sheet (that nested Enter/Cancel buttons
+          inside another button). Backdrop and sheet are siblings instead. */}
       <Modal
         visible={demoOpen}
         transparent
         animationType="fade"
         onRequestClose={() => setDemoOpen(false)}
       >
-        <Pressable
-          className="flex-1 justify-end bg-ink/40"
-          onPress={() => setDemoOpen(false)}
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss demo password"
-        >
+        <View className="flex-1 justify-end bg-ink/40">
           <Pressable
-            onPress={(e) => e.stopPropagation()}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss demo password"
+            onPress={() => setDemoOpen(false)}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
             className="rounded-t-3xl bg-canvas px-5 pt-5"
-            style={{ paddingBottom: Math.max(insets.bottom, 16) + 8 }}
+            style={{
+              // Sit above the full-screen dismiss backdrop so taps hit the sheet.
+              zIndex: 1,
+              paddingBottom: Math.max(insets.bottom, 16) + 8
+            }}
           >
             <Text className="font-pixel text-[20px] text-ink">Demo mode</Text>
             <Text className="mt-1 font-sans-sb text-[13px] text-ink-mute">
@@ -450,8 +458,8 @@ export default function SignInScreen() {
                 Cancel
               </ButtonSecondary>
             </View>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </Screen>
   );

@@ -14,9 +14,9 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ONBOARDING } from '@bridger/shared';
-import { AnalyticsRegion, useReduceMotion } from '@bridger/ui';
+import { AnalyticsRegion, SynthGrid, useGridColor, useReduceMotion, useThemeColors } from '@bridger/ui';
 import { OB, OB_BORDER } from './onboarding-theme';
-import { OBBody, OBCTA, OBGridPatch, OBHardShadow, OBHeading } from './onboarding-ui';
+import { OBBody, OBCTA, OBHardShadow, OBHeading } from './onboarding-ui';
 
 /** Little squares of paper that fall behind the words. Decoration only. */
 const CONFETTI = [OB.blue, OB.pink, OB.amber, OB.green, OB.periwinkle, OB.orange];
@@ -33,29 +33,30 @@ const PIECES = Array.from({ length: 28 }, (_, i) => ({
 /** What actually happens next, so "you're in" means something. */
 const NEXT: Array<{ label: string; line: string; edge: string }> = [
   { label: 'Add your people', line: 'Bridger is empty until they are here', edge: OB.pink },
-  { label: 'Post your first story', line: 'One photo, once a day', edge: OB.amber },
-  { label: 'Say when you are free', line: 'The whole point is seeing them', edge: OB.green }
+  { label: 'Complete your profile', line: 'So friends know who they are talking to', edge: OB.amber },
+  { label: "Say when you're free", line: 'The whole point is seeing them', edge: OB.green }
 ];
 
 export function WelcomeInStep({ onDone }: { onDone: () => void }) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
+  const theme = useThemeColors();
+  const { gridColor } = useGridColor();
   return (
-    // Fill the real display so the finish screen stays the same size as every
-    // other step, and still grows or shrinks when the window does.
+    // Same eggshell + SynthGrid backdrop as Home and every other onboarding step.
     <View
+      className="flex-1 bg-canvas"
       style={{
         flex: 1,
         width: '100%',
         alignSelf: 'stretch',
         height: '100%',
-        backgroundColor: OB.canvas,
+        backgroundColor: theme.canvas,
         overflow: 'hidden'
       }}
     >
-      {/* THE PAPER: the same faint graph-paper corners as every other step. */}
-      <OBGridPatch size={270} right={-70} top={-40} />
-      <OBGridPatch size={300} left={-30} bottom={-40} opacity={0.75} />
+      <SynthGrid strength="normal" color={gridColor} />
+      <View className="relative z-10 flex-1" style={{ backgroundColor: 'transparent' }}>
       {!reduceMotion ? <Confetti /> : null}
 
       <View
@@ -97,7 +98,7 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
                     flexDirection: 'row',
                     backgroundColor: OB.paper,
                     borderWidth: OB_BORDER,
-                    borderColor: 'rgba(39,64,135,0.55)'
+                    borderColor: OB.borderMuted
                   }}
                 >
                   <View style={{ width: 5, backgroundColor: n.edge }} accessible={false} />
@@ -105,7 +106,7 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
                     <Text className="font-sans-b text-[17px]" style={{ color: OB.blue }}>
                       {n.label}
                     </Text>
-                    <Text className="text-[13px]" style={{ marginTop: 3, color: 'rgba(0,0,0,0.6)' }}>
+                    <Text className="text-[13px]" style={{ marginTop: 3, color: OB.inkSoft }}>
                       {n.line}
                     </Text>
                   </View>
@@ -124,6 +125,7 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
             accessibilityLabel="Let's go"
           />
         </View>
+      </View>
       </View>
     </View>
   );

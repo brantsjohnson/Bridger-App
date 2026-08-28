@@ -18,6 +18,7 @@ import {
   DAILY_CAP,
   trackProduct,
   type ContactCard,
+  type ContactFieldKind,
   type Message,
   type Tier
 } from '@bridger/shared';
@@ -34,6 +35,8 @@ export type ThreadBubble = {
   from: 'me' | 'them';
   text: string;
   phone?: string;
+  /** Enabled fields on a shared contact card (for the in-bubble dropdown). */
+  contactFields?: Array<{ label: string; value: string; kind: ContactFieldKind }>;
   kind: Message['kind'];
   countsAgainstCap: boolean;
   /** You hearted their bubble. Not a sent message. */
@@ -115,6 +118,11 @@ function toDetail(t: DemoThread): ThreadDetail {
       from: b.from,
       text: b.text,
       phone: b.phone,
+      contactFields: b.contactFields?.map((f) => ({
+        label: f.label,
+        value: f.value,
+        kind: f.kind as ContactFieldKind
+      })),
       kind: b.kind ?? 'text',
       countsAgainstCap: b.countsAgainstCap !== false && b.kind !== 'contactCard' && b.kind !== 'planNudge',
       heartedByMe: !!b.heartedByMe,
@@ -227,7 +235,7 @@ export async function shareContact(threadId: string): Promise<ThreadDetail | nul
   if (isDemoMode()) {
     const t = demoThreads.find((x) => x.id === threadId);
     if (!t) return null;
-    const enabled = demoCard.fields.filter((f) => f.enabled);
+    const enabled = demoCard.fields.filter((f) => f.enabled && f.value.trim());
     const summary =
       enabled.length > 0
         ? enabled.map((f) => f.value).join(' · ')
@@ -241,6 +249,11 @@ export async function shareContact(threadId: string): Promise<ThreadDetail | nul
         from: 'me',
         text: summary,
         phone,
+        contactFields: enabled.map((f) => ({
+          label: f.label,
+          value: f.value,
+          kind: f.kind
+        })),
         kind: 'contactCard',
         countsAgainstCap: false,
         heartedByMe: false,

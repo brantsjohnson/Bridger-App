@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { trackFlowCompleted, trackFlowStep, type Tier } from '@bridger/shared';
 import { clearDevPreview, getDemoOnboardSeed, isDemoMode } from '../lib/demo';
+import type { GeocodeHit } from '../lib/geocode';
 import { getOAuthProfilePrefill } from '../lib/oauth';
 import { supabase } from '../lib/supabase';
 import {
@@ -124,6 +125,8 @@ type Draft = {
   hometown: string;
   currentTown: string;
   favoritePlace: string;
+  /** Geocoded pick for the favorite trip (map pin). Null until they search and pick. */
+  favoritePlaceHit: GeocodeHit | null;
   recapMode: 'voice' | 'text';
   recapText: string;
   recapRecorded: boolean;
@@ -160,6 +163,7 @@ const EMPTY_DRAFT: Draft = {
   hometown: '',
   currentTown: '',
   favoritePlace: '',
+  favoritePlaceHit: null,
   recapMode: 'voice',
   recapText: '',
   recapRecorded: false,
@@ -291,7 +295,8 @@ export function useOnboarding(onDone: () => void) {
           await savePlaces({
             hometown: draft.hometown,
             currentTown: draft.currentTown,
-            favoritePlace: draft.favoritePlace
+            favoritePlace: draft.favoritePlace,
+            favoritePlaceHit: draft.favoritePlaceHit
           });
           break;
         case 'recap':

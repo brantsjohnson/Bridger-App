@@ -31,7 +31,7 @@ When in doubt: fewer words.
 
 ## Navigation
 
-- **Floating tab bar** — a **detached, elongated capsule** (inset from the edges with a little margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Events · Discover · News. Active = filled **elongated pill** in that tab's color (**Home teal · Friends coral · Events touch-grass green · Discover amber · News purple**); inactive = muted icon. A small **matching-color dot** marks a tab with something new. Not a flush full-width bar. **Hidden on your own Profile** (Profile opens from the header photo, so nothing in the pill would be selected).
+- **Floating tab bar** — a **detached, elongated capsule** (inset from the edges with a little margin), Apple's newer dynamic/"liquid-glass" feel: translucent where possible, may subtly shrink or tuck away on scroll. **5 destinations:** Home · Friends · Events · Discover · News. Active = filled **elongated pill** in that tab's color (**Home teal · Friends coral · Events touch-grass green · Discover amber · News purple**); inactive = muted icon. A small **matching-color dot** marks a tab with something new; opening the tab clears that nav dot and leaves a matching little dot beside the section title the news is in. Not a flush full-width bar. **Hidden on your own Profile** (Profile opens from the header photo, so nothing in the pill would be selected).
 - **Header:** pixel screen title on the left. **Top-right slot is your profile photo circle** — tap opens Profile (Profile is not in the floating pill). **No notification bell** — notifications live in the feed + a dedicated page (below).
 
 ---

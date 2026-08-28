@@ -12,10 +12,17 @@ import { Tabs, useRouter } from 'expo-router';
 import { FloatingTabBar, ProfileLinkProvider, type TabKey } from '@bridger/ui';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { getMe } from '../../data/people';
-import { getTabBadges } from '../../data/tab-badges';
+import { acknowledgeTab } from '../../data/tab-badges';
+import { useTabAttention } from '../../hooks/useTabAttention';
 import { isDemoMode } from '../../lib/demo';
 import { getCachedMe, loadPeople } from '../../lib/people-cache';
 import { useAuth } from '../../providers/auth-provider';
+
+const TAB_KEYS = new Set<TabKey>(['home', 'friends', 'events', 'discover', 'news']);
+
+function isTabKey(name: string): name is TabKey {
+  return TAB_KEYS.has(name as TabKey);
+}
 
 // Keep the app on Home when it first opens.
 export const unstable_settings = {
@@ -30,6 +37,9 @@ export default function TabsLayout() {
   // Rerender when the live people cache finishes so the header picks up
   // your real avatar URL (demo uses the local asset right away).
   const [peopleTick, setPeopleTick] = useState(0);
+  // THIS SECTION DOES: keep the floating-nav dots in sync when you open a tab
+  // (nav dot clears; section title dots stay on that page).
+  const { badges } = useTabAttention();
 
   // Live: fill the people cache so personById / roster look-ups work sync.
   useEffect(() => {
@@ -76,10 +86,10 @@ export default function TabsLayout() {
           // bar so nothing looks "half selected" while you're on those pages.
           if (current === 'profile' || current === 'messages') return null;
           return (
-            <FloatingTabBar
-              value={current}
-              badges={getTabBadges()}
-              onChange={(key: TabKey) => {
+            <TabBarWithAcknowledge
+              current={current}
+              badges={badges}
+              onNavigate={(key: TabKey) => {
                 const route = state.routes.find((r) => r.name === key);
                 if (!route) return;
                 const event = navigation.emit({
@@ -106,5 +116,35 @@ export default function TabsLayout() {
         <Tabs.Screen name="profile" options={{ href: null }} />
       </Tabs>
     </ProfileLinkProvider>
+  );
+}
+
+/**
+ * Floating pill plus "you opened this tab" ack so the nav-bar dot clears while
+ * section title dots on the page still point at the unread source.
+ */
+function TabBarWithAcknowledge({
+  current,
+  badges,
+  onNavigate
+}: {
+  current: string;
+  badges: Partial<Record<TabKey, boolean>>;
+  onNavigate: (key: TabKey) => void;
+}) {
+  // THIS SECTION DOES: clear the nav-bar dot the moment this tab is showing.
+  useEffect(() => {
+    if (isTabKey(current)) acknowledgeTab(current);
+  }, [current]);
+
+  return (
+    <FloatingTabBar
+      value={current}
+      badges={badges}
+      onChange={(key: TabKey) => {
+        acknowledgeTab(key);
+        onNavigate(key);
+      }}
+    />
   );
 }

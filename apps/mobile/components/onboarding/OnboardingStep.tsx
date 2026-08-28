@@ -1,28 +1,29 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The shared frame every onboarding screen sits in. One ask per screen on the
-// same eggshell canvas as the rest of Bridger: a square back box, a segmented
-// step bar with "3/14" beside it, a small amber tag saying why we're asking,
-// the huge blue all-caps question, the screen's body, and the hot pink Continue
-// button (plus an underlined "Skip for now" when the step is optional).
+// SAME background as Home: eggshell canvas (`bg-canvas`) plus the drifting
+// SynthGrid. A square back box, a segmented step bar with "3/14" beside it, a
+// small amber tag saying why we're asking, the huge blue all-caps question,
+// the screen's body, and the hot pink Continue button (plus an underlined
+// "Skip for now" when the step is optional).
 //
-// Paint comes from onboarding-theme.ts and parts from onboarding-ui.tsx. The
-// canvas matches Home so first-run does not feel like a different app. It is
-// light-only on purpose, so dark mode never washes out the page.
+// Paint for chips / boxes comes from onboarding-theme.ts and onboarding-ui.tsx.
+// The page backdrop is the shared Screen look so first-run never feels like a
+// different app.
 //
 // LAYOUT: the screen is pinned to the display height. The body scrolls (or fills)
 // inside a KeyboardAvoidingView; Continue stays pinned below that area so the
 // keyboard never shoves the button up over the fields you are typing in.
 //
 // By default the body does NOT scroll: the whole screen must fit. Birthday,
-// color, and co-op opt into scrolling because their content is too tall. When
-// the body scrolls, we show the system scroll bar and a soft fade at the bottom
-// so it is obvious there is more below.
+// color, co-op, confirm, and places opt into scrolling because their content
+// is too tall. When the body scrolls, we show the system scroll bar and a soft
+// fade at the bottom so it is obvious there is more below.
 //
-// ACCESSIBILITY: the grid paper and the button's shadow block are decorative and
-// hidden from screen readers; the step bar announces "Step 3 of 14"; every
-// button says what it does and is comfortably past 44pt. The top bar clears the
-// notch and the footer clears the home indicator.
+// ACCESSIBILITY: the SynthGrid is decorative and hidden from screen readers;
+// the step bar announces "Step 3 of 14"; every button says what it does and is
+// comfortably past 44pt. The top bar clears the notch and the footer clears the
+// home indicator.
 // ============================================
 import React, { useRef, useState } from 'react';
 import {
@@ -36,16 +37,22 @@ import {
   View
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeftIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Accent } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
-import { AnalyticsRegion, withAnalyticsPress } from '@bridger/ui';
+import {
+  AnalyticsRegion,
+  SynthGrid,
+  useGridColor,
+  useThemeColors,
+  withAnalyticsPress
+} from '@bridger/ui';
 import { OB, OB_BORDER } from './onboarding-theme';
 import {
   OBBody,
   OBCTA,
   OBChip,
-  OBGridPatch,
   OBHeading,
   OBKicker,
   OBProgress,
@@ -57,8 +64,8 @@ type Props = {
   total?: number;
   /** Optional short "why" line above the question (the small amber tag). */
   purpose?: string;
-  /** the question itself */
-  ask: string;
+  /** the question itself — omit when the step draws its own headline in the body */
+  ask?: string;
   /** Optional sentence under the question. */
   blurb?: string;
   /** Optional small pink all-caps hint, e.g. "Pick any that apply". */
@@ -120,6 +127,9 @@ export function OnboardingStep({
   smallAsk = false
 }: Props) {
   const insets = useSafeAreaInsets();
+  // Same canvas + grid tint as Home / every other Screen.
+  const theme = useThemeColors();
+  const { gridColor } = useGridColor();
 
   // THIS SECTION DOES: decide whether the body fills the screen or scrolls.
   const bodyFills = fillBody && !scrollBody;
@@ -140,21 +150,26 @@ export function OnboardingStep({
     setMoreBelow(leftover > 12);
   };
 
+  // Soft fade into the live canvas color (matches Home, including dark mode).
+  const fadeTop = `${theme.canvas}00`;
+  const fadeBottom = theme.canvas;
+
   return (
     <View
+      className="flex-1 bg-canvas"
       style={{
         flex: 1,
         width: '100%',
         alignSelf: 'stretch',
         height: '100%',
-        backgroundColor: OB.canvas,
+        backgroundColor: theme.canvas,
         overflow: 'hidden'
       }}
     >
-      {/* THE PAPER: faint graph-paper squares in two corners, like the design. */}
-      <OBGridPatch size={270} right={-70} top={-40} />
-      <OBGridPatch size={300} left={-30} bottom={-40} opacity={0.75} />
+      {/* Same drifting grid Home uses, not the old graph-paper corner patches. */}
+      <SynthGrid strength="normal" color={gridColor} />
 
+      <View className="relative z-10 flex-1" style={{ backgroundColor: 'transparent' }}>
       {/* TOP BAR: square back box (to fix an earlier answer) + the step bar. */}
       <View
         style={{
@@ -178,14 +193,12 @@ export function OnboardingStep({
               flexShrink: 0,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: OB.canvas,
+              backgroundColor: theme.canvas,
               borderWidth: OB_BORDER,
               borderColor: OB.navy
             }}
           >
-            <Text className="font-sans-b text-[17px]" style={{ color: OB.navy }} accessible={false}>
-              ←
-            </Text>
+            <ArrowLeftIcon size={18} color={OB.navy} strokeWidth={2.6} />
           </Pressable>
         ) : null}
         <View style={{ flex: 1 }}>
@@ -193,15 +206,20 @@ export function OnboardingStep({
         </View>
       </View>
 
-      {/* THE ASK: why we're asking, the big question, and an optional sentence. */}
-      <View style={{ paddingHorizontal: PAGE_X, paddingTop: 14, paddingBottom: 8, gap: 12 }}>
-        {purpose ? <OBChip>{purpose}</OBChip> : null}
-        <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
-          <OBHeading small={smallAsk}>{ask}</OBHeading>
-        </AnalyticsRegion>
-        {blurb ? <OBBody>{blurb}</OBBody> : null}
-        {kicker ? <OBKicker>{kicker}</OBKicker> : null}
-      </View>
+      {/* THE ASK: why we're asking, the big question, and an optional sentence.
+          Some steps (taste intro) skip this and put the headline in the body. */}
+      {purpose || ask || blurb || kicker ? (
+        <View style={{ paddingHorizontal: PAGE_X, paddingTop: 14, paddingBottom: 8, gap: 12 }}>
+          {purpose ? <OBChip>{purpose}</OBChip> : null}
+          {ask ? (
+            <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
+              <OBHeading small={smallAsk}>{ask}</OBHeading>
+            </AnalyticsRegion>
+          ) : null}
+          {blurb ? <OBBody>{blurb}</OBBody> : null}
+          {kicker ? <OBKicker>{kicker}</OBKicker> : null}
+        </View>
+      ) : null}
 
       {/* THIS SECTION DOES: the scrollable body shrinks when the keyboard opens.
           Continue stays pinned below it so it never slides up over the fields. */}
@@ -211,7 +229,16 @@ export function OnboardingStep({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
           {bodyFills ? (
-            <View style={{ flex: 1, minHeight: 0, paddingHorizontal: PAGE_X, paddingTop: 8 }}>
+            <View
+              style={{
+                flex: 1,
+                minHeight: 0,
+                paddingHorizontal: PAGE_X,
+                paddingTop: 8,
+                // Clip so a tall body cannot paint under the pinned Continue.
+                overflow: 'hidden'
+              }}
+            >
               {children}
             </View>
           ) : (
@@ -261,7 +288,7 @@ export function OnboardingStep({
                   }}
                 >
                   <LinearGradient
-                    colors={['rgba(250,248,242,0)', OB.canvas]}
+                    colors={[fadeTop, fadeBottom]}
                     style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
                   />
                   <Text
@@ -304,6 +331,7 @@ export function OnboardingStep({
             )}
           </View>
         )}
+      </View>
       </View>
     </View>
   );

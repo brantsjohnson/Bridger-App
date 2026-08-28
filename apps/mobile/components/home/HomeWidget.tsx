@@ -32,6 +32,8 @@ export function HomeWidget({
   canMoveUp,
   canMoveDown,
   index = 0,
+  showDot = false,
+  dotColor,
   children
 }: {
   title: string;
@@ -51,6 +53,10 @@ export function HomeWidget({
   canMoveDown?: boolean;
   /** position down the page — widgets arrive one after another, not all at once */
   index?: number;
+  /** Little "new here" dot beside the widget title. */
+  showDot?: boolean;
+  /** Fill color for showDot (Home teal by default via SectionTitle). */
+  dotColor?: string;
   children: React.ReactNode;
 }) {
   const c = useThemeColors();
@@ -82,6 +88,8 @@ export function HomeWidget({
               section={section}
               numberOfLines={1}
               className="min-w-0 flex-1"
+              showDot={showDot}
+              dotColor={dotColor}
             />
           ) : (
             <PixelHeading size="md" numberOfLines={1} className="flex-shrink">

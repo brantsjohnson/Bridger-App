@@ -42,24 +42,34 @@ export function RecapProgressPills({
   );
 }
 
-/** Lavender card: "Q1 OF 5", the question, and the 20s hint. */
+/** Lavender card: the question and the 20s hint. Optional "Q1 of 5" for multi-question weeks. */
 export function RecapQuestionCard({
   step,
   total,
   question,
-  maxSeconds
+  maxSeconds,
+  showIndex = true
 }: {
   step: number;
   total: number;
   question: string;
   maxSeconds: number;
+  /** False for a single-question flow (onboarding) so we never show "Q1 of 1". */
+  showIndex?: boolean;
 }) {
   return (
     <View className="rounded-2xl px-5 py-6" style={{ backgroundColor: RECAP_CARD_BG }}>
-      <Text className="text-center font-sans-b text-[11px] uppercase tracking-wide text-onaccent/55">
-        Q{step + 1} of {total}
-      </Text>
-      <Text className="mt-1.5 text-center font-sans-b text-[19px] leading-snug text-onaccent">
+      {showIndex ? (
+        <Text className="text-center font-sans-b text-[11px] uppercase tracking-wide text-onaccent/55">
+          Q{step + 1} of {total}
+        </Text>
+      ) : null}
+      <Text
+        className={cn(
+          'text-center font-sans-b text-[19px] leading-snug text-onaccent',
+          showIndex ? 'mt-1.5' : undefined
+        )}
+      >
         {question}
       </Text>
       <Text className="mt-3 text-center font-sans-sb text-[12px] text-onaccent/70">

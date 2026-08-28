@@ -16,7 +16,7 @@ There is **no Make a plan** in a thread. Plans live on Events / Touch Grass.
 
 **Double-tap a friend's bubble to heart it.** A heart is a reaction, not a sent message, and never counts against the cap.
 
-Everyone sets up a **contact card** once (below) so sharing it is one tap.
+Everyone sets up a **contact card** on the Messages list (dropdown below) so sharing it from a thread is one tap.
 
 ---
 
@@ -35,9 +35,10 @@ Everyone sets up a **contact card** once (below) so sharing it is one tap.
 - Composer with a live **"{n} of 5 left today"** counter + "share your contact card to keep going."
 - **At the cap (your side):** composer locks — *"Out of messages today — share your contact card"* — Share contact still works (it does not count against the cap).
 
-### Contact card (set up once in Messages)
-- In the Messages app, everyone sets up a **contact card**: name + whatever they choose to include (phone, Instagram, email…). They **pick what's on it** and can edit anytime.
-- **Share contact** (the quick action, and the maxed-out prompt) shares this card in one tap.
+### Contact card (set up on Messages)
+- On the Messages list, **Your contact card** expands as a dropdown (not a separate screen). Type each value and toggle which fields are on the card (Phone, Instagram, Email, Website, Substack, or Other).
+- **Share contact** lives only inside a thread (and the maxed-out prompt). It posts the enabled fields in one tap. Setup never shows a Share contact button.
+- A shared contact card bubble shows a green **Contact card** chip with a message icon (not a phone call). Tap expands the fields; a phone field opens Messages (`sms:`), never the dialer.
 - This is the whole point of messaging — a fast way to hand someone your real contact info and take it off the app.
 
 ### When the other person is maxed out
@@ -135,7 +136,7 @@ interface DailyCap {               // per sender → recipient, per day
 - [ ] The cap is per recipient and per direction — being maxed toward someone does not stop them from messaging you.
 - [ ] At your cap the composer locks with a "share your contact card" nudge; Share contact still works.
 - [ ] When you message someone who has used their 5 to you, the thread shows "{Name} can't reply until tomorrow" and prompts "Share your contact instead."
-- [ ] Everyone can set up a **contact card** once (choose which fields — phone / Instagram / email); **Share contact** shares it in one tap.
+- [ ] **Your contact card** on the Messages list opens as a dropdown (edit values + toggles). **Share contact** only appears in a thread and posts enabled fields.
 - [ ] "Share contact", hearts, and story-reply mirrors do NOT count against the cap.
 - [ ] There is no Make a plan action in a thread.
 - [ ] Double-tap a friend's bubble hearts it (toggle). No heart counts. Does not send a message.
@@ -149,4 +150,5 @@ interface DailyCap {               // per sender → recipient, per day
 
 | Date | Change |
 |---|---|
+| 2026-08-28 | Shared-card bubble chip says Contact card + message icon; tap expands fields; phone uses sms not tel. Setup is Messages list dropdown. |
 | 2026-08-21 | Removed Make a plan from threads (plans live on Events / Touch Grass). Share contact is the contact card. Double-tap a friend's bubble to heart it; hearts never count as a send. |

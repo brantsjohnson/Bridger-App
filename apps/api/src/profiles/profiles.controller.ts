@@ -207,7 +207,7 @@ export class ProfilesController {
     const { data } = await this.supabase.admin
       .from('user_settings')
       .select(
-        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins, profile_color, social_battery, connection_style'
+        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_intro_seen, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins, profile_color, social_battery, connection_style'
       )
       .eq('user_id', user.id)
       .maybeSingle();
@@ -228,6 +228,8 @@ export class ProfilesController {
       homeCity: data?.home_city ?? '',
       notifPrefs: data?.notif_prefs ?? {},
       onboardingComplete: data?.onboarding_complete ?? false,
+      // True after they dismissed the one-time Profile welcome ("Hell yeah").
+      profileIntroSeen: data?.profile_intro_seen ?? false,
       profilePresentation,
       alwaysViewOriginal: data?.always_view_original ?? false,
       assistantEnabled: assistant.assistantEnabled,
@@ -269,6 +271,8 @@ export class ProfilesController {
       socialBattery?: number | null;
       /** Opaque FoF matching style keys from FriendsOfFriendsStep. */
       connectionStyle?: string[];
+      /** True after the one-time Profile welcome intro was dismissed. */
+      profileIntroSeen?: boolean;
     }
   ) {
     const patch: Record<string, unknown> = { user_id: user.id };
@@ -277,6 +281,10 @@ export class ProfilesController {
     if (typeof body?.discoverable === 'boolean') patch.discoverable = body.discoverable;
     if (typeof body?.alwaysViewOriginal === 'boolean') {
       patch.always_view_original = body.alwaysViewOriginal;
+    }
+    // THIS SECTION DOES: remember they finished the Profile welcome intro.
+    if (typeof body?.profileIntroSeen === 'boolean') {
+      patch.profile_intro_seen = body.profileIntroSeen;
     }
     if (typeof body?.assistantEnabled === 'boolean') {
       // Only eligible users may turn Assistant on.

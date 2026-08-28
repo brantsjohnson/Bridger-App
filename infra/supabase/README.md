@@ -47,6 +47,7 @@ enforced at the row level — even a bug in the API can't leak a closer-tier fie
 | 0019 | Weekly Recap Podcast tables, `story_type` audio, rolling expiry, purge function + RLS |
 | 0020 | `client_not_found_hits` — 404 / broken-path trail for the admin console (server-only) |
 | 0021 | `user_settings.onboarding_complete` |
+| 0047 | `user_settings.profile_intro_seen` — one-time Profile welcome dismissed |
 | 0022 | `connections.met_note` — Discover how-you-met freeform note |
 | 0023 | `events.cover` + `event_assignments` (+ RLS) |
 | 0038 | `event_invites.invited_by` — who invited each guest (null = host) |

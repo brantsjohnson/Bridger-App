@@ -1,19 +1,20 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 10E - "Your places." Three light town questions: where you're from, where
-// you live now, and the best place you've visited. Skippable. The amber chip
-// says "Info for the profile." Still towns only, never street addresses
-// (PRIVACY). Hometown / current town become About Me rows; the favorite trip
-// is geocoded onto the travel map with a FAV star when possible.
+// Step 10E - "Your places." Hometown and current town stay as light text
+// questions (towns only, never street addresses). Favorite place uses a map
+// search that drops a FAV pin on Places traveled. Skippable. The amber chip
+// says "Info for the profile."
 //
-// LOOK: three white typing boxes with the hard navy outline, each with its own
-// small navy label above it. All the paint comes from the shared onboarding
-// parts.
+// PRODUCT NOTE (not shown on this screen): We star this one as FAV on your
+// map. You can keep adding other places from your profile. That behavior
+// lives in the save / map code, not as onboarding copy.
 // ============================================
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
+import type { GeocodeHit } from '../../lib/geocode';
 import { OnboardingStep } from './OnboardingStep';
+import { OnboardingPlacePicker } from './OnboardingPlacePicker';
 import { OBField } from './onboarding-ui';
 
 export function PlacesStep({
@@ -21,10 +22,10 @@ export function PlacesStep({
   total,
   hometown,
   currentTown,
-  favoritePlace,
+  favoritePlaceHit,
   onChangeHometown,
   onChangeCurrent,
-  onChangeFavorite,
+  onChangeFavoriteHit,
   onNext,
   onSkip,
   onBack
@@ -33,10 +34,10 @@ export function PlacesStep({
   total: number;
   hometown: string;
   currentTown: string;
-  favoritePlace: string;
+  favoritePlaceHit: GeocodeHit | null;
   onChangeHometown: (v: string) => void;
   onChangeCurrent: (v: string) => void;
-  onChangeFavorite: (v: string) => void;
+  onChangeFavoriteHit: (hit: GeocodeHit | null) => void;
   onNext: () => void;
   onSkip: () => void;
   onBack: () => void;
@@ -50,9 +51,14 @@ export function PlacesStep({
       onContinue={onNext}
       onSkip={onSkip}
       onBack={onBack}
+      // Map + search results are taller than one screen; let the body scroll
+      // so Continue never covers the hit list.
+      scrollBody
+      smallAsk
     >
-      {/* THIS SECTION DOES: the three town boxes. PRIVACY: we ask for a town
-          name only, so nothing here can point at a doorstep. */}
+      {/* THIS SECTION DOES: hometown + current town text, then map search for
+          the favorite trip that seeds Places traveled. PRIVACY: towns / places
+          only, never a street address. */}
       <View style={{ gap: 18 }}>
         <OBField
           label="Hometown"
@@ -68,21 +74,10 @@ export function PlacesStep({
           placeholder="Where you live now"
           analyticsId={ONBOARDING.taste.current_town_input}
         />
-        <OBField
-          label="Favorite place you've visited"
-          value={favoritePlace}
-          onChange={onChangeFavorite}
-          placeholder="The best trip"
-          analyticsId={ONBOARDING.taste.favorite_place_input}
+        <OnboardingPlacePicker
+          hit={favoritePlaceHit}
+          onPick={onChangeFavoriteHit}
         />
-        {/* Encourage filling the map later with more trips. */}
-        <Text
-          className="font-sans-md text-[13px] text-ink-mute"
-          accessibilityRole="text"
-        >
-          We will star this one as FAV on your map. You can keep adding other
-          places you have traveled from your profile.
-        </Text>
       </View>
     </OnboardingStep>
   );

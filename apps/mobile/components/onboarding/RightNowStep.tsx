@@ -1,18 +1,20 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 10A - "Right now." Two typing boxes: what you do now, and the thing you
-// would love to do. Nothing is required; Skip moves on. These become profile
-// facts (their audience is chosen later on the Privacy & Control screen).
+// Step 10A - "Right now." Two questions, each with its own typing box right
+// under it: what you currently do, then what you dream to do. Nothing is
+// required; Skip moves on. These become profile facts (their audience is chosen
+// later on the Privacy & Control screen).
 //
-// LOOK: the amber chip says "Let's have some fun!", the big question is the
-// two job lines, a pink "change anytime" hint sits under it, then two white
-// boxes with a hard navy outline. All the paint comes from the shared parts.
+// LOOK: the amber chip says "Let's have some fun!", a pink "change anytime"
+// hint sits under it, then each question as a big blue heading with its white
+// box underneath. All the paint comes from the shared parts.
 // ============================================
 import React from 'react';
 import { View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
+import { AnalyticsRegion } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
-import { OBField } from './onboarding-ui';
+import { OBField, OBHeading, OBKicker } from './onboarding-ui';
 
 export function RightNowStep({
   step,
@@ -40,29 +42,43 @@ export function RightNowStep({
       step={step}
       total={total}
       purpose="Let's have some fun!"
-      ask={"What's your current job?\nWhat's your dream job?"}
-      kicker="Change anytime. Always optional."
-      smallAsk
+      // Questions live in the body so each one sits right above its field.
       onContinue={onNext}
       onSkip={onSkip}
       onBack={onBack}
+      scrollBody
     >
-      {/* THIS SECTION DOES: the two answers, today's job and the dream one. */}
-      <View style={{ gap: 20, paddingTop: 12 }}>
-        <OBField
-          label="Current job"
-          value={currentJob}
-          onChange={onChangeCurrent}
-          placeholder="Barista, student, nurse..."
-          analyticsId={ONBOARDING.taste.current_input}
-        />
-        <OBField
-          label="Dream job"
-          value={dreamJob}
-          onChange={onChangeDream}
-          placeholder="What you'd love to do"
-          analyticsId={ONBOARDING.taste.dream_input}
-        />
+      {/* THIS SECTION DOES: two stacked asks. Current job first, dream job second. */}
+      <View style={{ gap: 28, paddingTop: 4 }}>
+        <OBKicker>Change anytime. Always optional.</OBKicker>
+
+        {/* Current job: the question, then the typing box. */}
+        <View style={{ gap: 12 }}>
+          <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
+            <OBHeading small>What do you currently do?</OBHeading>
+          </AnalyticsRegion>
+          <OBField
+            value={currentJob}
+            onChange={onChangeCurrent}
+            placeholder="Barista, student, nurse..."
+            analyticsId={ONBOARDING.taste.current_input}
+            accessibilityLabel="What you currently do"
+          />
+        </View>
+
+        {/* Dream: the question, then the typing box. */}
+        <View style={{ gap: 12 }}>
+          <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
+            <OBHeading small>What's your dream to do for work?</OBHeading>
+          </AnalyticsRegion>
+          <OBField
+            value={dreamJob}
+            onChange={onChangeDream}
+            placeholder="What you'd love to do"
+            analyticsId={ONBOARDING.taste.dream_input}
+            accessibilityLabel="Your dream to do"
+          />
+        </View>
       </View>
     </OnboardingStep>
   );

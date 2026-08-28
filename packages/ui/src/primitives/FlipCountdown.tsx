@@ -2,16 +2,21 @@
 // WHAT THIS FILE DOES (plain English):
 // A live countdown drawn like old flip-clock / Rolodex tiles — four black
 // squares for days, hours, minutes, and seconds. Used on the event page under
-// "When" instead of a grey "in 2 days" pill.
+// "When" instead of a grey "in 2 days" pill. Once the start time has passed,
+// the tiles stay (at zero) and "HAPPENS TODAY!" sits centered under them with
+// a little confetti burst.
 //
-// ACCESSIBILITY: screen readers get a calm label ("in 2 days"), not a number
-// that changes every second. When Reduce Motion is on, the tiles still update
-// but they do not animate the flip.
+// ACCESSIBILITY: screen readers get a calm label ("in 2 days" / "Happens today"),
+// not a number that changes every second. When Reduce Motion is on, the tiles
+// still update but they do not animate the flip, and confetti does not mount.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
-import { useCountdown, useReduceMotion } from '../lib/whimsy';
+import { Sparkles, useCountdown, useReduceMotion } from '../lib/whimsy';
 import { cn } from '../lib/cn';
+
+/** Line under the clock once the event has started (all caps on screen). */
+const HAPPENS_TODAY = 'HAPPENS TODAY!';
 
 function pad2(n: number) {
   return String(n).padStart(2, '0');
@@ -99,7 +104,8 @@ function FlipTile({
 
 /**
  * Live flip-clock countdown to startsAt. Falls back to a quiet label when we
- * only have a rough string, or when the event has already started.
+ * only have a rough string. When the event has started, keeps the tiles and
+ * adds "HAPPENS TODAY!" underneath.
  */
 export function FlipCountdown({
   startsAt,
@@ -113,59 +119,76 @@ export function FlipCountdown({
 }) {
   const reduce = useReduceMotion();
   const countdown = useCountdown(startsAt ?? null);
-  const live = startsAt != null && !countdown.done;
+  const hasClock = startsAt != null;
+  const celebrate = hasClock && countdown.done;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!live) {
-    const text =
-      label ?? (countdown.done && startsAt != null ? 'Happening now' : '');
-    if (!text) return null;
+  // No start time: quiet fallback label only (or nothing).
+  if (!hasClock) {
+    if (!label) return null;
     return (
       <View
         accessible
-        accessibilityLabel={text}
+        accessibilityLabel={label}
         accessibilityRole="text"
         className={cn('self-start rounded-full bg-surface px-2.5 py-1', className)}
       >
-        <Text className="font-sans-b text-[11px] text-ink">{text}</Text>
+        <Text className="font-sans-b text-[11px] text-ink">{label}</Text>
       </View>
     );
   }
 
-  const a11y = label ?? countdown.label;
+  const a11y = celebrate ? 'Happens today' : (label ?? countdown.label);
 
   return (
     <View
       accessible
       accessibilityLabel={a11y}
       accessibilityRole="text"
-      className={cn('w-full max-w-[280px] flex-row gap-1.5', className)}
+      className={cn('relative w-full max-w-[280px] overflow-visible', className)}
     >
-      <FlipTile
-        value={String(countdown.days)}
-        unit="D"
-        animate={mounted && !reduce}
-      />
-      <FlipTile
-        value={pad2(countdown.hours)}
-        unit="H"
-        animate={mounted && !reduce}
-      />
-      <FlipTile
-        value={pad2(countdown.minutes)}
-        unit="M"
-        animate={mounted && !reduce}
-      />
-      <FlipTile
-        value={pad2(countdown.seconds)}
-        unit="S"
-        // Seconds tick every second — a fade every tick reads as a flash, so keep it still.
-        animate={false}
-      />
+      {/* ACCESSIBILITY: confetti is decoration only; the label below says the news. */}
+      {celebrate ? <Sparkles /> : null}
+
+      {/* THIS SECTION DOES: the four flip tiles (zeros once the event has started). */}
+      <View className="w-full flex-row gap-1.5">
+        <FlipTile
+          value={String(countdown.days)}
+          unit="D"
+          animate={mounted && !reduce && !celebrate}
+        />
+        <FlipTile
+          value={pad2(countdown.hours)}
+          unit="H"
+          animate={mounted && !reduce && !celebrate}
+        />
+        <FlipTile
+          value={pad2(countdown.minutes)}
+          unit="M"
+          animate={mounted && !reduce && !celebrate}
+        />
+        <FlipTile
+          value={pad2(countdown.seconds)}
+          unit="S"
+          // Seconds tick every second — a fade every tick reads as a flash, so keep it still.
+          animate={false}
+        />
+      </View>
+
+      {/* THIS SECTION DOES: celebration line centered under the clock. */}
+      {celebrate ? (
+        <Text
+          className="mt-2 text-center font-sans-b text-[12px] tracking-wide text-ink"
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
+          {HAPPENS_TODAY}
+        </Text>
+      ) : null}
     </View>
   );
 }

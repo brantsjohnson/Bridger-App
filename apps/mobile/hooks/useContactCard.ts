@@ -39,6 +39,22 @@ export function useContactCard() {
     [card]
   );
 
+  /** Edit a field's value (never log the text — PRIVACY). */
+  const onUpdateFieldValue = useCallback(
+    async (fieldId: string, value: string) => {
+      if (!card) return;
+      const next: ContactCard = {
+        ...card,
+        fields: card.fields.map((f) =>
+          f.id === fieldId ? { ...f, value } : f
+        )
+      };
+      setCard(next);
+      await setContactCard(next);
+    },
+    [card]
+  );
+
   const onSave = useCallback(
     async (fields: ContactField[]) => {
       if (!card) return;
@@ -53,6 +69,7 @@ export function useContactCard() {
     loading,
     refresh,
     onToggleField,
+    onUpdateFieldValue,
     onSave
   };
 }

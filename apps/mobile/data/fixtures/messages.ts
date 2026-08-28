@@ -26,6 +26,8 @@ export type DemoThread = {
     from: 'me' | 'them';
     text: string;
     phone?: string;
+    /** Enabled fields when this bubble is a shared contact card. */
+    contactFields?: Array<{ label: string; value: string; kind: string }>;
     kind?: Message['kind'];
     countsAgainstCap?: boolean;
     heartedByMe?: boolean;
@@ -55,7 +57,18 @@ export const THREADS: DemoThread[] = [
       },
       { id: 'b1', from: 'them', text: 'yo you around this weekend?' },
       { id: 'b2', from: 'me', text: "yeah! let's climb" },
-      { id: 'b3', from: 'them', text: 'perfect, text me', phone: '555-0142' }
+      {
+        id: 'b3',
+        from: 'them',
+        text: '555-0142 · @jade',
+        kind: 'contactCard',
+        countsAgainstCap: false,
+        phone: '555-0142',
+        contactFields: [
+          { label: 'Phone', value: '555-0142', kind: 'phone' },
+          { label: 'Instagram', value: '@jade', kind: 'instagram' }
+        ]
+      }
     ]
   },
   {
@@ -64,12 +77,20 @@ export const THREADS: DemoThread[] = [
     name: 'Janna Allred',
     emoji: '🌿',
     accent: 'purple',
-    preview: "here's my number · 555-0199",
+    preview: 'Shared their contact card',
     time: '1h',
     theirLeft: 5,
     myLeft: 4,
     bubbles: [
-      { id: 'b1', from: 'them', text: "here's my number", phone: '555-0199' },
+      {
+        id: 'b1',
+        from: 'them',
+        text: '555-0199',
+        kind: 'contactCard',
+        countsAgainstCap: false,
+        phone: '555-0199',
+        contactFields: [{ label: 'Phone', value: '555-0199', kind: 'phone' }]
+      },
       { id: 'b2', from: 'me', text: 'saved. texting you now' }
     ]
   },
@@ -109,9 +130,14 @@ export const THREADS: DemoThread[] = [
       {
         id: 'b7',
         from: 'them',
-        text: 'Shared their contact card',
+        text: '555-0142 · @brant',
         kind: 'contactCard',
-        countsAgainstCap: false
+        countsAgainstCap: false,
+        phone: '555-0142',
+        contactFields: [
+          { label: 'Phone', value: '555-0142', kind: 'phone' },
+          { label: 'Instagram', value: '@brant', kind: 'instagram' }
+        ]
       }
     ]
   }
@@ -124,6 +150,8 @@ export const CONTACT_CARD: ContactCard = {
   fields: [
     { id: 'c1', kind: 'phone', label: 'Phone', value: '555-0142', enabled: true },
     { id: 'c2', kind: 'instagram', label: 'Instagram', value: '@brant', enabled: true },
-    { id: 'c3', kind: 'email', label: 'Email', value: 'brant@example.com', enabled: false }
+    { id: 'c3', kind: 'email', label: 'Email', value: 'brant@example.com', enabled: false },
+    { id: 'c4', kind: 'website', label: 'Website', value: '', enabled: false },
+    { id: 'c5', kind: 'substack', label: 'Substack', value: '', enabled: false }
   ]
 };

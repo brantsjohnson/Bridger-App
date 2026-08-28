@@ -15,7 +15,13 @@
 /** Hard daily send limit per recipient (MESSAGES.md). Tunable later. */
 export const DAILY_CAP = 5;
 
-export type ContactFieldKind = 'phone' | 'instagram' | 'email' | 'other';
+export type ContactFieldKind =
+  | 'phone'
+  | 'instagram'
+  | 'email'
+  | 'website'
+  | 'substack'
+  | 'other';
 
 export type ContactField = {
   id: string;

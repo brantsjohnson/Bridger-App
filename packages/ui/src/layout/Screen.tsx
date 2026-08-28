@@ -198,9 +198,11 @@ export function Screen({
           Discover — Discover simply gets the boldest version of it. Only
           'plain' screens (things drawn edge to edge, like the story player)
           skip it, because a grid behind a photo just makes it look dirty.
-          Intro gates skip it too: they stay solid black.
+          Intro gates (Events first look, Discover first look) keep the black
+          canvas and still get the grid so the first look matches the rest of
+          the app.
         */}
-        {tone === 'plain' || tone === 'intro' ? null : (
+        {tone === 'plain' ? null : (
           <SynthGrid
             strength={tone === 'synth' ? 'bold' : 'normal'}
             color={gridColor}

@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Magic Patterns twin of the Events marketing gate: headline, three scrolling
-// idea rows that bleed off the edges, Explore Events CTA. Chips are decoration
-// only.
+// Magic Patterns twin of the Events marketing gate: headline at the top,
+// three scrolling idea rows centered in the middle, Explore Events CTA at
+// the bottom. Chips are decoration only.
 // ============================================
 import { ButtonPrimary, PixelHeading, cn } from '../../../../packages/ui';
 import { EventIdeaChip, type EventIdea } from './EventIdeaChip';
@@ -70,26 +70,23 @@ export function EventsGate({ onExplore }: { onExplore: () => void }) {
   const rowC = IDEAS.filter((_, i) => i % 3 === 2);
 
   return (
-    <div className="space-y-5 pb-8 pt-2">
+    <div className="flex min-h-[calc(100vh-12rem)] flex-col pt-2">
       <PixelHeading size="lg" className="leading-tight text-white">
         Create places where memories happen.
       </PixelHeading>
-      <p className="text-[14px] font-semibold leading-relaxed text-white/80">
+      <p className="mt-5 text-[14px] font-semibold leading-relaxed text-white/80">
         Plans, dinners, clubs, nights out. Start something people can return to.
       </p>
-      {/* Full-bleed wall: cancel screen body pad so chips leave at the edges */}
-      <div className="-mx-5 space-y-2.5">
+      {/* Full-bleed wall centered in leftover space; chips leave at the edges */}
+      <div className="-mx-5 flex min-h-[10rem] flex-1 flex-col justify-center space-y-2.5">
         <MarqueeRow items={rowA} duration="34s" />
         <MarqueeRow items={rowB} reverse duration="40s" />
         <MarqueeRow items={rowC} duration="36s" />
       </div>
-      <div className="space-y-2.5">
+      <div className="pb-2">
         <ButtonPrimary full size="lg" onClick={onExplore}>
           Explore Events
         </ButtonPrimary>
-        <p className="text-center text-[12px] font-semibold leading-snug text-white/60">
-          Even two people counts. Or use Touch Grass when you are free tonight.
-        </p>
       </div>
       <style>{`
         @keyframes marquee {

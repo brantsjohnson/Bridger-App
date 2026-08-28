@@ -3,8 +3,8 @@
 // The Spotify-artist header: full-bleed photo with the back button, pixel
 // name, and pin+city sitting ON TOP of the picture (name/city at the bottom
 // like "Verified Artist"). Below the photo: story tile · compact View as /
-// tier pill · search. Own profiles also get Edit; friends can pass a Message
-// control for the top-right of the photo.
+// tier pill · search. Own profiles also get Edit and a gear for Settings;
+// friends can pass a Message control for the top-right of the photo.
 // ============================================
 import React, { useState } from 'react';
 import {
@@ -23,7 +23,8 @@ import {
   MapPinIcon,
   PencilIcon,
   PlayIcon,
-  SearchIcon
+  SearchIcon,
+  SettingsIcon
 } from 'lucide-react-native';
 import type { Person, Tier } from '@bridger/shared';
 import { PROFILE, TIER_LABEL, trackClick, trackProduct } from '@bridger/shared';
@@ -73,6 +74,7 @@ export function ProfileHeaderBlock({
   hasRecap = false,
   onBack,
   onToggleEdit,
+  onOpenSettings,
   onViewAs,
   onRetier,
   onPlayRecap,
@@ -90,6 +92,8 @@ export function ProfileHeaderBlock({
   hasRecap?: boolean;
   onBack?: () => void;
   onToggleEdit?: () => void;
+  /** Own profile: open Settings (gear next to Edit). */
+  onOpenSettings?: () => void;
   onViewAs?: (tier: Tier) => void;
   /** Friend: confirmed tier change (fires friend_retiered). */
   onRetier?: (tier: Tier) => void;
@@ -243,6 +247,20 @@ export function ProfileHeaderBlock({
                 >
                   {editing ? 'Done' : 'Edit'}
                 </Text>
+              </Pressable>
+            ) : null}
+            {/* ACCESSIBILITY: gear-only Settings control (own profile). */}
+            {own && onOpenSettings ? (
+              <Pressable
+                onPress={withAnalyticsPress(PROFILE.header.settings_gear, () =>
+                  onOpenSettings()
+                )}
+                accessibilityRole="button"
+                accessibilityLabel="Settings"
+                hitSlop={4}
+                className="h-10 w-10 items-center justify-center rounded-full bg-black/45 active:opacity-80"
+              >
+                <SettingsIcon size={18} color={ON_PHOTO} strokeWidth={2.4} />
               </Pressable>
             ) : null}
             {heroTrailing}

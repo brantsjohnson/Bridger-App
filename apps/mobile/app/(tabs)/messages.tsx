@@ -1,19 +1,22 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Messages tab — Bridger's capped inbox (5 texts per person per day).
-// Deliberately small: find a friend, open a thread, set up your contact card.
-// Conversation rows use organic accent tiles (Magic Patterns blobs). Data
-// comes from useMessages so demo fixtures and the live API share this screen.
+// Deliberately small: find a friend, open a thread, expand your contact card
+// dropdown to edit fields. Conversation rows use organic accent tiles
+// (Magic Patterns blobs). Data comes from useMessages so demo fixtures and
+// the live API share this screen.
 // SECURITY: message bodies are end-to-end encrypted at rest — staff cannot read them.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRightIcon, IdCardIcon, SquarePenIcon } from 'lucide-react-native';
+import { ChevronDownIcon, IdCardIcon, SquarePenIcon } from 'lucide-react-native';
 import {
   DAILY_CAP,
+  dismissSurface,
   MESSAGES,
   openSurface,
+  trackClick,
   TIER_LABEL,
   type Tier
 } from '@bridger/shared';
@@ -35,6 +38,7 @@ import {
   type MessageCardState
 } from '@bridger/ui';
 import type { ThreadRow } from '../../data/messages';
+import { ContactCardPanel } from '../../components/messages/ContactCardPanel';
 import { NewMessageSheet } from '../../components/messages/NewMessageSheet';
 import { startThreadWith } from '../../data/messages';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
@@ -57,10 +61,23 @@ export default function MessagesScreen() {
   const c = useThemeColors();
   const { threads, query, setQuery, empty } = useMessages();
   const [composing, setComposing] = useState(false);
+  // Dropdown for editing your card on this list (share lives on each thread).
+  const [cardOpen, setCardOpen] = useState(false);
 
   useEffect(() => {
     openSurface('messages');
   }, []);
+
+  const toggleContactCard = () => {
+    trackClick(MESSAGES.conversation.contact_card_row, { method: 'dropdown' });
+    if (cardOpen) {
+      dismissSurface('contact_card');
+      setCardOpen(false);
+      return;
+    }
+    openSurface('contact_card', 'messages');
+    setCardOpen(true);
+  };
 
   const openThread = async (personId: string) => {
     const id = await startThreadWith(personId);
@@ -92,23 +109,36 @@ export default function MessagesScreen() {
       />
 
       <ScreenBody>
-        <Pressable
-          onPress={withAnalyticsPress(MESSAGES.conversation.contact_card_row, () =>
-            router.push('/messages/contact-card')
+        <View
+          className={cn(
+            'mb-3 overflow-hidden rounded-2xl border border-ink-line bg-surface',
+            cardOpen && 'border-purple/30'
           )}
-          accessibilityRole="button"
-          accessibilityLabel="Your contact card"
-          className="mb-3 min-h-[44px] w-full flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-4 py-3 active:bg-[#F1ECFF]"
         >
-          <IdCardIcon size={20} color="#6B2FEA" strokeWidth={2.4} />
-          <Text
-            numberOfLines={1}
-            className="min-w-0 flex-1 font-sans-b text-[14px] text-ink"
+          <Pressable
+            onPress={toggleContactCard}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: cardOpen }}
+            accessibilityLabel="Your contact card"
+            className="min-h-[44px] w-full flex-row items-center gap-3 px-4 py-3 active:bg-[#F1ECFF]"
           >
-            Your contact card
-          </Text>
-          <ChevronRightIcon size={16} color={c.inkMute} strokeWidth={2.6} />
-        </Pressable>
+            <IdCardIcon size={20} color="#6B2FEA" strokeWidth={2.4} />
+            <Text
+              numberOfLines={1}
+              className="min-w-0 flex-1 font-sans-b text-[14px] text-ink"
+            >
+              Your contact card
+            </Text>
+            <View style={{ transform: [{ rotate: cardOpen ? '180deg' : '0deg' }] }}>
+              <ChevronDownIcon size={16} color={c.inkMute} strokeWidth={2.6} />
+            </View>
+          </Pressable>
+          {cardOpen ? (
+            <View className="px-3 pb-3">
+              <ContactCardPanel />
+            </View>
+          ) : null}
+        </View>
 
         <SearchField
           value={query}

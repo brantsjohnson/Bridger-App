@@ -5,6 +5,9 @@
 // 2) vector starfield (exact stars from the HTML design)
 // 3) globe.gif centered on top
 // Plus the friends-of-friends line in the open space under the globe.
+// Page title + profile live in ScreenHeader on the Discover tab (not here).
+// The starry art runs full-bleed under that header so chrome sits on the
+// stars (no solid black bar). Globe / copy / CTA stay composed below it.
 // Analytics: body is a dead-click region; Get started uses DISCOVER.gate.get_started.
 // ============================================
 import React, { useEffect, useRef } from 'react';
@@ -15,7 +18,6 @@ import {
   AnalyticsRegion,
   ButtonPrimary,
   NATIVE_DRIVER,
-  PixelHeading,
   useReduceMotion
 } from '@bridger/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,23 +26,48 @@ import { StarField } from './StarField';
 // THIS SECTION DOES: load the globe piece you split out of the design
 const GLOBE = require('../../assets/images/discover-globe.gif');
 
+// Match ScreenHeader spacing so we can tuck the art under it and keep content clear.
+const HEADER_TOP_PAD = 16;
+const HEADER_BOTTOM_PAD = 8;
+const GAP_BELOW_HEADER = 10;
+const HEADER_ROW = 44;
+
 export function DiscoverGate({ onStart }: { onStart: () => void }) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
+  // THIS SECTION DOES: measure the shared header so art can run under it while
+  // globe / copy / CTA stay composed in the open canvas below the chrome.
+  const headerBlock =
+    insets.top + HEADER_TOP_PAD + HEADER_ROW + HEADER_BOTTOM_PAD + GAP_BELOW_HEADER;
+  // Full window so stars reach the status bar; negative margin pulls under header.
+  const height = Math.max(windowHeight, 480);
+  const contentHeight = Math.max(windowHeight - headerBlock, 480);
   // Match the HTML: globe is min(70vw, 300)
   const globeSize = Math.min(width * 0.7, 300);
 
-  // THIS SECTION DOES: work out where the globe sits so the headline can hug its
-  // top edge no matter the screen size (anchored to the globe, not the screen).
-  const globeCenterY = height * 0.46;
+  // THIS SECTION DOES: place the globe in the area under the header (same 46%
+  // feel as before). The arched title sits higher and larger, still clear of
+  // the profile / Discover / messages chrome.
+  const globeCenterY = headerBlock + contentHeight * 0.46;
   const globeTop = globeCenterY - globeSize / 2;
-  const titleWidth = Math.min(width * 0.88, 400);
+  const titleWidth = Math.min(width * 0.98, 480);
   const titleHeight = titleWidth * 0.4;
-  const titleTop = globeTop - titleHeight * 0.72;
+  // Pull the arc up toward the top; never slide under the shared header.
+  const titleTop = Math.max(headerBlock + 2, globeTop - titleHeight * 1.15);
 
   return (
-    <View className="relative flex-1 overflow-hidden bg-black">
+    <View
+      className="relative overflow-hidden bg-black"
+      // Under the transparent ScreenHeader (zIndex 20); stars show through.
+      style={{
+        width: '100%',
+        height,
+        minHeight: height,
+        marginTop: -headerBlock,
+        zIndex: 0
+      }}
+    >
       {/* --- LAYER 1: retro base (tunnel + rings) --- */}
       <TunnelSpokes />
       <FlyingRings width={width} height={height} reduceMotion={reduceMotion} />
@@ -54,7 +81,7 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
         <StarField />
       </View>
 
-      {/* --- LAYER 3: globe.gif, centered like the HTML (top: 46%) --- */}
+      {/* --- LAYER 3: globe.gif, centered in the open space under the header --- */}
       <Image
         source={GLOBE}
         accessible
@@ -63,7 +90,7 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
         style={{
           position: 'absolute',
           left: '50%',
-          top: '46%',
+          top: globeCenterY,
           width: globeSize,
           height: globeSize,
           marginLeft: -globeSize / 2,
@@ -71,22 +98,6 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
           zIndex: 3
         }}
       />
-
-      {/* --- PAGE TITLE: same pixel "Discover" header as the main Discover tab --- */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: insets.top + 8,
-          left: 20,
-          right: 20,
-          zIndex: 7
-        }}
-      >
-        <PixelHeading size="lg" className="text-white">
-          Discover
-        </PixelHeading>
-      </View>
 
       {/* --- HEADLINE: arched pixel text, anchored just above the globe --- */}
       <View
@@ -111,14 +122,14 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
           position: 'absolute',
           left: 28,
           right: 28,
-          top: '46%',
-          marginTop: globeSize / 2 + 16,
+          top: globeCenterY + globeSize / 2 + 16,
           zIndex: 5
         }}
       >
         <Text className="text-center font-sans-sb text-[15px] leading-snug text-white">
-          Let Bridger suggest friends of friends, not strangers, for you to meet based on what you
-          have in common.
+          Find the friends you need.
+          {'\n\n'}
+          The more people you add, the better we can grow your friend group.
         </Text>
       </AnalyticsRegion>
 
@@ -128,7 +139,7 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
           position: 'absolute',
           left: 24,
           right: 24,
-          bottom: Math.max(height * 0.16, 128),
+          bottom: Math.max(contentHeight * 0.16, 128),
           zIndex: 6
         }}
       >
@@ -162,13 +173,13 @@ function ArchedTitle({ width }: { width: number }) {
         <Path id="arcTop" d="M 20 150 Q 200 8 380 150" fill="none" />
         <Path id="arcBot" d="M 42 172 Q 200 58 358 172" fill="none" />
       </Defs>
-      {/* Same pixel face as the Discover tab title (FeloniaPixel) */}
-      <SvgText fill="#FFFFFF" fontFamily="FeloniaPixel" fontSize="26" letterSpacing="0.5">
+      {/* Same pixel face as the Discover tab title (FeloniaPixel); sized up for the gate hero */}
+      <SvgText fill="#FFFFFF" fontFamily="FeloniaPixel" fontSize="34" letterSpacing="0.5">
         <TextPath href="#arcTop" startOffset="50%" textAnchor="middle">
           Making Friends As
         </TextPath>
       </SvgText>
-      <SvgText fill="#FFFFFF" fontFamily="FeloniaPixel" fontSize="26" letterSpacing="0.5">
+      <SvgText fill="#FFFFFF" fontFamily="FeloniaPixel" fontSize="34" letterSpacing="0.5">
         <TextPath href="#arcBot" startOffset="50%" textAnchor="middle">
           An Adult Is Hard
         </TextPath>

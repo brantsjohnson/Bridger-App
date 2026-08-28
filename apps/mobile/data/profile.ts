@@ -31,6 +31,7 @@ import {
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getMembership } from './coop';
 import { PEOPLE } from './fixtures/catalog';
 import {
@@ -145,8 +146,10 @@ let demoObsession: ObsessionSquare[] = CURRENT_OBSESSION.map((o) => ({
   order: o.order,
   visibleToTier: o.tier
 }));
-/** One-time profile intro seen (demo session). */
+/** One-time profile intro seen (demo session + device). */
 let demoProfileIntroSeen = false;
+/** AsyncStorage key so demo (and a live fallback) survive app reloads. */
+const PROFILE_INTRO_SEEN_KEY = 'bridger.profile.intro_seen';
 /** Co-op Greatest hits slots (≤3). Demo starts with one after About me. */
 let demoGreatestHits: PhotoBlock[] = [
   {
@@ -554,20 +557,39 @@ export async function listFavoriteModules(own: boolean): Promise<FavoriteModule[
 }
 
 export async function getProfileIntroSeen(): Promise<boolean> {
-  if (isDemoMode()) return demoProfileIntroSeen;
+  // THIS SECTION DOES: check if they already tapped Hell yeah on the intro.
+  if (isDemoMode()) {
+    if (demoProfileIntroSeen) return true;
+    try {
+      const v = await AsyncStorage.getItem(PROFILE_INTRO_SEEN_KEY);
+      demoProfileIntroSeen = v === '1';
+      return demoProfileIntroSeen;
+    } catch {
+      return false;
+    }
+  }
   try {
     const s = await apiFetch<{ profileIntroSeen?: boolean }>('/me/settings');
     return Boolean(s.profileIntroSeen);
   } catch {
-    return false;
+    // Fallback: local device flag if settings cannot be read yet.
+    try {
+      return (await AsyncStorage.getItem(PROFILE_INTRO_SEEN_KEY)) === '1';
+    } catch {
+      return false;
+    }
   }
 }
 
 export async function setProfileIntroSeen(): Promise<void> {
-  if (isDemoMode()) {
-    demoProfileIntroSeen = true;
-    return;
+  // THIS SECTION DOES: mark the intro done so Profile never shows it again.
+  demoProfileIntroSeen = true;
+  try {
+    await AsyncStorage.setItem(PROFILE_INTRO_SEEN_KEY, '1');
+  } catch {
+    // Device storage failed; live path still tries the server below.
   }
+  if (isDemoMode()) return;
   await apiFetch('/me/settings', {
     method: 'PATCH',
     body: JSON.stringify({ profileIntroSeen: true })
