@@ -104,7 +104,10 @@ export function ProfileHeaderBlock({
   // Tall enough that name/city sit in the lower band like Spotify.
   const heroH = Math.max(Math.round(width * PROFILE_HERO_ASPECT), 320);
   const city = empty ? 'Add your city' : header?.city ?? '';
-  const photo = getProfilePhoto(person.id);
+  // Prefer the live signed URL from the header, then the person's cached URL,
+  // then the demo fixture photo. Emoji fills in when nothing else is there.
+  const liveUri = header?.avatarUrl?.trim() || person.avatarUrl?.trim();
+  const photo = liveUri ? { uri: liveUri } : getProfilePhoto(person.id);
   const hasStory = !!person.story;
   const storySeen = person.story === 'seen';
   const storyCover = getStoryMedia(person.id)[0];

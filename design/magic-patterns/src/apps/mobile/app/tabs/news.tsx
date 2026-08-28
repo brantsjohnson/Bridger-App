@@ -15,7 +15,7 @@ export function NewsScreen() {
             🗞️
           </span>
           <p className="text-center text-[16px] font-bold text-ink">
-            Gen Z & Local updates coming soon
+            Local updates coming soon
           </p>
         </div>
       </ScreenBody>

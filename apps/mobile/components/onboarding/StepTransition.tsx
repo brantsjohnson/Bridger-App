@@ -4,6 +4,9 @@
 // slides in from the right; back slides in from the left. Both fade in. When
 // the phone asks for reduced motion, we skip the animation and just show the
 // next screen.
+//
+// The wrapper fills the real display (100% width). The web root is also told
+// to fill the window, so this no longer collapses into a thin left strip.
 // ============================================
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, View } from 'react-native';
@@ -24,7 +27,6 @@ export function StepTransition({ stepKey, direction, children }: Props) {
   const reduce = useReduceMotion();
   const opacity = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
-
   // THIS SECTION DOES: replay the slide whenever the step or direction changes.
   useEffect(() => {
     if (reduce) {
@@ -52,15 +54,20 @@ export function StepTransition({ stepKey, direction, children }: Props) {
     return () => anim.stop();
   }, [stepKey, direction, reduce, opacity, translateX]);
 
+  // Fill the real display. A leftover pixel width was locking the whole app
+  // to a phone-sized box, with a white gutter (or clipped edges) on web.
+  const shell = {
+    flex: 1,
+    width: '100%' as const,
+    alignSelf: 'stretch' as const
+  };
+
   if (reduce) {
-    return <View className="flex-1">{children}</View>;
+    return <View style={shell}>{children}</View>;
   }
 
   return (
-    <Animated.View
-      className="flex-1"
-      style={{ opacity, transform: [{ translateX }] }}
-    >
+    <Animated.View style={[shell, { opacity, transform: [{ translateX }] }]}>
       {children}
     </Animated.View>
   );

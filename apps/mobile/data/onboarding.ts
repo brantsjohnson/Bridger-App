@@ -15,6 +15,7 @@
 // ============================================
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Tier } from '@bridger/shared';
+import { trackProduct } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import { applyOnboardingNotificationPrefs } from './notification-prefs';
@@ -46,6 +47,13 @@ export function isOnboardingCompleteCached(): boolean {
   return completeCache;
 }
 
+/** Read only the saved device flag while authentication is still loading. */
+export async function hydrateOnboardingComplete(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY);
+  completeCache = v === '1';
+  return completeCache;
+}
+
 /**
  * Has this person finished onboarding? Returns false until welcome-in runs.
  * Demo mode reads the device flag. Live mode asks the server (so the answer
@@ -62,9 +70,7 @@ export async function getOnboardingComplete(): Promise<boolean> {
       // Offline / API down: fall back to the last-known device flag below.
     }
   }
-  const v = await AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY);
-  completeCache = v === '1';
-  return completeCache;
+  return hydrateOnboardingComplete();
 }
 
 /** Mark onboarding done — only welcome-in calls this. */
@@ -95,10 +101,10 @@ export async function saveNotifications(prefIds: string[]): Promise<void> {
     return;
   }
   // Expand coarse chips into per-kind prefs on device so Settings matches.
-  applyOnboardingNotificationPrefs(prefIds);
+  const prefs = applyOnboardingNotificationPrefs(prefIds);
   await apiFetch('/me/notification-prefs', {
     method: 'PATCH',
-    body: JSON.stringify({ prefIds })
+    body: JSON.stringify({ kinds: prefs.kinds, circles: prefs.circles })
   });
 }
 
@@ -146,22 +152,34 @@ export async function savePhoto(input: {
 }
 
 /**
- * Birthday — its own attribute. PRIVACY: visibility is chosen in the review
- * step; the value is never logged as analytics content.
+ * Birthday — About Me row + legacy essential key for privacy review.
+ * PRIVACY: visibility is chosen in the review step; the value is never logged
+ * as analytics content.
  */
 export async function saveBirthday(value: string): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.birthday = value;
     return;
   }
-  // One "essential" fact under the fixed 'birthday' key. replacePrefix clears
-  // any old birthday first so re-answering never leaves two rows.
+  const trimmed = value.trim();
+  if (!trimmed) return;
+  // Canonical About Me field the profile card reads (kind=about).
   await apiFetch('/me/attributes', {
     method: 'POST',
     body: JSON.stringify({
-      replacePrefix: 'birthday',
+      replacePrefix: 'about:about-birthday',
       attributes: [
-        { key: 'birthday', value: { date: value }, layer: 'essential', visibleToTier: 'friend' }
+        {
+          key: 'about:about-birthday',
+          value: {
+            id: 'about-birthday',
+            key: 'Birthday',
+            value: trimmed,
+            tier: 'friend'
+          },
+          layer: 'profile',
+          visibleToTier: 'friend'
+        }
       ]
     })
   });
@@ -213,10 +231,32 @@ export async function saveVisibility(rows: VisibilityRow[]): Promise<void> {
     demoDraftSaved.visibility = rows.map((r) => ({ id: r.id, tier: r.tier }));
     return;
   }
-  // FOLLOW-UP: PATCH /me/attributes/:id { visibleToTier } for each row. Wiring
-  // this needs the basics step to first return the saved attribute ids so each
-  // review row knows which DB fact it controls; today the row id is the answer
-  // id, not the attribute id. The PATCH route itself is ready.
+  // Match privacy-review row ids (attribute keys) to saved rows, then PATCH
+  // each one's visibleToTier. Empty "Not added" rows are skipped.
+  type AttrRow = { id: string; key: string; value?: { favorite?: boolean } };
+  const attrs = await apiFetch<AttrRow[]>('/me/attributes');
+  const byKey = new Map(attrs.map((a) => [a.key, a.id]));
+  // Favorite map pin may live under place:* with favorite:true (no fixed key).
+  const favPlace = attrs.find(
+    (a) => a.key.startsWith('place:') && a.value?.favorite === true
+  );
+  await Promise.all(
+    rows.map(async (r) => {
+      let attrId = byKey.get(r.id);
+      if (
+        !attrId &&
+        r.id === 'about:about-favorite-place' &&
+        favPlace
+      ) {
+        attrId = favPlace.id;
+      }
+      if (!attrId) return;
+      await apiFetch(`/me/attributes/${encodeURIComponent(attrId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ visibleToTier: r.tier })
+      });
+    })
+  );
 }
 
 /**
@@ -235,7 +275,7 @@ export async function saveConnectionStyle(styles: string[]): Promise<void> {
   });
 }
 
-/** 10A · Right now — current job + dream job. Two "essential" facts. */
+/** 10A · Right now — current job + dream job as About Me rows. */
 export async function saveRightNow(input: {
   currentJob: string;
   dreamJob: string;
@@ -244,38 +284,88 @@ export async function saveRightNow(input: {
     demoDraftSaved.rightNow = { ...input };
     return;
   }
-  await apiFetch('/me/attributes', {
-    method: 'POST',
-    body: JSON.stringify({
-      replacePrefix: 'work',
-      attributes: [
-        input.currentJob.trim()
-          ? { key: 'current_job', value: { text: input.currentJob.trim() }, layer: 'essential', visibleToTier: 'friend' }
-          : null,
-        input.dreamJob.trim()
-          ? { key: 'dream_job', value: { text: input.dreamJob.trim() }, layer: 'essential', visibleToTier: 'friend' }
-          : null
-      ].filter(Boolean)
-    })
-  });
+  const attrs: Array<{
+    key: string;
+    value: { id: string; key: string; value: string; tier: Tier };
+    layer: string;
+    visibleToTier: Tier;
+  }> = [];
+  if (input.currentJob.trim()) {
+    attrs.push({
+      key: 'about:about-job',
+      value: {
+        id: 'about-job',
+        key: 'Work',
+        value: input.currentJob.trim(),
+        tier: 'friend'
+      },
+      layer: 'profile',
+      visibleToTier: 'friend'
+    });
+  }
+  if (input.dreamJob.trim()) {
+    attrs.push({
+      key: 'about:about-dream-job',
+      value: {
+        id: 'about-dream-job',
+        key: 'Dream job',
+        value: input.dreamJob.trim(),
+        tier: 'friend'
+      },
+      layer: 'profile',
+      visibleToTier: 'friend'
+    });
+  }
+  // Write each About key with its own replacePrefix so we don't wipe siblings.
+  for (const a of attrs) {
+    await apiFetch('/me/attributes', {
+      method: 'POST',
+      body: JSON.stringify({
+        replacePrefix: a.key,
+        attributes: [a]
+      })
+    });
+  }
 }
 
-/** 10B · Obsession — the song on repeat (typed fallback; connect flows use data/music). */
+/**
+ * 10B · Obsession — typed song becomes the canonical currently_song.
+ * Connected Spotify/Apple picks override this via music_picks + listening overlay.
+ */
 export async function saveObsessionSong(song: string): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.song = song.trim();
     return;
   }
   if (!song.trim()) return;
-  await apiFetch('/me/attributes', {
-    method: 'POST',
-    body: JSON.stringify({
-      replacePrefix: 'current_song',
-      attributes: [
-        { key: 'current_song', value: { text: song.trim() }, layer: 'essential', visibleToTier: 'friend' }
-      ]
-    })
+  const { title, artist } = parseSongText(song.trim());
+  await apiFetch('/me/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ song: { title, artist } })
   });
+}
+
+/** Split "Title - Artist" / "Title by Artist" / bare title into song parts. */
+function parseSongText(raw: string): { title: string; artist: string } {
+  const byMatch = raw.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (byMatch) {
+    return { title: byMatch[1]!.trim(), artist: byMatch[2]!.trim() };
+  }
+  const dash = raw.split(/\s+[–—-]\s+/);
+  if (dash.length >= 2) {
+    return {
+      title: dash[0]!.trim(),
+      artist: dash.slice(1).join(' - ').trim()
+    };
+  }
+  const midDot = raw.split(/\s+[·•]\s+/);
+  if (midDot.length >= 2) {
+    return {
+      title: midDot[0]!.trim(),
+      artist: midDot.slice(1).join(' · ').trim()
+    };
+  }
+  return { title: raw, artist: '' };
 }
 
 /** 10C · Social battery — nights out per week (0..7, 7 means 7+). Own-pacing only. */
@@ -302,7 +392,11 @@ export async function saveColor(hex: string): Promise<void> {
   });
 }
 
-/** 10E · Your places — hometown, current town, favorite place visited. Towns only. */
+/**
+ * 10E · Your places — hometown + current town become About Me rows; favorite
+ * place is geocoded onto the travel map with a FAV star when possible.
+ * PRIVACY: towns / place names only, never a street address.
+ */
 export async function savePlaces(input: {
   hometown: string;
   currentTown: string;
@@ -312,21 +406,117 @@ export async function savePlaces(input: {
     demoDraftSaved.places = { ...input };
     return;
   }
+
+  // THIS SECTION DOES: write Hometown / Lives in as About Me fields.
+  if (input.hometown.trim()) {
+    await apiFetch('/me/attributes', {
+      method: 'POST',
+      body: JSON.stringify({
+        replacePrefix: 'about:about-from',
+        attributes: [
+          {
+            key: 'about:about-from',
+            value: {
+              id: 'about-from',
+              key: 'Hometown',
+              value: input.hometown.trim(),
+              tier: 'acquaintance'
+            },
+            layer: 'profile',
+            visibleToTier: 'acquaintance'
+          }
+        ]
+      })
+    });
+  }
+  if (input.currentTown.trim()) {
+    await apiFetch('/me/attributes', {
+      method: 'POST',
+      body: JSON.stringify({
+        replacePrefix: 'about:about-town',
+        attributes: [
+          {
+            key: 'about:about-town',
+            value: {
+              id: 'about-town',
+              key: 'Lives in',
+              value: input.currentTown.trim(),
+              tier: 'acquaintance'
+            },
+            layer: 'profile',
+            visibleToTier: 'acquaintance'
+          }
+        ]
+      })
+    });
+    // Header city pin uses home_city on settings.
+    await apiFetch('/me/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ homeCity: input.currentTown.trim() })
+    });
+  }
+
+  // THIS SECTION DOES: geocode the favorite trip and pin it on the map as FAV.
+  const fav = input.favoritePlace.trim();
+  if (!fav) return;
+
+  const { searchPlaces } = await import('../lib/geocode');
+  const hits = await searchPlaces(fav);
+  const hit = hits[0];
+  if (
+    hit &&
+    Number.isFinite(hit.lat) &&
+    Number.isFinite(hit.lng) &&
+    hit.countryCode.length === 2
+  ) {
+    const place = {
+      id: `pl-onb-${Date.now()}`,
+      label: hit.label || fav,
+      note: 'Favorite place',
+      lat: hit.lat,
+      lng: hit.lng,
+      countryCode: hit.countryCode,
+      emoji: '⭐',
+      year: String(new Date().getFullYear()),
+      tier: 'friend' as Tier,
+      tags: ['visited' as const],
+      favorite: true
+    };
+    await apiFetch('/me/attributes', {
+      method: 'POST',
+      body: JSON.stringify({
+        attributes: [
+          {
+            key: `place:${place.id}`,
+            value: place,
+            layer: 'profile',
+            visibleToTier: place.tier
+          }
+        ]
+      })
+    });
+    trackProduct('place_favorited', {});
+    return;
+  }
+
+  // Geocode failed: keep a text About row so the answer is not lost.
   await apiFetch('/me/attributes', {
     method: 'POST',
     body: JSON.stringify({
-      replacePrefix: 'place',
+      replacePrefix: 'about:about-favorite-place',
       attributes: [
-        input.hometown.trim()
-          ? { key: 'hometown', value: { city: input.hometown.trim() }, layer: 'essential', visibleToTier: 'friend' }
-          : null,
-        input.currentTown.trim()
-          ? { key: 'current_city', value: { city: input.currentTown.trim() }, layer: 'essential', visibleToTier: 'friend' }
-          : null,
-        input.favoritePlace.trim()
-          ? { key: 'favorite_place', value: { city: input.favoritePlace.trim() }, layer: 'essential', visibleToTier: 'friend' }
-          : null
-      ].filter(Boolean)
+        {
+          key: 'about:about-favorite-place',
+          value: {
+            id: 'about-favorite-place',
+            key: 'Favorite place',
+            value: fav,
+            tier: 'friend'
+          },
+          layer: 'profile',
+          visibleToTier: 'friend'
+        }
+      ]
     })
   });
 }
@@ -389,7 +579,8 @@ export async function saveRecap(input: {
 /**
  * Build the Privacy & Control review rows from the taste answers. Only the six
  * things the spec lists appear: birthday, job, dream job, favorite place, song,
- * weekly recap. Empty answers show "Not added" but still carry an audience.
+ * weekly recap. Row ids match the attribute keys saved above so visibility
+ * PATCH can find them.
  */
 export function buildPrivacyRows(input: {
   birthday: string;
@@ -402,11 +593,36 @@ export function buildPrivacyRows(input: {
 }): VisibilityRow[] {
   const val = (s: string) => (s.trim() ? s.trim() : 'Not added');
   return [
-    { id: 'birthday', label: 'Birthday', value: val(input.birthday), tier: 'friend' as Tier },
-    { id: 'current_job', label: 'Job', value: val(input.currentJob), tier: 'friend' as Tier },
-    { id: 'dream_job', label: 'Dream job', value: val(input.dreamJob), tier: 'friend' as Tier },
-    { id: 'favorite_place', label: 'Place traveled', value: val(input.favoritePlace), tier: 'friend' as Tier },
-    { id: 'current_song', label: 'Song', value: val(input.song), tier: 'friend' as Tier },
+    {
+      id: 'about:about-birthday',
+      label: 'Birthday',
+      value: val(input.birthday),
+      tier: 'friend' as Tier
+    },
+    {
+      id: 'about:about-job',
+      label: 'Job',
+      value: val(input.currentJob),
+      tier: 'friend' as Tier
+    },
+    {
+      id: 'about:about-dream-job',
+      label: 'Dream job',
+      value: val(input.dreamJob),
+      tier: 'friend' as Tier
+    },
+    {
+      id: 'about:about-favorite-place',
+      label: 'Place traveled',
+      value: val(input.favoritePlace),
+      tier: 'friend' as Tier
+    },
+    {
+      id: 'currently_song',
+      label: 'Song',
+      value: val(input.song),
+      tier: 'friend' as Tier
+    },
     {
       id: 'weekly_recap',
       label: 'Weekly recap',

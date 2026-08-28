@@ -1,113 +1,143 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 9 — "You're in." The finish line, and the only place onboarding gets
-// marked complete. Confetti rains and a bloom of little circles pops in (both
-// turned off when the phone asks for reduced motion), then three cards say what
-// actually happens next so "you're in" means something. "Let's go" drops you on
-// Home.
+// Step 9, "You're in." The finish line, and the only place onboarding gets
+// marked complete. A small green tag, the giant blue all-caps "You're in." on
+// the tan onboarding paper, then three white cards saying what actually happens
+// next so "you're in" means something. "Let's go" drops you on Home.
+//
+// This screen has no step bar and no back arrow on purpose: onboarding is over.
+//
+// ACCESSIBILITY: the falling confetti is decorative, hidden from screen readers,
+// and it does not mount at all when the phone asks for reduced motion.
 // ============================================
-import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ONBOARDING } from '@bridger/shared';
-import { AnalyticsRegion, ButtonPrimary, PixelHeading } from '@bridger/ui';
+import { AnalyticsRegion, useReduceMotion } from '@bridger/ui';
+import { OB, OB_BORDER } from './onboarding-theme';
+import { OBBody, OBCTA, OBGridPatch, OBHardShadow, OBHeading } from './onboarding-ui';
 
-const CONFETTI = ['#6B2FEA', '#FF5A1F', '#00A676', '#FFB515', '#FF3E8A', '#1D6FE8', '#5FBF3A'];
+/** Little squares of paper that fall behind the words. Decoration only. */
+const CONFETTI = [OB.blue, OB.pink, OB.amber, OB.green, OB.periwinkle, OB.orange];
 
-const PIECES = Array.from({ length: 34 }, (_, i) => ({
+const PIECES = Array.from({ length: 28 }, (_, i) => ({
   id: i,
   color: CONFETTI[i % CONFETTI.length],
   left: (i * 37) % 100,
   delay: (i % 9) * 90,
   duration: 2400 + (i % 5) * 350,
-  size: 7 + (i % 4) * 3,
-  round: i % 3 === 0
+  size: 7 + (i % 4) * 3
 }));
 
 /** What actually happens next, so "you're in" means something. */
-const NEXT: Array<{ emoji: string; label: string; line: string; color: string }> = [
-  { emoji: '👋', label: 'Add your people', line: 'Bridger is empty until they are here', color: '#6B2FEA' },
-  { emoji: '📷', label: 'Post your first story', line: 'One photo, once a day', color: '#FF3E8A' },
-  { emoji: '🌿', label: 'Say when you are free', line: 'The whole point is seeing them', color: '#00A676' }
+const NEXT: Array<{ label: string; line: string; edge: string }> = [
+  { label: 'Add your people', line: 'Bridger is empty until they are here', edge: OB.pink },
+  { label: 'Post your first story', line: 'One photo, once a day', edge: OB.amber },
+  { label: 'Say when you are free', line: 'The whole point is seeing them', edge: OB.green }
 ];
 
-const BLOOM = ['#6B2FEA', '#FF3E8A', '#00A676', '#1D6FE8', '#FF5A1F'];
-const BLOOM_EMOJI = ['🌻', '🎧', '🌿', '📷', '🚲'];
-
 export function WelcomeInStep({ onDone }: { onDone: () => void }) {
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    void AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', setReduceMotion);
-    return () => sub?.remove?.();
-  }, []);
-
+  const reduceMotion = useReduceMotion();
+  const insets = useSafeAreaInsets();
   return (
-    <View className="relative h-full flex-1 overflow-hidden bg-amber">
+    // Fill the real display so the finish screen stays the same size as every
+    // other step, and still grows or shrinks when the window does.
+    <View
+      style={{
+        flex: 1,
+        width: '100%',
+        alignSelf: 'stretch',
+        height: '100%',
+        backgroundColor: OB.canvas,
+        overflow: 'hidden'
+      }}
+    >
+      {/* THE PAPER: the same faint graph-paper corners as every other step. */}
+      <OBGridPatch size={270} right={-70} top={-40} />
+      <OBGridPatch size={300} left={-30} bottom={-40} opacity={0.75} />
       {!reduceMotion ? <Confetti /> : null}
 
-      <View className="relative flex-1 justify-between px-6 pb-8 pt-14">
-        <View>
-          <View className="self-start rounded-full bg-ink px-3 py-1.5">
-            <Text className="font-sans-b text-[12px] text-canvas">That is everything we need</Text>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'space-between',
+          paddingHorizontal: 24,
+          paddingTop: insets.top + 40,
+          paddingBottom: Math.max(insets.bottom, 16) + 16
+        }}
+      >
+        {/* THE MOMENT: the green tag, the giant line, and the promise. */}
+        <View style={{ gap: 14 }}>
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              backgroundColor: OB.green,
+              paddingHorizontal: 11,
+              paddingVertical: 7
+            }}
+          >
+            <Text className="font-sans-sb text-[12px]" style={{ letterSpacing: 0.6, color: OB.onColor }}>
+              That is everything we need
+            </Text>
           </View>
-          <PixelHeading size="lg" className="mt-3 text-[40px] leading-[1.05] text-onaccent">
+          <OBHeading style={{ fontSize: 72, lineHeight: 64, letterSpacing: -2.6 }}>
             You're in.
-          </PixelHeading>
-          <Text className="mt-2 max-w-[280px] font-sans-sb text-[15px] leading-snug text-onaccent/85">
-            No feed to scroll. Just the people you actually know.
-          </Text>
+          </OBHeading>
+          <OBBody>No feed to scroll. Just the people you actually know.</OBBody>
         </View>
 
-        <Bloom reduceMotion={reduceMotion} />
-
+        {/* WHAT HAPPENS NEXT: three white cards, each with a colored edge. */}
         <AnalyticsRegion analyticsId={ONBOARDING.welcome_in.next_cards} interactive={false}>
-          <View className="gap-2.5">
+          <View style={{ gap: 12 }}>
             {NEXT.map((n) => (
-              <View
-                key={n.label}
-                className="flex-row items-center gap-3 rounded-card border-2 border-ink bg-canvas px-3.5 py-2.5"
-              >
+              <OBHardShadow key={n.label} color={OB.periwinkle} offset={4}>
                 <View
-                  accessible={false}
-                  className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: n.color }}
+                  style={{
+                    flexDirection: 'row',
+                    backgroundColor: OB.paper,
+                    borderWidth: OB_BORDER,
+                    borderColor: 'rgba(39,64,135,0.55)'
+                  }}
                 >
-                  <Text className="text-[18px]">{n.emoji}</Text>
+                  <View style={{ width: 5, backgroundColor: n.edge }} accessible={false} />
+                  <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 16, paddingVertical: 14 }}>
+                    <Text className="font-sans-b text-[17px]" style={{ color: OB.blue }}>
+                      {n.label}
+                    </Text>
+                    <Text className="text-[13px]" style={{ marginTop: 3, color: 'rgba(0,0,0,0.6)' }}>
+                      {n.line}
+                    </Text>
+                  </View>
                 </View>
-                <View className="min-w-0 flex-1">
-                  <Text numberOfLines={1} className="font-sans-b text-[14px] text-ink">
-                    {n.label}
-                  </Text>
-                  <Text numberOfLines={1} className="font-sans-sb text-[12px] text-ink-mute">
-                    {n.line}
-                  </Text>
-                </View>
-              </View>
+              </OBHardShadow>
             ))}
           </View>
         </AnalyticsRegion>
 
-        <View className="gap-2.5 pt-2">
-          <ButtonPrimary
-            full
+        {/* THE WAY IN: the one pink button that finishes onboarding. */}
+        <View style={{ paddingTop: 8 }}>
+          <OBCTA
+            label="Let's go"
             analyticsId={ONBOARDING.welcome_in.lets_go}
             onPress={onDone}
             accessibilityLabel="Let's go"
-          >
-            Let's go
-          </ButtonPrimary>
+          />
         </View>
       </View>
     </View>
   );
 }
 
-/** The falling confetti — decorative, only mounts when motion is allowed. */
+/** The falling confetti, decorative, only mounts when motion is allowed. */
 function Confetti() {
   const { height } = useWindowDimensions();
   return (
-    <View pointerEvents="none" className="absolute inset-0 overflow-hidden" accessible={false}>
+    <View
+      pointerEvents="none"
+      accessible={false}
+      style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, overflow: 'hidden' }}
+    >
       {PIECES.map((p) => (
         <ConfettiPiece key={p.id} piece={p} travel={height + 60} />
       ))}
@@ -115,13 +145,7 @@ function Confetti() {
   );
 }
 
-function ConfettiPiece({
-  piece,
-  travel
-}: {
-  piece: (typeof PIECES)[number];
-  travel: number;
-}) {
+function ConfettiPiece({ piece, travel }: { piece: (typeof PIECES)[number]; travel: number }) {
   const y = useRef(new Animated.Value(-40)).current;
 
   useEffect(() => {
@@ -149,60 +173,10 @@ function ConfettiPiece({
         top: 0,
         left: `${piece.left}%`,
         width: piece.size,
-        height: piece.size * (piece.round ? 1 : 1.8),
+        height: piece.size * 1.8,
         backgroundColor: piece.color,
-        borderRadius: piece.round ? 999 : 2,
         transform: [{ translateY: y }]
       }}
     />
-  );
-}
-
-/** The mark: a bloom of circles around the bridge glyph. */
-function Bloom({ reduceMotion }: { reduceMotion: boolean }) {
-  const scale = useRef(new Animated.Value(reduceMotion ? 1 : 0.6)).current;
-
-  useEffect(() => {
-    if (reduceMotion) {
-      scale.setValue(1);
-      return;
-    }
-    const anim = Animated.spring(scale, {
-      toValue: 1,
-      stiffness: 220,
-      damping: 16,
-      mass: 1,
-      useNativeDriver: true
-    });
-    anim.start();
-    return () => anim.stop();
-  }, [reduceMotion, scale]);
-
-  return (
-    <Animated.View
-      accessible={false}
-      className="mx-auto h-44 w-44 items-center justify-center"
-      style={{ transform: [{ scale }] }}
-    >
-      {BLOOM.map((c, i) => {
-        const angle = (i / BLOOM.length) * Math.PI * 2 - Math.PI / 2;
-        return (
-          <View
-            key={c}
-            className="absolute h-14 w-14 items-center justify-center rounded-full border-2 border-ink"
-            style={{
-              backgroundColor: c,
-              left: 88 + Math.cos(angle) * 56 - 28,
-              top: 88 + Math.sin(angle) * 56 - 28
-            }}
-          >
-            <Text className="text-[22px]">{BLOOM_EMOJI[i]}</Text>
-          </View>
-        );
-      })}
-      <View className="h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-ink bg-canvas">
-        <Text className="text-[30px]">🌉</Text>
-      </View>
-    </Animated.View>
   );
 }

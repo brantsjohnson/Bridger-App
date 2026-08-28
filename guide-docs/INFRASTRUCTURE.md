@@ -146,8 +146,17 @@ Repo pieces live under `apps/mobile`: `eas.json` (Android submit goes to the **i
 1. Create a [Google Play Developer](https://play.google.com/apps/publish/signup/) account ($25 one-time). Use the company Google account if we have one; a **personal** account created after Nov 2023 cannot go public until a closed test with **12 opted-in testers for 14 continuous days**. An **organization** account skips that tester gate. Identity verification is required either way.
 2. In [Play Console](https://play.google.com/console) → **Create app**. Name: Bridger. Default language: English (US). App or game: App. Free. Confirm the declarations.
 3. Package name must stay **`social.bridger.app`** (already in `app.config.js`). Do not change it after the first upload. Google registers it to this developer account.
-4. Complete the dashboard checklist far enough to unlock testing: store listing (short + full description, 512×512 icon, feature graphic 1024×500, phone screenshots), **Privacy policy URL**, Data safety form, Content rating questionnaire, Target audience, News app declaration (we have a News tab: answer honestly), Ads declaration (**no ads**).
+4. Complete the dashboard checklist far enough to unlock testing: store listing (short + full description, 512×512 icon, feature graphic 1024×500, phone screenshots), **Privacy policy URL**, Data safety form, Content rating questionnaire, Target audience, News app declaration (we have a News tab: answer honestly), Ads declaration (**no ads**). Soft-join era answers: **purchase digital goods = No** (co-op billing not live yet); **precise location shared with other users = No** (Local map not shipped).
 5. Create a Google Cloud **service account** and invite it into Play Console so EAS can upload for you. Follow Expo's [creating a Google Service Account key](https://expo.fyi/creating-google-service-account) guide. Upload the JSON to Expo (project → Credentials → Android → Google Service Account Key). **Never commit that JSON.**
+
+**TODO when real co-op payments ship (Play Billing / IAP):** update Play Console in the same change. Do not leave the soft-stub answers.
+- App content → **Does the app allow users to purchase digital goods?** → flip to **Yes**
+- Set up the co-op product / subscription in Play Console Monetize (and mirror on Apple)
+- Data safety: declare purchase / financial info as collected if applicable
+- Privacy policy URL page + `guide-docs/docs/PRIVACY.md` / `TERMS.md`: real payment processor, refunds, cancel-at-period-end
+- Ads stays **No** unless that changes
+
+**TODO when Local map / friend location sharing ships:** App content → **share current and precise physical location with other users?** → update honestly (likely **Yes** if friends see live/precise position; keep **No** if only coarse opt-in towns). Update Data safety + privacy policy the same day.
 6. First Android build (EAS creates the upload keystore; keep it on Expo, not in git):  
    `pnpm --filter @bridger/mobile eas:build:android:preview`  
    or `cd apps/mobile && npx eas-cli build -p android --profile preview`.

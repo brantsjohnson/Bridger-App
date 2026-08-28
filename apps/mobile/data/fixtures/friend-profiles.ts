@@ -30,6 +30,8 @@ export type FriendProfile = {
   /** Co-op Greatest hits when the subject has slots (demo stubs). */
   greatestHits?: PhotoBlock[];
   header: {
+    /** Live profiles can provide a signed avatar address for this friend. */
+    avatarUrl?: string | null;
     city: string;
     bio: string;
     song: { title: string; artist: string };

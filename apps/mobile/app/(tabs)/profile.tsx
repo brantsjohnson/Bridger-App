@@ -16,7 +16,6 @@ import {
   SegmentedTabs,
   withAnalyticsPress
 } from '@bridger/ui';
-import { useAuth } from '../../providers/auth-provider';
 import { useProfile } from '../../hooks/useProfile';
 import { useBucketList } from '../../hooks/useBucketList';
 import { useStoryArchive } from '../../hooks/useStoryArchive';
@@ -58,7 +57,6 @@ function profileTabAnalyticsId(tab: string): string | undefined {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { signOut } = useAuth();
   const profile = useProfile();
   const bucket = useBucketList();
   const archive = useStoryArchive();
@@ -285,7 +283,6 @@ export default function ProfileScreen() {
               blocked={profile.blocked}
               storage={archive.storage}
               onUnblock={(id) => void profile.onUnblock(id)}
-              onSignOut={() => signOut()}
             />
           </View>
         ) : null}

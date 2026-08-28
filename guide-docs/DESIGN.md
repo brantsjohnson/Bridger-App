@@ -30,7 +30,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 ## Typography
 
-- **Section headers** (Home, Friends, Discover, Events, This week…) use a **pixel / retro-computer font** (e.g. Pixelify Sans). This is the single loudest retro cue — it carries the personality so the rest can stay clean.
+- **Section headers** (Home, Friends, Discover, Events, This week…) use a **pixel / retro-computer font** (e.g. FeloniaPixel). This is the single loudest retro cue — it carries the personality so the rest can stay clean. Onboarding question headings use the same pixel font. **Big Shoulders Display is reserved for the four onboarding reality-check ("quick recap") screens only.**
 - **Body, labels, descriptions:** clean, highly readable sans-serif. Never pixel — pixel body copy is a readability sin.
 - **Buttons/UI labels:** simple sans, sentence case.
 - Two weights, generous line-height, sentence case everywhere.
@@ -41,7 +41,8 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 - **Primary CTAs** (Continue, Get started, Join, Send, Confirm) get the **90s-metallic** treatment: light silver-gray surface, a subtle **bevel via border** (lighter top/left, darker bottom/right — the classic old-computer frame), black text, modern rounded proportions. Decorative enough to feel special, not clunky.
 - **Everything else** stays flat: pill or rounded-rect, hairline border or solid fill, no bevel.
-- Reserve the metallic look for **key progression moments** (onboarding, primary actions) so it stays a treat. Not every button.
+- Reserve the metallic look for **key progression moments** (primary actions) so it stays a treat. Not every button.
+- **Onboarding does not use the metallic CTA.** First run has its own pink button with a solid offset block (see "Onboarding is its own room").
 
 ---
 
@@ -72,6 +73,22 @@ Private measurement quizzes (Your Funny Bone, Your Vibe, The Friend Zone, What G
 - Type box always present and focused; phones advance with Return / →; Continue stays on desktop/web.
 - No `1/2` page chrome. Shared: `apps/mobile/quizzes/discover/_shared/QuizTakeShell.tsx`.
 - Cursor rule: `.cursor/rules/quiz-flow-ui.mdc`.
+
+---
+
+## Onboarding is its own room (the one full exception)
+
+First run does **not** use the app look. It has its own complete visual language, taken from the Magic Patterns "Onboarding Flow" design, and it ends the moment you land on Home. This is deliberate: onboarding is a printed workbook you fill in, the app is the place you live afterward. Nothing below is allowed to leak out of `apps/mobile/components/onboarding/`.
+
+- **Canvas:** same eggshell as the main app (`#FAF8F2`), light only (dark mode does not flip it). Faint graph-paper squares sit in two corners instead of the drifting grid.
+- **Type:** the question is **FeloniaPixel, all caps, tight, in blue** (`#143CAB`), same pixel header font as the rest of the app. Body copy stays the normal clean sans. **Big Shoulders Display is only for the four reality-check screens.**
+- **Shape:** square. Hard 2px navy outlines (`#274087`) on white boxes (`#FCFCFC`). **No border radius**, no soft cards, no pills.
+- **Primary button:** hot pink (`#FF3E8A`), all caps **bold sans** (same `font-sans-b` as the rest of Bridger's buttons), **rounded pill**, with a trailing arrow. No offset shadow block behind it. The metallic CTA does not appear in onboarding. On reality-check screens this keeps the CTA a step apart from the Big Shoulders headlines.
+- **Chosen state:** periwinkle fill (`#AEBCFB`) plus a tick or a moved switch knob, so it never reads by color alone.
+- **Accents:** amber (`#FFB515`) for the small "why we're asking" tag, pink for small all-caps hints, orange (`#FF5A1F`) for the reality-check kicker.
+- **The four reality-check screens** invert it: flat blue page, tan type, a faint white grid, Big Shoulders Display for headlines and big numbers, and the pink button's offset block turns periwinkle.
+- **Layout is fixed on every step:** the page is pinned to the display height, the body takes the leftover room, and the button is glued to the bottom, so Continue never moves between steps. It rises above the keyboard.
+- Paint lives in `onboarding-theme.ts`; the parts live in `onboarding-ui.tsx`; the frame is `OnboardingStep.tsx`. Build onboarding UI from those, never from `Card` / `ButtonPrimary` / `PixelHeading`.
 
 ---
 
@@ -175,3 +192,6 @@ radius: cards 12–24px · chips/buttons = pill
 - [ ] Pages arrive with `Reveal`; unfinished things `Wiggle`; celebrations get `Sparkles`; live times use `useCountdown`, not a rounded label.
 - [ ] Transitions are smooth and content breathes in; all motion is transform/opacity only and respects `prefers-reduced-motion`.
 - [ ] Retro cues stay ~20% of the surface; functional screens remain plain.
+- [ ] Onboarding sits on the same eggshell canvas as the app, with square navy-outlined white boxes and a pink Continue pill, and those boxes do not leak into the main app chrome.
+- [ ] Onboarding paint comes from `onboarding-theme.ts` and its parts from `onboarding-ui.tsx`; no onboarding screen builds its own heading, progress bar, background or Continue button.
+- [ ] Continue sits at the same height on every onboarding step, and rises above the keyboard.

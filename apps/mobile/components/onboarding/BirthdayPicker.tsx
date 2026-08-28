@@ -1,14 +1,21 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// A birthday picker that drills down from the top: YEAR (grouped by decade,
-// 5 per row) → MONTH (3 per row) → DAY (7 per row, like a calendar week).
-// Same screen the whole time — the tiles just swap to the next level. After
-// the day is picked, we ask "Is this right?" so they can confirm before we
-// save. A breadcrumb at the top lets them jump back up to change a piece.
+// The birthday picker, painted in the onboarding look (tan paper, white boxes
+// with a hard navy outline, hot pink accents). It asks for one piece at a time,
+// always anchored under the breadcrumb at the top: YEAR (5 square cells per
+// row, grouped under sticky pink decade labels) then MONTH (a list of white
+// rows) then DAY (7 square cells per row, like a calendar week). It is the same
+// screen the whole time, the cells just swap to the next piece. A small caps
+// breadcrumb at the top (Year then Month then Day) shows where you are and lets
+// you tap back up to change a piece. Once the day is picked we show a white
+// "Is this right?" panel with the full date, so nothing is saved until they say
+// yes.
 // ============================================
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { ButtonPrimary, ButtonSecondary, cn, withAnalyticsPress } from '@bridger/ui';
+import { withAnalyticsPress } from '@bridger/ui';
+import { OB, OB_BORDER } from './onboarding-theme';
+import { OBHardShadow, OBKicker } from './onboarding-ui';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -45,7 +52,7 @@ function daysInMonth(year: number, monthIndex: number): number {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-/** Group years into decades (2020s, 2010s…) with newest decades first. */
+/** Group years into decades (2020s, 2010s and so on) with newest decades first. */
 function groupByDecade(years: number[]): DecadeGroup[] {
   const map = new Map<number, number[]>();
   for (const y of years) {
@@ -73,7 +80,10 @@ export function BirthdayPicker({
   onChange: (value: string) => void;
   /** called only after they confirm "Is this right?" */
   onComplete?: () => void;
-  /** Pastel onboarding wash: breadcrumbs and decade labels stay dark for contrast. */
+  /**
+   * Kept so the step still compiles unchanged. Onboarding is one tan room now,
+   * so the picker always uses the onboarding paint box instead of two variants.
+   */
   onColorWash?: boolean;
   analyticsId: string;
 }) {
@@ -86,7 +96,7 @@ export function BirthdayPicker({
       : 'year'
   );
 
-  // Years from this year back 100 years — newest first, then grouped by decade.
+  // Years from this year back 100 years, newest first, then grouped by decade.
   const thisYear = new Date().getFullYear();
   const decades = useMemo(() => {
     const years = Array.from({ length: 101 }, (_, i) => thisYear - i);
@@ -94,7 +104,7 @@ export function BirthdayPicker({
   }, [thisYear]);
 
   const pickYear = (year: number) => {
-    // Changing the year can shrink the month's day count — clamp the day.
+    // Changing the year can shrink the month's day count, so clamp the day.
     setParts((p) => {
       const day =
         p.monthIndex != null && p.day != null
@@ -119,7 +129,7 @@ export function BirthdayPicker({
   const pickDay = (day: number) => {
     const next = { ...parts, day };
     setParts(next);
-    // Don't save yet — show the confirm step first.
+    // Don't save yet, show the confirm step first.
     setStage('confirm');
   };
 
@@ -133,134 +143,128 @@ export function BirthdayPicker({
   const formatted = format(parts);
 
   return (
-    <View className="min-h-0 flex-1 gap-3">
-      {/* Breadcrumb: shows what's chosen and lets you jump back up a level */}
+    <View style={{ flex: 1, minHeight: 0, gap: 16 }}>
+      {/* THE BREADCRUMB: Year then Month then Day in small caps. The piece you
+          are on is bright, the others are faded. Tapping one jumps back to it. */}
       {stage !== 'confirm' ? (
-        <View className="flex-row items-center gap-1.5">
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 9 }}>
           <Crumb
             label={parts.year != null ? String(parts.year) : 'Year'}
             active={stage === 'year'}
             onPress={() => setStage('year')}
-            onColorWash={onColorWash}
           />
-          <Sep onColorWash={onColorWash} />
+          <Sep />
           <Crumb
             label={parts.monthIndex != null ? MONTHS[parts.monthIndex] : 'Month'}
             active={stage === 'month'}
             disabled={parts.year == null}
             onPress={() => parts.year != null && setStage('month')}
-            onColorWash={onColorWash}
           />
-          <Sep onColorWash={onColorWash} />
+          <Sep />
           <Crumb
             label={parts.day != null ? String(parts.day) : 'Day'}
             active={stage === 'day'}
             disabled={parts.monthIndex == null}
             onPress={() => parts.monthIndex != null && setStage('day')}
-            onColorWash={onColorWash}
           />
         </View>
       ) : null}
 
-      {/* --- YEAR: decades, 5 tiles per row — scroll fills the body on onboarding --- */}
+      {/* THE YEAR: square cells, 5 to a row, under a pink decade label that
+          sticks to the top of the list as you scroll. */}
       {stage === 'year' ? (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <View className="gap-4 pb-2">
-            {decades.map((decade) => (
-              <View key={decade.label} className="gap-2">
-                <Text
-                  className={cn(
-                    'font-sans-b text-[11px] tracking-wide',
-                    onColorWash ? 'text-onaccent/70' : 'text-ink-mute'
-                  )}
-                >
-                  {decade.label}
-                </Text>
-                <TileGrid cols={5}>
-                  {decade.years.map((y) => (
-                    <Tile
-                      key={y}
-                      label={String(y)}
-                      selected={parts.year === y}
-                      analyticsId={analyticsId}
-                      onPress={() => pickYear(y)}
-                    />
-                  ))}
-                </TileGrid>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+        <YearList
+          decades={decades}
+          selected={parts.year}
+          analyticsId={analyticsId}
+          onPick={pickYear}
+        />
       ) : null}
 
-      {/* --- MONTH: 3 per row --- */}
+      {/* THE MONTH: a straight list of white rows, one month each. Sits flush
+          under the breadcrumb (not vertically centered) so the top area stays
+          the anchor on every stage. */}
       {stage === 'month' ? (
-        <View className="min-h-0 flex-1 justify-center">
-          <TileGrid cols={3}>
+        <View style={{ gap: 5 }}>
           {MONTHS.map((mo, i) => (
-            <Tile
+            <Cell
               key={mo}
               label={mo}
+              align="left"
               selected={parts.monthIndex === i}
               analyticsId={analyticsId}
               onPress={() => pickMonth(i)}
             />
           ))}
-        </TileGrid>
         </View>
       ) : null}
 
-      {/* --- DAY: 7 per row (week-style) --- */}
+      {/* THE DAY: square cells, 7 to a row so it reads like a calendar week.
+          Anchored under the breadcrumb, same as year and month. */}
       {stage === 'day' && parts.year != null && parts.monthIndex != null ? (
-        <View className="min-h-0 flex-1 justify-center">
-          <TileGrid cols={7}>
+        <CellGrid cols={7}>
           {Array.from({ length: daysInMonth(parts.year, parts.monthIndex) }, (_, i) => i + 1).map(
             (d) => (
-              <Tile
+              <Cell
                 key={d}
                 label={String(d)}
+                // A screen reader hears the whole date, not just a bare number.
+                accessibilityLabel={`${MONTHS[parts.monthIndex as number]} ${d}`}
                 selected={parts.day === d}
                 analyticsId={analyticsId}
                 onPress={() => pickDay(d)}
               />
             )
           )}
-        </TileGrid>
-        </View>
+        </CellGrid>
       ) : null}
 
-      {/* --- CONFIRM: "Is this right?" — only way forward on this step --- */}
+      {/* THE CHECK: the white "Is this right?" panel. This is the only way
+          forward on this step, which is why the screen hides Continue. */}
       {stage === 'confirm' && formatted ? (
-        <View className="min-h-0 flex-1 justify-center">
-          <View className="gap-4 rounded-2xl border border-ink-line bg-surface px-5 py-6">
-          <Text className="text-center font-sans-b text-[13px] text-ink-mute">Is this right?</Text>
-          <Text
-            accessibilityRole="header"
-            className="text-center font-pixel text-[22px] text-ink"
-          >
-            {formatted}
-          </Text>
-          <View className="gap-2.5 pt-1">
-            <ButtonPrimary
-              full
-              size="lg"
-              analyticsId={analyticsId}
-              onPress={confirm}
-              accessibilityLabel={`Yes, ${formatted} is right`}
+        // Anchored at the top, the same place the year, month and day cells
+        // start, so the panel never jumps around when the stage changes.
+        <View>
+          <OBHardShadow color={OB.periwinkle}>
+            <View
+              style={{
+                backgroundColor: OB.paper,
+                borderWidth: OB_BORDER,
+                borderColor: OB.navy,
+                padding: 18,
+                gap: 6
+              }}
             >
-              Yes, that's right
-            </ButtonPrimary>
-            <ButtonSecondary
-              full
-              tone="ghost"
-              analyticsId={analyticsId}
-              onPress={() => setStage('year')}
-              accessibilityLabel="Change birthday"
-            >
-              No, change it
-            </ButtonSecondary>
-          </View>
-          </View>
+              <OBKicker>Is this right?</OBKicker>
+              {/* THE DATE: clean bold sans, not the pixel heading. A date reads
+                  clearer in the body font, and it keeps pixel type for questions. */}
+              <Text
+                accessibilityRole="header"
+                className="font-sans-b text-[28px]"
+                style={{ color: OB.blue, letterSpacing: -0.4, lineHeight: 34 }}
+              >
+                {formatted}
+              </Text>
+              {/* THIS SECTION DOES: the two answers, stacked full width. Side by
+                  side, "No, change it" got squeezed into a three-line sliver. */}
+              <View style={{ gap: 10, marginTop: 12 }}>
+                <PanelButton
+                  label="Yes, that is my birthday"
+                  tone="pink"
+                  analyticsId={analyticsId}
+                  onPress={confirm}
+                  accessibilityLabel={`Yes, ${formatted} is my birthday`}
+                />
+                <PanelButton
+                  label="No, pick again"
+                  tone="quiet"
+                  analyticsId={analyticsId}
+                  onPress={() => setStage('year')}
+                  accessibilityLabel="Change birthday"
+                />
+              </View>
+            </View>
+          </OBHardShadow>
         </View>
       ) : null}
     </View>
@@ -268,30 +272,75 @@ export function BirthdayPicker({
 }
 
 /**
- * A fixed-column wrapping grid. Each child gets an equal slice of the row
- * (years = 5, months = 3, days = 7) with a small gap between tiles.
+ * THE YEAR LIST: every decade becomes two stacked pieces, its pink label and
+ * its grid of years. They are handed to the scroller as one flat list so the
+ * label can stick to the top while you scroll through that decade.
  */
-function TileGrid({ cols, children }: { cols: number; children: React.ReactNode }) {
+function YearList({
+  decades,
+  selected,
+  analyticsId,
+  onPick
+}: {
+  decades: DecadeGroup[];
+  selected?: number;
+  analyticsId: string;
+  onPick: (year: number) => void;
+}) {
+  const rows: React.ReactNode[] = [];
+  const stickyIndices: number[] = [];
+  for (const decade of decades) {
+    stickyIndices.push(rows.length);
+    rows.push(
+      <View key={`label-${decade.label}`} style={{ backgroundColor: OB.canvas, paddingTop: 4, paddingBottom: 8 }}>
+        <Text
+          className="font-sans-b text-[12px]"
+          style={{ letterSpacing: 1.6, textTransform: 'uppercase', color: OB.pink }}
+        >
+          {decade.label}
+        </Text>
+      </View>
+    );
+    rows.push(
+      <View key={`grid-${decade.label}`} style={{ paddingBottom: 14 }}>
+        <CellGrid cols={5}>
+          {decade.years.map((y) => (
+            <Cell
+              key={y}
+              label={String(y)}
+              selected={selected === y}
+              analyticsId={analyticsId}
+              onPress={() => onPick(y)}
+            />
+          ))}
+        </CellGrid>
+      </View>
+    );
+  }
+  return (
+    <ScrollView
+      style={{ flex: 1, minHeight: 0 }}
+      showsVerticalScrollIndicator={false}
+      stickyHeaderIndices={stickyIndices}
+    >
+      {rows}
+    </ScrollView>
+  );
+}
+
+/**
+ * A fixed-column wrapping grid. Each cell gets an equal slice of the row
+ * (years = 5, days = 7) with an even gap between them.
+ */
+function CellGrid({ cols, children }: { cols: number; children: React.ReactNode }) {
   const items = React.Children.toArray(children);
-  // Padding on each cell so the gap between tiles is even without fighting
-  // percentage widths against the parent's gap property.
+  // Padding on each slot so the gap stays even without fighting percentage
+  // widths against the parent's gap property.
   const pad = 4;
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginHorizontal: -pad
-      }}
-    >
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -pad }}>
       {items.map((child, i) => (
-        <View
-          key={i}
-          style={{
-            width: `${100 / cols}%`,
-            padding: pad
-          }}
-        >
+        <View key={i} style={{ width: `${100 / cols}%`, padding: pad }}>
           {child}
         </View>
       ))}
@@ -299,32 +348,90 @@ function TileGrid({ cols, children }: { cols: number; children: React.ReactNode 
   );
 }
 
-/** One tappable rectangle (a year, a month, or a day). */
-function Tile({
+/**
+ * One tappable white box (a year, a month, or a day): flat, square, with a hard
+ * navy outline. It fills periwinkle when it is the piece already chosen, so the
+ * choice never depends on color alone next to the breadcrumb above.
+ */
+function Cell({
   label,
   selected,
   analyticsId,
-  onPress
+  onPress,
+  align = 'center',
+  accessibilityLabel
 }: {
   label: string;
   selected: boolean;
   analyticsId: string;
   onPress: () => void;
+  align?: 'center' | 'left';
+  accessibilityLabel?: string;
 }) {
   return (
     <Pressable
       onPress={withAnalyticsPress(analyticsId, onPress)}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={label}
-      className={cn(
-        'min-h-[44px] w-full items-center justify-center rounded-xl border px-1 py-2.5',
-        selected ? 'border-teal bg-teal' : 'border-ink-line bg-surface active:border-teal/40'
-      )}
+      accessibilityLabel={accessibilityLabel ?? label}
+      style={{
+        // minHeight, not height, so the box grows with larger text sizes.
+        minHeight: 48,
+        width: '100%',
+        alignItems: align === 'left' ? 'flex-start' : 'center',
+        justifyContent: 'center',
+        paddingHorizontal: align === 'left' ? 13 : 4,
+        paddingVertical: 10,
+        backgroundColor: selected ? OB.periwinkle : OB.paper,
+        borderWidth: OB_BORDER,
+        borderColor: OB.navy
+      }}
+    >
+      <Text className="font-sans-sb text-[15px]" style={{ color: OB.navy }} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * One of the two buttons inside the "Is this right?" panel: the pink yes that
+ * saves, and the quiet tan one that starts the picking over.
+ */
+function PanelButton({
+  label,
+  tone,
+  analyticsId,
+  onPress,
+  accessibilityLabel
+}: {
+  label: string;
+  tone: 'pink' | 'quiet';
+  analyticsId: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+}) {
+  const pink = tone === 'pink';
+  return (
+    <Pressable
+      onPress={withAnalyticsPress(analyticsId, onPress)}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={{
+        width: '100%',
+        minHeight: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        backgroundColor: pink ? OB.pink : OB.canvas,
+        borderWidth: OB_BORDER,
+        borderColor: pink ? OB.pink : OB.navy
+      }}
     >
       <Text
-        numberOfLines={1}
-        className={cn('font-sans-b text-[13px]', selected ? 'text-white' : 'text-ink')}
+        className={pink ? 'font-sans-b text-[15px]' : 'font-sans-sb text-[15px]'}
+        style={{ color: pink ? OB.onColor : OB.navy }}
       >
         {label}
       </Text>
@@ -332,19 +439,21 @@ function Tile({
   );
 }
 
-/** A breadcrumb chip; tapping jumps back to that level. */
+/**
+ * One word in the breadcrumb. Small caps text, bright when it is the piece you
+ * are on and faded otherwise. It is still tappable (that is how you go back up
+ * a level), so it keeps a comfortable tap area.
+ */
 function Crumb({
   label,
   active,
   disabled = false,
-  onPress,
-  onColorWash = false
+  onPress
 }: {
   label: string;
   active: boolean;
   disabled?: boolean;
   onPress: () => void;
-  onColorWash?: boolean;
 }) {
   return (
     <Pressable
@@ -353,17 +462,16 @@ function Crumb({
       accessibilityRole="button"
       accessibilityState={{ selected: active, disabled }}
       accessibilityLabel={label}
-      className={cn(
-        'rounded-full px-3 py-1',
-        active ? 'bg-ink' : onColorWash ? 'bg-onaccent/10' : 'bg-ink/5',
-        disabled && 'opacity-40'
-      )}
+      hitSlop={12}
+      style={{ minHeight: 44, justifyContent: 'center', opacity: disabled ? 0.4 : 1 }}
     >
       <Text
-        className={cn(
-          'font-sans-b text-[12px]',
-          active ? 'text-canvas' : onColorWash ? 'text-onaccent/80' : 'text-ink-soft'
-        )}
+        className="font-sans-b text-[14px]"
+        style={{
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
+          color: active ? OB.blue : 'rgba(0,0,0,0.35)'
+        }}
       >
         {label}
       </Text>
@@ -371,12 +479,15 @@ function Crumb({
   );
 }
 
-function Sep({ onColorWash = false }: { onColorWash?: boolean }) {
+/** The little arrow between two breadcrumb words. Decoration only. */
+function Sep() {
   return (
     <Text
-      className={cn('font-sans-b text-[12px]', onColorWash ? 'text-onaccent/50' : 'text-ink-mute')}
+      className="font-sans-b text-[14px]"
+      style={{ color: 'rgba(0,0,0,0.25)' }}
+      accessible={false}
     >
-      ›
+      →
     </Text>
   );
 }

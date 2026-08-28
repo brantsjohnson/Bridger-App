@@ -70,7 +70,7 @@ export function DemoWeekPage() {
   };
 
   if (loading || !draft) {
-    return <PageState loading={loading} error={error} onRetry={load} />;
+    return <PageState loading={loading} error={error} />;
   }
 
   return (

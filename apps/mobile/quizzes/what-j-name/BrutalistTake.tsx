@@ -55,7 +55,7 @@ export function EmojiBurstLayer({
   if (bursts.length === 0) return null;
   // Sits on top of whatever screen is up. pointerEvents none so Continue still works.
   return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, { zIndex: 80 }]}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 80 }]}>
       {bursts.map((b) => (
         <HobbyEmojiBurst
           key={b.key}

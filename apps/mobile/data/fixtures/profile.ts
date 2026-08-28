@@ -139,6 +139,8 @@ export type TravelPlace = {
   tier?: Tier;
   /** Optional tags from PROFILE-MODULES Module 3 */
   tags?: TravelPlaceTag[];
+  /** Onboarding (or later) favorite trip — shown with a FAV star on the map. */
+  favorite?: boolean;
 };
 
 export const TRAVEL_PLACES: TravelPlace[] = [

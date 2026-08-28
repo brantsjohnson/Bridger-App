@@ -103,7 +103,7 @@ type Draft = {
   birthday: string;
   contactsSynced: boolean;
   invited: boolean;
-  /** Three invite slots filled during contacts (Link 1 / 2 / 3). */
+  /** Three invite slots filled during contacts (#1 / #2 / #3). */
   inviteSlots: Array<{ sent: boolean; label: string | null }>;
   connectStyles: string[];
   notifPrefs: string[];
@@ -139,7 +139,8 @@ const EMPTY_DRAFT: Draft = {
     { sent: false, label: null }
   ],
   connectStyles: [],
-  notifPrefs: ['birthdays', 'life_updates', 'meet'],
+  // Every reminder starts off. Nothing is turned on for you: you opt in.
+  notifPrefs: [],
   currentJob: '',
   dreamJob: '',
   song: '',

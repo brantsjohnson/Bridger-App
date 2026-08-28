@@ -412,6 +412,87 @@ export type NotificationPrefsState = {
   circles: Record<NotificationCircleId, boolean>;
 };
 
+/** Defaults before onboarding / Settings write anything. */
+export function defaultNotificationPrefs(): NotificationPrefsState {
+  const kinds = {} as Record<NotificationKind, boolean>;
+  for (const p of NOTIFICATION_KIND_PREFS) {
+    kinds[p.kind] = p.defaultOn;
+  }
+  const circles = {} as Record<NotificationCircleId, boolean>;
+  for (const c of NOTIFICATION_CIRCLE_OPTIONS) {
+    circles[c.id] = c.defaultOn;
+  }
+  return { kinds, circles };
+}
+
+/**
+ * Expand onboarding coarse group ids into a full prefs blob.
+ * Kinds without an onboardingGroup keep their catalog default.
+ */
+export function prefsFromOnboardingGroups(
+  pickedIds: string[]
+): NotificationPrefsState {
+  const next = defaultNotificationPrefs();
+  for (const p of NOTIFICATION_KIND_PREFS) {
+    if (p.onboardingGroup) {
+      next.kinds[p.kind] = pickedIds.includes(p.onboardingGroup);
+    }
+  }
+  return next;
+}
+
+/** Merge a partial prefs patch onto a base (Settings toggles). */
+export function mergeNotificationPrefs(
+  base: NotificationPrefsState,
+  patch: {
+    kinds?: Partial<Record<NotificationKind, boolean>>;
+    circles?: Partial<Record<NotificationCircleId, boolean>>;
+  }
+): NotificationPrefsState {
+  return {
+    kinds: { ...base.kinds, ...(patch.kinds ?? {}) },
+    circles: { ...base.circles, ...(patch.circles ?? {}) }
+  };
+}
+
+/**
+ * True when push for this kind is allowed.
+ * Kind must be on; if the kind is circle-gated, the actor's circle must be on too.
+ * Pass `actorCircle` when you know the sender's tier; omit for system notes.
+ */
+export function isPushAllowedForKind(
+  kind: NotificationKind,
+  prefs: NotificationPrefsState,
+  actorCircle?: NotificationCircleId
+): boolean {
+  if (prefs.kinds[kind] === false) return false;
+  const meta = NOTIFICATION_KIND_PREFS.find((p) => p.kind === kind);
+  if (!meta?.circleGated) return true;
+  if (!actorCircle) return true;
+  return prefs.circles[actorCircle] !== false;
+}
+
+/** Coerce a raw jsonb blob from user_settings.notif_prefs into prefs + defaults. */
+export function normalizeStoredNotificationPrefs(
+  raw: unknown
+): NotificationPrefsState {
+  const base = defaultNotificationPrefs();
+  if (!raw || typeof raw !== 'object') return base;
+  const obj = raw as {
+    kinds?: Partial<Record<NotificationKind, boolean>>;
+    circles?: Partial<Record<NotificationCircleId, boolean>>;
+    selected?: string[];
+  };
+  // Legacy onboarding shape: { selected: prefIds[] }
+  if (Array.isArray(obj.selected) && !obj.kinds) {
+    return prefsFromOnboardingGroups(obj.selected);
+  }
+  return mergeNotificationPrefs(base, {
+    kinds: obj.kinds,
+    circles: obj.circles
+  });
+}
+
 /** True when this kind may appear in the Home notifications widget. */
 export function showsInHomeNotificationPreview(kind: NotificationKind): boolean {
   const meta = NOTIFICATION_KIND_PREFS.find((p) => p.kind === kind);

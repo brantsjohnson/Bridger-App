@@ -1,16 +1,18 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 9 — "What should we notify you about?" Six on/off rows using the same
-// Toggle the rest of the app uses (Settings → Notifications). Whatever you
-// pick becomes your notification prefs; Settings later expands each into
-// fine-grained kinds. Skippable.
+// Step 9 - "What should we notify you about?" Six on/off rows, one per kind of
+// reminder. Whatever you pick becomes your notification prefs; Settings later
+// expands each one into fine-grained kinds. Skippable.
+//
+// LOOK: a stack of white rows on tan paper, each with a small switch on the
+// right. When it is on, the track fills green and the knob stays white. All the
+// paint comes from the shared onboarding parts.
 // ============================================
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { ONBOARDING, ONBOARDING_NOTIFICATION_GROUPS } from '@bridger/shared';
-import { ListRow, Toggle, cn } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
-import { WASH_BODY } from './onboarding-wash';
+import { OBTile } from './onboarding-ui';
 
 const PREFS = ONBOARDING_NOTIFICATION_GROUPS.map((g) => ({
   id: g.id,
@@ -40,38 +42,24 @@ export function NotificationsStep({
       total={total}
       purpose="Tech should help you stay close."
       ask="What should we notify you about?"
-      accent="amber"
+      blurb="Turn on only what matters to you."
       onContinue={onNext}
       onSkip={onSkip}
       onBack={onBack}
     >
-      <View className="gap-3">
-        <Text className={cn('px-1 font-sans-sb text-[14px] leading-snug', WASH_BODY)}>
-          Turn on only what matters to you.
-        </Text>
-
-        {/* THIS SECTION DOES: one Toggle row per reminder type. */}
-        <View className="gap-1.5">
-          {PREFS.map((p) => {
-            const on = picked.includes(p.id);
-            return (
-              <ListRow
-                key={p.id}
-                label={p.label}
-                trailing="none"
-                action={
-                  <Toggle
-                    checked={on}
-                    onChange={() => onToggle(p.id)}
-                    label={p.label}
-                    analyticsId={ONBOARDING.notifications.pref}
-                    analyticsProps={{ pref: p.id }}
-                  />
-                }
-              />
-            );
-          })}
-        </View>
+      {/* THIS SECTION DOES: one switch row per reminder type. */}
+      <View style={{ gap: 9 }}>
+        {PREFS.map((p) => (
+          <OBTile
+            key={p.id}
+            label={p.label}
+            variant="switch"
+            selected={picked.includes(p.id)}
+            analyticsId={ONBOARDING.notifications.pref}
+            analyticsProps={{ pref: p.id }}
+            onPress={() => onToggle(p.id)}
+          />
+        ))}
       </View>
     </OnboardingStep>
   );

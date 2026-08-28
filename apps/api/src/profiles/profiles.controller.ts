@@ -36,8 +36,17 @@ import {
   Put,
   UseGuards
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Json, Tier } from '@bridger/shared';
-import { normalizeProfilePresentation } from '@bridger/shared';
+import {
+  mergeNotificationPrefs,
+  normalizeProfilePresentation,
+  normalizeStoredNotificationPrefs,
+  prefsFromOnboardingGroups,
+  type NotificationCircleId,
+  type NotificationKind,
+  type NotificationPrefsState
+} from '@bridger/shared';
 import { AssistantGateService } from '../assistant/assistant-gate.service';
 import { BillyBillingService } from '../assistant/billy-billing.service';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -57,12 +66,37 @@ const TIER_RANK: Record<Tier, number> = {
 @Controller()
 @UseGuards(SupabaseAuthGuard)
 export class ProfilesController {
+  private readonly mediaBucket: string;
+  private readonly signedUrlTtl = 60 * 60;
+
   constructor(
     private readonly supabase: SupabaseService,
     private readonly assistantGate: AssistantGateService,
     private readonly billyBilling: BillyBillingService,
-    private readonly greatestHits: GreatestHitsService
-  ) {}
+    private readonly greatestHits: GreatestHitsService,
+    private readonly config: ConfigService
+  ) {
+    this.mediaBucket =
+      this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
+  }
+
+  // THIS SECTION DOES: turn a media id into a short-lived https URL for photos.
+  private async signAvatarUrl(
+    mediaId: string | null | undefined
+  ): Promise<string | null> {
+    if (!mediaId) return null;
+    const { data: media } = await this.supabase.admin
+      .from('media')
+      .select('storage_path')
+      .eq('id', mediaId)
+      .maybeSingle();
+    if (!media?.storage_path) return null;
+    const { data, error } = await this.supabase.admin.storage
+      .from(this.mediaBucket)
+      .createSignedUrl(media.storage_path, this.signedUrlTtl);
+    if (error || !data) return null;
+    return data.signedUrl;
+  }
 
   // --- READ your Greatest hits (co-op slots; empty if none) ---
   @Get('me/greatest-hits')
@@ -123,10 +157,13 @@ export class ProfilesController {
 
     const byKey = new Map((attrs ?? []).map((a) => [a.key, a.value]));
     const song = (byKey.get('currently_song') as { title?: string; artist?: string } | undefined) ?? {};
+    const avatarUrl = await this.signAvatarUrl(identity?.avatar_media_id);
 
     return {
       name: identity?.display_name ?? '',
       avatarMediaId: identity?.avatar_media_id ?? null,
+      // Short-lived signed URL so the profile header can show the real photo.
+      avatarUrl,
       city: settings?.home_city ?? '',
       bio: ((byKey.get('bio') as { text?: string } | undefined)?.text) ?? '',
       song: { title: song.title ?? '', artist: song.artist ?? '' },
@@ -170,7 +207,7 @@ export class ProfilesController {
     const { data } = await this.supabase.admin
       .from('user_settings')
       .select(
-        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins'
+        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins, profile_color, social_battery, connection_style'
       )
       .eq('user_id', user.id)
       .maybeSingle();
@@ -198,6 +235,16 @@ export class ProfilesController {
       assistantVisible: assistant.assistantVisible,
       delightOptIns: Array.isArray(data?.delight_opt_ins)
         ? data.delight_opt_ins
+        : [],
+      // Personal SynthGrid tint from onboarding ColorStep (#RRGGBB or null).
+      profileColor:
+        typeof data?.profile_color === 'string' ? data.profile_color : null,
+      // Nights out per week (0..7) from onboarding SocialBatteryStep.
+      socialBattery:
+        typeof data?.social_battery === 'number' ? data.social_battery : null,
+      // FoF matching style keys from FriendsOfFriendsStep.
+      connectionStyle: Array.isArray(data?.connection_style)
+        ? data.connection_style
         : []
     };
   }
@@ -216,6 +263,12 @@ export class ProfilesController {
       alwaysViewOriginal?: boolean;
       /** Opt-in standalone delighter slugs. */
       delightOptIns?: string[];
+      /** Personal grid-line tint (#RRGGBB) from onboarding ColorStep. */
+      profileColor?: string | null;
+      /** Nights out per week (0..7) from onboarding SocialBatteryStep. */
+      socialBattery?: number | null;
+      /** Opaque FoF matching style keys from FriendsOfFriendsStep. */
+      connectionStyle?: string[];
     }
   ) {
     const patch: Record<string, unknown> = { user_id: user.id };
@@ -248,6 +301,37 @@ export class ProfilesController {
       patch.delight_opt_ins = body.delightOptIns
         .filter((s) => typeof s === 'string' && allow.has(s))
         .slice(0, 40);
+    }
+    // THIS SECTION DOES: save the onboarding grid color (hex or clear to null).
+    if ('profileColor' in (body ?? {})) {
+      if (body.profileColor === null || body.profileColor === '') {
+        patch.profile_color = null;
+      } else if (typeof body.profileColor === 'string') {
+        const hex = body.profileColor.trim();
+        if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+          throw new BadRequestException('profileColor must be #RRGGBB');
+        }
+        patch.profile_color = hex;
+      }
+    }
+    // THIS SECTION DOES: save nights-out social battery (0..7 or clear).
+    if ('socialBattery' in (body ?? {})) {
+      if (body.socialBattery === null) {
+        patch.social_battery = null;
+      } else if (typeof body.socialBattery === 'number') {
+        const n = Math.round(body.socialBattery);
+        if (n < 0 || n > 7) {
+          throw new BadRequestException('socialBattery must be 0..7');
+        }
+        patch.social_battery = n;
+      }
+    }
+    // THIS SECTION DOES: save FoF connection-style keys (opaque strings only).
+    if (Array.isArray(body?.connectionStyle)) {
+      patch.connection_style = body.connectionStyle
+        .filter((s) => typeof s === 'string' && s.trim().length > 0)
+        .map((s) => s.trim())
+        .slice(0, 20);
     }
 
     const { error } = await this.supabase.admin
@@ -298,21 +382,59 @@ export class ProfilesController {
     return { profilePresentation: stored };
   }
 
-  // --- SAVE which nudges you want (onboarding notifications step) ---
+  // --- READ which nudges you want (Settings + onboarding) ---
+  @Get('me/notification-prefs')
+  async getNotificationPrefs(
+    @CurrentUser() user: AuthUser
+  ): Promise<NotificationPrefsState> {
+    const { data } = await this.supabase.admin
+      .from('user_settings')
+      .select('notif_prefs')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    return normalizeStoredNotificationPrefs(data?.notif_prefs);
+  }
+
+  // --- SAVE which nudges you want (Settings toggles + onboarding expand) ---
   @Patch('me/notification-prefs')
   async patchNotificationPrefs(
     @CurrentUser() user: AuthUser,
-    @Body() body: { prefIds: string[] }
-  ) {
-    const selected = Array.isArray(body?.prefIds) ? body.prefIds : [];
+    @Body()
+    body: {
+      /** Partial kind toggles from Settings. */
+      kinds?: Partial<Record<NotificationKind, boolean>>;
+      /** Partial circle toggles from Settings. */
+      circles?: Partial<Record<NotificationCircleId, boolean>>;
+      /** Legacy / coarse onboarding chips (expanded server-side). */
+      prefIds?: string[];
+    }
+  ): Promise<NotificationPrefsState> {
+    const { data: existing } = await this.supabase.admin
+      .from('user_settings')
+      .select('notif_prefs')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    let next = normalizeStoredNotificationPrefs(existing?.notif_prefs);
+
+    // Onboarding coarse chips replace kinds (circles stay as defaults/merged).
+    if (Array.isArray(body?.prefIds)) {
+      next = prefsFromOnboardingGroups(body.prefIds);
+    }
+    if (body?.kinds || body?.circles) {
+      next = mergeNotificationPrefs(next, {
+        kinds: body.kinds,
+        circles: body.circles
+      });
+    }
+
     const { error } = await this.supabase.admin
       .from('user_settings')
       .upsert(
-        { user_id: user.id, notif_prefs: { selected } as unknown as Json },
+        { user_id: user.id, notif_prefs: next as unknown as Json },
         { onConflict: 'user_id' }
       );
     if (error) throw error;
-    return { selected };
+    return next;
   }
 
   // --- READ another person's card, filtered by what your tier may see ---
@@ -376,10 +498,13 @@ export class ProfilesController {
       viewerTier
     );
 
+    const avatarUrl = await this.signAvatarUrl(identity?.avatar_media_id);
+
     return {
       id: ownerId,
       name: identity?.display_name ?? '',
       avatarMediaId: identity?.avatar_media_id ?? null,
+      avatarUrl,
       viewerTier,
       attributes: visible.map((a) => ({
         id: a.id,

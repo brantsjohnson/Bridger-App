@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Magic Patterns reference for the branded Sign in screen: color-bar
-// background, Bridger mark centered, auth controls in the lower panel.
+// background, Bridger mark centered, Google / Apple in the lower panel.
+// First-time OAuth creates the account; returning users just sign in.
 // The live React Native screen is apps/mobile/app/(auth)/sign-in.tsx.
 // ============================================
 import { ButtonPrimary, ButtonSecondary, PixelHeading, Screen } from '../../../../packages/ui';
@@ -9,11 +10,9 @@ import { ButtonPrimary, ButtonSecondary, PixelHeading, Screen } from '../../../.
 /** Branded Sign in — logo long-press unlocks demo in preview builds. */
 export function SignInScreen({
   onSignIn,
-  onSignUp,
   onDemo
 }: {
   onSignIn?: () => void;
-  onSignUp?: () => void;
   onDemo?: () => void;
 }) {
   return (
@@ -48,9 +47,12 @@ export function SignInScreen({
 
         {/* THIS SECTION DOES: keep login controls readable on a lower panel. */}
         <div className="rounded-t-3xl bg-canvas px-5 pb-10 pt-5">
-          <PixelHeading as="h1" size="md" className="mb-3">
+          <PixelHeading as="h1" size="md" className="mb-1">
             Sign in
           </PixelHeading>
+          <p className="mb-3 font-sans text-[13px] text-ink-mute">
+            New or returning. Continue with Google or Apple.
+          </p>
           <div className="flex flex-col gap-3">
             <ButtonSecondary full size="lg">
               Continue with Google
@@ -59,11 +61,8 @@ export function SignInScreen({
               Continue with Apple
             </ButtonSecondary>
             <ButtonPrimary full size="lg" onClick={onSignIn}>
-              Sign in
+              Sign in with email
             </ButtonPrimary>
-            <ButtonSecondary full tone="ghost" onClick={onSignUp}>
-              Create account
-            </ButtonSecondary>
           </div>
         </div>
       </div>

@@ -1,22 +1,30 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 2 — "Confirm your details." One screen that gathers the three things a
+// Step 1 - "Confirm your details." One screen that gathers the three things a
 // friend needs to recognize you: first name, last name, and a profile photo.
 // Name is required (Continue stays off until both are filled); the photo can be
 // taken in-app or uploaded (the one upload exception, stories stay capture-only)
-// and is skippable. The permission dialog is shown in context (only when you tap
-// Take a photo / Upload), never at launch; the picked photo previews right here.
+// and is skippable. Tapping the big photo square opens the system action sheet
+// (Take a photo / Upload), so permission is only asked in context, never at
+// launch; the picked photo previews right here.
+//
+// LOOK: one big photo square up top (graph paper filling the box + a clear
+// plus), then the two typing boxes. All the paint comes from the shared
+// onboarding parts.
 // ============================================
 import React from 'react';
-import { Image, Text, View } from 'react-native';
-import { CameraIcon, ImageIcon, PlusIcon } from 'lucide-react-native';
-import { ONBOARDING } from '@bridger/shared';
-import { ButtonSecondary, TextField } from '@bridger/ui';
+import { ActionSheetIOS, Alert, Image, Platform, Pressable, Text, View } from 'react-native';
+import { ONBOARDING, trackUi } from '@bridger/shared';
+import { withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
+import { OB, OB_BORDER } from './onboarding-theme';
+import { OBField, OBGridPatch } from './onboarding-ui';
 import type { PhotoSource } from '../../data/onboarding';
 
-/** Square avatar preview size. */
-const PHOTO_PX = 96;
+/** Big empty avatar square. Large enough to read as the main photo action. */
+const PHOTO_PX = 168;
+/** Graph paper step inside the square (smaller cells so the + still reads). */
+const GRID_STEP = 28;
 
 export function ConfirmProfileStep({
   step,
@@ -47,83 +55,119 @@ export function ConfirmProfileStep({
 }) {
   // Name is the one required answer, so Continue waits for both fields.
   const ready = first.trim().length > 0 && last.trim().length > 0;
+  const hasPhoto = Boolean(photoUri || photoEmoji);
+  const cameraLabel = photoSource === 'camera' && hasPhoto ? 'Retake' : 'Take a photo';
+
+  // THIS SECTION DOES: open the phone's own action sheet so Take a photo /
+  // Upload are not sitting on the page. Camera / library permissions still
+  // only fire after they pick one of those choices.
+  const openPhotoSheet = () => {
+    const pickCamera = () => {
+      trackUi(
+        'click',
+        photoSource === 'camera' && hasPhoto
+          ? ONBOARDING.confirm_profile.retake
+          : ONBOARDING.confirm_profile.take
+      );
+      onPickPhoto('camera');
+    };
+    const pickUpload = () => {
+      trackUi('click', ONBOARDING.confirm_profile.upload);
+      onPickPhoto('library');
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', cameraLabel, 'Upload'],
+          cancelButtonIndex: 0
+        },
+        (index) => {
+          if (index === 1) pickCamera();
+          if (index === 2) pickUpload();
+        }
+      );
+      return;
+    }
+
+    // Android (and web): the system Alert sheet is the closest native-feeling
+    // menu for the same two choices.
+    Alert.alert('Add a photo', undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: cameraLabel, onPress: pickCamera },
+      { text: 'Upload', onPress: pickUpload }
+    ]);
+  };
 
   return (
     <OnboardingStep
       step={step}
       total={total}
       ask="Confirm your details"
-      accent="purple"
       ctaDisabled={!ready}
       onContinue={onNext}
       onBack={onBack}
     >
-      <View className="gap-5">
-        {/* THIS SECTION DOES: photo on the left, Take / Upload on the right. */}
-        <View className="flex-row items-center gap-4">
-          <View
-            className={`h-24 w-24 items-center justify-center overflow-hidden rounded-card border-2 border-onaccent/25 ${
-              photoUri ? 'bg-onaccent/10' : photoSource || photoEmoji ? 'bg-purple' : 'bg-onaccent/10'
-            }`}
-          >
-            {photoUri ? (
-              <Image
-                source={{ uri: photoUri }}
-                accessibilityLabel="Your selected profile photo"
-                resizeMode="cover"
-                style={{ width: PHOTO_PX, height: PHOTO_PX }}
-              />
-            ) : photoEmoji ? (
-              <Text className="text-[48px]" accessibilityLabel="Your emoji avatar">
-                {photoEmoji}
-              </Text>
-            ) : (
-              <PlusIcon size={28} color="#1C1B16" strokeWidth={2.4} accessible={false} />
-            )}
-          </View>
-          <View className="flex-1 gap-2">
-            <ButtonSecondary
-              full
-              tone={photoSource === 'camera' ? 'outline' : 'solid'}
-              icon={<CameraIcon size={16} strokeWidth={2.5} />}
-              analyticsId={
-                photoSource === 'camera'
-                  ? ONBOARDING.confirm_profile.retake
-                  : ONBOARDING.confirm_profile.take
-              }
-              onPress={() => onPickPhoto('camera')}
-              accessibilityLabel={photoSource === 'camera' ? 'Retake photo' : 'Take a photo'}
+      <View style={{ gap: 28 }}>
+        {/* THIS SECTION DOES: one big tappable photo square. Empty = graph paper
+            + plus. Filled = their picture. Tap opens Take photo / Upload. */}
+        <Pressable
+          onPress={withAnalyticsPress(ONBOARDING.confirm_profile.photo_square, openPhotoSheet)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            hasPhoto ? 'Change profile photo' : 'Add a profile photo'
+          }
+          style={{
+            width: PHOTO_PX,
+            height: PHOTO_PX,
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            backgroundColor: OB.paper,
+            borderWidth: OB_BORDER,
+            borderColor: OB.navy
+          }}
+        >
+          {photoUri || photoEmoji ? null : (
+            <OBGridPatch size={PHOTO_PX} step={GRID_STEP} left={0} top={0} />
+          )}
+          {photoUri ? (
+            <Image
+              source={{ uri: photoUri }}
+              accessibilityLabel="Your selected profile photo"
+              resizeMode="cover"
+              style={{ width: PHOTO_PX, height: PHOTO_PX }}
+            />
+          ) : photoEmoji ? (
+            <Text className="text-[64px]" accessibilityLabel="Your emoji avatar">
+              {photoEmoji}
+            </Text>
+          ) : (
+            <Text
+              style={{ fontSize: 48, lineHeight: 52, fontWeight: '600', color: OB.navy }}
+              accessible={false}
             >
-              {photoSource === 'camera' ? 'Retake' : 'Take a photo'}
-            </ButtonSecondary>
-            <ButtonSecondary
-              full
-              icon={<ImageIcon size={16} strokeWidth={2.5} />}
-              analyticsId={ONBOARDING.confirm_profile.upload}
-              onPress={() => onPickPhoto('library')}
-              accessibilityLabel="Upload a photo"
-            >
-              Upload
-            </ButtonSecondary>
-          </View>
-        </View>
+              +
+            </Text>
+          )}
+        </Pressable>
 
         {/* THE NAME: first + last, the only required answers. */}
-        <View className="gap-3">
-          <TextField
+        <View style={{ gap: 18 }}>
+          <OBField
             label="First name"
-            labelTone="onaccent"
             value={first}
             onChange={onChangeFirst}
             placeholder="Brant"
+            autoCapitalize="words"
             analyticsId={ONBOARDING.confirm_profile.first_input}
           />
-          <TextField
+          <OBField
             label="Last name"
-            labelTone="onaccent"
             value={last}
             onChange={onChangeLast}
             placeholder="Kim"
+            autoCapitalize="words"
             analyticsId={ONBOARDING.confirm_profile.last_input}
           />
         </View>

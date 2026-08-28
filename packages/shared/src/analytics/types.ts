@@ -76,6 +76,8 @@ export type AnalyticsProductEvent =
   | 'module_started'
   | 'module_completed'
   | 'module_item_added'
+  /** Travel place starred as FAV (never place names) */
+  | 'place_favorited'
   /** Home Announcements quick check: user confirmed the fact is still true */
   | 'quick_check_kept'
   /** Home Announcements quick check: user said the fact is no longer true */
@@ -148,6 +150,8 @@ export type AnalyticsProductEvent =
   | 'coop_cancel_scheduled'
   | 'auth_signed_in'
   | 'auth_signed_up'
+  /** Confirmed Log out from Profile Settings (not a mere tap on the button). */
+  | 'auth_signed_out'
   /** Runtime demo unlocked (logo long-press confirmed). */
   | 'demo_mode_entered'
   /** Person left runtime demo from Settings. */

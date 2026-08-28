@@ -15,6 +15,7 @@ import React, { useEffect } from 'react';
 import { Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { openSurface, trackFlowStarted } from '@bridger/shared';
+import { useGridColor } from '@bridger/ui';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { ConfirmProfileStep } from '../../components/onboarding/ConfirmProfileStep';
 import { BirthdayStep } from '../../components/onboarding/BirthdayStep';
@@ -48,6 +49,7 @@ const PRIVACY_URL = 'https://bridger.app/legal/privacy';
 export default function OnboardingScreen() {
   const router = useRouter();
   const flow = useOnboarding(() => router.replace('/home'));
+  const { setGridColorHex } = useGridColor();
 
   // Open the surface + start the flow once, when the room first appears.
   useEffect(() => {
@@ -59,11 +61,19 @@ export default function OnboardingScreen() {
   // The very first screen has nothing to go back to.
   const back = index > 0 ? goBack : undefined;
 
+  // THIS SECTION DOES: save the color step, then tint the live app grid right away.
+  const onColorNext = () => {
+    if (draft.color) setGridColorHex(draft.color);
+    void goNext();
+  };
+
   // THIS SECTION DOES: flip one item in a multi-select list (on/off).
   const toggleIn = (list: string[], id: string) =>
     list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
   const toggleNotif = (id: string) => patch({ notifPrefs: toggleIn(draft.notifPrefs, id) });
   const toggleStyle = (id: string) => patch({ connectStyles: toggleIn(draft.connectStyles, id) });
+  // "All of the above" replaces the whole list in one write.
+  const setStyles = (ids: string[]) => patch({ connectStyles: ids });
 
   // THIS SECTION DOES: open the camera or library, then remember the real file
   // path so it previews now and uploads when the step is saved.
@@ -154,6 +164,7 @@ export default function OnboardingScreen() {
             total={formTotal}
             picked={draft.connectStyles}
             onToggle={toggleStyle}
+            onSetAll={setStyles}
             onNext={goNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}
@@ -246,7 +257,7 @@ export default function OnboardingScreen() {
             total={formTotal}
             color={draft.color}
             onPick={(hex) => patch({ color: hex })}
-            onNext={goNext}
+            onNext={onColorNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}
           />
@@ -274,12 +285,14 @@ export default function OnboardingScreen() {
           <RecapStep
             step={formStep}
             total={formTotal}
-            mode={draft.recapMode}
-            text={draft.recapText}
-            recorded={draft.recapRecorded}
-            onSetMode={(m) => patch({ recapMode: m })}
-            onChangeText={(v) => patch({ recapText: v })}
-            onRecorded={(uri) => patch({ recapRecorded: true, recapUri: uri })}
+            initialUri={draft.recapUri}
+            onRecorded={(uri) =>
+              patch({
+                recapRecorded: Boolean(uri),
+                recapUri: uri,
+                recapMode: 'voice'
+              })
+            }
             onNext={goNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}
@@ -335,7 +348,8 @@ export default function OnboardingScreen() {
               void joinCoop(true, method);
               goNext();
             }}
-            onUseFree={() => {
+            onInvitesComplete={() => {
+              // Free access only after invite 3 friends (no separate free-tier skip).
               void joinCoop(false);
               goNext();
             }}

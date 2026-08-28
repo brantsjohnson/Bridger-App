@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Lists every time someone hit the Magic Patterns 404 ("Fucks not found") or
+// Lists every time someone hit the Magic Patterns 404 ("System says it's fine...") or
 // a broken connection path, including the screens they visited right before.
 // Helps find dead links and bad deep links.
 // ============================================

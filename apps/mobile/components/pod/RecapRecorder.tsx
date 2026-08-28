@@ -26,7 +26,6 @@ import {
   useAudioRecorder,
   useAudioRecorderState
 } from 'expo-audio';
-import { MicIcon, PauseIcon, PlayIcon, SquareIcon } from 'lucide-react-native';
 import type { RecapAudience } from '@bridger/shared';
 import {
   RECAP_RECORDER,
@@ -46,6 +45,12 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { postRecapAnswers, uploadRecapClip } from '../../data/pod';
+import {
+  RecapMicButton,
+  RecapMicStatus,
+  RecapProgressPills,
+  RecapQuestionCard
+} from './RecapRecordChrome';
 
 /** Hard cap on each answer — short on purpose. */
 const MAX_SECONDS = 20;
@@ -253,14 +258,6 @@ export function RecapRecorder({
         : RECAP_RECORDER.record.play
       : RECAP_RECORDER.record.start;
 
-  const mainLabel = recState.isRecording
-    ? 'Stop recording'
-    : recorded
-      ? isPlaying
-        ? 'Pause playback'
-        : 'Play recording'
-      : 'Record answer';
-
   const statusLabel = recState.isRecording
     ? `0:${String(seconds).padStart(2, '0')} · ${MAX_SECONDS}s max`
     : recorded
@@ -370,68 +367,37 @@ export function RecapRecorder({
           </ButtonPrimary>
         </View>
       ) : (
-        // --- Recording one question at a time ---
+        // --- Recording one question at a time (shared chrome with onboarding) ---
         <View className="gap-4">
-          {/* Progress dots: done (green), current (purple), upcoming (grey). */}
-          <View className="flex-row items-center gap-1.5">
-            {questions.map((_, i) => (
-              <View
-                key={i}
-                className={cn(
-                  'h-2 flex-1 rounded-full',
-                  clips[i] ? 'bg-success' : i === step ? 'bg-purple' : 'bg-ink/15'
-                )}
-              />
-            ))}
-          </View>
+          <RecapProgressPills
+            total={total}
+            step={step}
+            completed={Object.keys(clips).map((k) => Number(k))}
+          />
 
-          {/*
-            Pastel question card always uses near-black type (text-onaccent).
-            Theme ink flips light in dark mode and vanishes on this wash.
-          */}
-          <View className="rounded-2xl bg-[#EDE6FF] px-5 py-6">
-            <Text className="text-center font-sans-b text-[11px] uppercase tracking-wide text-onaccent/55">
-              Q{step + 1} of {total}
-            </Text>
-            <Text className="mt-1.5 text-center font-sans-b text-[19px] leading-snug text-onaccent">
-              {questions[step]}
-            </Text>
-            <Text className="mt-3 text-center font-sans-sb text-[12px] text-onaccent/70">
-              {MAX_SECONDS} seconds for this answer
-            </Text>
-          </View>
+          <RecapQuestionCard
+            step={step}
+            total={total}
+            question={questions[step] ?? ''}
+            maxSeconds={MAX_SECONDS}
+          />
 
           <View className="items-center">
-            <Pressable
-              onPress={withAnalyticsPress(mainAnalyticsId, onMainPress, {
-                analyticsProps: { method: 'voice' }
-              })}
-              accessibilityRole="button"
-              accessibilityLabel={mainLabel}
-              className={cn(
-                'h-20 w-20 items-center justify-center rounded-full',
-                // Fixed near-black — bg-ink flips cream in dark mode and hides the white mic.
-                recState.isRecording ? 'bg-coral' : recorded ? 'bg-success' : 'bg-[#1C1B16]'
-              )}
-            >
-              {recState.isRecording ? (
-                <SquareIcon size={26} color="#FFFFFF" strokeWidth={2.6} />
-              ) : recorded ? (
-                isPlaying ? (
-                  <PauseIcon size={30} color="#FFFFFF" strokeWidth={2.6} />
-                ) : (
-                  <PlayIcon size={30} color="#FFFFFF" strokeWidth={2.6} />
-                )
-              ) : (
-                <MicIcon size={30} color="#FFFFFF" strokeWidth={2.4} />
-              )}
-            </Pressable>
-            <Text
-              accessibilityLiveRegion="polite"
-              className="mt-2.5 font-sans-b text-[12px] text-ink-mute"
-            >
-              {statusLabel}
-            </Text>
+            <RecapMicButton
+              state={
+                recState.isRecording
+                  ? 'recording'
+                  : recorded
+                    ? isPlaying
+                      ? 'playing'
+                      : 'recorded'
+                    : 'idle'
+              }
+              analyticsId={mainAnalyticsId}
+              analyticsProps={{ method: 'voice' }}
+              onPress={onMainPress}
+            />
+            <RecapMicStatus label={statusLabel} />
           </View>
 
           {/*
@@ -463,6 +429,7 @@ export function RecapRecorder({
           </View>
         </View>
       )}
+
     </Sheet>
   );
 }

@@ -1,7 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Contacts permission + local picker + share invite link. Used by the demo-week
-// access gate and onboarding invite slots (Link 1 / 2 / 3).
+// access gate and the three onboarding invite slots (#1 / #2 / #3).
+//
+// If the device has no share sheet at all (a desktop browser), we copy the
+// invite link to the clipboard instead of throwing, so a tap never turns into
+// an error page.
 //
 // PRIVACY: contacts are read on-device only and never uploaded.
 // ============================================
@@ -72,6 +76,46 @@ function messageFor(context: InviteContext): string {
   return context === 'onboarding' ? ONBOARDING_INVITE_MESSAGE : DEMO_INVITE_MESSAGE;
 }
 
+/**
+ * THIS SECTION DOES: open the phone's share sheet, and never blow up if there
+ * isn't one. Desktop browsers have no share sheet, so instead of throwing (which
+ * used to paint a red error over the screen) we quietly copy the link to the
+ * clipboard, which still counts as the invite going out.
+ */
+async function shareOrCopy(
+  message: string,
+  url: string
+): Promise<InviteFromContactsResult> {
+  try {
+    const share = await Share.share({ message, url });
+    if (share.action === Share.dismissedAction) {
+      return { ok: false, message: 'Share cancelled', cancelled: true };
+    }
+    return { ok: true, method: 'share' };
+  } catch {
+    const copied = await copyLinkToClipboard(message);
+    if (copied) return { ok: true, method: 'share' };
+    return {
+      ok: false,
+      message: 'Sharing is not available here. Open Bridger on your phone to send the invite.'
+    };
+  }
+}
+
+/** Put the invite text on the clipboard when there is no share sheet (web). */
+async function copyLinkToClipboard(text: string): Promise<boolean> {
+  if (Platform.OS !== 'web') return false;
+  try {
+    const clip = (globalThis as { navigator?: { clipboard?: { writeText?: (t: string) => Promise<void> } } })
+      .navigator?.clipboard;
+    if (!clip?.writeText) return false;
+    await clip.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** After a confirmed share/SMS open, unlock demo access only for that gate. */
 async function afterInviteSent(
   context: InviteContext,
@@ -94,28 +138,32 @@ export async function sendInviteToContact(
   context: InviteContext = 'invite_access',
   opts?: ShareInviteOpts
 ): Promise<InviteFromContactsResult> {
-  const invite = await createShareInvite();
-  const message = `${messageFor(context)} ${invite.url}`;
+  try {
+    const invite = await createShareInvite();
+    const message = `${messageFor(context)} ${invite.url}`;
 
-  const digits = contact.phone.replace(/[^\d+]/g, '');
-  if (digits && Platform.OS !== 'web') {
-    const body = encodeURIComponent(message);
-    const smsUrl =
-      Platform.OS === 'ios' ? `sms:${digits}&body=${body}` : `sms:${digits}?body=${body}`;
-    const can = await Linking.canOpenURL(smsUrl);
-    if (can) {
-      await Linking.openURL(smsUrl);
-      await afterInviteSent(context, 'sms', opts);
-      return { ok: true, method: 'sms' };
+    const digits = contact.phone.replace(/[^\d+]/g, '');
+    if (digits && Platform.OS !== 'web') {
+      const body = encodeURIComponent(message);
+      const smsUrl =
+        Platform.OS === 'ios' ? `sms:${digits}&body=${body}` : `sms:${digits}?body=${body}`;
+      const can = await Linking.canOpenURL(smsUrl);
+      if (can) {
+        await Linking.openURL(smsUrl);
+        await afterInviteSent(context, 'sms', opts);
+        return { ok: true, method: 'sms' };
+      }
     }
-  }
 
-  const share = await Share.share({ message, url: invite.url });
-  if (share.action === Share.dismissedAction) {
-    return { ok: false, message: 'Share cancelled', cancelled: true };
+    const result = await shareOrCopy(message, invite.url);
+    if (result.ok) await afterInviteSent(context, result.method, opts);
+    return result;
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Could not send that invite right now.'
+    };
   }
-  await afterInviteSent(context, 'share', opts);
-  return { ok: true, method: 'share' };
 }
 
 /** Fallback when contacts are denied or empty: system share sheet only. */
@@ -123,12 +171,16 @@ export async function shareInviteForAccess(
   context: InviteContext = 'invite_access',
   opts?: ShareInviteOpts
 ): Promise<InviteFromContactsResult> {
-  const invite = await createShareInvite();
-  const message = `${messageFor(context)} ${invite.url}`;
-  const share = await Share.share({ message, url: invite.url });
-  if (share.action === Share.dismissedAction) {
-    return { ok: false, message: 'Share cancelled', cancelled: true };
+  try {
+    const invite = await createShareInvite();
+    const message = `${messageFor(context)} ${invite.url}`;
+    const result = await shareOrCopy(message, invite.url);
+    if (result.ok) await afterInviteSent(context, result.method, opts);
+    return result;
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : 'Could not open the invite right now.'
+    };
   }
-  await afterInviteSent(context, 'share', opts);
-  return { ok: true, method: 'share' };
 }

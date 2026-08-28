@@ -1,20 +1,23 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 5 — Bridger only works with friends on it. Two things here:
+// Step 5 - Bridger only works with friends on it. Two things here:
 //   1. Connect contacts (Apple / Android permission, read on-device only).
-//   2. Invite 3 friends with three separate link slots (Link 1, Link 2, Link 3)
+//   2. Invite 3 friends with three separate slots (Invite friends #1, #2, #3)
 //      so each invite goes to a different person.
+//
+// LOOK: white boxes with a hard navy outline on tan paper, one row for the
+// contacts permission and one row per invite link. All the paint comes from
+// the shared onboarding parts.
 //
 // PRIVACY (load-bearing): contacts stay on your phone. Bridger never uploads
 // them. Permission is asked here, in context, never at app launch.
 // ============================================
 import React, { useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
-import { CheckIcon, LinkIcon, UsersIcon } from 'lucide-react-native';
+import { Platform, Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
-import { ButtonSecondary, Card, cn, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
-import { WASH_BODY, WASH_MUTED } from './onboarding-wash';
+import { OB } from './onboarding-theme';
+import { OBTile } from './onboarding-ui';
 import {
   ContactInviteSheet,
   type ContactPick
@@ -25,12 +28,60 @@ import {
   shareInviteForAccess
 } from '../../lib/invite-from-contacts';
 
-/** One of the three invite slots (Link 1 / 2 / 3). */
+/** One of the three invite slots (#1 / #2 / #3). */
 export type InviteSlot = {
   sent: boolean;
   /** Contact name, or "Shared link" when they used the system share sheet. */
   label: string | null;
 };
+
+/**
+ * The small all-caps line that sits above the three link slots, with the
+ * "1/3 invited" count on the right. It is a label, not a button, so a tap on it
+ * is recorded as a dead click by the frame it lives in.
+ */
+function SlotsLabel({ sentCount }: { sentCount: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Text
+        className="font-sans-b text-[12px]"
+        style={{ letterSpacing: 1.2, textTransform: 'uppercase', color: OB.navy }}
+      >
+        Invite 3 friends
+      </Text>
+      <Text className="font-sans-sb text-[12px]" style={{ color: OB.navy }}>
+        {sentCount}/3 invited
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * The right-hand side of one invite link row: what happened to this link, plus a
+ * tick once it has been sent (so the state never depends on color alone).
+ */
+function SlotStatus({ slot }: { slot: InviteSlot }) {
+  return (
+    <View
+      accessible={false}
+      pointerEvents="none"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 }}
+    >
+      <Text
+        numberOfLines={1}
+        className="font-sans-sb text-[13px]"
+        style={{ color: OB.navy, maxWidth: 150 }}
+      >
+        {slot.sent ? (slot.label ? `Sent to ${slot.label}` : 'Invite sent') : 'Tap to invite'}
+      </Text>
+      {slot.sent ? (
+        <Text className="font-sans-b text-[15px]" style={{ color: OB.navy }}>
+          ✓
+        </Text>
+      ) : null}
+    </View>
+  );
+}
 
 export function ContactsStep({
   step,
@@ -62,14 +113,17 @@ export function ContactsStep({
   const sentCount = slots.filter((s) => s.sent).length;
 
   // THIS SECTION DOES: ask for contacts permission and keep the list on-device.
+  // On the web there is no contacts book to read, so we say so plainly instead
+  // of pretending it worked.
   const handleSync = () => {
     void (async () => {
       setSyncing(true);
       setSyncNote(null);
       try {
         if (Platform.OS === 'web') {
-          onSynced();
-          setSyncNote('On web, use the three link slots below to share invites.');
+          setSyncNote(
+            'Contacts need the Bridger app on your phone. Here on the web you can still send the three invites below.'
+          );
           return;
         }
         const { contacts: list, permission } = await loadInviteContacts('onboarding');
@@ -78,13 +132,11 @@ export function ContactsStep({
           onSynced();
           setSyncNote(
             list.length > 0
-              ? 'Contacts connected. Tap a link slot to pick who gets it.'
+              ? 'Contacts connected. Tap an invite below to pick who gets it.'
               : 'Contacts connected, but none had phone numbers. You can still share links.'
           );
         } else {
-          setSyncNote(
-            'Contacts were not allowed. You can still invite with the three link slots.'
-          );
+          setSyncNote('Contacts were not allowed. You can still send the three invites below.');
         }
       } finally {
         setSyncing(false);
@@ -92,14 +144,18 @@ export function ContactsStep({
     })();
   };
 
-  // THIS SECTION DOES: open the contact picker, or fall back to share sheet.
+  // THIS SECTION DOES: open the contact picker, or fall back to share sheet. If
+  // sharing isn't possible (a desktop browser, say) we show a plain sentence
+  // rather than letting the failure bubble up as a red error page.
   const handleSlotPress = (index: number) => {
     void (async () => {
       const slotNum = index + 1;
+      setSyncNote(null);
 
       // Already filled: allow re-send with share sheet (does not change the count).
       if (slots[index]?.sent) {
-        await shareInviteForAccess('onboarding', { slot: slotNum });
+        const again = await shareInviteForAccess('onboarding', { slot: slotNum });
+        if (!again.ok && !again.cancelled) setSyncNote(again.message);
         return;
       }
 
@@ -125,6 +181,8 @@ export function ContactsStep({
       const result = await shareInviteForAccess('onboarding', { slot: slotNum });
       if (result.ok) {
         onFillSlot(index, { sent: true, label: 'Shared link' });
+      } else if (!result.cancelled) {
+        setSyncNote(result.message);
       }
     })();
   };
@@ -141,6 +199,8 @@ export function ContactsStep({
       });
       if (result.ok) {
         onFillSlot(index, { sent: true, label: contact.name });
+      } else if (!result.cancelled) {
+        setSyncNote(result.message);
       }
     })();
   };
@@ -152,99 +212,51 @@ export function ContactsStep({
         total={total}
         purpose="Bridger only works with a friend on it."
         ask="Bridger's a group chat on steroids"
-        accent="teal"
         onContinue={onNext}
         onSkip={onSkip}
         onBack={onBack}
       >
-        <View className="gap-3">
-          <Text className={cn('px-1 font-sans-sb text-[14px] leading-snug', WASH_BODY)}>
-            Connect your contacts, then invite three friends with separate links.
-          </Text>
-
+        <View style={{ gap: 12 }}>
           {/* SYNC: Apple / Android contacts permission, on-device only. */}
-          <ButtonSecondary
-            full
-            size="lg"
-            tone={synced ? 'positive' : 'solid'}
-            loading={syncing}
-            icon={<UsersIcon size={18} strokeWidth={2.5} color="#FFFFFF" />}
+          <OBTile
+            label={
+              syncing ? 'Connecting contacts' : synced ? 'Contacts connected' : 'Connect contacts'
+            }
+            selected={synced}
+            mark={synced ? '✓' : '+'}
+            disabled={syncing}
             analyticsId={ONBOARDING.contacts.sync}
             onPress={handleSync}
             accessibilityLabel={synced ? 'Contacts connected' : 'Connect contacts'}
-          >
-            {synced ? 'Contacts connected' : 'Connect contacts'}
-          </ButtonSecondary>
+          />
 
+          {/* THIS SECTION DOES: tell them what just happened with permission. */}
           {syncNote ? (
-            <Text className={cn('px-1 font-sans-sb text-[12px] leading-snug', WASH_MUTED)}>
+            <Text className="font-sans-sb text-[12.5px]" style={{ color: OB.navy, lineHeight: 18 }}>
               {syncNote}
             </Text>
           ) : null}
 
-          {/* THIS SECTION DOES: three separate invite slots (Link 1, 2, 3). */}
-          <View className="gap-1.5">
-            <View className="flex-row items-baseline justify-between px-1">
-              <Text className={cn('font-sans-b text-[12px] uppercase tracking-wide', WASH_MUTED)}>
-                Invite 3 friends
-              </Text>
-              <Text className={cn('font-sans-sb text-[12px]', WASH_MUTED)}>
-                {sentCount}/3 invited
-              </Text>
-            </View>
-
+          {/* THIS SECTION DOES: three separate invites, one friend each. */}
+          <View style={{ gap: 9 }}>
+            <SlotsLabel sentCount={sentCount} />
             {slots.map((slot, index) => (
-              <Pressable
+              <OBTile
                 key={index}
-                onPress={withAnalyticsPress(
-                  ONBOARDING.contacts.invite_slot,
-                  () => handleSlotPress(index),
-                  { analyticsProps: { slot: index + 1 } }
-                )}
-                accessibilityRole="button"
+                label={`Invite friends #${index + 1}`}
+                selected={slot.sent}
+                right={<SlotStatus slot={slot} />}
+                analyticsId={ONBOARDING.contacts.invite_slot}
+                analyticsProps={{ slot: index + 1 }}
+                onPress={() => handleSlotPress(index)}
                 accessibilityLabel={
                   slot.sent
-                    ? `Link ${index + 1} sent to ${slot.label ?? 'a friend'}`
-                    : `Invite link ${index + 1}`
+                    ? `Invite ${index + 1} sent to ${slot.label ?? 'a friend'}`
+                    : `Send invite ${index + 1}`
                 }
-                accessibilityState={{ selected: slot.sent }}
-                className={cn(
-                  'min-h-[48px] flex-row items-center justify-between rounded-card border px-4',
-                  slot.sent ? 'border-teal bg-teal/15' : 'border-ink-line bg-surface'
-                )}
-              >
-                <View className="min-w-0 flex-1 flex-row items-center gap-3">
-                  <LinkIcon
-                    size={18}
-                    strokeWidth={2.4}
-                    color={slot.sent ? '#00A676' : '#1C1B16'}
-                  />
-                  <View className="min-w-0 flex-1">
-                    <Text className="font-sans-b text-[14px] text-ink">
-                      Link {index + 1}
-                    </Text>
-                    <Text numberOfLines={1} className="font-sans-sb text-[12px] text-ink-mute">
-                      {slot.sent
-                        ? slot.label
-                          ? `Sent to ${slot.label}`
-                          : 'Invite sent'
-                        : 'Tap to invite one friend'}
-                    </Text>
-                  </View>
-                </View>
-                {slot.sent ? (
-                  <CheckIcon size={18} color="#00A676" strokeWidth={3} />
-                ) : null}
-              </Pressable>
+              />
             ))}
           </View>
-
-          <Card>
-            <Text className="font-sans-sb text-[13px] leading-snug text-ink-soft">
-              Your contacts stay on your phone. Bridger never uploads them, and you can skip this
-              and still use everything.
-            </Text>
-          </Card>
         </View>
       </OnboardingStep>
 
@@ -257,7 +269,7 @@ export function ContactsStep({
           setActiveSlot(null);
         }}
         title={
-          activeSlot != null ? `Pick someone for Link ${activeSlot + 1}` : 'Pick someone to invite'
+          activeSlot != null ? `Pick someone for invite #${activeSlot + 1}` : 'Pick someone to invite'
         }
         surface="onboarding_invite_contacts_sheet"
         parentScreen="onboarding"

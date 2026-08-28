@@ -250,7 +250,7 @@ export function DesignSystemGallery() {
                 
                 ✕
               </span>
-              <p className="font-pixel text-[17px] leading-tight text-ink">Fucks not found.</p>
+              <p className="font-pixel text-[17px] leading-tight text-ink">System says it's fine...</p>
             </div>
             <div className="mt-5 flex justify-center gap-2">
               <WindowsButton autoFocusRing>OK</WindowsButton>

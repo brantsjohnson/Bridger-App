@@ -2,7 +2,7 @@
 // WHAT THIS FILE DOES (plain English):
 // When a screen crashes (a real JS error, not a missing URL), Expo Router
 // shows this instead of its black "Something went wrong" page. We show the
-// same Magic Patterns Windows 404 dialog ("Fucks not found.") so the app
+// same Magic Patterns Windows 404 dialog ("System says it's fine...") so the app
 // always looks on-brand, and we record the hit as a runtime_error for admin.
 // ============================================
 import React, { useEffect, useRef } from 'react';

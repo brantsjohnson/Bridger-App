@@ -1,15 +1,20 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 10E — "Your places." Three light town fields: where you're from, where
-// you live now, and the best place you've visited. Skippable. Towns only, never
-// street addresses (PRIVACY). These become profile facts whose audience is set
-// on the Privacy & Control screen.
+// Step 10E - "Your places." Three light town questions: where you're from, where
+// you live now, and the best place you've visited. Skippable. The amber chip
+// says "Info for the profile." Still towns only, never street addresses
+// (PRIVACY). Hometown / current town become About Me rows; the favorite trip
+// is geocoded onto the travel map with a FAV star when possible.
+//
+// LOOK: three white typing boxes with the hard navy outline, each with its own
+// small navy label above it. All the paint comes from the shared onboarding
+// parts.
 // ============================================
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
-import { TextField } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
+import { OBField } from './onboarding-ui';
 
 export function PlacesStep({
   step,
@@ -40,38 +45,44 @@ export function PlacesStep({
     <OnboardingStep
       step={step}
       total={total}
-      purpose="Towns only, never an address."
+      purpose="Info for the profile"
       ask="Your places"
-      accent="amber"
       onContinue={onNext}
       onSkip={onSkip}
       onBack={onBack}
     >
-      <View className="gap-3">
-        <TextField
-          labelTone="onaccent"
+      {/* THIS SECTION DOES: the three town boxes. PRIVACY: we ask for a town
+          name only, so nothing here can point at a doorstep. */}
+      <View style={{ gap: 18 }}>
+        <OBField
           label="Hometown"
           value={hometown}
           onChange={onChangeHometown}
           placeholder="Where you're from"
           analyticsId={ONBOARDING.taste.hometown_input}
         />
-        <TextField
-          labelTone="onaccent"
+        <OBField
           label="Current town"
           value={currentTown}
           onChange={onChangeCurrent}
           placeholder="Where you live now"
           analyticsId={ONBOARDING.taste.current_town_input}
         />
-        <TextField
-          labelTone="onaccent"
+        <OBField
           label="Favorite place you've visited"
           value={favoritePlace}
           onChange={onChangeFavorite}
           placeholder="The best trip"
           analyticsId={ONBOARDING.taste.favorite_place_input}
         />
+        {/* Encourage filling the map later with more trips. */}
+        <Text
+          className="font-sans-md text-[13px] text-ink-mute"
+          accessibilityRole="text"
+        >
+          We will star this one as FAV on your map. You can keep adding other
+          places you have traveled from your profile.
+        </Text>
       </View>
     </OnboardingStep>
   );

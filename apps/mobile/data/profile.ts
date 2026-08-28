@@ -26,7 +26,8 @@ import {
   formatStorageBytes,
   includedBytesFromGb,
   overagePriceLabel,
-  storageUsedPct
+  storageUsedPct,
+  trackProduct
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
@@ -90,6 +91,8 @@ export type MyProfileHeader = {
   song: { title: string; artist: string };
   /** what they're reading right now — same idea as the song, for books */
   book?: { title: string; author: string };
+  /** Signed URL for the profile photo (live). Demo uses fixtures instead. */
+  avatarUrl?: string | null;
 };
 
 /**
@@ -197,7 +200,7 @@ async function replaceAttributes(
   });
 }
 
-/** Header bits: city, bio, profile song. */
+/** Header bits: city, bio, profile song, avatar. */
 export async function getMyProfileHeader(): Promise<MyProfileHeader> {
   if (isDemoMode()) return { ...demoHeader, song: { ...demoHeader.song } };
   const p = await apiFetch<{
@@ -205,12 +208,14 @@ export async function getMyProfileHeader(): Promise<MyProfileHeader> {
     bio: string;
     song: { title: string; artist: string };
     book?: { title: string; author: string } | null;
+    avatarUrl?: string | null;
   }>('/me/profile');
   return {
     city: p.city ?? '',
     bio: p.bio ?? '',
     song: { title: p.song?.title ?? '', artist: p.song?.artist ?? '' },
-    book: p.book?.title ? { title: p.book.title, author: p.book.author } : undefined
+    book: p.book?.title ? { title: p.book.title, author: p.book.author } : undefined,
+    avatarUrl: p.avatarUrl ?? null
   };
 }
 
@@ -425,7 +430,41 @@ export async function listObsession(): Promise<ObsessionSquare[]> {
     return withListeningMusic(demoObsession.map((o) => ({ ...o })));
   }
   const rows = await fetchAttributes<ObsessionSquare>('obsession');
-  return withListeningMusic(rows.map((r) => r.value).sort((a, b) => a.order - b.order));
+  let squares = rows.map((r) => r.value).sort((a, b) => a.order - b.order);
+
+  // THIS SECTION DOES: surface the canonical currently_song as a Listening
+  // square when obsession modules haven't filled one yet (onboarding seed).
+  try {
+    const header = await getMyProfileHeader();
+    if (header.song?.title?.trim()) {
+      const songText = header.song.artist?.trim()
+        ? `${header.song.title.trim()} · ${header.song.artist.trim()}`
+        : header.song.title.trim();
+      let found = false;
+      squares = squares.map((o) => {
+        if (!/^listening/i.test(String(o.prompt))) return o;
+        found = true;
+        return { ...o, text: o.text || songText };
+      });
+      if (!found) {
+        squares = [
+          {
+            id: 'from-currently-song',
+            prompt: 'Listening…',
+            text: songText,
+            emoji: '🎧',
+            order: -1,
+            visibleToTier: 'friend'
+          },
+          ...squares
+        ];
+      }
+    }
+  } catch {
+    // Header fetch failed: still return obsession rows + music overlay.
+  }
+
+  return withListeningMusic(squares);
 }
 
 /**
@@ -841,6 +880,33 @@ export async function savePlaces(
 }
 
 /**
+ * Mark one travel place as the favorite (FAV star). Clears favorite on others
+ * so there is only one starred pin. Live: rewrite the place: batch.
+ */
+export async function setFavoriteTravelPlace(placeId: string): Promise<TravelPlace[]> {
+  const places = await listTravelPlaces();
+  const next = places.map((p) => ({
+    ...p,
+    favorite: p.id === placeId
+  }));
+  if (isDemoMode()) {
+    demoPlaces = next;
+    trackProduct('place_favorited', {});
+    return listTravelPlaces();
+  }
+  await replaceAttributes(
+    'place:',
+    next.map((p) => ({
+      key: `place:${p.id}`,
+      value: p,
+      visibleToTier: p.tier ?? 'friend'
+    }))
+  );
+  trackProduct('place_favorited', {});
+  return listTravelPlaces();
+}
+
+/**
  * Save About Me personal questions into AboutField rows.
  * PRIVACY: uses the per-question visibility from the review step, falling
  * back to each question's defaultTier from the bank.
@@ -1095,6 +1161,7 @@ export async function getPersonProfile(personId: string): Promise<FriendProfile 
     id: string;
     name: string;
     avatarMediaId: string | null;
+    avatarUrl?: string | null;
     viewerTier: Tier;
     attributes: ApiAttribute[];
     greatestHits?: PhotoBlock[];
@@ -1111,7 +1178,8 @@ export async function getPersonProfile(personId: string): Promise<FriendProfile 
     ...mapped,
     header: {
       ...mapped.header,
-      city: mapped.header.city || ''
+      city: mapped.header.city || '',
+      avatarUrl: res.avatarUrl ?? null
     },
     greatestHits: (res.greatestHits ?? []).map((p) => ({ ...p }))
   };

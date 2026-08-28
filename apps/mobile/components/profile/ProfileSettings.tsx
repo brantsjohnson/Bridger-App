@@ -3,8 +3,8 @@
 // The Settings tab on your profile: appearance, who sees what, storage,
 // Discover, page customization, notifications (opens per-group prefs), blocked
 // people, account, and Log out. Rows that lead to surfaces we haven't built yet
-// show a small note instead of going nowhere silently. Log out is always
-// reachable here, which the app stores require.
+// show a small note instead of going nowhere silently. Log out is coral red,
+// asks once, then clears the session (or leaves demo) and opens Sign in.
 // Analytics: each row uses PROFILE.settings.* so taps land in PostHog by name.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
@@ -55,16 +55,14 @@ import { BlockedPeopleSheet } from './BlockedPeopleSheet';
 export function ProfileSettings({
   blocked,
   storage,
-  onUnblock,
-  onSignOut
+  onUnblock
 }: {
   blocked: Person[];
   storage: StorageState;
   onUnblock: (id: string) => void;
-  onSignOut: () => void;
 }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const scheme = useColorScheme();
   /** a standing preference for other people's pages — never your own */
   const [preferOriginal, setPreferOriginal] = useState(false);
@@ -573,11 +571,44 @@ export function ProfileSettings({
         analyticsId={PROFILE.settings.account}
       />
 
+      {/* ACCESSIBILITY: red (coral) Log out so it reads as leave, not another settings row */}
       <Card>
         <ButtonSecondary
           full
-          tone="ghost"
-          onPress={onSignOut}
+          tone="destructive"
+          onPress={() => {
+            Alert.alert(
+              'Log out?',
+              isDemoMode()
+                ? 'You will leave demo and go back to Sign in.'
+                : 'You will need to sign in again to use Bridger on this device.',
+              [
+                { text: 'Stay', style: 'cancel' },
+                {
+                  text: 'Log out',
+                  style: 'destructive',
+                  onPress: () => {
+                    void (async () => {
+                      // THIS SECTION DOES: clear demo or the real session, then open Sign in
+                      if (isDemoMode()) {
+                        await disableDemoMode();
+                        trackProduct('demo_mode_left', { method: 'settings' });
+                      } else {
+                        // Fire while still opted-in; layout opts out after session clears
+                        trackProduct('auth_signed_out', { method: 'settings' });
+                      }
+                      try {
+                        await signOut();
+                      } catch {
+                        // Still leave even if the network call fails
+                      }
+                      router.replace('/(auth)/sign-in');
+                    })();
+                  }
+                }
+              ]
+            );
+          }}
           analyticsId={PROFILE.settings.log_out}
         >
           Log out

@@ -22,6 +22,7 @@ import { Avatar } from '../primitives/Avatar';
 import { PixelHeading } from '../primitives/PixelHeading';
 import { AnalyticsRegion, withAnalyticsPress } from '../lib/analytics';
 import { useProfileLink } from './ProfileLink';
+import { useGridColor } from './GridColor';
 import { SynthGrid } from './SynthGrid';
 
 type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain' | 'intro';
@@ -124,6 +125,8 @@ export function Screen({
 }) {
   const [headerProps, setHeaderPropsState] = useState<ScreenHeaderProps | null>(null);
   const [headerChrome, setHeaderChrome] = useState<React.ReactNode>(null);
+  // Personal grid tint from onboarding (defaults to classic purple).
+  const { gridColor } = useGridColor();
 
   // THIS SECTION DOES: update header props without remounting when nothing
   // meaningful changed (same trailing node identity = same + / Edit buttons).
@@ -182,7 +185,13 @@ export function Screen({
       <View
         className={cn('flex-1', bg, className)}
         // NativeWind `bg-black` can fail to paint on web; pin intro to near-black.
-        style={tone === 'intro' ? { backgroundColor: '#0E0E0E' } : undefined}
+        // Width/height 100% keeps every tab filling the real window on web,
+        // instead of locking to a leftover phone-sized box with a white gutter.
+        style={{
+          width: '100%',
+          height: '100%',
+          ...(tone === 'intro' ? { backgroundColor: '#0E0E0E' } : null)
+        }}
       >
         {/*
           The drifting grid is Bridger's background everywhere now, not just
@@ -192,7 +201,10 @@ export function Screen({
           Intro gates skip it too: they stay solid black.
         */}
         {tone === 'plain' || tone === 'intro' ? null : (
-          <SynthGrid strength={tone === 'synth' ? 'bold' : 'normal'} />
+          <SynthGrid
+            strength={tone === 'synth' ? 'bold' : 'normal'}
+            color={gridColor}
+          />
         )}
         <View className="relative z-10 flex-1" style={{ backgroundColor: 'transparent' }}>
           {children}

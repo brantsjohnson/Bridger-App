@@ -18,7 +18,7 @@ export function NotFoundScreen({ onDismiss }: {onDismiss?: () => void;}) {
               
               <XIcon className="h-5 w-5" strokeWidth={4} />
             </span>
-            <p className="font-pixel text-[19px] leading-tight text-ink">Fucks not found.</p>
+            <p className="font-pixel text-[19px] leading-tight text-ink">System says it's fine...</p>
           </div>
           <div className="mt-6 flex justify-center">
             <WindowsButton autoFocusRing onClick={onDismiss}>

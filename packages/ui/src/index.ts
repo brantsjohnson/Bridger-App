@@ -47,5 +47,6 @@ export * from './primitives/NotFoundScreen';
 // --- Layout (the screen scaffold + the floating navigation) ---
 export * from './layout/Screen';
 export * from './layout/SynthGrid';
+export * from './layout/GridColor';
 export * from './layout/FloatingTabBar';
 export * from './layout/ProfileLink';
