@@ -18,10 +18,14 @@ import type { Tier } from '@bridger/shared';
 import { trackProduct } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import { applyOnboardingNotificationPrefs } from './notification-prefs';
 
 /** Device-local flag: this account already finished onboarding. */
 export const ONBOARDING_COMPLETE_KEY = 'bridger.onboardingComplete';
+
+/** Device-local copy of the "where were you?" onboarding resume point. */
+export const ONBOARDING_PROGRESS_KEY = 'bridger.onboardingProgress';
 
 export type MeetScope = 'near' | 'anywhere';
 export type PhotoSource = 'camera' | 'library';
@@ -38,8 +42,8 @@ export type VisibilityRow = {
 let demoDraftSaved: Record<string, unknown> = {};
 
 // A synchronous mirror of the "finished onboarding?" flag. The router gate reads
-// this the instant welcome-in sets it, so it never bounces the person back to
-// onboarding while the (async) storage read is still in flight.
+// this the instant Co-op (the last step) sets it, so it never bounces the person
+// back to onboarding while the (async) storage read is still in flight.
 let completeCache = false;
 
 /** Read the last-known onboarding status without waiting on storage. */
@@ -55,7 +59,7 @@ export async function hydrateOnboardingComplete(): Promise<boolean> {
 }
 
 /**
- * Has this person finished onboarding? Returns false until welcome-in runs.
+ * Has this person finished onboarding? Returns false until Co-op finishes.
  * Demo mode reads the device flag. Live mode asks the server (so the answer
  * survives a reinstall) and mirrors it into the device cache as a fast path.
  */
@@ -73,23 +77,165 @@ export async function getOnboardingComplete(): Promise<boolean> {
   return hydrateOnboardingComplete();
 }
 
-/** Mark onboarding done — only welcome-in calls this. */
+/** Mark onboarding done — Co-op (the last step) calls this. */
 export async function setOnboardingComplete(): Promise<void> {
-  if (!isDemoMode()) {
-    await apiFetch('/me', {
-      method: 'PATCH',
-      body: JSON.stringify({ onboardingComplete: true })
-    });
-  }
-  // Always mirror into the device cache so the router gate reads it instantly.
+  // THIS SECTION DOES: flip the local "done" flag first so Co-op can leave
+  // even when the API is down. The router gate reads this cache immediately.
   completeCache = true;
   await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, '1');
+
+  if (isDemoMode()) return;
+
+  // Best-effort server mirror in the background. Do not await: a hung network
+  // must not leave someone stuck on the last onboarding step.
+  void apiFetch('/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ onboardingComplete: true })
+  }).catch((err) => {
+    console.warn('Could not save onboardingComplete to the server; local flag is set.', err);
+  });
 }
 
 /** QA helper: clear the flag so the run can be previewed again. */
 export async function resetOnboarding(): Promise<void> {
   completeCache = false;
   await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+  // Also drop any saved resume point so the preview starts clean.
+  await AsyncStorage.removeItem(ONBOARDING_PROGRESS_KEY);
+}
+
+// ============================================
+// ONBOARDING RESUME POINT (plain English):
+// As a person moves through onboarding we remember two things: which screen
+// they are on (`step`) and the answers they have typed so far (`draft`). We keep
+// a copy on the device (instant, works offline, survives a force-quit) AND, for
+// signed-in people, a copy in Supabase (survives a reinstall or a new phone).
+// On relaunch the run reads this and drops them right back where they were, so a
+// crash never sends anyone back to the very first screen. It is wiped the moment
+// onboarding finishes.
+//
+// NOTE: each real answer is ALSO saved to its normal home as they advance (see
+// the save* functions above); this is only the resume copy.
+// ============================================
+
+/** The shape the onboarding run reads back to resume: a screen + its answers. */
+export type LoadedOnboardingProgress = {
+  step: string;
+  draft: Record<string, unknown>;
+} | null;
+
+/** Who is signed in right now (null in demo / before login). */
+async function currentUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save the resume point to the DEVICE only (fast path). Called on every small
+ * change so a crash mid-typing still keeps what they entered. Best-effort: a
+ * failed write never blocks the run.
+ */
+export async function persistOnboardingProgressLocal(
+  step: string,
+  draft: Record<string, unknown>
+): Promise<void> {
+  // Demo / preview stays ephemeral: every preview starts the run from the top.
+  if (isDemoMode()) return;
+  try {
+    const userId = await currentUserId();
+    await AsyncStorage.setItem(
+      ONBOARDING_PROGRESS_KEY,
+      JSON.stringify({ userId, step, draft, savedAt: Date.now() })
+    );
+  } catch {
+    // Local save is best-effort; never strand the person over it.
+  }
+}
+
+/**
+ * Save the resume point to BOTH the device and Supabase. Called as the person
+ * advances (or steps back), which is the natural moment to record progress. The
+ * server write is fire-and-forget so a slow network never blocks the button.
+ */
+export async function saveOnboardingProgress(
+  step: string,
+  draft: Record<string, unknown>
+): Promise<void> {
+  await persistOnboardingProgressLocal(step, draft);
+  if (isDemoMode()) return;
+  void apiFetch('/me/onboarding-progress', {
+    method: 'PATCH',
+    body: JSON.stringify({ step, draft })
+  }).catch((err) => {
+    console.warn(
+      'Could not save onboarding progress to the server; device copy is set.',
+      err
+    );
+  });
+}
+
+/**
+ * Read the resume point on relaunch. Prefer the device copy (fast, offline,
+ * survives force-quit); fall back to the Supabase copy (survives reinstall).
+ * Returns null when there is nothing to resume, so the run starts at screen one.
+ */
+export async function loadOnboardingProgress(): Promise<LoadedOnboardingProgress> {
+  // Demo / preview never resumes: it always starts the run from the top.
+  if (isDemoMode()) return null;
+
+  // 1) Device copy first.
+  try {
+    const raw = await AsyncStorage.getItem(ONBOARDING_PROGRESS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        userId?: string | null;
+        step?: string;
+        draft?: Record<string, unknown>;
+      };
+      const uid = await currentUserId();
+      // Only trust the device copy if it belongs to the signed-in account.
+      const sameAccount = !uid || !parsed.userId || parsed.userId === uid;
+      if (sameAccount && parsed.step && parsed.draft) {
+        return { step: parsed.step, draft: parsed.draft };
+      }
+    }
+  } catch {
+    // Corrupt/absent device copy: fall through to the server.
+  }
+
+  // 2) Server copy (reinstall / new device).
+  try {
+    const me = await apiFetch<{
+      onboardingStep?: string | null;
+      onboardingDraft?: Record<string, unknown> | null;
+    }>('/me');
+    if (me?.onboardingStep && me.onboardingDraft) {
+      return { step: me.onboardingStep, draft: me.onboardingDraft };
+    }
+  } catch {
+    // Offline / API down: nothing to resume from; start fresh.
+  }
+  return null;
+}
+
+/** Wipe the resume point (device + server) when onboarding is finished. */
+export async function clearOnboardingProgress(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(ONBOARDING_PROGRESS_KEY);
+  } catch {
+    // ignore: the complete flag already gates entry to the app.
+  }
+  if (isDemoMode()) return;
+  void apiFetch('/me/onboarding-progress', {
+    method: 'PATCH',
+    body: JSON.stringify({ step: null, draft: null })
+  }).catch(() => {
+    // Best-effort: the device copy is already gone and complete=true gates entry.
+  });
 }
 
 /** 2 · Which nudges they want (multi-select). Writes notification prefs. */
@@ -127,7 +273,7 @@ export async function saveName(name: string): Promise<void> {
  * shows on your profile behind the house filter.
  */
 export async function savePhoto(input: {
-  source: PhotoSource;
+  source?: PhotoSource | null;
   uri?: string;
   /**
    * A photo the server already rendered (the Comic look) and saved for us. When
@@ -136,16 +282,23 @@ export async function savePhoto(input: {
   filteredMediaId?: string | null;
 }): Promise<void> {
   if (isDemoMode()) {
-    demoDraftSaved.photo = input.source;
+    demoDraftSaved.photo = input.source ?? 'library';
     return;
   }
 
-  // A server look (Comic) is already stored: point identity straight at it.
+  // A server look (Comic / X-ray / Sepia) is already stored: point identity at it.
   if (input.filteredMediaId) {
     await apiFetch('/me', {
       method: 'PATCH',
       body: JSON.stringify({ avatarMediaId: input.filteredMediaId })
     });
+    // THIS SECTION DOES: refresh the in-memory face so Home header updates now.
+    try {
+      const { loadPeople } = await import('../lib/people-cache');
+      await loadPeople();
+    } catch {
+      // Cache refresh is best-effort; the DB write already succeeded.
+    }
     return;
   }
 
@@ -164,6 +317,12 @@ export async function savePhoto(input: {
     method: 'PATCH',
     body: JSON.stringify({ avatarMediaId: mediaId })
   });
+  try {
+    const { loadPeople } = await import('../lib/people-cache');
+    await loadPeople();
+  } catch {
+    // Cache refresh is best-effort; the DB write already succeeded.
+  }
 }
 
 /**
@@ -548,7 +707,10 @@ export async function savePlaces(input: {
 }
 
 /**
- * 10F · Recap — the highlight of your week (typed or a 20s voice memo).
+ * ARCHIVED from onboarding (2026-08-28). Kept so we can re-enable the step.
+ * Friend Pod "Add your recap" is the live weekly voice capture.
+ *
+ * Was: 10F · Recap — the highlight of your week (typed or a 20s voice memo).
  * Voice mode uploads the recorded clip to the private media bucket and stores
  * the resulting media id on the attribute; text mode stores the words. Demo
  * records only the mode + text (no upload).
@@ -603,19 +765,19 @@ export async function saveRecap(input: {
 }
 
 /**
- * Build the Privacy & Control review rows from the taste answers. Only the six
- * things the spec lists appear: birthday, job, dream job, favorite place, song,
- * weekly recap. Row ids match the attribute keys saved above so visibility
- * PATCH can find them.
+ * Build the Privacy & Control review rows from the taste answers. Birthday,
+ * hometown, lives in, job, dream job, favorite place, and song. (Onboarding no
+ * longer collects a weekly recap clip; Friend Pod still does later.) Row ids
+ * match the attribute keys saved above so visibility PATCH can find them.
  */
 export function buildPrivacyRows(input: {
   birthday: string;
+  hometown?: string;
+  currentTown?: string;
   currentJob: string;
   dreamJob: string;
   favoritePlace: string;
   song: string;
-  recapText: string;
-  recapRecorded: boolean;
 }): VisibilityRow[] {
   const val = (s: string) => (s.trim() ? s.trim() : 'Not added');
   return [
@@ -624,6 +786,18 @@ export function buildPrivacyRows(input: {
       label: 'Birthday',
       value: val(input.birthday),
       tier: 'friend' as Tier
+    },
+    {
+      id: 'about:about-from',
+      label: 'Hometown',
+      value: val(input.hometown ?? ''),
+      tier: 'acquaintance' as Tier
+    },
+    {
+      id: 'about:about-town',
+      label: 'Lives in',
+      value: val(input.currentTown ?? ''),
+      tier: 'acquaintance' as Tier
     },
     {
       id: 'about:about-job',
@@ -648,26 +822,161 @@ export function buildPrivacyRows(input: {
       label: 'Song',
       value: val(input.song),
       tier: 'friend' as Tier
-    },
-    {
-      id: 'weekly_recap',
-      label: 'Weekly recap',
-      value: input.recapRecorded ? 'Voice memo' : val(input.recapText),
-      tier: 'friend' as Tier
     }
   ];
+}
+
+/**
+ * Final safety net at the end of onboarding: re-save every draft field that
+ * still has a value. Covers the case where an earlier step's save failed
+ * quietly (network blip) but the person kept going. Best-effort: one failure
+ * must never block finishing.
+ */
+export async function flushOnboardingDraft(draft: {
+  firstName: string;
+  lastName: string;
+  photoSource: PhotoSource | null;
+  photoUri: string | null;
+  filteredMediaId: string | null;
+  birthday: string;
+  connectStyles: string[];
+  notifPrefs: string[];
+  currentJob: string;
+  dreamJob: string;
+  song: string;
+  nights: number | null;
+  color: string | null;
+  hometown: string;
+  currentTown: string;
+  favoritePlace: string;
+  favoritePlaceHit: {
+    label: string;
+    lat: number;
+    lng: number;
+    countryCode: string;
+  } | null;
+  visibility: VisibilityRow[];
+}): Promise<void> {
+  if (isDemoMode()) return;
+
+  const name = `${draft.firstName} ${draft.lastName}`.trim();
+  if (name) {
+    try {
+      await saveName(name);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: name failed', err);
+    }
+  }
+
+  if (draft.photoUri || draft.filteredMediaId) {
+    try {
+      await savePhoto({
+        source: draft.photoSource,
+        uri: draft.photoUri ?? undefined,
+        filteredMediaId: draft.filteredMediaId
+      });
+    } catch (err) {
+      console.warn('flushOnboardingDraft: photo failed', err);
+    }
+  }
+
+  if (draft.birthday.trim()) {
+    try {
+      await saveBirthday(draft.birthday);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: birthday failed', err);
+    }
+  }
+
+  if (draft.connectStyles.length) {
+    try {
+      await saveConnectionStyle(draft.connectStyles);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: connectionStyle failed', err);
+    }
+  }
+
+  if (draft.notifPrefs.length) {
+    try {
+      await saveNotifications(draft.notifPrefs);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: notifications failed', err);
+    }
+  }
+
+  if (draft.currentJob.trim() || draft.dreamJob.trim()) {
+    try {
+      await saveRightNow({
+        currentJob: draft.currentJob,
+        dreamJob: draft.dreamJob
+      });
+    } catch (err) {
+      console.warn('flushOnboardingDraft: rightNow failed', err);
+    }
+  }
+
+  if (draft.song.trim()) {
+    try {
+      await saveObsessionSong(draft.song);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: song failed', err);
+    }
+  }
+
+  if (draft.nights != null) {
+    try {
+      await saveSocialBattery(draft.nights);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: socialBattery failed', err);
+    }
+  }
+
+  if (draft.color) {
+    try {
+      await saveColor(draft.color);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: color failed', err);
+    }
+  }
+
+  if (
+    draft.hometown.trim() ||
+    draft.currentTown.trim() ||
+    draft.favoritePlace.trim() ||
+    draft.favoritePlaceHit
+  ) {
+    try {
+      await savePlaces({
+        hometown: draft.hometown,
+        currentTown: draft.currentTown,
+        favoritePlace: draft.favoritePlace,
+        favoritePlaceHit: draft.favoritePlaceHit
+      });
+    } catch (err) {
+      console.warn('flushOnboardingDraft: places failed', err);
+    }
+  }
+
+  if (draft.visibility.length) {
+    try {
+      await saveVisibility(draft.visibility);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: visibility failed', err);
+    }
+  }
 }
 
 /** 8 · Co-op pitch outcome. "Use free" is first-class; never a paywall. */
 export async function joinCoop(
   join: boolean,
-  method: 'apple' | 'google' | 'card' | 'soft' = 'soft'
+  method: 'apple' | 'google' | 'card' | 'soft' = 'soft',
+  plan: 'monthly' | 'yearly' = 'monthly'
 ): Promise<void> {
   if (join) {
     // Product event coop_joined fires inside data/coop.joinCoop.
     const { joinCoop: joinLive } = await import('./coop');
     if (isDemoMode()) demoDraftSaved.coop = true;
-    await joinLive(method);
+    await joinLive(method, plan);
     return;
   }
   // Use free: keep free plan, do not emit coop_left (they never joined).

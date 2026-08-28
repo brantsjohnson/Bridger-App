@@ -325,7 +325,9 @@ function labelForKind(kind: string, payload: Record<string, string>): string {
       return 'Wants to connect';
     case 'connection_accepted':
     case 'mutual_connection':
-      return 'Accepted your request';
+      return payload.via === 'invite'
+        ? 'Joined from your invite'
+        : 'Accepted your request';
     case 'touch_grass':
     case 'touch_grass_signal':
       return 'Is free to hang';

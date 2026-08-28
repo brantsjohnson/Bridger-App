@@ -121,6 +121,43 @@ export const MEMBER_UNLOCKS: ReadonlyArray<{
   }
 ];
 
+/**
+ * Free vs Co-op, one row per thing that differs. The onboarding join screen
+ * shows the `top` rows first (the five best reasons), then "See more" reveals
+ * the rest. Kept here so the Co-op benefits page and onboarding stay in sync.
+ *
+ * NOTE (honest framing): Bridger has no ads on ANY plan. The "No ads" row shows
+ * the same value for both because membership is what keeps it ad-free, not a
+ * thing the free tier is missing.
+ */
+export const COOP_PLAN_COMPARISON: ReadonlyArray<{
+  /** stable key for lists / analytics */
+  key: string;
+  /** short, plain-language feature name */
+  label: string;
+  /** what the free plan gets */
+  free: string;
+  /** what a co-op member gets */
+  member: string;
+  /** true for the five headline rows shown before "See more" */
+  top: boolean;
+}> = [
+  { key: 'profit', label: 'Share in the profits', free: 'No', member: 'Yes', top: true },
+  { key: 'vote', label: 'A vote in Bridger', free: 'No', member: '1 vote', top: true },
+  { key: 'no_ads', label: 'No ads, ever', free: 'Yes', member: 'Yes', top: true },
+  { key: 'storage', label: 'Keep everything', free: '30 days', member: 'Unlimited', top: true },
+  { key: 'friends', label: 'More friends', free: 'Up to 30', member: 'Up to 125', top: true },
+  // Acquaintances are the "everyone you added" tier: connection is never capped,
+  // so this row is Unlimited on both plans on purpose.
+  { key: 'acquaintances', label: 'Add anyone', free: 'Unlimited', member: 'Unlimited', top: false },
+  { key: 'video', label: 'Post video', free: 'No', member: 'Yes', top: false },
+  { key: 'ask', label: 'Polls and questions', free: 'No', member: 'Yes', top: false },
+  { key: 'recaps', label: 'Recaps', free: 'Weekly', member: 'Daily', top: false },
+  { key: 'events', label: 'Host big events', free: 'Up to 35', member: 'Up to 100', top: false },
+  { key: 'groups', label: 'Named groups', free: 'No', member: 'Yes', top: false },
+  { key: 'personalize', label: 'Make it yours', free: 'No', member: 'Yes', top: false }
+];
+
 export interface CoopMembership {
   member: boolean;
   /** display only */

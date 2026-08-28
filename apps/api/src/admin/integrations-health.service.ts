@@ -66,6 +66,15 @@ export class IntegrationsHealthService {
     );
     checks.push(await this.posthogCheck(checkedAt));
     checks.push(await this.imageMagickCheck(checkedAt));
+    checks.push(
+      this.keyCheck(
+        'revenuecat_webhook',
+        'RevenueCat webhooks',
+        'REVENUECAT_WEBHOOK_SECRET',
+        checkedAt
+      )
+    );
+    checks.push(this.stripeCheck(checkedAt));
 
     const overall = rollup(checks);
     return { checkedAt, overall, checks };
@@ -329,6 +338,52 @@ export class IntegrationsHealthService {
       label,
       status: 'error',
       detail: `${primaryKey} is missing.`,
+      kind: 'config',
+      checkedAt
+    };
+  }
+
+  // THIS SECTION DOES: Stripe secret + at least one price id + webhook secret.
+  private stripeCheck(checkedAt: string): IntegrationCheck {
+    const key = this.config.get<string>('STRIPE_SECRET_KEY')?.trim();
+    const monthly = this.config.get<string>('STRIPE_PRICE_MONTHLY')?.trim();
+    const yearly = this.config.get<string>('STRIPE_PRICE_YEARLY')?.trim();
+    const webhook = this.config.get<string>('STRIPE_WEBHOOK_SECRET')?.trim();
+    if (!key) {
+      return {
+        id: 'stripe',
+        label: 'Stripe (card membership)',
+        status: 'error',
+        detail: 'STRIPE_SECRET_KEY is missing.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!monthly && !yearly) {
+      return {
+        id: 'stripe',
+        label: 'Stripe (card membership)',
+        status: 'error',
+        detail: 'STRIPE_PRICE_MONTHLY and STRIPE_PRICE_YEARLY are both missing.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!webhook) {
+      return {
+        id: 'stripe',
+        label: 'Stripe (card membership)',
+        status: 'warn',
+        detail: 'Secret + price set; STRIPE_WEBHOOK_SECRET missing (Checkout cannot grant membership).',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    return {
+      id: 'stripe',
+      label: 'Stripe (card membership)',
+      status: 'ok',
+      detail: 'STRIPE_SECRET_KEY, price id(s), and STRIPE_WEBHOOK_SECRET are set.',
       kind: 'config',
       checkedAt
     };

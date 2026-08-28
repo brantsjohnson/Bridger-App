@@ -2,20 +2,25 @@
 // WHAT THIS FILE DOES (plain English):
 // The brain of the onboarding run. It holds every draft answer across the
 // screens, moves forward / back / skips through the ordered steps, saves each
-// step's slice as you leave it, and on the very last screen marks onboarding
-// complete. The screen components stay simple because all the state lives here.
+// step's slice as you leave it, and when Co-op (the last step) finishes it
+// marks onboarding complete. The screen components stay simple because all the
+// state lives here.
 //
 // The run mixes two kinds of screens:
 //  - FORM steps (questions) — these show the progress bar.
-//  - STAT interstitials + welcome-in — full-screen moments that are NOT counted
-//    in the progress bar (so progress reflects real questions answered).
+//  - STAT interstitials — full-screen moments that are NOT counted in the
+//    progress bar (so progress reflects real questions answered).
 //
 // Order (from the new flow doc): confirm profile → birthday → [feed stat] →
 // contacts → [isolation stat] → friends of friends → [retention stat] →
 // notifications → taste intro → right now → obsession → social battery → color
-// → places → recap → privacy & control → [screentime stat] → co-op → welcome.
+// → places → privacy circles → privacy & control → [screentime stat] → co-op.
+// Finishing Co-op completes onboarding and lands on Home, which plays the
+// welcome fireworks (the old "You're in" screen was removed 2026-08-28).
+// (Recap voice step archived 2026-08-28; Friend Pod still records weekly recaps.)
 // ============================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import { trackFlowCompleted, trackFlowStep, type Tier } from '@bridger/shared';
 import { clearDevPreview, getDemoOnboardSeed, isDemoMode } from '../lib/demo';
 import type { GeocodeHit } from '../lib/geocode';
@@ -23,17 +28,21 @@ import { getOAuthProfilePrefill } from '../lib/oauth';
 import { supabase } from '../lib/supabase';
 import {
   buildPrivacyRows,
+  clearOnboardingProgress,
+  flushOnboardingDraft,
+  loadOnboardingProgress,
+  persistOnboardingProgressLocal,
   saveBirthday,
   saveColor,
   saveConnectionStyle,
   saveName,
   saveNotifications,
   saveObsessionSong,
+  saveOnboardingProgress,
   savePhoto,
   savePlaces,
   saveRightNow,
   saveSocialBattery,
-  saveRecap,
   saveVisibility,
   setOnboardingComplete,
   type PhotoSource,
@@ -56,11 +65,11 @@ export type OnboardingStepKey =
   | 'social-battery'
   | 'color'
   | 'places'
-  | 'recap'
+  | 'privacy-circles'
   | 'privacy-control'
   | 'stat-screentime'
-  | 'coop'
-  | 'welcome-in';
+  | 'coop-intro'
+  | 'coop';
 
 export const ONBOARDING_ORDER: OnboardingStepKey[] = [
   'confirm-profile',
@@ -77,11 +86,11 @@ export const ONBOARDING_ORDER: OnboardingStepKey[] = [
   'social-battery',
   'color',
   'places',
-  'recap',
+  'privacy-circles',
   'privacy-control',
   'stat-screentime',
-  'coop',
-  'welcome-in'
+  'coop-intro',
+  'coop'
 ];
 
 /** Screens that do NOT count toward the progress bar (moments, not questions). */
@@ -90,7 +99,8 @@ const NON_FORM: OnboardingStepKey[] = [
   'stat-isolation',
   'stat-retention',
   'stat-screentime',
-  'welcome-in'
+  // The blue "what a co-op is" splash is a moment, like the stat screens.
+  'coop-intro'
 ];
 
 /** Just the question screens, in order — used to number the progress bar. */
@@ -127,10 +137,6 @@ type Draft = {
   favoritePlace: string;
   /** Geocoded pick for the favorite trip (map pin). Null until they search and pick. */
   favoritePlaceHit: GeocodeHit | null;
-  recapMode: 'voice' | 'text';
-  recapText: string;
-  recapRecorded: boolean;
-  recapUri: string | null;
   visibility: VisibilityRow[];
 };
 
@@ -140,7 +146,7 @@ const EMPTY_DRAFT: Draft = {
   photoSource: null,
   photoUri: null,
   photoEmoji: null,
-  photoFilter: 'pop_art',
+  photoFilter: 'comic',
   filteredMediaId: null,
   birthday: '',
   contactsSynced: false,
@@ -164,10 +170,6 @@ const EMPTY_DRAFT: Draft = {
   currentTown: '',
   favoritePlace: '',
   favoritePlaceHit: null,
-  recapMode: 'voice',
-  recapText: '',
-  recapRecorded: false,
-  recapUri: null,
   visibility: []
 };
 
@@ -186,6 +188,58 @@ export function useOnboarding(onDone: () => void) {
     };
   });
   const [startedAt] = useState(() => Date.now());
+
+  // THIS SECTION DOES: track whether we have finished checking for a saved
+  // resume point yet. The screen waits on this so it never flashes screen one
+  // before jumping to where the person actually left off.
+  const [hydrated, setHydrated] = useState(false);
+
+  // An always-current copy of the draft so the save-on-advance helpers below
+  // record the latest answers without stale-closure bugs.
+  const draftRef = useRef(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  // THIS SECTION DOES: on relaunch, look for a saved resume point (device first,
+  // then Supabase). If one exists, drop the person back on that screen with the
+  // answers they already gave, so a crash / force-quit never restarts the run.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const saved = await loadOnboardingProgress();
+        if (
+          !cancelled &&
+          saved &&
+          ONBOARDING_ORDER.includes(saved.step as OnboardingStepKey)
+        ) {
+          setDraft((d) => ({ ...d, ...(saved.draft as Partial<Draft>) }));
+          setStep(saved.step as OnboardingStepKey);
+        }
+      } catch {
+        // No resume point / read failed: start at the beginning.
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // THIS SECTION DOES: quietly keep a DEVICE copy of the current screen + answers
+  // as they change (short debounce), so even mid-typing progress survives a
+  // force-quit. The heavier "also save to Supabase" write happens on advance /
+  // back below. We wait until hydration so we never overwrite a saved point with
+  // the empty starting draft.
+  useEffect(() => {
+    if (!hydrated) return;
+    const t = setTimeout(() => {
+      void persistOnboardingProgressLocal(step, draft as Record<string, unknown>);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [step, draft, hydrated]);
 
   // THIS SECTION DOES: for real (non-demo) sign-ins, pre-fill the first name,
   // last name, and profile photo from the Google/Apple account so the person
@@ -247,29 +301,37 @@ export function useOnboarding(onDone: () => void) {
       trackFlowStep('onboarding', nextStep);
       setDir(1);
       setStep(nextStep);
+      // Record the new resume point (device + Supabase) as we move forward.
+      void saveOnboardingProgress(nextStep, draftRef.current as Record<string, unknown>);
     }
   }, [index]);
 
   /**
    * Save the step we're leaving, then move to the next.
    *
-   * IMPORTANT: the save is wrapped so a failed network/API call can NEVER trap
-   * someone on a screen. Before this, if saving the name on step 1 threw (for
-   * example the API was unreachable), Continue silently did nothing. Now we try
-   * to save, but always move forward either way, so the button always advances.
+   * IMPORTANT: most saves are wrapped so a failed network/API call can NEVER
+   * trap someone on a screen. The one exception is confirm-profile (name +
+   * photo): those must land in Supabase before we leave, or Home shows a demo
+   * face / blank name. If that save fails we stay put and show an alert.
    */
   const goNext = useCallback(async () => {
     try {
       switch (step) {
-        case 'confirm-profile':
+        case 'confirm-profile': {
+          // REQUIRED: name + photo must reach the server before we advance.
           await saveName(`${draft.firstName} ${draft.lastName}`.trim());
-          if (draft.photoSource)
+          if (draft.photoUri || draft.filteredMediaId) {
             await savePhoto({
               source: draft.photoSource,
               uri: draft.photoUri ?? undefined,
               filteredMediaId: draft.filteredMediaId
             });
+          } else if (!draft.photoEmoji) {
+            // Live requires a real photo; demo may use an emoji stand-in.
+            throw new Error('Add a profile photo to continue.');
+          }
           break;
+        }
         case 'birthday':
           if (draft.birthday) await saveBirthday(draft.birthday);
           break;
@@ -299,14 +361,6 @@ export function useOnboarding(onDone: () => void) {
             favoritePlaceHit: draft.favoritePlaceHit
           });
           break;
-        case 'recap':
-          await saveRecap({
-            mode: draft.recapMode,
-            text: draft.recapText,
-            recorded: draft.recapRecorded,
-            recordedUri: draft.recapUri ?? undefined
-          });
-          break;
         case 'privacy-control':
           await saveVisibility(draft.visibility);
           break;
@@ -315,8 +369,19 @@ export function useOnboarding(onDone: () => void) {
           break;
       }
     } catch (err) {
-      // Saving failed (offline, API down, etc.). Don't strand the person on the
-      // step: log it for debugging and still move forward.
+      // confirm-profile is the only step that must not skip a failed save —
+      // otherwise the person lands on Home without their face or name.
+      if (step === 'confirm-profile') {
+        console.warn('Onboarding save failed on confirm-profile; staying put.', err);
+        Alert.alert(
+          'Could not save your profile',
+          err instanceof Error
+            ? err.message
+            : 'Check your connection and try Continue again.'
+        );
+        return;
+      }
+      // Other steps: log and keep going so a blip never strands them.
       console.warn(`Onboarding save failed on "${step}"; continuing.`, err);
     }
     advance();
@@ -329,33 +394,65 @@ export function useOnboarding(onDone: () => void) {
   const goBack = useCallback(() => {
     const prevIndex = index - 1;
     if (prevIndex >= 0) {
+      const prevStep = ONBOARDING_ORDER[prevIndex]!;
       setDir(-1);
-      setStep(ONBOARDING_ORDER[prevIndex]);
+      setStep(prevStep);
+      // Stepping back updates the resume point too, so the last-known screen and
+      // any edited answers stay in sync (device + Supabase).
+      void saveOnboardingProgress(prevStep, draftRef.current as Record<string, unknown>);
     }
   }, [index]);
 
-  /** The finish line — only welcome-in calls this. */
+  /** The finish line — Co-op (the last step) calls this. Always leaves to Home. */
   const complete = useCallback(async () => {
-    await setOnboardingComplete();
-    trackFlowCompleted('onboarding', Date.now() - startedAt);
+    // THIS SECTION DOES: one last pass so every draft answer is in Supabase,
+    // even if an earlier step's save failed quietly.
+    try {
+      await flushOnboardingDraft(draftRef.current);
+    } catch (err) {
+      console.warn('Onboarding flush failed; continuing to Home.', err);
+    }
+    try {
+      await setOnboardingComplete();
+    } catch (err) {
+      // Local flag should already be set inside setOnboardingComplete; still
+      // never strand the person on the last onboarding step.
+      console.warn('Onboarding complete save failed; continuing to Home.', err);
+    }
+    try {
+      trackFlowCompleted('onboarding', Date.now() - startedAt);
+    } catch {
+      // Analytics must never block the finish.
+    }
+    // Finished for real: wipe the resume point (device + Supabase) so a later
+    // launch never tries to drop them back into a run they already completed.
+    void clearOnboardingProgress();
     clearDevPreview();
     onDone();
   }, [onDone, startedAt]);
 
-  /** Build the Privacy & Control rows from the six taste answers. */
+  /** Build the Privacy & Control rows from the taste answers (no onboarding recap). */
   const initVisibility = useCallback(() => {
-    setDraft((d) => ({
-      ...d,
-      visibility: buildPrivacyRows({
-        birthday: d.birthday,
-        currentJob: d.currentJob,
-        dreamJob: d.dreamJob,
-        favoritePlace: d.favoritePlace,
-        song: d.song,
-        recapText: d.recapText,
-        recapRecorded: d.recapRecorded
-      })
-    }));
+    setDraft((d) => {
+      // Drop a leftover weekly_recap row from an older draft so it never shows.
+      if (d.visibility.length > 0) {
+        const cleaned = d.visibility.filter((r) => r.id !== 'weekly_recap');
+        if (cleaned.length === d.visibility.length) return d;
+        return { ...d, visibility: cleaned };
+      }
+      return {
+        ...d,
+        visibility: buildPrivacyRows({
+          birthday: d.birthday,
+          hometown: d.hometown,
+          currentTown: d.currentTown,
+          currentJob: d.currentJob,
+          dreamJob: d.dreamJob,
+          favoritePlace: d.favoritePlace,
+          song: d.song
+        })
+      };
+    });
   }, []);
 
   const setVisibilityTier = useCallback((rowId: string, tier: Tier) => {
@@ -382,6 +479,7 @@ export function useOnboarding(onDone: () => void) {
       step,
       index,
       draft,
+      hydrated,
       patch,
       goNext,
       goSkip,
@@ -398,6 +496,7 @@ export function useOnboarding(onDone: () => void) {
       step,
       index,
       draft,
+      hydrated,
       patch,
       goNext,
       goSkip,

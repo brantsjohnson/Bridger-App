@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import type { MusicPlayable, ObsessionSquare } from '@bridger/shared';
 import { PROFILE } from '@bridger/shared';
-import { AnalyticsRegion, withAnalyticsPress } from '@bridger/ui';
+import { AnalyticsRegion, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { MusicTrackActions } from '../music/MusicTrackActions';
 import {
   getPlayingPreviewUrl,
@@ -39,6 +39,8 @@ export function CurrentObsessionSection({
   onAdd?: () => void;
   onPressSquare?: (item: ObsessionSquare) => void;
 }) {
+  // Canvas color for the play glyph on bg-ink (ink flips cream in dark mode).
+  const theme = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(getPlayingPreviewUrl());
   const [sheetTrack, setSheetTrack] = useState<MusicPlayable | null>(null);
@@ -132,7 +134,10 @@ export function CurrentObsessionSection({
                       hitSlop={8}
                       className="absolute bottom-2 right-2 z-10 h-11 w-11 items-center justify-center rounded-full bg-ink/80"
                     >
-                      <Text className="text-[16px] text-white">{playing ? '❚❚' : '▶'}</Text>
+                      {/* Theme canvas so ▶ stays visible when ink is cream in dark mode. */}
+                      <Text className="text-[16px]" style={{ color: theme.canvas }}>
+                        {playing ? '❚❚' : '▶'}
+                      </Text>
                     </Pressable>
                   ) : null}
                 </View>

@@ -8,8 +8,8 @@
 // (Take a photo / Upload), so permission is only asked in context, never at
 // launch; the picked photo previews right here.
 //
-// LOOK: one big photo square up top (graph paper filling the box + a clear
-// plus), a filter picker row right under it (Pop art / X-ray / Comic / Sepia),
+// LOOK: one big photo square up top (plain white box with a clear plus when
+// empty), a filter picker row right under it (Pop art / X-ray / Comic / Sepia),
 // then the two typing boxes. All the paint comes from the shared onboarding parts.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
@@ -20,14 +20,11 @@ import { OnboardingStep } from './OnboardingStep';
 import { PhotoFilterPicker, type PhotoFilterKey } from './PhotoFilterPicker';
 import { FilteredPhoto, isServerPhotoFilter } from './photo-filters/FilteredPhoto';
 import { OB, OB_BORDER } from './onboarding-theme';
-import { OBField, OBGridPatch } from './onboarding-ui';
+import { OBField } from './onboarding-ui';
 import { isDemoMode } from '../../lib/demo';
 import { bakeClientPhotoFilter } from '../../lib/client-photo-filters';
 import { bakeServerPhotoFilter } from '../../lib/photo-filters';
 import type { PhotoSource } from '../../data/onboarding';
-
-/** Graph paper step inside the photo square. */
-const GRID_STEP = 28;
 
 export function ConfirmProfileStep({
   step,
@@ -67,14 +64,6 @@ export function ConfirmProfileStep({
   onNext: () => void;
   onBack: () => void;
 }) {
-  // THIS SECTION DOES: decide if we can move on. A friend needs to recognize you,
-  // so all three are required now: first name, last name, AND a photo.
-  const hasPhoto = Boolean(photoUri || photoEmoji);
-  const ready = first.trim().length > 0 && last.trim().length > 0 && hasPhoto;
-  // THIS SECTION DOES: measure the photo box so the grid paper fills the full width.
-  const [photoSize, setPhotoSize] = useState(0);
-  const cameraLabel = photoSource === 'camera' && hasPhoto ? 'Retake' : 'Take a photo';
-
   // THIS SECTION DOES: server-rendered looks (Comic, X-ray, Sepia). We cache each
   // result per photo + filter so switching pills does not re-run the work each time.
   const [bakedUrl, setBakedUrl] = useState<string | null>(null);
@@ -83,6 +72,20 @@ export function ConfirmProfileStep({
   // Keep the latest "report id up" callback without re-triggering the effect.
   const reportRef = useRef(onFilteredMediaIdChange);
   reportRef.current = onFilteredMediaIdChange;
+
+  // THIS SECTION DOES: decide if we can move on. A friend needs to recognize you,
+  // so all three are required: first name, last name, AND a photo. While a
+  // server look (Comic / X-ray / Sepia) is still rendering, Continue stays off so
+  // we never leave before the filtered picture (or a clear fall-back) is ready.
+  const hasPhoto = Boolean(photoUri || photoEmoji);
+  const serverLookPending =
+    Boolean(photoUri) && isServerPhotoFilter(photoFilter) && bakedLoading;
+  const ready =
+    first.trim().length > 0 &&
+    last.trim().length > 0 &&
+    hasPhoto &&
+    !serverLookPending;
+  const cameraLabel = photoSource === 'camera' && hasPhoto ? 'Retake' : 'Take a photo';
 
   // THIS SECTION DOES: when a server look is picked, bake it. Live users hit the
   // API; demo web (localhost:8090) paints in the browser instead.
@@ -98,6 +101,7 @@ export function ConfirmProfileStep({
     const cacheKey = `${photoUri}:${serverFilter}`;
     const cached = bakedCache.current.get(cacheKey);
     if (cached) {
+      setBakedLoading(false);
       setBakedUrl(cached.url);
       reportRef.current(cached.mediaId || null);
       return;
@@ -210,7 +214,6 @@ export function ConfirmProfileStep({
         <View style={{ gap: 12, alignSelf: 'stretch' }}>
           <Pressable
             onPress={withAnalyticsPress(ONBOARDING.confirm_profile.photo_square, openPhotoSheet)}
-            onLayout={(e) => setPhotoSize(e.nativeEvent.layout.width)}
             accessibilityRole="button"
             accessibilityLabel={
               hasPhoto ? 'Change profile photo' : 'Add a profile photo'
@@ -226,9 +229,6 @@ export function ConfirmProfileStep({
               borderColor: OB.navy
             }}
           >
-            {photoUri || photoEmoji ? null : photoSize > 0 ? (
-              <OBGridPatch size={photoSize} step={GRID_STEP} left={0} top={0} />
-            ) : null}
             {photoUri ? (
               <FilteredPhoto
                 uri={photoUri}
@@ -260,7 +260,7 @@ export function ConfirmProfileStep({
             label="First name"
             value={first}
             onChange={onChangeFirst}
-            placeholder="Brant"
+            placeholder="Yo"
             autoCapitalize="words"
             analyticsId={ONBOARDING.confirm_profile.first_input}
           />
@@ -268,7 +268,7 @@ export function ConfirmProfileStep({
             label="Last name"
             value={last}
             onChange={onChangeLast}
-            placeholder="Kim"
+            placeholder="Mamma"
             autoCapitalize="words"
             analyticsId={ONBOARDING.confirm_profile.last_input}
           />

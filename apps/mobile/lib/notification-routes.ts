@@ -29,8 +29,12 @@ export function pathForNotification(n: AppNotification): NotificationHref {
         ? `/story/capture?eventId=${encodeURIComponent(t.eventId)}`
         : '/story/capture';
     case 'connect_request':
-    case 'mutual_connection':
       return '/(tabs)/discover';
+    case 'mutual_connection': {
+      // Invite join: open the new friend's profile. FoF payoff: Discover.
+      const person = t.personId ?? n.personId;
+      return person ? `/person/${person}` : '/(tabs)/discover';
+    }
     case 'touch_grass_signal':
     case 'touch_grass_im_in':
       return '/(tabs)/events';

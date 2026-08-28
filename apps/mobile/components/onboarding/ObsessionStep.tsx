@@ -15,7 +15,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
-import { withAnalyticsPress } from '@bridger/ui';
+import { useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
 import { OBField } from './onboarding-ui';
@@ -26,9 +26,6 @@ import { AppleMusicMark, SpotifyMark } from '../music/BrandMarks';
 // recolor the marks and do not put the green mark on another green.
 const SPOTIFY_GREEN = '#1DB954';
 const APPLE_BLACK = '#000000';
-
-/** The hairline that trails off after the "Or type it" label. */
-const DIVIDER_LINE = OB.borderMuted;
 
 /**
  * One of the two connect boxes. A white box with a hard navy outline, the brand
@@ -138,6 +135,8 @@ export function ObsessionStep({
 }) {
   const connected = spotifyConnected || appleConnected;
   const anyBusy = connectBusy != null;
+  // "Or type it" sits on the page canvas, so ink follows light/dark.
+  const theme = useThemeColors();
 
   return (
     <OnboardingStep
@@ -179,14 +178,14 @@ export function ObsessionStep({
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Text
               className="font-sans-sb text-[12px]"
-              style={{ letterSpacing: 1.2, textTransform: 'uppercase', color: OB.navy }}
+              style={{ letterSpacing: 1.2, textTransform: 'uppercase', color: theme.ink }}
             >
               {connected ? 'Or type it instead' : 'Or type it'}
             </Text>
             <View
               accessible={false}
               pointerEvents="none"
-              style={{ flex: 1, height: 1, backgroundColor: DIVIDER_LINE }}
+              style={{ flex: 1, height: 1, backgroundColor: theme.inkLine }}
             />
           </View>
           <OBField

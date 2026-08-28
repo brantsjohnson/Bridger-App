@@ -439,6 +439,20 @@ export class ConnectionsService {
     // Demo week: invitees may use the app but cannot invite others.
     await this.demoWeek.markJoinedViaInvite(userId);
 
+    // THIS SECTION DOES: tell the person who shared the invite that their
+    // friend joined (same in-app row as accepting a request). Copy says
+    // "Joined from your invite."
+    try {
+      await this.supabase.admin.from('notifications').insert({
+        user_id: ownerId,
+        kind: 'connection_accepted',
+        payload: { from: userId, via: 'invite' } as never,
+        read: false
+      });
+    } catch {
+      // Never fail redeem because the alert row could not write.
+    }
+
     return { personId: ownerId };
   }
 

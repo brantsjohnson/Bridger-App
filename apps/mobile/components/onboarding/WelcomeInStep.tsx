@@ -1,14 +1,12 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 9, "You're in." The finish line, and the only place onboarding gets
-// marked complete. A small green tag, the giant blue all-caps "You're in." on
-// the tan onboarding paper, then three white cards saying what actually happens
-// next so "you're in" means something. "Let's go" drops you on Home.
+// ARCHIVED from the onboarding run (2026-08-28). Kept so old analytics ids
+// still make sense. Finishing Co-op (pay, invite 3, or auth code) now marks
+// onboarding complete and lands on Home, where the welcome fireworks play
+// instead of this "You're in" screen.
 //
-// This screen has no step bar and no back arrow on purpose: onboarding is over.
-//
-// ACCESSIBILITY: the falling confetti is decorative, hidden from screen readers,
-// and it does not mount at all when the phone asks for reduced motion.
+// Was: the finish line. Green tag, giant "You're in.", three next-step cards,
+// and "Let's go" that set onboardingComplete and dropped you on Home.
 // ============================================
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
@@ -18,7 +16,7 @@ import { AnalyticsRegion, SynthGrid, useGridColor, useReduceMotion, useThemeColo
 import { OB, OB_BORDER } from './onboarding-theme';
 import { OBBody, OBCTA, OBHardShadow, OBHeading } from './onboarding-ui';
 
-/** Little squares of paper that fall behind the words. Decoration only. */
+/** Little squares of paper that fall behind the words. Decorative only. */
 const CONFETTI = [OB.blue, OB.pink, OB.amber, OB.green, OB.periwinkle, OB.orange];
 
 const PIECES = Array.from({ length: 28 }, (_, i) => ({
@@ -37,11 +35,21 @@ const NEXT: Array<{ label: string; line: string; edge: string }> = [
   { label: "Say when you're free", line: 'The whole point is seeing them', edge: OB.green }
 ];
 
+/** @deprecated Not mounted in the live onboarding order. See file header. */
 export function WelcomeInStep({ onDone }: { onDone: () => void }) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const theme = useThemeColors();
   const { gridColor } = useGridColor();
+  // Guard so a double-tap (or burst + tap) cannot fire finish twice.
+  const finishing = useRef(false);
+
+  const finish = () => {
+    if (finishing.current) return;
+    finishing.current = true;
+    onDone();
+  };
+
   return (
     // Same eggshell + SynthGrid backdrop as Home and every other onboarding step.
     <View
@@ -121,7 +129,7 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
           <OBCTA
             label="Let's go"
             analyticsId={ONBOARDING.welcome_in.lets_go}
-            onPress={onDone}
+            onPress={finish}
             accessibilityLabel="Let's go"
           />
         </View>

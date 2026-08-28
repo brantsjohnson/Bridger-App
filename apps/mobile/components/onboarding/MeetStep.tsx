@@ -14,7 +14,7 @@ import { Pressable, Text, View } from 'react-native';
 import { CheckIcon, GlobeIcon, MapIcon } from 'lucide-react-native';
 import type { Accent } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
-import { ACCENTS, Card, TextField, cn, withAnalyticsPress } from '@bridger/ui';
+import { ACCENTS, Card, TextField, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
 import { WASH_MUTED } from './onboarding-wash';
 import type { MeetScope } from '../../data/onboarding';
@@ -45,6 +45,8 @@ export function MeetStep({
   onSkip: () => void;
   onBack: () => void;
 }) {
+  // Theme ink for icons on idle (dark) surface tiles.
+  const theme = useThemeColors();
   const options: Array<{
     id: MeetScope;
     label: string;
@@ -110,7 +112,12 @@ export function MeetStep({
                     on ? token.bg : 'border border-ink-line bg-surface'
                   )}
                 >
-                  <Icon size={24} strokeWidth={2.4} color={on && onWhite ? '#FFFFFF' : '#1C1B16'} />
+                  <Icon
+                    size={24}
+                    strokeWidth={2.4}
+                    // Selected vivid tiles may need white; idle tiles use theme ink on bg-surface.
+                    color={on && onWhite ? '#FFFFFF' : theme.ink}
+                  />
                   <Text className={cn('font-sans-b text-[15px] leading-tight', textClass)}>
                     {o.label}
                   </Text>
@@ -144,7 +151,6 @@ export function MeetStep({
         {scope === 'near' ? (
           <View className="gap-1.5">
             <TextField
-              labelTone="onaccent"
               label="Your city"
               value={city}
               onChange={onCity}

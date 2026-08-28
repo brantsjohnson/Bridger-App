@@ -47,8 +47,10 @@ import {
 } from '../../components/home/widgets';
 import { AskWidget } from '../../components/home/AskWidget';
 import { AskSheet } from '../../components/home/AskSheet';
+import { WelcomeCelebration } from '../../components/home/WelcomeCelebration';
 import { ComingUpWidget } from '../../components/home/ComingUpWidget';
 import { FreshnessCard } from '../../components/home/FreshnessCard';
+import { IntroAnnouncementCard } from '../../components/home/IntroAnnouncementCard';
 import { StoryRepliesRow } from '../../components/home/StoryRepliesRow';
 import { fetchAssistantSettings } from '../../data/assistant';
 import { getHomeLayout, saveHomeLayout, clearStoryReplyNotifications } from '../../data/feed';
@@ -57,7 +59,13 @@ import {
   notifyTabAttentionChanged,
   type AttentionSection
 } from '../../data/tab-badges';
+import {
+  hasDismissedAnnouncementsIntro,
+  markAnnouncementsIntroDismissed
+} from '../../lib/announcements-intro';
 import { isDemoMode } from '../../lib/demo';
+import { loadPeople } from '../../lib/people-cache';
+import { consumeWelcomeCelebration } from '../../lib/welcome-celebration';
 import { DevPreviewBar } from '../../components/home/DevPreviewBar';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
@@ -139,7 +147,11 @@ export default function HomeScreen() {
   /** Home shows the newest one only; Events carries the whole list */
   const signal = visibleSignals[0] ?? null;
   const [openSignal, setOpenSignal] = useState<GrassSignal | null>(null);
-  const [showQuickCheck, setShowQuickCheck] = useState(true);
+  // Demo only: seed a sample quick-check so designers can swipe the strip.
+  // Live never shows a fake freshness ask — real prompts come from the model later.
+  const [showQuickCheck, setShowQuickCheck] = useState(() => isDemoMode());
+  // One-time "what Announcements are" card until the person dismisses it.
+  const [showIntro, setShowIntro] = useState(false);
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
@@ -148,6 +160,27 @@ export default function HomeScreen() {
   const nextEvent = events[0] ?? null;
   // Prefer a result already saved on the quiz payload (live complete).
   const quizResultId = feed.quiz?.resultId ?? null;
+
+  // THIS SECTION DOES: play the welcome fireworks once, only when Home opens
+  // right after finishing onboarding. consumeWelcomeCelebration() returns true a
+  // single time (the onboarding finish set the flag), so it never replays.
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (consumeWelcomeCelebration()) setCelebrate(true);
+  }, []);
+
+  // THIS SECTION DOES: decide whether to show the one-time Announcements intro
+  // (live only — demo uses the sample quick-check instead).
+  useEffect(() => {
+    if (isDemoMode()) return;
+    let cancelled = false;
+    void hasDismissedAnnouncementsIntro().then((dismissed) => {
+      if (!cancelled) setShowIntro(!dismissed);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Mark Home as the active analytics surface when this tab opens.
   useEffect(() => {
@@ -161,6 +194,8 @@ export default function HomeScreen() {
       void fetchAssistantSettings().then((s) => {
         if (!cancelled) setAssistantOn(Boolean(s.assistantEnabled));
       });
+      // Refresh your face URL so the header never sticks on a demo/stale photo.
+      if (!isDemoMode()) void loadPeople();
       return () => {
         cancelled = true;
       };
@@ -250,6 +285,22 @@ export default function HomeScreen() {
         <FreshnessCard
           // X only closes the card — "Kept it." is reserved for tapping Yes.
           onDismiss={() => setShowQuickCheck(false)}
+        />
+      )
+    });
+  }
+  // Live: one-time intro when nothing else is in the strip yet (and they have
+  // not dismissed it). Explains co-op notes + app news; tap or X closes forever.
+  if (!isDemoMode() && !empty && !editing && showIntro && announcements.length === 0) {
+    announcements.push({
+      id: 'announcements-intro',
+      kind: 'intro',
+      content: (
+        <IntroAnnouncementCard
+          onDismiss={() => {
+            setShowIntro(false);
+            void markAnnouncementsIntroDismissed();
+          }}
         />
       )
     });
@@ -572,6 +623,10 @@ export default function HomeScreen() {
           setOpenSignal(null);
         }}
       />
+
+      {/* THE PARTY: black see-through overlay with fireworks + "You did it!",
+          shown once right after onboarding, tap anywhere to continue. */}
+      {celebrate ? <WelcomeCelebration onDone={() => setCelebrate(false)} /> : null}
     </Screen>
   );
 }

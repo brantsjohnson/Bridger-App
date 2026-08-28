@@ -2,19 +2,24 @@
 // WHAT THIS FILE DOES (plain English):
 // Step 5 - Bridger only works with friends on it. Two things here:
 //   1. Connect contacts (Apple / Android permission, read on-device only).
+//      After it works we show "Contacts loaded" and promise we'll notify them
+//      when a friend joins from their invite.
 //   2. Invite 3 friends with three separate slots (Invite friends #1, #2, #3)
 //      so each invite goes to a different person.
 //
-// LOOK: white boxes with a hard navy outline on tan paper, one row for the
-// contacts permission and one row per invite link. All the paint comes from
-// the shared onboarding parts.
+// LOOK: white boxes with a hard navy outline on the page canvas, one row for
+// contacts and one row per invite link. Labels that sit on the canvas follow
+// light/dark ink so they stay readable.
 //
 // PRIVACY (load-bearing): contacts stay on your phone. Bridger never uploads
-// them. Permission is asked here, in context, never at app launch.
+// them. Permission is asked here, in context, never at app launch. Demo / web
+// uses a few stand-in names so the picker still works without a real address
+// book.
 // ============================================
 import React, { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
+import { useThemeColors } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
 import { OB } from './onboarding-theme';
 import { OBTile } from './onboarding-ui';
@@ -22,6 +27,7 @@ import {
   ContactInviteSheet,
   type ContactPick
 } from '../invite/ContactInviteSheet';
+import { isDemoMode } from '../../lib/demo';
 import {
   loadInviteContacts,
   sendInviteToContact,
@@ -35,21 +41,54 @@ export type InviteSlot = {
   label: string | null;
 };
 
+/** How long we wait for the phone's contacts permission before we stop spinning. */
+const SYNC_TIMEOUT_MS = 20000;
+
+/** Stand-in people for demo / web so "Connect contacts" still feels real. */
+const DEMO_CONTACTS: ContactPick[] = [
+  { id: 'demo-1', name: 'Alex Chen', phone: '+15555550101' },
+  { id: 'demo-2', name: 'Jordan Lee', phone: '+15555550102' },
+  { id: 'demo-3', name: 'Sam Rivera', phone: '+15555550103' },
+  { id: 'demo-4', name: 'Riley Quinn', phone: '+15555550104' },
+  { id: 'demo-5', name: 'Casey Morgan', phone: '+15555550105' }
+];
+
+/** Promise that rejects after ms so a stuck permission dialog cannot freeze the row. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Contacts took too long. You can still send the three invites below.')),
+      ms
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 /**
  * The small all-caps line that sits above the three link slots, with the
  * "1/3 invited" count on the right. It is a label, not a button, so a tap on it
  * is recorded as a dead click by the frame it lives in.
  */
 function SlotsLabel({ sentCount }: { sentCount: number }) {
+  const theme = useThemeColors();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
       <Text
         className="font-sans-b text-[12px]"
-        style={{ letterSpacing: 1.2, textTransform: 'uppercase', color: OB.navy }}
+        style={{ letterSpacing: 1.2, textTransform: 'uppercase', color: theme.ink }}
       >
         Invite 3 friends
       </Text>
-      <Text className="font-sans-sb text-[12px]" style={{ color: OB.navy }}>
+      <Text className="font-sans-sb text-[12px]" style={{ color: theme.ink }}>
         {sentCount}/3 invited
       </Text>
     </View>
@@ -104,40 +143,70 @@ export function ContactsStep({
   onSkip: () => void;
   onBack: () => void;
 }) {
+  const theme = useThemeColors();
   const [syncing, setSyncing] = useState(false);
   const [contacts, setContacts] = useState<ContactPick[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
-  const [syncNote, setSyncNote] = useState<string | null>(null);
+  const [syncNote, setSyncNote] = useState<string | null>(
+    synced
+      ? 'Contacts loaded. We will notify you if a friend joins from your invite.'
+      : null
+  );
+  const [loadedCount, setLoadedCount] = useState<number | null>(null);
 
   const sentCount = slots.filter((s) => s.sent).length;
+  const contactsReady = synced || contacts.length > 0;
+
+  // THIS SECTION DOES: finish a successful load. Mark synced, stash the list,
+  // and show the "loaded + we'll notify you" line so the row never looks stuck.
+  const finishLoaded = (list: ContactPick[], note?: string) => {
+    setContacts(list);
+    setLoadedCount(list.length);
+    onSynced();
+    setSyncNote(
+      note ??
+        (list.length > 0
+          ? `Contacts loaded (${list.length}). We will notify you if a friend joins from your invite.`
+          : 'Contacts loaded. We will notify you if a friend joins from your invite. You can still share links below.')
+    );
+  };
 
   // THIS SECTION DOES: ask for contacts permission and keep the list on-device.
-  // On the web there is no contacts book to read, so we say so plainly instead
-  // of pretending it worked.
+  // Demo and web use stand-in names so the picker still opens. A timeout stops
+  // the row from sitting on "Connecting contacts" forever.
   const handleSync = () => {
+    if (syncing) return;
     void (async () => {
       setSyncing(true);
       setSyncNote(null);
       try {
-        if (Platform.OS === 'web') {
-          setSyncNote(
-            'Contacts need the Bridger app on your phone. Here on the web you can still send the three invites below.'
+        // Demo / web: no real address book. Load stand-ins so invite slots work.
+        if (isDemoMode() || Platform.OS === 'web') {
+          finishLoaded(
+            DEMO_CONTACTS,
+            `Contacts loaded (${DEMO_CONTACTS.length}). We will notify you if a friend joins from your invite.`
           );
           return;
         }
-        const { contacts: list, permission } = await loadInviteContacts('onboarding');
+
+        const { contacts: list, permission } = await withTimeout(
+          loadInviteContacts('onboarding'),
+          SYNC_TIMEOUT_MS
+        );
         if (permission === 'granted') {
-          setContacts(list);
-          onSynced();
-          setSyncNote(
-            list.length > 0
-              ? 'Contacts connected. Tap an invite below to pick who gets it.'
-              : 'Contacts connected, but none had phone numbers. You can still share links.'
-          );
+          finishLoaded(list);
         } else {
-          setSyncNote('Contacts were not allowed. You can still send the three invites below.');
+          setSyncNote(
+            'Contacts were not allowed. You can still send the three invites below. We will notify you if a friend joins from your invite.'
+          );
         }
+      } catch (err) {
+        setSyncNote(
+          err instanceof Error
+            ? err.message
+            : 'Could not open contacts. You can still send the three invites below.'
+        );
       } finally {
         setSyncing(false);
       }
@@ -166,23 +235,45 @@ export function ContactsStep({
         return;
       }
 
-      // Try loading contacts once if they synced but list is empty in memory.
-      if (synced && Platform.OS !== 'web') {
-        const { contacts: list, permission } = await loadInviteContacts('onboarding');
-        if (permission === 'granted' && list.length > 0) {
-          setContacts(list);
-          setActiveSlot(index);
-          setSheetOpen(true);
-          return;
+      // Synced earlier but list left memory (navigated away): reload once.
+      if (synced && Platform.OS !== 'web' && !isDemoMode()) {
+        try {
+          const { contacts: list, permission } = await withTimeout(
+            loadInviteContacts('onboarding'),
+            SYNC_TIMEOUT_MS
+          );
+          if (permission === 'granted' && list.length > 0) {
+            setContacts(list);
+            setActiveSlot(index);
+            setSheetOpen(true);
+            return;
+          }
+        } catch {
+          // Fall through to share sheet.
         }
       }
 
+      // Demo / web with synced but empty memory: restore stand-ins.
+      if (synced && (isDemoMode() || Platform.OS === 'web')) {
+        setContacts(DEMO_CONTACTS);
+        setActiveSlot(index);
+        setSheetOpen(true);
+        return;
+      }
+
       // No contacts: system share sheet still counts as filling this slot.
-      const result = await shareInviteForAccess('onboarding', { slot: slotNum });
-      if (result.ok) {
-        onFillSlot(index, { sent: true, label: 'Shared link' });
-      } else if (!result.cancelled) {
-        setSyncNote(result.message);
+      try {
+        const result = await shareInviteForAccess('onboarding', { slot: slotNum });
+        if (result.ok) {
+          onFillSlot(index, { sent: true, label: 'Shared link' });
+          setSyncNote('Invite sent. We will notify you if a friend joins from your invite.');
+        } else if (!result.cancelled) {
+          setSyncNote(result.message);
+        }
+      } catch (err) {
+        setSyncNote(
+          err instanceof Error ? err.message : 'Could not open the invite right now.'
+        );
       }
     })();
   };
@@ -194,16 +285,31 @@ export function ContactsStep({
     setSheetOpen(false);
     setActiveSlot(null);
     void (async () => {
-      const result = await sendInviteToContact(contact, 'onboarding', {
-        slot: index + 1
-      });
-      if (result.ok) {
-        onFillSlot(index, { sent: true, label: contact.name });
-      } else if (!result.cancelled) {
-        setSyncNote(result.message);
+      try {
+        const result = await sendInviteToContact(contact, 'onboarding', {
+          slot: index + 1
+        });
+        if (result.ok) {
+          onFillSlot(index, { sent: true, label: contact.name });
+          setSyncNote('Invite sent. We will notify you if a friend joins from your invite.');
+        } else if (!result.cancelled) {
+          setSyncNote(result.message);
+        }
+      } catch (err) {
+        setSyncNote(
+          err instanceof Error ? err.message : 'Could not send that invite right now.'
+        );
       }
     })();
   };
+
+  const syncLabel = syncing
+    ? 'Connecting contacts'
+    : contactsReady
+      ? loadedCount != null && loadedCount > 0
+        ? `Contacts loaded · ${loadedCount}`
+        : 'Contacts loaded'
+      : 'Connect contacts';
 
   return (
     <>
@@ -212,6 +318,7 @@ export function ContactsStep({
         total={total}
         purpose="Bridger only works with a friend on it."
         ask="Bridger's a group chat on steroids"
+        scrollBody
         onContinue={onNext}
         onSkip={onSkip}
         onBack={onBack}
@@ -219,20 +326,25 @@ export function ContactsStep({
         <View style={{ gap: 12 }}>
           {/* SYNC: Apple / Android contacts permission, on-device only. */}
           <OBTile
-            label={
-              syncing ? 'Connecting contacts' : synced ? 'Contacts connected' : 'Connect contacts'
-            }
-            selected={synced}
-            mark={synced ? '✓' : '+'}
+            label={syncLabel}
+            selected={contactsReady}
+            mark={syncing ? '…' : contactsReady ? '✓' : '+'}
             disabled={syncing}
             analyticsId={ONBOARDING.contacts.sync}
             onPress={handleSync}
-            accessibilityLabel={synced ? 'Contacts connected' : 'Connect contacts'}
+            accessibilityLabel={
+              contactsReady
+                ? 'Contacts loaded. We will notify you if a friend joins from your invite.'
+                : 'Connect contacts'
+            }
           />
 
-          {/* THIS SECTION DOES: tell them what just happened with permission. */}
+          {/* THIS SECTION DOES: confirm load + the join-notify promise. */}
           {syncNote ? (
-            <Text className="font-sans-sb text-[12.5px]" style={{ color: OB.navy, lineHeight: 18 }}>
+            <Text
+              className="font-sans-sb text-[12.5px]"
+              style={{ color: theme.ink, lineHeight: 18 }}
+            >
               {syncNote}
             </Text>
           ) : null}

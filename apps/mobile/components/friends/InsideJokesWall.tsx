@@ -153,7 +153,7 @@ function FilterRow({
             accessibilityState={{ selected: on }}
             className={cn(
               'min-h-[36px] shrink-0 flex-row items-center rounded-full border px-3 py-1.5',
-              on ? 'border-transparent bg-ink' : 'border-ink-line bg-surface active:bg-[#F1ECFF]'
+              on ? 'border-transparent bg-ink' : 'border-ink-line bg-surface active:bg-ink/5'
             )}
           >
             {/*

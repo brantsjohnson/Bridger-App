@@ -100,7 +100,7 @@ export function AddInsideJokeSheet({
                   accessibilityLabel={`Tag ${p.name}`}
                   className={cn(
                     'min-h-[44px] flex-row items-center gap-1.5 rounded-full border py-1 pl-1 pr-3',
-                    on ? 'border-purple bg-purple' : 'border-ink-line bg-surface active:bg-[#F1ECFF]'
+                    on ? 'border-purple bg-purple' : 'border-ink-line bg-surface active:bg-ink/5'
                   )}
                 >
                   <Avatar name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />

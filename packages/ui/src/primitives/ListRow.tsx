@@ -64,7 +64,8 @@ export function ListRow({
   const classes = cn(
     // bg-surface so dark mode raised cards stay readable with text-ink
     'min-h-[44px] w-full flex-row items-center gap-3 rounded-2xl border border-ink-line bg-surface px-3.5 py-3',
-    onPress && 'active:bg-[#F1ECFF]',
+    // Soft ink wash on press (not a fixed light lavender that fights cream type)
+    onPress && 'active:bg-ink/5',
     className
   );
 

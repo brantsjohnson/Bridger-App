@@ -10,7 +10,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true so Stripe webhook signature verification can read the bytes.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // --- Allow the mobile/web app to call this API during development ---
   app.enableCors();

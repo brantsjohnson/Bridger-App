@@ -4,8 +4,9 @@
 // period-end: perks stay until dues_paid_through, then reconcile flips to free
 // (rolling ~30-day story storage).
 //
-// PAYMENT: soft-join sets provisional dues_paid_through; real IAP goes through
-// PurchaseGateway later. Display dues are always "$72/year".
+// PAYMENT: soft-join sets provisional dues_paid_through; Apple / Google arrive
+// through PurchaseGateway after RevenueCat confirms, and renewals via webhook.
+// Display dues are "$6/mo".
 // ============================================
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { CoopAnnouncement, CoopMembership } from '@bridger/shared';
@@ -20,7 +21,7 @@ import {
 } from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
 
-const DISPLAY_DUES = '$72/year';
+const DISPLAY_DUES = '$6/mo';
 
 type MembershipRow = {
   active: boolean;
@@ -196,19 +197,43 @@ export class CoopService {
     userId: string,
     body: { join: boolean }
   ): Promise<CoopMembership> {
-    if (typeof body?.join !== 'boolean') {
+    return this.setMembershipFromProvider(userId, {
+      join: body.join,
+      provider: body.join ? 'soft' : null,
+      providerSubscriptionId: null,
+      paidThrough: null
+    });
+  }
+
+  /**
+   * Grant or revoke membership from a payment provider (RevenueCat webhook,
+   * Stripe webhook, or soft join). When joining without a paidThrough date we
+   * default to +1 year so soft / promo still work.
+   */
+  async setMembershipFromProvider(
+    userId: string,
+    input: {
+      join: boolean;
+      provider?: string | null;
+      providerSubscriptionId?: string | null;
+      paidThrough?: string | null;
+      stripeCustomerId?: string | null;
+    }
+  ): Promise<CoopMembership> {
+    if (typeof input?.join !== 'boolean') {
       throw new BadRequestException('join (boolean) is required');
     }
 
-    if (!body.join) {
-      // Immediate leave (legacy / admin). Prefer cancelMembership for UX.
+    if (!input.join) {
       await this.supabase.admin.from('coop_memberships').upsert(
         {
           user_id: userId,
           active: false,
           cancel_at_period_end: false,
           cancelled_at: new Date().toISOString(),
-          dues_paid_through: null
+          dues_paid_through: null,
+          provider: input.provider ?? null,
+          provider_subscription_id: input.providerSubscriptionId ?? null
         },
         { onConflict: 'user_id' }
       );
@@ -217,21 +242,40 @@ export class CoopService {
     }
 
     const now = new Date();
-    const paidThrough = new Date(now);
-    paidThrough.setUTCFullYear(paidThrough.getUTCFullYear() + 1);
+    let paidThroughIso = input.paidThrough;
+    if (!paidThroughIso) {
+      const paidThrough = new Date(now);
+      paidThrough.setUTCFullYear(paidThrough.getUTCFullYear() + 1);
+      paidThroughIso = paidThrough.toISOString();
+    }
 
     const { error } = await this.supabase.admin.from('coop_memberships').upsert(
       {
         user_id: userId,
         active: true,
         since: now.toISOString(),
-        dues_paid_through: paidThrough.toISOString(),
+        dues_paid_through: paidThroughIso,
         cancel_at_period_end: false,
-        cancelled_at: null
+        cancelled_at: null,
+        provider: input.provider ?? 'soft',
+        provider_subscription_id: input.providerSubscriptionId ?? null,
+        stripe_customer_id: input.stripeCustomerId ?? null
       },
       { onConflict: 'user_id' }
     );
     if (error) throw error;
+
+    // PAYMENT ledger: one row per confirmed join / renewal charge when we have
+    // a provider ref (skip soft so demo noise does not fill the table).
+    if (input.provider && input.provider !== 'soft') {
+      await this.supabase.admin.from('payments').insert({
+        user_id: userId,
+        kind: 'coop_dues',
+        amount: null,
+        provider_ref: input.providerSubscriptionId ?? input.provider
+      });
+    }
+
     await this.syncPlan(userId, true);
     return this.getMembership(userId);
   }
@@ -353,6 +397,43 @@ export class CoopService {
   /** Alias for isActiveMember — portal guards and older call sites. */
   async isMember(userId: string): Promise<boolean> {
     return this.isActiveMember(userId);
+  }
+
+  /** Read Stripe customer id for Checkout / Customer Portal. */
+  async getStripeCustomerId(userId: string): Promise<string | null> {
+    const { data, error } = await this.supabase.admin
+      .from('coop_memberships')
+      .select('stripe_customer_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.stripe_customer_id ?? null;
+  }
+
+  /**
+   * Remember a Stripe customer id without changing active membership.
+   * Creates a quiet inactive row if none exists yet.
+   */
+  async rememberStripeCustomer(
+    userId: string,
+    stripeCustomerId: string
+  ): Promise<void> {
+    const existing = await this.loadMembership(userId);
+    if (existing) {
+      const { error } = await this.supabase.admin
+        .from('coop_memberships')
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq('user_id', userId);
+      if (error) throw error;
+      return;
+    }
+    const { error } = await this.supabase.admin.from('coop_memberships').insert({
+      user_id: userId,
+      active: false,
+      stripe_customer_id: stripeCustomerId,
+      dues_paid_through: null
+    });
+    if (error) throw error;
   }
 
   async memberCount(): Promise<number> {

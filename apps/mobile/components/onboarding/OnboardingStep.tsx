@@ -25,8 +25,9 @@
 // comfortably past 44pt. The top bar clears the notch and the footer clears the
 // home indicator.
 // ============================================
-import React, { useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -58,6 +59,25 @@ import {
   OBProgress,
   OBSkipLink
 } from './onboarding-ui';
+
+/**
+ * Lets a field inside a scrolling step ask the page to scroll it into view
+ * when the keyboard opens (so the typing box is not hidden under it).
+ */
+type BodyScrollApi = {
+  ensureVisible: (target: View | null) => void;
+};
+
+const OnboardingBodyScrollContext = createContext<BodyScrollApi | null>(null);
+
+/** Hook used by fields (place search, etc.) to stay on screen above the keyboard. */
+export function useOnboardingBodyScroll(): BodyScrollApi {
+  return (
+    useContext(OnboardingBodyScrollContext) ?? {
+      ensureVisible: () => undefined
+    }
+  );
+}
 
 type Props = {
   step: number;
@@ -98,6 +118,11 @@ type Props = {
   scrollBody?: boolean;
   /** Use the smaller heading size on screens with a lot of content. */
   smallAsk?: boolean;
+  /**
+   * Emojis for the Continue shower. Places passes the favorite country's flag
+   * so Continue explodes that flag instead of the default party mix.
+   */
+  burstEmojis?: string[];
 };
 
 /** Side padding for the whole run, straight from the design (24px). */
@@ -105,7 +130,7 @@ const PAGE_X = 24;
 
 export function OnboardingStep({
   step,
-  total = 14,
+  total = 13,
   purpose,
   ask,
   blurb,
@@ -124,7 +149,8 @@ export function OnboardingStep({
   hideFooter,
   fillBody = true,
   scrollBody = false,
-  smallAsk = false
+  smallAsk = false,
+  burstEmojis
 }: Props) {
   const insets = useSafeAreaInsets();
   // Same canvas + grid tint as Home / every other Screen.
@@ -134,13 +160,18 @@ export function OnboardingStep({
   // THIS SECTION DOES: decide whether the body fills the screen or scrolls.
   const bodyFills = fillBody && !scrollBody;
 
-  // Air above the top bar (clears the notch) and under the footer (clears the
-  // home indicator), with a sensible floor for phones that report no inset.
+  // Air above the top bar (clears the notch). Footer pad is set inline so Skip
+  // stays tight under Continue and the CTA sits near the bottom.
   const topPad = insets.top + 10;
-  const bottomPad = Math.max(insets.bottom, 16) + 16;
 
   // THIS SECTION DOES: remember whether the scroll body still has more below,
   // so we can show a soft fade that says "keep going."
+  const scrollRef = useRef<ScrollView>(null);
+  // Outer box around the ScrollView. We measure this ref (not e.currentTarget)
+  // because on web onLayout's currentTarget is often undefined.
+  const scrollFrameRef = useRef<View>(null);
+  const scrollWindow = useRef({ x: 0, y: 0, height: 0 });
+  const pendingVisible = useRef<View | null>(null);
   const contentH = useRef(0);
   const layoutH = useRef(0);
   const scrollY = useRef(0);
@@ -149,6 +180,72 @@ export function OnboardingStep({
     const leftover = contentH.current - layoutH.current - scrollY.current;
     setMoreBelow(leftover > 12);
   };
+
+  // THIS SECTION DOES: record where the scroll window sits on screen, safely.
+  // Prefer measureInWindow on a real View ref; fall back to layout height on web.
+  const rememberScrollWindow = useCallback((fallbackHeight: number) => {
+    const node = scrollFrameRef.current;
+    if (node && typeof node.measureInWindow === 'function') {
+      node.measureInWindow((x, y, _w, h) => {
+        scrollWindow.current = { x, y, height: h > 0 ? h : fallbackHeight };
+      });
+      return;
+    }
+    scrollWindow.current = { x: 0, y: 0, height: fallbackHeight };
+  }, []);
+
+  // THIS SECTION DOES: slide the page so a focused field sits above the keyboard.
+  const scrollTargetIntoView = useCallback((target: View | null) => {
+    if (!target || !scrollBody) return;
+    pendingVisible.current = target;
+    if (typeof target.measureInWindow !== 'function') return;
+    target.measureInWindow((_tx, ty, _tw, th) => {
+      const win = scrollWindow.current;
+      if (win.height <= 0) return;
+      const pad = 20;
+      const visibleTop = win.y + pad;
+      const visibleBottom = win.y + win.height - pad;
+      const fieldBottom = ty + th;
+      let delta = 0;
+      if (fieldBottom > visibleBottom) {
+        delta = fieldBottom - visibleBottom;
+      } else if (ty < visibleTop) {
+        delta = ty - visibleTop;
+      }
+      if (Math.abs(delta) < 8) return;
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, scrollY.current + delta),
+        animated: true
+      });
+    });
+  }, [scrollBody]);
+
+  const bodyScrollApi = useMemo<BodyScrollApi>(
+    () => ({
+      ensureVisible: (target) => {
+        // Wait a beat so KeyboardAvoidingView can shrink, then scroll.
+        pendingVisible.current = target;
+        requestAnimationFrame(() => {
+          setTimeout(() => scrollTargetIntoView(target), Platform.OS === 'ios' ? 80 : 120);
+        });
+      }
+    }),
+    [scrollTargetIntoView]
+  );
+
+  // After the keyboard finishes opening, re-check the field we were aiming at.
+  useEffect(() => {
+    if (!scrollBody) return;
+    const sub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        const target = pendingVisible.current;
+        if (!target) return;
+        setTimeout(() => scrollTargetIntoView(target), Platform.OS === 'ios' ? 40 : 80);
+      }
+    );
+    return () => sub.remove();
+  }, [scrollBody, scrollTargetIntoView]);
 
   // Soft fade into the live canvas color (matches Home, including dark mode).
   const fadeTop = `${theme.canvas}00`;
@@ -195,10 +292,11 @@ export function OnboardingStep({
               justifyContent: 'center',
               backgroundColor: theme.canvas,
               borderWidth: OB_BORDER,
-              borderColor: OB.navy
+              // Theme ink so the box stays visible on a dark canvas.
+              borderColor: theme.ink
             }}
           >
-            <ArrowLeftIcon size={18} color={OB.navy} strokeWidth={2.6} />
+            <ArrowLeftIcon size={18} color={theme.ink} strokeWidth={2.6} />
           </Pressable>
         ) : null}
         <View style={{ flex: 1 }}>
@@ -224,9 +322,11 @@ export function OnboardingStep({
       {/* THIS SECTION DOES: the scrollable body shrinks when the keyboard opens.
           Continue stays pinned below it so it never slides up over the fields. */}
       <View style={{ flex: 1, minHeight: 0 }}>
+        <OnboardingBodyScrollContext.Provider value={bodyScrollApi}>
         <KeyboardAvoidingView
           style={{ flex: 1, minHeight: 0 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
           {bodyFills ? (
             <View
@@ -242,14 +342,24 @@ export function OnboardingStep({
               {children}
             </View>
           ) : (
-            <View style={{ flex: 1, minHeight: 0 }}>
+            <View
+              ref={scrollFrameRef}
+              style={{ flex: 1, minHeight: 0 }}
+              onLayout={(e) => {
+                // Remember where the scroll window sits on the phone screen.
+                rememberScrollWindow(e.nativeEvent.layout.height);
+              }}
+            >
               <ScrollView
+                ref={scrollRef}
                 style={{ flex: 1, minHeight: 0, backgroundColor: 'transparent' }}
                 // Show the bar so a long list (co-op perks) does not look finished.
                 showsVerticalScrollIndicator
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
                 onLayout={(e) => {
                   layoutH.current = e.nativeEvent.layout.height;
+                  rememberScrollWindow(e.nativeEvent.layout.height);
                   refreshMoreBelow();
                 }}
                 onContentSizeChange={(_w, h) => {
@@ -293,7 +403,12 @@ export function OnboardingStep({
                   />
                   <Text
                     className="font-sans-sb text-[11px]"
-                    style={{ letterSpacing: 1, textTransform: 'uppercase', color: OB.navy }}
+                    style={{
+                      letterSpacing: 1,
+                      textTransform: 'uppercase',
+                      // Theme ink: dark navy disappears on a dark canvas.
+                      color: theme.ink
+                    }}
                   >
                     Scroll
                   </Text>
@@ -302,14 +417,16 @@ export function OnboardingStep({
             </View>
           )}
         </KeyboardAvoidingView>
+        </OnboardingBodyScrollContext.Provider>
 
         {hideFooter ? null : (
           <View
             style={{
               paddingHorizontal: PAGE_X,
               paddingTop: 14,
-              paddingBottom: bottomPad,
-              gap: 14
+              // Less air under Skip so Continue sits closer to the home indicator.
+              paddingBottom: Math.max(insets.bottom, 12) + 8,
+              gap: 6
             }}
           >
             {footer ?? (
@@ -319,6 +436,7 @@ export function OnboardingStep({
                   disabled={ctaDisabled || loading}
                   analyticsId={continueAnalyticsId ?? ONBOARDING.chrome.continue}
                   onPress={onContinue}
+                  burstEmojis={burstEmojis}
                 />
                 {onSkip ? (
                   <OBSkipLink

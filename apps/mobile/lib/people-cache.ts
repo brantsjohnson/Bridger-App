@@ -41,6 +41,21 @@ let meCache: Person | null = null;
 let loaded = false;
 let loadPromise: Promise<void> | null = null;
 
+/** Screens that show your face subscribe so they re-render when the cache fills. */
+const listeners = new Set<() => void>();
+
+function notifyPeopleListeners() {
+  for (const cb of listeners) cb();
+}
+
+/** Call from a screen to re-render when loadPeople finishes (header photo, etc.). */
+export function subscribePeople(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+}
+
 /** Stable hash so the same id always gets the same accent. */
 function hash(s: string): number {
   let h = 0;
@@ -72,17 +87,30 @@ function toPerson(d: ConnDto): Person {
 /**
  * Pull the roster + my name from the API into the cache.
  * Safe to call often — concurrent callers share one in-flight request.
+ * /me is loaded on its own so a connections hiccup never hides your photo.
  */
 export async function loadPeople(): Promise<void> {
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
     try {
-      const [conns, me] = await Promise.all([
-        apiFetch<ConnDto[]>('/connections'),
-        apiFetch<MeDto>('/me')
-      ]);
+      // THIS SECTION DOES: load your face + name even if the friends list fails.
+      let me: MeDto | null = null;
+      try {
+        me = await apiFetch<MeDto>('/me');
+      } catch {
+        me = null;
+      }
+
+      // THIS SECTION DOES: load the friends book (empty is fine for a new account).
+      let conns: ConnDto[] = [];
+      try {
+        conns = (await apiFetch<ConnDto[]>('/connections')) ?? [];
+      } catch {
+        conns = [];
+      }
+
       cache.clear();
-      for (const c of conns ?? []) {
+      for (const c of conns) {
         cache.set(c.id, toPerson(c));
       }
       meCache = {
@@ -97,6 +125,7 @@ export async function loadPeople(): Promise<void> {
         avatarUrl: me?.avatarUrl ?? null
       };
       loaded = true;
+      notifyPeopleListeners();
     } finally {
       loadPromise = null;
     }

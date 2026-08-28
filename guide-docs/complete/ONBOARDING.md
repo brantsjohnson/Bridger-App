@@ -13,24 +13,26 @@ The run was rebuilt to feel full, visual, and animated, with four "the internet 
 1. **Confirm profile** — first name, last name, profile photo (take or upload). Name required.
 2. **Birthday** — the drill-down picker (year → month → day), then a white "Is this right?" panel with the date and two stacked full-width answers ("Yes, that is my birthday" / "No, pick again"). The panel is anchored at the top of the body, the same place the year, month and day cells start, so it does not jump between stages. Required; no skip.
 3. **Stat 1 · Feed reality** — "supposed to connect us, instead it's all about ads." Animated feed of 10 cards, 9 ads / 1 friend. Bridge: "Let's try again."
-4. **Contacts** — "Bridger's a group chat on steroids." Connect contacts (Apple / Android permission, on-device only) + **Invite 3 friends** as three separate slots labelled "Invite friends #1 / #2 / #3". Each slot opens the contact picker or the system share sheet. On web there is no contacts book and no share sheet, so Connect contacts says so plainly (it does not mark itself connected) and a slot falls back to copying the invite link. A share that cannot happen shows a sentence on the screen, never an error page. Skippable.
+4. **Contacts** — "Bridger's a group chat on steroids." Connect contacts (Apple / Android permission, on-device only). After a successful load the row says **Contacts loaded** and we tell you we will **notify you if a friend joins from your invite**. Then **Invite 3 friends** as three separate slots labelled "Invite friends #1 / #2 / #3". Each slot opens the contact picker or the system share sheet. On web / demo, Connect contacts loads stand-in names so the picker still works (no real address book). A share that cannot happen shows a sentence on the screen, never an error page. Skippable.
 5. **Stat 2 · Isolation** — "supposed to help us make friends, instead it isolated us." Top: **1 in 12** Americans have no close friends. Middle: pie chart (12% + 48%, rest faint). Bottom: **1 in 2** have only 1–4 close friends. Source: Survey Center on American Life (2021).
 6. **Friends of friends** — "Friends of your friends, never strangers." / "Stop swiping to make friends." Multi-select what kind of friend you could use right now: workout, go out, creative, industry, travel, nearby, someone who gets me, plus "All of the above" (ticks every row and sprays every option emoji). Quiet note: all answers are private. Skippable.
 7. **Stat 3 · Retention** — "supposed to keep us in touch, instead it kept us scrolling." 240 thumbnails, all but 5 dissolve.
 8. **Notifications** — six coarse rows with emojis: birthdays, life updates, friends you should meet, activities & hangouts, direct messages, reconnect reminders. Each row carries the phone's own system switch, and **every switch starts off**: nothing is pre-selected for you. "All of the above" turns every switch on and sprays every emoji. Skippable. (Native OS permission dialog is a follow-up; see below.)
 9. **Taste intro** — "Let's fill out some of your profile!" Words pop in one at a time with haptics, then auto-advances after 4 seconds (or Let's go sooner).
-10. **Right now** — "Let's have some fun!" Split into two asks stacked on one screen: "What do you currently do?" with its typing box, then "What's your dream to do for work?" with its typing box, plus "Change anytime. Always optional." Skippable.
+10. **Right now** — "Let's have some fun!" Split into two asks stacked on one screen: "What do you currently do?" with its typing box, then "If anything were possible, what would you do?" with its typing box, plus "Change anytime. Always optional." Skippable.
 11. **Obsession** — the song on repeat: connect Spotify / Apple Music, or type it. Skippable.
-12. **Social battery** — nights out per week as one bar of cells, **0 through 7+**, so "no nights out" is the 0 cell in the bar rather than a separate opt-out box. Nothing is highlighted until they tap. Skippable.
-13. **Your color** — pick a color; live grid-background preview uses the chosen color. Skippable.
-14. **Your places** — hometown and current town as text (towns only); favorite place via map search that seeds a FAV pin on Places traveled. Skippable.
-15. **Recap** — share a quick voice update: big heading "Share quick updates with your friends," one question by the mic ("Best part of your week?"), up to 20 second voice memo (no typing option on this screen). Skippable. No "Q1 of 5" chrome; onboarding is one question only.
-16. **Privacy & control** — audience per shared item (birthday, job, dream job, place traveled, song, weekly recap) with Close / Friends / Acquaintances + set-all, and a legal footer linking Terms + Privacy. Chip: "Privacy First."
-17. **Stat 4 · Screen time** — "supposed to help us live life, instead we became the product." An 80-year life colors in one beat at a time: the whole life, then sleeping (26.6 years), then upkeep (work and school, chores, commuting, exercise), then devices (23.3 years), then 4.0 years spent in person with people. Each beat opens a short years accordion under that color band (previous band collapses) so lower rows slide down; tap a filled band later to reopen its row. Thick bright year-bars match the caption color for each beat. Under the bars: "(Average over 80 years)". Captions (average note + each beat line) type in letter by letter; Reduce Motion shows the full line at once. "Let's try again" appears only after the last caption finishes typing. Sources: Eyesafe 2025 (device time) and BLS American Time Use Survey (the rest). Work/school hours are averaged across all 80 years, including childhood, weekends, holidays, and retirement.
-18. **Co-op** — Option A: invite 3 friends for free access (shows `N/3 already invited` when some slots were filled on Contacts; when all 3 are done, shows "Continue with free access"). Option B: join directly, $6/mo (shares profits). Auth code for a free year: the "Have an auth code?" link appears only after 10 seconds on this screen so join and invite stay front and center. No separate "use free tier" skip: free access is only via the invite path. Member perks list matches the Co-op page (`MEMBER_UNLOCKS`). Promise box: "No ads."
-19. **Welcome in** — sets `onboardingComplete`, lands on Home (unchanged).
+12. **Social battery** — how many social events you like to attend a week, as one bar of cells, **0 through 7+**, so "no social events" is the 0 cell in the bar rather than a separate opt-out box. Nothing is highlighted until they tap. Skippable.
+13. **Your color** — tap (or drag) the hue × lightness spectrum to pick a color, then use the saturation slider under the hint to fine-tune how vivid it is; live grid-background preview uses the chosen color. Skippable.
+14. **Your places** — hometown and current town as text (towns only); favorite place via map search that seeds a FAV pin on Places traveled. Continue sprays that country's flag emoji when a favorite is picked (party mix if none). Optional: Continue advances with blanks; no Skip link under Continue (top-left back is enough).
+15. **Privacy circles** — teaches Close / Friends / Acquaintances: what each means and Free Lite sizes (5 / 30 / unlimited). Animated padlock from the profile welcome. Chip: "Privacy First." Read-and-continue before the per-answer audience picks.
+16. **Privacy & control** — audience per shared item (birthday, job, dream job, place traveled, song) with Close / Friends / Acquaintances + set-all, and a legal footer linking Terms + Privacy. Chip: "Privacy First." Answer text is large and dark; audience picks stay short.
+17. **Stat 4 · Screen time** — "supposed to help us live life, instead we became the product." An 80-year life colors in one beat at a time: the whole life, then sleeping (26.6 years), then upkeep (work and school, chores, commuting, exercise), then devices (23.3 years), then only 4.0 years spent in person with people. Each beat opens a roomy accordion under that color band with the slice icon + the big thick caption (previous band collapses) so lower rows slide down; tap a filled band later to reopen its row. Thick bright year-bars match the caption color for each beat. Captions type in letter by letter between the bands; Reduce Motion shows the full line at once. "Let's try again" appears only after the last caption finishes typing. Sources: Eyesafe 2025 (device time) and BLS American Time Use Survey (the rest). Work/school hours are averaged across all 80 years, including childhood, weekends, holidays, and retirement.
+18. **Co-op intro** — a blue splash (same family as the four stat screens; does not count in the progress bar) that explains, in plain words, **what a co-op is** before the join page: most apps keep you hooked and sell your attention (you are the product); a co-op is different because the people who use it can own a piece and get a vote; so the choices that made other apps addictive have a check (the members, not just advertisers); connection should never be locked away, so Bridger is free to use; joining the co-op is what keeps it that way, paid for by people instead of ads. Green "See what you get" button → the join page. Back link returns to the screen-time stat.
+19. **Co-op** (last step) — Opens with a **Free vs Co-op table** showing the five best reasons side by side (Share in the profits, A vote, No ads, Keep everything, More friends). **See more** expands the table to the full list (video, polls and questions, recaps, host big events, named groups, make it yours) so both plans are clear. Honest note under the table: no ads on any plan; members are what keep it that way. Then Option A: invite 3 friends for free access (shows `N/3 already invited` when some slots were filled on Contacts). Each tap opens **contacts** (to text a Bridger invite link) or the **system share sheet** / browser share / copy-link fallback with a real invite URL. The **3rd successful invite finishes onboarding** and goes straight to Home; if all 3 were already done on Contacts, "Continue with free access" does the same. Option B: join directly, $6/mo (shares profits); **paying finishes onboarding → Home**. An "or" sits between the two buttons. Auth code for a free year: "Have an auth code?" stays hidden until you **hold Join the co-op for 10 seconds**; redeem also finishes → Home. No separate "You're in" screen (removed 2026-08-28); Home plays the welcome fireworks instead. Comparison rows come from the shared `COOP_PLAN_COMPARISON` (kept in sync with the Co-op page).
 
-**Progress bar:** the four stat screens and welcome-in do not count; the bar reflects real question screens only. It is the design's segmented bar: a white strip outlined in blue with one segment per question, filling pink, and "3/14" beside it.
+**Reality-check screens (shared behavior, `StatScreen.tsx`):** the four blue stat interstitials (feed, isolation, retention, screen time) all animate in the same story order so the eye can follow: the headline **types in row by row** with a blinking cursor; only once both lines finish does the **graphic pop up**, then the **big stat**, then the **"Let's try again"** button. A small **"Where this comes from"** link sits under the stat (above the button) and opens the sources sheet; there is no longer an "A quick reality check" eyebrow, and the old "i" that lived beside it is gone. The graphic and stat are sized to fill the middle of the screen (larger on taller phones) so they never feel small in empty space. Reduce Motion shows everything at once with the number already at its final value. Screen time keeps its own rule that the button waits for its last caption to finish typing.
+
+**Progress bar:** the four stat screens do not count; the bar reflects real question screens only. It is the design's segmented bar: a white strip outlined in blue with one segment per question, filling pink, and "3/14" beside it.
 
 **Look:** onboarding keeps its own shape language (square white boxes, hard 2px ink outlines, square pink Continue button), documented in DESIGN.md § "Onboarding is its own room". **Colors match the app:** accent blue headings (`#1D6FE8`), pink Continue (`#FF3E8A`), pale blue selected wash (`#BBD6FB`), amber chips, coral kickers, teal for on-switches, eggshell canvas. The four stat screens invert it (flat accent-blue page, white type). It is light only, so dark mode never muddies the paper. Nothing in this shape language is used outside onboarding.
 
@@ -38,12 +40,11 @@ The run was rebuilt to feel full, visual, and animated, with four "the internet 
 
 **Demo mode:** every save stays in memory (no Supabase writes), so the whole run can be previewed with `EXPO_PUBLIC_DEMO_MODE=1` and a cleared `bridger.onboardingComplete` flag.
 
-**Removed / retired from the previous flow:** the standalone privacy-promise screen, the ranked desire step, the separate name and photo screens (now combined into confirm-profile), the groups-explainer screen, and the near/anywhere meet step. Their components and analytics ids are kept in the repo so historical events still parse.
+**Removed / retired from the previous flow:** the standalone privacy-promise screen, the ranked desire step, the separate name and photo screens (now combined into confirm-profile), the old groups-explainer-with-invite screen (replaced by **Privacy circles** right before Privacy & control), the near/anywhere meet step, the onboarding Recap voice step (weekly voice answers stay on Friend Pod "Add your recap"), and the **Welcome in** ("You're in") screen (Co-op finishes onboarding; Home plays welcome fireworks). Their components and analytics ids are kept in the repo so historical events still parse.
 
 **Now live (were follow-ups):**
 - **Native notification permission** — after the Notifications step, `lib/notifications.ts` shows the real OS dialog once (only when at least one nudge is chosen), via `expo-notifications`. Saying no never dead-ends the run.
 - **Real profile-photo upload** — `lib/pick-image.ts` opens the camera or photo library (`expo-image-picker`, permission asked in context), previews the square crop, and `data/onboarding.savePhoto` uploads it through the shared `lib/media-upload` helper and points `PATCH /me { avatarMediaId }` at the new `media` row.
-- **Recap voice capture + upload** — `RecapStep` records up to 20s with `expo-audio` (mic asked in context), lets you play the take back, and `data/onboarding.saveRecap` uploads the clip via `lib/media-upload` and stores the `mediaId` on the `weekly_recap` attribute.
 - **Video upload** — reuses the same shared path already used app-wide (`CircleRecorder` video replies + `CaptureCompose` story updates → `lib/media-upload`). Onboarding itself has no video step.
 
 **Known follow-ups (not blockers):**
@@ -194,7 +195,7 @@ Copy (tight):
 > - **Invite 3 friends** (free access / Free Lite benefits once complete)
 >   All the essentials to stay connected. No ads. Stories, Inside Jokes, Bucket list, 5 Close / 30 Friends, unlimited acquaintances, 30 days of rolling history. Auth code grants a free year of membership instead.
 
-**Guardrail:** "Limited" applies to **expression and scale only** (rolling 30-day storage, photo/text not video, 5/30 circle caps, weekly not daily recap, host extras). It never limits **connection** (adding people, messaging, meeting people, attending events, viewing content). Soft-join stub today (`COOP.md`). Free Lite is only via invite 3 friends (or an auth code for a free year of co-op); there is no early "use free tier" skip on this screen. The auth-code link is delayed 10 seconds after the screen opens.
+**Guardrail:** "Limited" applies to **expression and scale only** (rolling 30-day storage, photo/text not video, 5/30 circle caps, weekly not daily recap, host extras). It never limits **connection** (adding people, messaging, meeting people, attending events, viewing content). Soft-join stub today (`COOP.md`). Free Lite is only via invite 3 friends (or an auth code for a free year of co-op); there is no early "use free tier" skip on this screen. The auth-code link is revealed by holding **Join the co-op** for 10 seconds.
 
 Confirmed outcome (not the first tap that merely opens a payment sheet): product event `onboarding_tier_chosen` with `method: coop | free_lite`, plus `coop_joined` when a soft join / IAP actually completes.
 
@@ -284,7 +285,7 @@ root _layout:
 
 - Welcome → auto-advances to auth (no button).
 - Each onboarding screen advances on continue; skippable screens show "Skip for now."
-- `welcome-in.tsx` is the only place `onboardingComplete` is set to true (and where the Home layout seed is applied if not already written).
+- `CoopStep` (pay, invite 3, or auth code) is the only place `onboardingComplete` is set to true; Home then plays the welcome fireworks.
 
 ---
 
@@ -293,7 +294,7 @@ root _layout:
 - [ ] Welcome plays on first open, cannot be skipped, and auto-advances to auth on completion.
 - [ ] Welcome beats use the "promised / instead / trying again" refrain (copy in `content/welcome.ts`).
 - [ ] Every screen is one question, Typeform-style, with a progress bar and smooth transitions; tappable/multi-select/image/rank choices are preferred over typing.
-- [ ] Onboarding order: privacy promise → desire → stay-in-touch → name → photo → basics (10) → meet (skippable) → privacy & visibility review → join (co-op / Free Lite) → welcome-in.
+- [ ] Onboarding order ends at co-op (pay / invite 3 / auth code) → Home; no separate Welcome in screen.
 - [ ] Desire step ranks four opaque options and seeds a named Home preset deterministically (no model).
 - [ ] Join screen offers **Join the co-op**, **invite 3 friends** for free access (Continue after 3), or **auth code**; no early free-tier skip; Free Lite limits expression/scale only, never connection; no ads.
 - [ ] The privacy promise is the first screen after login (read-and-continue), before any question.
@@ -305,7 +306,7 @@ root _layout:
 - [ ] The deep Discover Me / personality questionnaire is NOT in onboarding; it runs later in Discover.
 - [ ] Answers write to `attributes` (with visibility) and feed the back-end AI embeddings + summary, which the user never sees and which is never built from PII/photos. Desire prefs do not enter embeddings.
 - [ ] A profile-freshness re-check can appear later as a single top-of-Home question when the model looks stale.
-- [ ] `onboardingComplete` is set only on the final screen; a returning onboarded user lands on Home.
+- [ ] `onboardingComplete` is set only when Co-op finishes; a returning onboarded user lands on Home.
 
 ---
 
@@ -333,15 +334,22 @@ apps/mobile/components/onboarding/
 ├── TasteIntroStep.tsx                  # 9 · fun lead-in
 ├── RightNowStep.tsx                    # 10 · job + dream job
 ├── ObsessionStep.tsx                   # 11 · song / connect music
-├── SocialBatteryStep.tsx              # 12 · nights out 0..7+
+├── SocialBatteryStep.tsx              # 12 · social events a week 0..7+
 ├── ColorStep.tsx                       # 13 · color + grid preview
 ├── PlacesStep.tsx                      # 14 · hometown / current text + favorite map search
 ├── OnboardingPlacePicker.tsx           # favorite place: WorldMapSvg + geocode search
-├── RecapStep.tsx                       # 15 · voice memo or typed
+├── RecapStep.tsx                       # ARCHIVED · was onboarding voice memo (Friend Pod keeps live recap)
+├── PrivacyCirclesStep.tsx              # 15 · teach Close / Friends / Acquaintances + caps
 ├── PrivacyControlStep.tsx              # 16 · per-row audience + legal footer
-├── CoopStep.tsx                        # 18 · invite 3 free / join $6/mo
-└── WelcomeInStep.tsx                   # 19 · sets onboardingComplete → Home
+├── CoopStep.tsx                        # 18 · last step: invite 3 / join $6/mo → Home
+└── WelcomeInStep.tsx                   # ARCHIVED · was "You're in"; Home fireworks replace it
 
 apps/mobile/data/onboarding.ts          # per-step saves (demo in-memory + live)
 apps/mobile/content/welcome.ts          # editable welcome beat copy
+
+apps/mobile/lib/welcome-celebration.ts  # one-time "just onboarded" flag (mark on finish / consume on Home)
+apps/mobile/components/home/WelcomeCelebration.tsx  # black overlay + fireworks + "You did it! Welcome to Bridger!!!"
+apps/mobile/lib/celebration-haptics.ts  # fireFireworksHaptics(): the boom + crackle buzz
 ```
+
+**Welcome fireworks (replaces the old "You're in" screen):** finishing Co-op calls `useOnboarding.complete()`, which marks the account complete, flags a one-time celebration (`lib/welcome-celebration.markWelcomeCelebration`), and routes to Home. Home reads the flag once on open (`consumeWelcomeCelebration`) and shows `WelcomeCelebration`: a black see-through overlay, cross-platform fireworks (built with React Native's own `Animated`, not the web-only fireworks-js canvas library), the words "You did it!" and "Welcome to Bridger!!!", and firework haptics (`fireFireworksHaptics`). Tap anywhere (or the "Tap to continue" hint) to clear it; it also clears itself after ~6s. Its own analytics surface is `welcome_celebration` (parent `home`). Reduce Motion shows the words only, with no fireworks and no haptics.

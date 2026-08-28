@@ -1,15 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Step 11, "Privacy & Control." The last question before joining: who can see
-// each thing you shared (birthday, job, dream job, favorite place, song, weekly
-// recap). Each row has an audience control (Close / Friends / Acquaintances)
-// plus a "set all" that paints every row the same. Everything defaults to
-// Friends. A legal footer links the Terms and Privacy Policy you agree to by
-// continuing.
+// Step after the circles explainer: who can see each thing you shared
+// (birthday, job, dream job, favorite place, song). Each row has an audience
+// control (Close / Friends / Acquaintances) plus a "set all" that paints every
+// row the same. Everything defaults to Friends. A legal footer links the Terms
+// and Privacy Policy you agree to by continuing.
 //
-// LOOK: each shared item is a white box with a hard navy outline, and the
-// audience you picked is a solid filled square on the right of that box. All the
-// paint comes from the shared onboarding parts.
+// LOOK: each shared item is a white box. The question and answer sit large and
+// clear on top; the three audience picks are short pills under them so the
+// words stay the star. All the paint comes from the shared onboarding parts.
 //
 // PRIVACY (load-bearing): this is where the tier model goes from explained to
 // used. The chosen audience is stored per answer (visibleToTier).
@@ -18,7 +17,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { Tier } from '@bridger/shared';
 import { ONBOARDING, TIER_LABEL } from '@bridger/shared';
-import { withAnalyticsPress } from '@bridger/ui';
+import { withAnalyticsPress, useThemeColors } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
 import type { VisibilityRow } from '../../data/onboarding';
@@ -31,9 +30,10 @@ const LEVELS: { id: Exclude<Tier, 'none'>; label: string }[] = [
 ];
 
 /**
- * One small square in a row of audience choices. Picked means a solid blue
- * square with light type; not picked means a white square with blue type. The
- * screen reader is told which one is selected, so it never depends on color.
+ * One short audience pick in a row. Picked means solid blue with light type;
+ * not picked means white with navy type. Kept compact (min 44pt tall for
+ * accessibility) so the question and answer above can breathe. The screen
+ * reader is told which one is selected, so it never depends on color.
  */
 function AudienceSquare({
   label,
@@ -59,11 +59,11 @@ function AudienceSquare({
       hitSlop={6}
       style={{
         minHeight: 44,
+        height: 44,
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 6,
-        paddingVertical: 10,
+        paddingHorizontal: 4,
         backgroundColor: selected ? OB.blue : OB.paper,
         borderWidth: OB_BORDER,
         borderColor: OB.navy
@@ -104,17 +104,26 @@ export function PrivacyControlStep({
   onOpenPrivacy: () => void;
 }) {
   // The first time we land here, seed the rows from what they told us.
+  // Also strip a leftover Weekly recap row if an older draft still has one.
   useEffect(() => {
-    if (rows.length === 0) onInit();
-  }, [rows.length, onInit]);
+    if (rows.length === 0 || rows.some((r) => r.id === 'weekly_recap')) onInit();
+  }, [rows, onInit]);
 
   // Which "Set all" square lights up: only when every row shares that tier.
   const setAllSelected = useMemo(() => {
-    if (rows.length === 0) return null;
-    const first = rows[0]?.tier;
+    const list = rows.filter((r) => r.id !== 'weekly_recap');
+    if (list.length === 0) return null;
+    const first = list[0]?.tier;
     if (!first || first === 'none') return null;
-    return rows.every((r) => r.tier === first) ? first : null;
+    return list.every((r) => r.tier === first) ? first : null;
   }, [rows]);
+
+  const displayRows = useMemo(
+    () => rows.filter((r) => r.id !== 'weekly_recap'),
+    [rows]
+  );
+  // Canvas labels follow theme ink so dark mode stays readable.
+  const theme = useThemeColors();
 
   return (
     <OnboardingStep
@@ -135,7 +144,7 @@ export function PrivacyControlStep({
         <View style={{ gap: 8 }}>
           <Text
             className="font-sans-sb text-[12px]"
-            style={{ letterSpacing: 0.6, color: OB.navy }}
+            style={{ letterSpacing: 0.6, color: theme.ink }}
           >
             Set all
           </Text>
@@ -158,28 +167,27 @@ export function PrivacyControlStep({
           </View>
         </View>
 
-        {/* THE ROWS: one white box per thing shared, each with its own audience. */}
+        {/* THE ROWS: question + answer first (clear), short audience picks under. */}
         <View style={{ gap: 8 }}>
-          {rows.map((r) => (
+          {displayRows.map((r) => (
             <View
               key={r.id}
               style={{
                 gap: 10,
                 paddingHorizontal: 12,
-                paddingVertical: 10,
+                paddingVertical: 12,
                 backgroundColor: OB.paper,
                 borderWidth: OB_BORDER,
                 borderColor: OB.borderMuted
               }}
             >
-              <View style={{ minWidth: 0 }}>
-                <Text className="font-sans-sb text-[15px]" style={{ color: OB.ink }}>
+              <View style={{ minWidth: 0, gap: 4 }}>
+                <Text className="font-sans-sb text-[13px]" style={{ color: OB.inkSoft }}>
                   {r.label}
                 </Text>
                 <Text
-                  numberOfLines={1}
-                  className="text-[12px]"
-                  style={{ color: 'rgba(0,0,0,0.5)' }}
+                  className="font-sans-b text-[17px] leading-snug"
+                  style={{ color: OB.ink }}
                 >
                   {r.value}
                 </Text>
@@ -206,8 +214,8 @@ export function PrivacyControlStep({
           ))}
         </View>
 
-        {/* LEGAL: what you agree to by continuing. */}
-        <Text style={{ fontSize: 11.5, lineHeight: 18, color: 'rgba(0,0,0,0.55)' }}>
+        {/* LEGAL: what you agree to by continuing (theme mute on dark canvas). */}
+        <Text style={{ fontSize: 11.5, lineHeight: 18, color: theme.inkMute }}>
           By continuing, you agree to our{' '}
           <Text
             className="font-sans-b"

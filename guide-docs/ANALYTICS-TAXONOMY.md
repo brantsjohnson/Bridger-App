@@ -53,6 +53,8 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `invite_access` | post-onboarding gate (demo week) | must invite a friend to unlock app — do they bail? |
 | `invite_contacts_sheet` | `invite_access` | pick one contact to text invite link (on-device only) |
 | `onboarding_invite_contacts_sheet` | `onboarding` | pick a contact for invite slot #1 / #2 / #3 during onboarding |
+| `coop_join_sheet` | `coop` | our own paywall: pick pay method (App Store / Google Play / Card), then monthly / yearly — do they open then bail, and on which step? |
+| `onboarding_coop_join_sheet` | `onboarding` | same join sheet, launched from the last onboarding step |
 | `customize` | `profile.settings` | do they customize at all, and for how long (`dwell_ms`) |
 | `friend_options_sheet` | `profile.friend_view` | remove / block / report reach |
 | `create_hub` *(retired)* | — | (removed — do not re-add) |
@@ -187,7 +189,9 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `home_layout_saved` | user finishes editing their Home layout | `widget_count` |
 | `connection_style_set` | onboarding desire step is confirmed (rank / primary saved) | `primary` (`frequency`\|`depth`\|`plans`\|`commonality`), `home_layout_seed` (`stay_close`\|`go_deeper`\|`make_plans`\|`meet_people`) — never free text |
 | `onboarding_tier_chosen` | join screen choice is confirmed (soft Free Lite pick, or co-op soft-join / IAP path selected and accepted) | `method` (`coop`\|`free_lite`) — never receipt or PII |
-| `coop_joined` | soft join, IAP stub, or promo code completes | `method` (apple/google/card/soft/promo) — never receipt or PII |
+| `coop_joined` | store purchase, card checkout, or promo code completes | `method` (apple/google/card/soft/promo), `plan` (monthly/yearly) — never receipt or PII |
+| `coop_renewed` | RevenueCat `RENEWAL` / `UNCANCELLATION`, or Stripe `invoice.paid` on a renewal cycle (not the first invoice) | `method` (apple/google/card), `plan` (monthly/yearly when known), `provider` — server webhook only; never receipt or PII |
+| `coop_expired` | RevenueCat `EXPIRATION` / `SUBSCRIPTION_PAUSED`, or Stripe subscription deleted / inactive | `method` (apple/google/card), `provider` — server webhook only; never receipt or PII |
 | `coop_promo_redeemed` | server confirms an auth / promo code granted a free year | `method` (`promo`) — never the code text or PII |
 | `coop_cancel_scheduled` | member schedules period-end cancel | `—` (perks stay until paid-through) |
 | `coop_left` | membership ends (period elapsed or hard leave) | `—` |
@@ -240,7 +244,7 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
 
 ### `onboarding`
-New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → recap → privacy & control → [screentime stat] → co-op → welcome in. The four stat interstitials and welcome-in do not count in the progress bar.
+New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → privacy circles → privacy & control → [screentime stat] → [co-op intro] → co-op. The four stat interstitials and the co-op intro splash do not count in the progress bar. Finishing Co-op completes onboarding and lands on Home, which plays the one-time welcome fireworks (own surface `welcome_celebration`). The old "You're in" screen (`welcome_in`) was removed 2026-08-28. The onboarding Recap voice step is archived; weekly recaps stay on Friend Pod.
 
 | section | elements |
 |---|---|
@@ -251,11 +255,12 @@ New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] →
 | `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, `skip` |
 | `friends_of_friends` | `style` (opaque key via `style`: `workout`\|`go_out`\|`creative`\|`industry`\|`travel`\|`nearby`\|`gets_me`), `all` ("All of the above"), `skip` |
 | `notifications` | `pref` (`pref`: `birthdays`\|`life_updates`\|`meet`\|`activities`\|`messages`\|`reconnect`; method `on`\|`off` via Toggle), `all` ("All of the above") |
-| `taste` | `start`, **`preview_list` (dead — excited headline)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `hometown_input`, `current_town_input`, `favorite_place_input`, `place_search` (focus favorite-place search; never logs query text), `place_result` (confirmed pick; never place names), `recap_record`, `recap_play`, `recap_type`, `skip` |
+| `taste` | `start`, **`preview_list` (dead — excited headline)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `color_slider` (`color`, method=`slider` — saturation fine-tune under the spectrum), `hometown_input`, `current_town_input`, `favorite_place_input`, `place_search` (focus favorite-place search; never logs query text), **`place_pick_hint` (dead — "Tap a place to pin it")**, `place_result` (confirmed pick; never place names), **`recap_record` / `recap_play` / `recap_type` (archived — onboarding Recap step removed; Friend Pod keeps live recap)**, `skip` |
+| `circles` | **`lock` (dead — animated padlock)**, **`tier_card` (dead — Close / Friends / Acquaintances meaning + Free Lite caps)** |
 | `review` | `row_audience` (`field`, `tier`), `set_all` (`tier`), `terms`, `privacy_policy` |
-| `coop` | `invite_free` (Option A; props `invites_sent` 0–2 when progress shown), `join_paid` (Option B), `apple_pay`, `google_pay`, `card`, `use_free` (only after 3 invites: "Continue with free access"; no early free-tier skip), `redeem_open`, `redeem_input`, `redeem_submit`, **`perks_grid` (dead — member perk bullet list)** |
-| `welcome_in` | `lets_go`, **`next_cards` (dead)** |
-| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `name.*`, `photo.*`, `groups.*`, `meet.*` |
+| `coop_intro` | `continue` (green "See what you get" → join page), **`body` (dead — the "what a co-op is" explainer paragraphs)** |
+| `coop` | `invite_free` (Option A; props `invites_sent` 0–2; 3rd invite finishes onboarding → Home), `join_paid` (Option B; opens the join sheet; long-press 10s reveals auth link), `apple_pay` / `google_pay` (In-App Purchase method in the join sheet; not the Apple Pay / Google Pay marks), `card` (Stripe Checkout method; web / Android only), `plan_monthly` / `plan_yearly` (pick billing period in the join sheet, then pay), `use_free` (when 3 invites already filled from Contacts: "Continue with free access"), `see_more` (expand/collapse the Free vs Co-op table; prop `expanded`), `redeem_open` (hidden until 10s hold on Join; redeem finishes → Home), `redeem_input`, `redeem_submit`, **`plan_compare` (dead — Free vs Co-op comparison table body)**, **`perks_grid` (dead — legacy member perk bullet list)** |
+| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `name.*`, `photo.*`, `groups.*`, `meet.*`, onboarding `recap` step (`taste.recap_*`), `welcome_in.*` (You're in screen — replaced by the Home `welcome_celebration` surface) |
 
 Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. The screentime stat also emits `flow_step` with `flow_step=stat-screentime` and `page_index` for each life-story beat (0 life, 1 sleep, 2 upkeep, 3 devices, 4 social, 5 cta). Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only.
 
@@ -263,7 +268,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | section | elements |
 |---|---|
 | `top_nav` | `search`, `messages_icon`, **`header_logo` (dead)**, **`page_title` (dead)**, `profile_icon`, `edit_layout` |
-| `announcements` | `carousel` (swipe, `carousel_depth`), `card`, `touch_grass_im_in`, `touch_grass_details`, `touch_grass_dismiss`, `quick_check_yes`, `quick_check_edit`, `quick_check_dismiss` (X closes with no answer), **`quick_check_body` (dead)**, **`quick_check_result` (dead — "Kept it." / "Removed…" banner)**, `coop_card`, `coming_up_card`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `announcements` | `carousel` (swipe, `carousel_depth`), `card`, `touch_grass_im_in`, `touch_grass_details`, `touch_grass_dismiss`, `quick_check_yes`, `quick_check_edit`, `quick_check_dismiss` (X closes with no answer), **`quick_check_body` (dead)**, **`quick_check_result` (dead — "Kept it." / "Removed…" banner)**, `intro_card` (one-time explainer; tap dismisses), `intro_dismiss` (X), **`intro_body` (dead)**, `coop_card`, `coming_up_card`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `assistant` | `open`, `mic`, `stop_listen`, `suggestion`, `dismiss`, `draft_approve`, `draft_edit`, `event_approve`, `composer`, `send`, `confirm`, `cancel`, **`mark` (dead)**, **`body` (dead)**, **`event_preview` (dead)**, **`transcript` (dead)**, **`empty_state` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap); legacy `open_card` unused |
 | `stories_row` | `your_story` (opens `post_composer`), `story_tile`, `tier_filter`, `add_after_post` (the "+"), **`stories_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `responses` | `response`, `reply`, `responses_header` (opens your story replies / comments) |
@@ -277,6 +282,12 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `take`, `open_result`, `share` |
 | `coop` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open_portal`, `join`, `use_free` |
 | `cold_start` | **`body` (dead)**, `cta` (method=link/qr/scan) |
+
+### `welcome_celebration` *(surface — parent `home`; plays once right after onboarding)*
+Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" and firework haptics. Shown one time when Home opens right after Co-op finishes onboarding, tap anywhere to continue. Emits `surface_opened` / `surface_dismissed` (`dwell_ms`). Reduce Motion shows the words only (no fireworks, no haptics).
+| section | elements |
+|---|---|
+| `overlay` | `continue` (tap anywhere / the "Tap to continue" hint), **`body` (dead — fireworks + celebration words)** |
 
 ### `section_info_tooltip` *(surface)*
 | section | elements |
@@ -582,14 +593,14 @@ Settings: `profile.settings.assistant_toggle`, `profile.settings.assistant_open`
 ### `coop` (benefits + multi-page portal)
 | section | elements |
 |---|---|
-| `benefits` | `page_title`, `info`, `free_info`, `unlocks_info`, `hero` (dead), `join`, `use_free`, `open_portal`, `redeem_open`, `redeem_input`, `redeem_submit` |
+| `benefits` | `page_title`, `info`, `free_info`, `unlocks_info`, `hero` (dead), `join`, `use_free`, `open_portal`, `redeem_open`, `redeem_input`, `redeem_submit`, `restore` |
 | `portal` | `page_title`, `info`, `hero` (dead), `nav_overview`, `guide_card`, `join_cta`, `feedback`, `spend_body` (dead), `shipped_body` (dead) |
 | `mission` | `nav`, `info`, `page_title`, `section_header` (dead), `principle_card` (dead), `support` |
 | `model` | `nav`, `info`, `roadmap_info`, `compare_info`, `page_title`, `section_header` (dead), `phase_card` (dead), `comparison` (dead) |
 | `ideas` | `nav`, `info`, `section_header` (dead), `idea_card`, `support`, `comment`, `submit`, `open_submit` |
 | `vote` | `nav`, `info`, `section_header` (dead), `verify`, `beta_vote`, `dues_vote` (retired in UI), `mission_support` |
 | `cost` | `nav`, `info`, `books_info`, `sim_info`, `roles_info`, `page_title`, `section_header` (dead), `books` (dead), `slider`, `reset`, `role_card` |
-| `manage` | `info`, `page_title`, `open`, `cancel`, `confirm_cancel` |
+| `manage` | `info`, `page_title`, `open`, `cancel`, `confirm_cancel`, `customer_center` |
 
 ### `quiz` (take / result surface)
 | section | elements |
@@ -773,6 +784,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-27 | — | `onboarding.stat.advance` + **`caption` (dead)** + screentime `page_index` beats | 80-year life story plays one beat at a time; tap skips ahead |
 | 2026-08-28 | `profile.tabs.settings_gear` | `profile.header.settings_gear` | Settings moved from tab bar to gear next to Edit on the photo |
 | 2026-08-28 | — | `onboarding.taste.place_search` / `place_result` | Favorite place map search seeds Places traveled FAV pin |
+| 2026-08-28 | — | `onboarding.taste.place_pick_hint` | Dead-click hint above place search matches ("Tap a place to pin it") |
 | 2026-08-28 | — | `onboarding.stat.band` | Screentime year-band tap opens/closes the years accordion |
 | 2026-08-28 | FoF `style` keys `humor`\|`values`\|`personality`\|`hobbies`\|`communication` | `workout`\|`go_out`\|`creative`\|`industry`\|`travel`\|`nearby`\|`gets_me` | Friends-of-friends ask reframed as "what kind of friend" |
 | 2026-08-28 | — | `onboarding.notifications.all` | All of the above + emoji burst on notifications step |
@@ -780,4 +792,9 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-28 | — | `messages.conversation.contact_card_chip` | Shared-card bubble: Contact card label + message icon; expands fields (`method: dropdown`); never `tel:` |
 | 2026-08-28 | — | `home.this_week.open_events` | Empty This week widget tap opens the Events tab |
 | 2026-08-28 | — | `home.coming_up.empty_body` | Coming up null line: "Add friends to get reminders." |
+| 2026-08-28 | onboarding step `recap` (between places and privacy-control) | archived; progress bar 14→13 question screens | Voice recap stays on Friend Pod; `taste.recap_*` ids kept for history |
+| 2026-08-28 | onboarding `welcome_in` screen (`welcome_in.lets_go` / `next_cards`) | removed; new Home surface `welcome_celebration` (`overlay.continue` / dead `overlay.body`) | "You're in" screen replaced by one-time fireworks party on Home; `welcome_in.*` ids kept for history |
+| 2026-08-28 | — | `onboarding.circles.lock` / `tier_card`; step `privacy-circles` before `privacy-control` | Teach Close / Friends / Acquaintances + Free Lite caps; progress bar 13→14 |
+| 2026-08-28 | onboarding step `welcome-in` | archived; Co-op finishes → Home `welcome_celebration` | Pay, invite 3, or auth code set `onboardingComplete`; `welcome_in.*` ids kept |
+| 2026-08-28 | — | `home.announcements.intro_card` / `intro_dismiss` / **`intro_body` (dead)** | One-time Announcements explainer when nothing live; tap or X dismisses forever |
 |

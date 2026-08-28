@@ -15,7 +15,7 @@ import { getMe } from '../../data/people';
 import { acknowledgeTab } from '../../data/tab-badges';
 import { useTabAttention } from '../../hooks/useTabAttention';
 import { isDemoMode } from '../../lib/demo';
-import { getCachedMe, loadPeople } from '../../lib/people-cache';
+import { getCachedMe, loadPeople, subscribePeople } from '../../lib/people-cache';
 import { useAuth } from '../../providers/auth-provider';
 
 const TAB_KEYS = new Set<TabKey>(['home', 'friends', 'events', 'discover', 'news']);
@@ -47,6 +47,13 @@ export default function TabsLayout() {
     void loadPeople().then(() => setPeopleTick((n) => n + 1));
   }, [authLoading, demoMode, session]);
 
+  // THIS SECTION DOES: re-render the header whenever loadPeople refreshes your face
+  // (e.g. right after onboarding, or when Home focuses and reloads /me).
+  useEffect(() => {
+    if (demoMode) return;
+    return subscribePeople(() => setPeopleTick((n) => n + 1));
+  }, [demoMode]);
+
   // Header photo → your Profile page (not a bottom-tab destination).
   const openProfile = useCallback(() => {
     router.push('/(tabs)/profile');
@@ -61,15 +68,18 @@ export default function TabsLayout() {
     const live = getCachedMe();
     const liveUri = live?.avatarUrl?.trim();
     return {
-      name: me.name,
+      name: live?.name || me.name,
       emoji: me.emoji,
       accent: me.accent,
-      // Prefer a live signed photo URL; otherwise the demo asset for "me".
+      // Live: only your real signed photo (emoji circle if none yet).
+      // Demo: fall back to the dropped-in fixture face for "me".
       photo: liveUri
         ? { uri: liveUri }
-        : getProfilePhoto('me')
+        : demoMode
+          ? getProfilePhoto('me')
+          : undefined
     };
-  }, [me.name, me.emoji, me.accent, me.avatarUrl, peopleTick]);
+  }, [me.name, me.emoji, me.accent, me.avatarUrl, peopleTick, demoMode]);
 
   // SECURITY: signed-out people never mount private tabs or start private API calls.
   if (!demoMode && (authLoading || !session)) return null;

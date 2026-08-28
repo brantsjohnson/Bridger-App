@@ -120,7 +120,7 @@ export function ScanFriendSheet({
           placeholder="Invite link or code"
           placeholderTextColor={c.inkMute}
           accessibilityLabel="Invite code"
-          className="rounded-xl border-2 border-ink bg-white px-3 py-3 font-sans text-[14px] text-ink"
+          className="rounded-xl border-2 border-ink bg-surface px-3 py-3 font-sans text-[14px] text-ink"
         />
         {isDemoMode() ? (
           <Pressable

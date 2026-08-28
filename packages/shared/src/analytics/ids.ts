@@ -98,6 +98,13 @@ export const ONBOARDING = {
     /** dead — the three tier cards are explanatory, not tappable */
     tier_card: aid('onboarding', 'groups', 'tier_card')
   },
+  // Before Privacy & Control: teach Close / Friends / Acquaintances + caps.
+  circles: {
+    /** dead — animated padlock graphic (same as profile intro) */
+    lock: aid('onboarding', 'circles', 'lock'),
+    /** dead — the three meaning + size cards are explanatory, not tappable */
+    tier_card: aid('onboarding', 'circles', 'tier_card')
+  },
   // The four "the internet promised X" interstitials between steps.
   stat: {
     /** the little i icon / "Where this comes from" link that reveals sources */
@@ -166,15 +173,22 @@ export const ONBOARDING = {
     song_input: aid('onboarding', 'taste', 'song_input'),
     nights_option: aid('onboarding', 'taste', 'nights_option'),
     color_swatch: aid('onboarding', 'taste', 'color_swatch'),
+    /** Fine-tune slider under the spectrum (saturation; method=`slider`). */
+    color_slider: aid('onboarding', 'taste', 'color_slider'),
     hometown_input: aid('onboarding', 'taste', 'hometown_input'),
     current_town_input: aid('onboarding', 'taste', 'current_town_input'),
     favorite_place_input: aid('onboarding', 'taste', 'favorite_place_input'),
     /** Focus the favorite-place search box (never logs query text). */
     place_search: aid('onboarding', 'taste', 'place_search'),
+    /** Dead-click: "Tap a place to pin it" hint above search matches. */
+    place_pick_hint: aid('onboarding', 'taste', 'place_pick_hint'),
     /** Confirmed pick from favorite-place search results (never place names). */
     place_result: aid('onboarding', 'taste', 'place_result'),
+    /** @deprecated Onboarding Recap step archived 2026-08-28. Kept for history. */
     recap_record: aid('onboarding', 'taste', 'recap_record'),
+    /** @deprecated Onboarding Recap step archived 2026-08-28. Kept for history. */
     recap_play: aid('onboarding', 'taste', 'recap_play'),
+    /** @deprecated Onboarding Recap step archived 2026-08-28. Kept for history. */
     recap_type: aid('onboarding', 'taste', 'recap_type'),
     skip: aid('onboarding', 'taste', 'skip')
   },
@@ -184,27 +198,61 @@ export const ONBOARDING = {
     terms: aid('onboarding', 'review', 'terms'),
     privacy_policy: aid('onboarding', 'review', 'privacy_policy')
   },
+  /** Blue splash before the join page: plain-language "what a co-op is". */
+  coop_intro: {
+    /** green "See what you get" button that moves to the join page */
+    continue: aid('onboarding', 'coop_intro', 'continue'),
+    /** dead — the explainer paragraphs are not tappable */
+    body: aid('onboarding', 'coop_intro', 'body')
+  },
   coop: {
     join: aid('onboarding', 'coop', 'join'),
     /** Option A — invite 3 friends for free access */
     invite_free: aid('onboarding', 'coop', 'invite_free'),
-    /** Option B — join directly (paid membership) */
+    /** Option B — join directly (paid membership); opens the join method sheet */
     join_paid: aid('onboarding', 'coop', 'join_paid'),
+    /** Store In-App Purchase method (Apple StoreKit); not the Apple Pay mark */
     apple_pay: aid('onboarding', 'coop', 'apple_pay'),
+    /** Store In-App Purchase method (Google Play Billing); not the Google Pay mark */
     google_pay: aid('onboarding', 'coop', 'google_pay'),
+    /** Card via Stripe Checkout (web / Android only) */
     card: aid('onboarding', 'coop', 'card'),
+    /** In the join sheet: pick the monthly plan before paying */
+    plan_monthly: aid('onboarding', 'coop', 'plan_monthly'),
+    /** In the join sheet: pick the yearly plan (2 months free) before paying */
+    plan_yearly: aid('onboarding', 'coop', 'plan_yearly'),
     /** After invite 3 friends only: continue with free access (no early free-tier skip) */
     use_free: aid('onboarding', 'coop', 'use_free'),
+    /** expands the Free vs Co-op table from the top 5 to the full list */
+    see_more: aid('onboarding', 'coop', 'see_more'),
     redeem_open: aid('onboarding', 'coop', 'redeem_open'),
     redeem_input: aid('onboarding', 'coop', 'redeem_input'),
     redeem_submit: aid('onboarding', 'coop', 'redeem_submit'),
+    /** dead — the Free vs Co-op comparison table body is not tappable */
+    plan_compare: aid('onboarding', 'coop', 'plan_compare'),
     /** dead — member perk bullet list (same as Co-op page) is not tappable */
     perks_grid: aid('onboarding', 'coop', 'perks_grid')
   },
+  /**
+   * @deprecated The "You're in" screen was removed 2026-08-28. Finishing Co-op
+   * now completes onboarding and lands on Home, which plays the welcome
+   * fireworks (see WELCOME_CELEBRATION). Ids kept so old events still parse.
+   */
   welcome_in: {
     lets_go: aid('onboarding', 'welcome_in', 'lets_go'),
     /** dead — the three "what happens next" cards are not tappable */
     next_cards: aid('onboarding', 'welcome_in', 'next_cards')
+  }
+} as const;
+
+// --- Welcome fireworks (own surface, parent Home; plays once right after
+//     onboarding finishes: fireworks + "You did it! Welcome to Bridger!!!") ---
+export const WELCOME_CELEBRATION = {
+  overlay: {
+    /** dead — the fireworks + celebration words are not tappable themselves */
+    body: aid('welcome_celebration', 'overlay', 'body'),
+    /** tap anywhere / the hint to leave the party and land on Home */
+    continue: aid('welcome_celebration', 'overlay', 'continue')
   }
 } as const;
 
@@ -258,6 +306,13 @@ export const HOME = {
     quick_check_body: aid('home', 'announcements', 'quick_check_body'),
     /** Dead: the "Kept it." / "Removed…" confirmation banner. */
     quick_check_result: aid('home', 'announcements', 'quick_check_result'),
+    /**
+     * One-time intro card (no live announcements yet): tap card or Got it
+     * dismisses forever. intro_body is dead_click on the copy block.
+     */
+    intro_card: aid('home', 'announcements', 'intro_card'),
+    intro_dismiss: aid('home', 'announcements', 'intro_dismiss'),
+    intro_body: aid('home', 'announcements', 'intro_body'),
     coop_card: aid('home', 'announcements', 'coop_card'),
     coming_up_card: aid('home', 'announcements', 'coming_up_card'),
     section_header: aid('home', 'announcements', 'section_header'),
@@ -1532,7 +1587,9 @@ export const COOP = {
     page_title: aid('coop', 'manage', 'page_title'),
     cancel: aid('coop', 'manage', 'cancel'),
     confirm_cancel: aid('coop', 'manage', 'confirm_cancel'),
-    open: aid('coop', 'manage', 'open')
+    open: aid('coop', 'manage', 'open'),
+    /** Opens RevenueCat Customer Center (store subscription manage). */
+    customer_center: aid('coop', 'manage', 'customer_center')
   },
   benefits: {
     info: aid('coop', 'benefits', 'info'),
@@ -1545,7 +1602,19 @@ export const COOP = {
     hero: aid('coop', 'benefits', 'hero'),
     redeem_open: aid('coop', 'benefits', 'redeem_open'),
     redeem_input: aid('coop', 'benefits', 'redeem_input'),
-    redeem_submit: aid('coop', 'benefits', 'redeem_submit')
+    redeem_submit: aid('coop', 'benefits', 'redeem_submit'),
+    /** Store In-App Purchase method (Apple StoreKit); not the Apple Pay mark */
+    apple_pay: aid('coop', 'benefits', 'apple_pay'),
+    /** Store In-App Purchase method (Google Play Billing); not the Google Pay mark */
+    google_pay: aid('coop', 'benefits', 'google_pay'),
+    /** Card via Stripe Checkout (web / Android only) */
+    card: aid('coop', 'benefits', 'card'),
+    /** In the join sheet: pick the monthly plan before paying */
+    plan_monthly: aid('coop', 'benefits', 'plan_monthly'),
+    /** In the join sheet: pick the yearly plan (2 months free) before paying */
+    plan_yearly: aid('coop', 'benefits', 'plan_yearly'),
+    /** Restore App Store / Play purchases onto this Bridger account. */
+    restore: aid('coop', 'benefits', 'restore')
   },
   portal: {
     info: aid('coop', 'portal', 'info'),

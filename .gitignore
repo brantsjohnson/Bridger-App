@@ -60,3 +60,6 @@ pnpm-debug.log*
 *.swp
 *.local
 supabase/.temp/
+
+# Local live Stripe snippet (never commit)
+apps/api/.env.live.snippet

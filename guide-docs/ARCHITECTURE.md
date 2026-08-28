@@ -202,8 +202,8 @@ apps/mobile/
 │   │   ├── basics.tsx          # 5 · the 10 basics (Typeform run)
 │   │   ├── meet.tsx            # 6 · friends-of-friends + nearby/anywhere + city (skippable)
 │   │   ├── review.tsx          # 7 · privacy & per-row visibility summary
-│   │   ├── coop.tsx            # 8 · join the co-op?
-│   │   └── welcome-in.tsx      # 9 · sets onboardingComplete → Home
+│   │   ├── coop.tsx            # 8 · last step: join / invite 3 → Home (sets onboardingComplete)
+│   │   └── welcome-in.tsx      # ARCHIVED · was "You're in"; Home fireworks replace it
 │   ├── (tabs)/                 # the main app shell + FLOATING pill tab bar (detached, dynamic — see DESIGN.md)
 │   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; Profile opened from header avatar (pill hidden on Profile)
 │   │   ├── home.tsx            # hub: announcements carousel, stories+responses, touch grass, ask-the-group, this-week (see HOME.md)
