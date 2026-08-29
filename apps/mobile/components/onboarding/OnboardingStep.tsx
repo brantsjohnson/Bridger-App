@@ -62,10 +62,14 @@ import {
 
 /**
  * Lets a field inside a scrolling step ask the page to scroll it into view
- * when the keyboard opens (so the typing box is not hidden under it).
+ * when the keyboard opens (so the typing box is not hidden under it), and
+ * freeze page scroll while a horizontal slider / spectrum drag is happening
+ * so the page does not fight the finger.
  */
 type BodyScrollApi = {
   ensureVisible: (target: View | null) => void;
+  /** True = lock the body ScrollView (used by color fine-tune + spectrum). */
+  setScrollLocked: (locked: boolean) => void;
 };
 
 const OnboardingBodyScrollContext = createContext<BodyScrollApi | null>(null);
@@ -74,7 +78,8 @@ const OnboardingBodyScrollContext = createContext<BodyScrollApi | null>(null);
 export function useOnboardingBodyScroll(): BodyScrollApi {
   return (
     useContext(OnboardingBodyScrollContext) ?? {
-      ensureVisible: () => undefined
+      ensureVisible: () => undefined,
+      setScrollLocked: () => undefined
     }
   );
 }
@@ -176,6 +181,9 @@ export function OnboardingStep({
   const layoutH = useRef(0);
   const scrollY = useRef(0);
   const [moreBelow, setMoreBelow] = useState(false);
+  // True while a child (color slider / spectrum) is dragging, so the page
+  // does not scroll under the finger at the same time.
+  const [scrollLocked, setScrollLocked] = useState(false);
   const refreshMoreBelow = () => {
     const leftover = contentH.current - layoutH.current - scrollY.current;
     setMoreBelow(leftover > 12);
@@ -198,11 +206,13 @@ export function OnboardingStep({
   const scrollTargetIntoView = useCallback((target: View | null) => {
     if (!target || !scrollBody) return;
     pendingVisible.current = target;
+    // Re-measure the scroll window first (keyboard may have just resized it).
+    rememberScrollWindow(layoutH.current);
     if (typeof target.measureInWindow !== 'function') return;
     target.measureInWindow((_tx, ty, _tw, th) => {
       const win = scrollWindow.current;
       if (win.height <= 0) return;
-      const pad = 20;
+      const pad = 28;
       const visibleTop = win.y + pad;
       const visibleBottom = win.y + win.height - pad;
       const fieldBottom = ty + th;
@@ -212,23 +222,27 @@ export function OnboardingStep({
       } else if (ty < visibleTop) {
         delta = ty - visibleTop;
       }
-      if (Math.abs(delta) < 8) return;
+      if (Math.abs(delta) < 4) return;
       scrollRef.current?.scrollTo({
         y: Math.max(0, scrollY.current + delta),
         animated: true
       });
     });
-  }, [scrollBody]);
+  }, [rememberScrollWindow, scrollBody]);
 
   const bodyScrollApi = useMemo<BodyScrollApi>(
     () => ({
       ensureVisible: (target) => {
-        // Wait a beat so KeyboardAvoidingView can shrink, then scroll.
+        // Wait for KeyboardAvoidingView + keyboard animation, then scroll.
         pendingVisible.current = target;
         requestAnimationFrame(() => {
-          setTimeout(() => scrollTargetIntoView(target), Platform.OS === 'ios' ? 80 : 120);
+          setTimeout(
+            () => scrollTargetIntoView(target),
+            Platform.OS === 'ios' ? 280 : 160
+          );
         });
-      }
+      },
+      setScrollLocked
     }),
     [scrollTargetIntoView]
   );
@@ -237,15 +251,17 @@ export function OnboardingStep({
   useEffect(() => {
     if (!scrollBody) return;
     const sub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      Platform.OS === 'ios' ? 'keyboardDidShow' : 'keyboardDidShow',
       () => {
+        // Window height changed; refresh measure then scroll again.
+        rememberScrollWindow(layoutH.current);
         const target = pendingVisible.current;
         if (!target) return;
-        setTimeout(() => scrollTargetIntoView(target), Platform.OS === 'ios' ? 40 : 80);
+        setTimeout(() => scrollTargetIntoView(target), 60);
       }
     );
     return () => sub.remove();
-  }, [scrollBody, scrollTargetIntoView]);
+  }, [rememberScrollWindow, scrollBody, scrollTargetIntoView]);
 
   // Soft fade into the live canvas color (matches Home, including dark mode).
   const fadeTop = `${theme.canvas}00`;
@@ -307,7 +323,7 @@ export function OnboardingStep({
       {/* THE ASK: why we're asking, the big question, and an optional sentence.
           Some steps (taste intro) skip this and put the headline in the body. */}
       {purpose || ask || blurb || kicker ? (
-        <View style={{ paddingHorizontal: PAGE_X, paddingTop: 14, paddingBottom: 8, gap: 12 }}>
+        <View style={{ paddingHorizontal: PAGE_X, paddingTop: 14, paddingBottom: 8, gap: 16 }}>
           {purpose ? <OBChip>{purpose}</OBChip> : null}
           {ask ? (
             <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
@@ -319,8 +335,9 @@ export function OnboardingStep({
         </View>
       ) : null}
 
-      {/* THIS SECTION DOES: the scrollable body shrinks when the keyboard opens.
-          Continue stays pinned below it so it never slides up over the fields. */}
+      {/* THIS SECTION DOES: body + Continue share one KeyboardAvoidingView so
+          Continue lifts above the keyboard, and the first tap on Continue
+          always advances (no "dismiss keyboard, then tap again"). */}
       <View style={{ flex: 1, minHeight: 0 }}>
         <OnboardingBodyScrollContext.Provider value={bodyScrollApi}>
         <KeyboardAvoidingView
@@ -355,8 +372,12 @@ export function OnboardingStep({
                 style={{ flex: 1, minHeight: 0, backgroundColor: 'transparent' }}
                 // Show the bar so a long list (co-op perks) does not look finished.
                 showsVerticalScrollIndicator
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="interactive"
+                // Freeze while a child claims the drag (color slider / spectrum).
+                scrollEnabled={!scrollLocked}
+                keyboardShouldPersistTaps="always"
+                keyboardDismissMode="on-drag"
+                // iOS: lift content with the keyboard so focused fields stay visible.
+                automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
                 onLayout={(e) => {
                   layoutH.current = e.nativeEvent.layout.height;
                   rememberScrollWindow(e.nativeEvent.layout.height);
@@ -376,7 +397,7 @@ export function OnboardingStep({
                   paddingHorizontal: PAGE_X,
                   paddingTop: 8,
                   // Extra air so the last field can scroll above the keyboard.
-                  paddingBottom: 28
+                  paddingBottom: 120
                 }}
               >
                 {children}
@@ -416,39 +437,39 @@ export function OnboardingStep({
               ) : null}
             </View>
           )}
+
+          {hideFooter ? null : (
+            <View
+              style={{
+                paddingHorizontal: PAGE_X,
+                paddingTop: 14,
+                // Less air under Skip so Continue sits closer to the home indicator.
+                paddingBottom: Math.max(insets.bottom, 12) + 8,
+                gap: 6
+              }}
+            >
+              {footer ?? (
+                <>
+                  <OBCTA
+                    label={cta}
+                    disabled={ctaDisabled || loading}
+                    analyticsId={continueAnalyticsId ?? ONBOARDING.chrome.continue}
+                    onPress={onContinue}
+                    burstEmojis={burstEmojis}
+                  />
+                  {onSkip ? (
+                    <OBSkipLink
+                      label={skipLabel}
+                      onPress={onSkip}
+                      analyticsId={skipAnalyticsId ?? ONBOARDING.chrome.skip}
+                    />
+                  ) : null}
+                </>
+              )}
+            </View>
+          )}
         </KeyboardAvoidingView>
         </OnboardingBodyScrollContext.Provider>
-
-        {hideFooter ? null : (
-          <View
-            style={{
-              paddingHorizontal: PAGE_X,
-              paddingTop: 14,
-              // Less air under Skip so Continue sits closer to the home indicator.
-              paddingBottom: Math.max(insets.bottom, 12) + 8,
-              gap: 6
-            }}
-          >
-            {footer ?? (
-              <>
-                <OBCTA
-                  label={cta}
-                  disabled={ctaDisabled || loading}
-                  analyticsId={continueAnalyticsId ?? ONBOARDING.chrome.continue}
-                  onPress={onContinue}
-                  burstEmojis={burstEmojis}
-                />
-                {onSkip ? (
-                  <OBSkipLink
-                    label={skipLabel}
-                    onPress={onSkip}
-                    analyticsId={skipAnalyticsId ?? ONBOARDING.chrome.skip}
-                  />
-                ) : null}
-              </>
-            )}
-          </View>
-        )}
       </View>
       </View>
     </View>

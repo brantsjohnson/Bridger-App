@@ -8,12 +8,15 @@
 // LOOK: the amber chip says "Let's have some fun!", a pink "change anytime"
 // hint sits under it, then each question as a big blue heading with its white
 // box underneath. All the paint comes from the shared parts.
+//
+// KEYBOARD: Enter on the first box jumps to the dream box. Enter on the dream
+// box moves forward (same as Continue). Long answers still wrap and grow.
 // ============================================
-import React from 'react';
-import { View } from 'react-native';
+import React, { useRef } from 'react';
+import { TextInput, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
 import { AnalyticsRegion } from '@bridger/ui';
-import { OnboardingStep } from './OnboardingStep';
+import { OnboardingStep, useOnboardingBodyScroll } from './OnboardingStep';
 import { OBField, OBHeading, OBKicker } from './onboarding-ui';
 
 export function RightNowStep({
@@ -37,6 +40,11 @@ export function RightNowStep({
   onSkip: () => void;
   onBack: () => void;
 }) {
+  // THIS SECTION DOES: keep the typing box above the keyboard when focused.
+  const { ensureVisible } = useOnboardingBodyScroll();
+  // THIS SECTION DOES: let Enter on "currently do" land in the dream box.
+  const dreamRef = useRef<TextInput>(null);
+
   return (
     <OnboardingStep
       step={step}
@@ -64,6 +72,9 @@ export function RightNowStep({
             analyticsId={ONBOARDING.taste.current_input}
             accessibilityLabel="What you currently do"
             multiline
+            returnKeyType="next"
+            onSubmitEditing={() => dreamRef.current?.focus()}
+            onFocusExtra={(anchor) => ensureVisible(anchor)}
           />
         </View>
 
@@ -79,6 +90,10 @@ export function RightNowStep({
             analyticsId={ONBOARDING.taste.dream_input}
             accessibilityLabel="If anything were possible, what would you do"
             multiline
+            inputRef={dreamRef}
+            returnKeyType="go"
+            onSubmitEditing={onNext}
+            onFocusExtra={(anchor) => ensureVisible(anchor)}
           />
         </View>
       </View>

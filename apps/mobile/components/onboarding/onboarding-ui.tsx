@@ -23,8 +23,9 @@
 // (grid, shadow) are hidden from screen readers. Nothing here relies on color
 // alone: picked rows also get a tick or a switched-on toggle.
 // ============================================
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   Modal,
   Pressable,
   Text,
@@ -47,8 +48,8 @@ import { OB, OB_BORDER, OB_HEADING, OB_HEADING_SM, OB_SHADOW_OFFSET } from './on
 
 /** Party mix for Continue / Let's try again taps in onboarding. */
 const ONBOARDING_BURST_EMOJIS = ['🎉', '🎊', '🎈'];
-/** Short beat so the shower is visible before the next step loads. */
-const ONBOARDING_BURST_ADVANCE_MS = 380;
+/** Tiny beat so the shower starts, without making Continue feel stuck. */
+const ONBOARDING_BURST_ADVANCE_MS = 120;
 
 /** The grey the system switch shows when it is off (app ink at low opacity). */
 const OB_SWITCH_OFF = OB.switchOff;
@@ -221,11 +222,14 @@ export function OBNote({ children }: { children: React.ReactNode }) {
 
 // ============================================
 // TYPING: a white box with a hard navy outline and its label above it.
-// Multiline fields start one line tall, then grow as the words wrap so
-// long answers stay visible without scrolling inside the box.
+// Multiline fields start one line tall, then grow one line at a time as the
+// words wrap. They are never a fixed paragraph box. iOS inside a ScrollView
+// can report a huge empty contentSize; we ignore that and stay one line.
 // ============================================
 const OB_FIELD_PAD_Y = 14;
-const OB_FIELD_LINE_MIN = 52;
+const OB_FIELD_LINE = 22;
+const OB_FIELD_LINE_MIN = OB_FIELD_PAD_Y * 2 + OB_FIELD_LINE;
+const OB_FIELD_MAX_LINES = 8;
 
 export function OBField({
   label,
@@ -236,7 +240,11 @@ export function OBField({
   keyboardType,
   autoCapitalize = 'sentences',
   multiline = false,
-  accessibilityLabel
+  accessibilityLabel,
+  onFocusExtra,
+  returnKeyType,
+  onSubmitEditing,
+  inputRef
 }: {
   label?: string;
   value: string;
@@ -249,14 +257,36 @@ export function OBField({
   multiline?: boolean;
   /** Spoken name when the visible label is omitted (e.g. the heading above). */
   accessibilityLabel?: string;
+  /**
+   * Extra focus hook (e.g. scroll this field above the keyboard). Receives the
+   * field's outer View so the page can measure and scroll to it. Never receives
+   * the typed text.
+   */
+  onFocusExtra?: (anchor: View | null) => void;
+  /** Keyboard return key label (next / done / go). */
+  returnKeyType?: 'done' | 'go' | 'next' | 'search' | 'send' | 'default';
+  /** What happens when they hit Enter / return (focus next field, continue, etc.). */
+  onSubmitEditing?: () => void;
+  /** Let the parent focus this box (e.g. Enter on the field above). */
+  inputRef?: React.Ref<TextInput>;
 }) {
   // THIS SECTION DOES: remember how tall the typing box needs to be when words wrap.
   const [growHeight, setGrowHeight] = useState(OB_FIELD_LINE_MIN);
   // Label sits on the page canvas, so it must follow light/dark ink (boxes stay white).
   const theme = useThemeColors();
+  // Outer box we measure so the page can scroll this field above the keyboard.
+  const wrapRef = useRef<View>(null);
+  // Enter should advance (next field / continue), not insert a blank paragraph line.
+  const enterAdvances = !!onSubmitEditing;
+
+  // THIS SECTION DOES: empty answers snap back to one line (no leftover tall box).
+  useEffect(() => {
+    if (!multiline) return;
+    if (!value) setGrowHeight(OB_FIELD_LINE_MIN);
+  }, [multiline, value]);
 
   return (
-    <View style={{ gap: 7 }}>
+    <View ref={wrapRef} style={{ gap: 7 }}>
       {label ? (
         <Text
           className="font-sans-sb text-[13px]"
@@ -266,11 +296,14 @@ export function OBField({
         </Text>
       ) : null}
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChange}
         // Focus only - we never log what was typed (PRIVACY: no content / PII).
         onFocus={() => {
           if (analyticsId) trackUi('focus', analyticsId);
+          // Parent (confirm profile, places, etc.) scrolls this box into view.
+          onFocusExtra?.(wrapRef.current);
         }}
         placeholder={placeholder}
         placeholderTextColor="rgba(0,0,0,0.35)"
@@ -279,14 +312,33 @@ export function OBField({
         multiline={multiline}
         // Grow the box instead of scrolling text inside it.
         scrollEnabled={multiline ? false : undefined}
+        // Enter moves to the next field or continues; long answers still wrap.
+        returnKeyType={returnKeyType ?? (enterAdvances ? 'next' : undefined)}
+        blurOnSubmit={enterAdvances ? true : undefined}
+        submitBehavior={enterAdvances ? 'blurAndSubmit' : multiline ? 'newline' : undefined}
+        onSubmitEditing={onSubmitEditing}
         accessibilityLabel={accessibilityLabel ?? label}
         onContentSizeChange={
           multiline
             ? (e) => {
-                // Text height + top/bottom padding, never shorter than one line.
+                // Empty field stays one line. iOS ScrollView often reports the
+                // whole body height as contentSize when there is no text yet.
+                if (!value) {
+                  setGrowHeight(OB_FIELD_LINE_MIN);
+                  return;
+                }
+                const textH = Math.ceil(e.nativeEvent.contentSize.height);
+                // Hard returns in the answer (wrapping still uses contentSize).
+                const hardLines = Math.max(1, value.split('\n').length);
+                // Reject absurd sizes: empty-ish answers should not become a paragraph box.
+                const reportedLines = Math.max(1, Math.ceil(textH / OB_FIELD_LINE));
+                const safeLines =
+                  reportedLines > hardLines + 3 && value.length < 80
+                    ? Math.min(hardLines + 1, OB_FIELD_MAX_LINES)
+                    : Math.min(reportedLines, OB_FIELD_MAX_LINES);
                 const next = Math.max(
                   OB_FIELD_LINE_MIN,
-                  Math.ceil(e.nativeEvent.contentSize.height) + OB_FIELD_PAD_Y * 2
+                  OB_FIELD_PAD_Y * 2 + OB_FIELD_LINE * safeLines
                 );
                 setGrowHeight((prev) => (prev === next ? prev : next));
               }
@@ -299,9 +351,11 @@ export function OBField({
           paddingHorizontal: 14,
           paddingVertical: OB_FIELD_PAD_Y,
           fontSize: 17,
-          lineHeight: 22,
+          lineHeight: OB_FIELD_LINE,
           color: OB.ink,
           minHeight: OB_FIELD_LINE_MIN,
+          // Keep the box content-sized; do not stretch to fill the scroll body.
+          alignSelf: 'stretch',
           ...(multiline ? { height: growHeight } : null),
           textAlignVertical: multiline ? 'top' : 'center'
         }}
@@ -315,7 +369,8 @@ export function OBField({
 //   plain    - just a label (and an optional mark on the right)
 //   checkbox - a 22px box that fills in and shows a tick when picked
 //   switch   - the phone's own on/off switch, green fill + white knob when on
-// Picked rows turn periwinkle, so it never depends on the tick alone.
+// Picked rows turn periwinkle by default; success rows (contacts / invites
+// sent) turn green. Color is never the only signal: ticks / switches stay.
 // ============================================
 export function OBTile({
   label,
@@ -330,6 +385,11 @@ export function OBTile({
   disabled = false,
   /** Idle fill when not selected (default white paper). */
   idleFill,
+  /**
+   * What "selected" looks like: pick = pale blue (default), success = green
+   * wash for done moments (contacts loaded, invite sent).
+   */
+  selectedTone = 'pick',
   /** Shorter row for dense lists (still ≥ 44pt tall). */
   compact = false
 }: {
@@ -346,9 +406,13 @@ export function OBTile({
   accessibilityLabel?: string;
   disabled?: boolean;
   idleFill?: string;
+  selectedTone?: 'pick' | 'success';
   compact?: boolean;
 }) {
   const role = variant === 'checkbox' ? 'checkbox' : variant === 'switch' ? 'switch' : 'button';
+  // THIS SECTION DOES: choose the fill for a picked row (blue pick vs green done).
+  const selectedFill = selectedTone === 'success' ? OB.greenWash : OB.periwinkle;
+  const markColor = selectedTone === 'success' && selected ? OB.green : OB.navy;
   return (
     <Pressable
       onPress={
@@ -371,7 +435,7 @@ export function OBTile({
         gap: compact ? 10 : 14,
         paddingHorizontal: compact ? 12 : 16,
         paddingVertical: compact ? 9 : 15,
-        backgroundColor: selected ? OB.periwinkle : idleFill ?? OB.paper,
+        backgroundColor: selected ? selectedFill : idleFill ?? OB.paper,
         borderWidth: OB_BORDER,
         borderColor: OB.navy,
         opacity: disabled ? 0.55 : 1
@@ -398,7 +462,7 @@ export function OBTile({
       {variant === 'switch' ? <OBSwitchMark on={selected} /> : null}
       {right}
       {variant === 'plain' && mark ? (
-        <Text className="font-sans-b text-[15px]" style={{ color: OB.navy }}>
+        <Text className="font-sans-b text-[15px]" style={{ color: markColor }}>
           {mark}
         </Text>
       ) : null}
@@ -516,6 +580,8 @@ export function OBCTA({
 }) {
   const reduce = useReduceMotion();
   const btnRef = useRef<View>(null);
+  // Blocks a second tap from firing onPress twice while the burst plays.
+  const advancing = useRef(false);
   const [burst, setBurst] = useState<{ key: number; origin: { x: number; y: number } } | null>(
     null
   );
@@ -523,12 +589,23 @@ export function OBCTA({
   const shower =
     burstEmojis && burstEmojis.length > 0 ? burstEmojis : ONBOARDING_BURST_EMOJIS;
 
-  const handlePress = () => {
-    if (!onPress || disabled) return;
+  // THIS SECTION DOES: advance on the finger-down (pressIn), not press-up.
+  // When a text field still has focus, iOS often uses the first press-up to
+  // dismiss the keyboard and never delivers onPress. pressIn fires first, so
+  // Continue works in one tap. advancing blocks an accidental double advance.
+  // Exception: when onLongPress is set (co-op hold), we wait for onPress so a
+  // long hold can still win without advancing first.
+  const runAdvance = () => {
+    if (!onPress || disabled || advancing.current) return;
+    advancing.current = true;
     trackClick(analyticsId, analyticsProps);
+    Keyboard.dismiss();
 
     if (reduce) {
       onPress();
+      setTimeout(() => {
+        advancing.current = false;
+      }, 400);
       return;
     }
 
@@ -538,12 +615,17 @@ export function OBCTA({
         origin: { x: x + width / 2, y: y + height / 2 }
       });
     });
-    setTimeout(onPress, ONBOARDING_BURST_ADVANCE_MS);
+    setTimeout(() => {
+      onPress();
+      advancing.current = false;
+    }, ONBOARDING_BURST_ADVANCE_MS);
   };
 
   return (
     <View>
-      <Modal visible={burst != null} transparent animationType="none" pointerEvents="none">
+      {/* Burst stays in a transparent Modal so particles can use window
+          coordinates. pointerEvents none so it never eats the next screen. */}
+      <Modal visible={burst != null} transparent animationType="none">
         <View style={{ flex: 1 }} pointerEvents="none">
           {burst ? (
             <HobbyEmojiBurst
@@ -561,7 +643,8 @@ export function OBCTA({
       </Modal>
       <Pressable
         ref={btnRef}
-        onPress={handlePress}
+        onPressIn={onLongPress ? undefined : runAdvance}
+        onPress={onLongPress ? runAdvance : undefined}
         onLongPress={
           onLongPress && !disabled
             ? () => {

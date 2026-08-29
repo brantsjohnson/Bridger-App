@@ -185,15 +185,17 @@ export function ScreenTimeVisual({
     return () => clearTimeout(timer);
   }, [beat, reduceMotion]);
 
-  // THIS SECTION DOES: when a new band colors in, open its accordion (and the
-  // previous one closes because only one openSlice is set).
+  // THIS SECTION DOES: open the accordion for the beat that just started so its
+  // caption can type and then color the band. (Do not wait on linesBeat — that
+  // is set by the caption, which only runs when this row is already open.)
   useEffect(() => {
-    if (linesBeat <= 0) {
+    if (reduceMotion) return;
+    if (beat <= 0) {
       setOpenSlice(null);
       return;
     }
-    setOpenSlice(linesBeat - 1);
-  }, [linesBeat]);
+    setOpenSlice(beat - 1);
+  }, [beat, reduceMotion]);
 
   // THIS SECTION DOES: tell analytics which beat we reached. The green button
   // waits until TypeCaption finishes the last line (only 4.0…), not just when
@@ -259,8 +261,8 @@ export function ScreenTimeVisual({
         />
       </AnalyticsRegion>
 
-      {/* INTRO ONLY: "An 80-year life." lives under the stack until the first
-          band opens and takes over with its own between-band caption. */}
+      {/* INTRO ONLY: "This represents an 80-year life." lives under the stack
+          until the first band opens and takes over with its own caption. */}
       {beat === 0 ? (
         <AnalyticsRegion
           analyticsId={ONBOARDING.stat.caption}
@@ -281,23 +283,11 @@ export function ScreenTimeVisual({
   );
 }
 
-/** Fixed blue gap between hash lines. Always 1px so the stack looks even. */
-const TICK_GAP = 1;
-
 /**
- * Split a band's pixel height into equal tick heights with the same gap
- * between every line. Leftover pixels go into line thickness (not the gaps),
- * so you never get a random double-wide blue stripe from flex rounding.
+ * Tiny blue gap between year-hash lines. Same everywhere so the 80 rows look
+ * like one even stack (almost touching, never a random double-wide stripe).
  */
-function tickHeights(bandHeight: number, ticks: number): number[] {
-  if (ticks <= 0 || bandHeight <= 0) return Array.from({ length: ticks }, () => 0);
-  const gaps = Math.max(0, ticks - 1) * TICK_GAP;
-  const usable = Math.max(0, Math.floor(bandHeight) - gaps);
-  const base = Math.floor(usable / ticks);
-  const rem = usable - base * ticks;
-  // First `rem` lines get +1px so the band still fills edge to edge.
-  return Array.from({ length: ticks }, (_, i) => base + (i < rem ? 1 : 0));
-}
+const TICK_GAP = 1;
 
 /**
  * Stack of year-bands. Under each filled band, an accordion can open with that
@@ -332,15 +322,19 @@ function LifeBar({
     <View style={{ flex: 1, minHeight: 0, width: "100%" }}>
       {SLICES.map((slice, sliceIndex) => {
         const on = sliceIndex < filled;
-        const open = openSlice === sliceIndex;
+        // Revealed = this beat of the story has started (band may still be
+        // painting). Open the caption as soon as the beat lands so typing can
+        // kick off and call onTextVisible to fill the bars.
+        const revealed = sliceIndex < beat;
+        const open = openSlice === sliceIndex && revealed;
         // Live typing only on the slice the story just opened; older reopen
         // taps show the finished line right away.
         const animateThis =
-          open && on && typingSlice === sliceIndex && beat === sliceIndex + 1;
+          open && typingSlice === sliceIndex && beat === sliceIndex + 1;
         return (
           <React.Fragment key={slice.key}>
-            {/* THE BAND: flex share by tick count. Hash lines use measured
-                pixel heights so gaps stay exactly 1px (no flex leftover stripes). */}
+            {/* THE BAND: flex share by tick count. Every hash line inside uses
+                the same flex:1 share + the same 1px gap (no leftover thickening). */}
             <YearBand
               slice={slice}
               sliceIndex={sliceIndex}
@@ -353,7 +347,7 @@ function LifeBar({
 
             {/* ACCORDION: icon + big thick caption between the year bands. */}
             <SliceCaptionRow
-              open={open && on}
+              open={open}
               slice={slice}
               animate={animateThis}
               beat={beat}
@@ -369,8 +363,8 @@ function LifeBar({
 }
 
 /**
- * One color band of year-hash lines. Measures its own height, then paints
- * every tick with the same gap so flex cannot leave random bigger blue spaces.
+ * One color band of year-hash lines. Each line gets the same flex share and
+ * the same tiny gap, so all 80 years look the same thickness across the life.
  */
 function YearBand({
   slice,
@@ -389,15 +383,8 @@ function YearBand({
   onBandPress: (sliceIndex: number) => void;
   onAdvance: () => void;
 }) {
-  const [bandH, setBandH] = useState(0);
-  const heights = tickHeights(bandH, slice.ticks);
-
   return (
     <Pressable
-      onLayout={(e) => {
-        const next = Math.round(e.nativeEvent.layout.height);
-        setBandH((prev) => (prev === next ? prev : next));
-      }}
       onPress={withAnalyticsPress(
         on
           ? ONBOARDING.stat.band
@@ -433,15 +420,19 @@ function YearBand({
         minHeight: 0,
         width: "100%",
         overflow: "hidden",
+        // Same 1px blue stripe between every year line in this band.
+        gap: TICK_GAP,
       }}
     >
-      {heights.map((h, t) => (
+      {Array.from({ length: slice.ticks }, (_, t) => (
         <View
           key={`${slice.key}-${t}`}
           style={{
-            height: h,
+            // Equal share of the band: every year line is the same thickness.
+            flexGrow: 1,
+            flexShrink: 1,
+            flexBasis: 0,
             width: "100%",
-            marginBottom: t < slice.ticks - 1 ? TICK_GAP : 0,
             backgroundColor: on ? slice.color : FAINT,
           }}
         />
@@ -572,10 +563,10 @@ function TypeCaption({
   const parts =
     mode === "intro"
       ? {
-          partA: "An 80-year life.",
+          partA: "This represents an 80-year life.",
           partB: "",
           partC: "",
-          full: "An 80-year life.",
+          full: "This represents an 80-year life.",
           accent: OB.onColor,
           beatIndex: 0,
         }

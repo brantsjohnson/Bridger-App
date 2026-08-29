@@ -1,9 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The brain of the onboarding run. It holds every draft answer across the
-// screens, moves forward / back / skips through the ordered steps, saves each
-// step's slice as you leave it, and when Co-op (the last step) finishes it
-// marks onboarding complete. The screen components stay simple because all the
+// screens, moves forward / back / skips through the ordered steps, kicks off
+// each step's save as you leave (UI moves first; only confirm-profile waits
+// on the network), and when Co-op (the last step) finishes it marks
+// onboarding complete. The screen components stay simple because all the
 // state lives here.
 //
 // The run mixes two kinds of screens:
@@ -41,6 +42,7 @@ import {
   saveOnboardingProgress,
   savePhoto,
   savePlaces,
+  savePrivacyRowValue,
   saveRightNow,
   saveSocialBattery,
   saveVisibility,
@@ -146,7 +148,7 @@ const EMPTY_DRAFT: Draft = {
   photoSource: null,
   photoUri: null,
   photoEmoji: null,
-  photoFilter: 'comic',
+  photoFilter: 'pop_art',
   filteredMediaId: null,
   birthday: '',
   contactsSynced: false,
@@ -307,71 +309,81 @@ export function useOnboarding(onDone: () => void) {
   }, [index]);
 
   /**
-   * Save the step we're leaving, then move to the next.
+   * Leave this step: move the UI first, save in the background.
    *
-   * IMPORTANT: most saves are wrapped so a failed network/API call can NEVER
-   * trap someone on a screen. The one exception is confirm-profile (name +
-   * photo): those must land in Supabase before we leave, or Home shows a demo
-   * face / blank name. If that save fails we stay put and show an alert.
+   * IMPORTANT: Continue should feel instant. We only wait on the network for
+   * confirm-profile (name + photo must land before Home). Every other step
+   * advances immediately and finishes its save quietly; a failed save never
+   * traps someone on the screen.
    */
   const goNext = useCallback(async () => {
-    try {
-      switch (step) {
+    // Snapshot what we're leaving so a background save still has the answers.
+    const leaving = step;
+    const snapshot = draft;
+
+    const runSave = async () => {
+      switch (leaving) {
         case 'confirm-profile': {
           // REQUIRED: name + photo must reach the server before we advance.
-          await saveName(`${draft.firstName} ${draft.lastName}`.trim());
-          if (draft.photoUri || draft.filteredMediaId) {
+          await saveName(`${snapshot.firstName} ${snapshot.lastName}`.trim());
+          if (snapshot.photoUri || snapshot.filteredMediaId) {
             await savePhoto({
-              source: draft.photoSource,
-              uri: draft.photoUri ?? undefined,
-              filteredMediaId: draft.filteredMediaId
+              source: snapshot.photoSource,
+              uri: snapshot.photoUri ?? undefined,
+              filteredMediaId: snapshot.filteredMediaId
             });
-          } else if (!draft.photoEmoji) {
+          } else if (!snapshot.photoEmoji) {
             // Live requires a real photo; demo may use an emoji stand-in.
             throw new Error('Add a profile photo to continue.');
           }
           break;
         }
         case 'birthday':
-          if (draft.birthday) await saveBirthday(draft.birthday);
+          if (snapshot.birthday) await saveBirthday(snapshot.birthday);
           break;
         case 'friends-of-friends':
-          await saveConnectionStyle(draft.connectStyles);
+          await saveConnectionStyle(snapshot.connectStyles);
           break;
         case 'notifications':
-          await saveNotifications(draft.notifPrefs);
+          await saveNotifications(snapshot.notifPrefs);
           break;
         case 'right-now':
-          await saveRightNow({ currentJob: draft.currentJob, dreamJob: draft.dreamJob });
+          await saveRightNow({
+            currentJob: snapshot.currentJob,
+            dreamJob: snapshot.dreamJob
+          });
           break;
         case 'obsession':
-          await saveObsessionSong(draft.song);
+          await saveObsessionSong(snapshot.song);
           break;
         case 'social-battery':
-          if (draft.nights != null) await saveSocialBattery(draft.nights);
+          if (snapshot.nights != null) await saveSocialBattery(snapshot.nights);
           break;
         case 'color':
-          if (draft.color) await saveColor(draft.color);
+          if (snapshot.color) await saveColor(snapshot.color);
           break;
         case 'places':
           await savePlaces({
-            hometown: draft.hometown,
-            currentTown: draft.currentTown,
-            favoritePlace: draft.favoritePlace,
-            favoritePlaceHit: draft.favoritePlaceHit
+            hometown: snapshot.hometown,
+            currentTown: snapshot.currentTown,
+            favoritePlace: snapshot.favoritePlace,
+            favoritePlaceHit: snapshot.favoritePlaceHit
           });
           break;
         case 'privacy-control':
-          await saveVisibility(draft.visibility);
+          await saveVisibility(snapshot.visibility);
           break;
         // stat screens, taste-intro, contacts, and co-op save inside their screens.
         default:
           break;
       }
-    } catch (err) {
-      // confirm-profile is the only step that must not skip a failed save —
-      // otherwise the person lands on Home without their face or name.
-      if (step === 'confirm-profile') {
+    };
+
+    // confirm-profile: must succeed before we leave, or Home is blank.
+    if (leaving === 'confirm-profile') {
+      try {
+        await runSave();
+      } catch (err) {
         console.warn('Onboarding save failed on confirm-profile; staying put.', err);
         Alert.alert(
           'Could not save your profile',
@@ -381,10 +393,15 @@ export function useOnboarding(onDone: () => void) {
         );
         return;
       }
-      // Other steps: log and keep going so a blip never strands them.
-      console.warn(`Onboarding save failed on "${step}"; continuing.`, err);
+      advance();
+      return;
     }
+
+    // Everything else: flip the screen now, save while they look at the next step.
     advance();
+    void runSave().catch((err) => {
+      console.warn(`Onboarding save failed on "${leaving}"; continuing.`, err);
+    });
   }, [step, draft, advance]);
 
   /** Skip a step: move on without saving its slice. */
@@ -469,6 +486,39 @@ export function useOnboarding(onDone: () => void) {
     }));
   }, []);
 
+  /**
+   * Privacy Edit: update the draft field + row display, then write Supabase
+   * right away so the change is not waiting on Continue.
+   */
+  const updateVisibilityValue = useCallback(async (rowId: string, value: string) => {
+    const trimmed = value.trim();
+    const display = trimmed || 'Not added';
+
+    // THIS SECTION DOES: mirror the edit into the matching draft fields.
+    setDraft((d) => {
+      const next = {
+        ...d,
+        visibility: d.visibility.map((r) =>
+          r.id === rowId ? { ...r, value: display } : r
+        )
+      };
+      if (rowId === 'about:about-birthday') next.birthday = trimmed;
+      if (rowId === 'about:about-from') next.hometown = trimmed;
+      if (rowId === 'about:about-town') next.currentTown = trimmed;
+      if (rowId === 'about:about-job') next.currentJob = trimmed;
+      if (rowId === 'about:about-dream-job') next.dreamJob = trimmed;
+      if (rowId === 'about:about-favorite-place') {
+        next.favoritePlace = trimmed;
+        // Text-only edit: drop the old map hit so we do not keep a stale pin label.
+        next.favoritePlaceHit = null;
+      }
+      if (rowId === 'currently_song') next.song = trimmed;
+      return next;
+    });
+
+    await savePrivacyRowValue(rowId, trimmed);
+  }, []);
+
   // Progress numbers: where we are among the question screens (stat + welcome
   // don't count). formStep is 0 on a non-form screen.
   const formTotal = FORM_STEPS.length;
@@ -488,6 +538,7 @@ export function useOnboarding(onDone: () => void) {
       initVisibility,
       setVisibilityTier,
       setAllVisibility,
+      updateVisibilityValue,
       formStep,
       formTotal,
       dir
@@ -505,6 +556,7 @@ export function useOnboarding(onDone: () => void) {
       initVisibility,
       setVisibilityTier,
       setAllVisibility,
+      updateVisibilityValue,
       formStep,
       formTotal,
       dir

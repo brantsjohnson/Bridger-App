@@ -6,7 +6,8 @@
 // fine-tune how vivid the pick is (muted ↔ vivid). A small swatch shows the
 // pick, and a live "Your grid" preview shows the app's grid lines tinted in
 // that color. Skippable. scrollBody is on because the spectrum plus slider
-// plus preview is tall on a small phone.
+// plus preview is tall on a small phone. While you drag the slider or
+// spectrum, the page scroll freezes so the finger is not fighting the page.
 //
 // LOOK: a continuous spectrum box (not stripe columns), the picked swatch
 // beside a hint line, a fine-tune slider under that hint, and the grid
@@ -18,7 +19,7 @@ import { Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ONBOARDING } from '@bridger/shared';
 import { withAnalyticsPress, useThemeColors } from '@bridger/ui';
-import { OnboardingStep } from './OnboardingStep';
+import { OnboardingStep, useOnboardingBodyScroll } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
 
 /** Hue, saturation (0–100), and lightness (0–100) for one pick. */
@@ -202,6 +203,8 @@ function SpectrumMap({
   onPick: (hue: number, lightness: number, withAnalytics: boolean) => void;
 }) {
   const [size, setSize] = useState({ w: 1, h: 1 });
+  // Freeze the onboarding page scroll while scrubbing the map.
+  const { setScrollLocked } = useOnboardingBodyScroll();
 
   // THIS SECTION DOES: turn a tap/drag point into hue + lightness.
   const pickAt = (x: number, y: number, withAnalytics: boolean) => {
@@ -211,6 +214,11 @@ function SpectrumMap({
     // Top of the map is white (100), bottom is black (0).
     const lightness = (1 - ny) * 100;
     onPick(hue, lightness, withAnalytics);
+  };
+
+  const endDrag = (x: number, y: number, withAnalytics: boolean) => {
+    setScrollLocked(false);
+    pickAt(x, y, withAnalytics);
   };
 
   return (
@@ -225,14 +233,20 @@ function SpectrumMap({
       // Drag so you can scrub across the map, not only tap once.
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
-      onResponderGrant={(e) =>
-        pickAt(e.nativeEvent.locationX, e.nativeEvent.locationY, false)
-      }
+      // Keep the drag: do not let the parent ScrollView steal the finger mid-move.
+      onResponderTerminationRequest={() => false}
+      onResponderGrant={(e) => {
+        setScrollLocked(true);
+        pickAt(e.nativeEvent.locationX, e.nativeEvent.locationY, false);
+      }}
       onResponderMove={(e) =>
         pickAt(e.nativeEvent.locationX, e.nativeEvent.locationY, false)
       }
       onResponderRelease={(e) =>
-        pickAt(e.nativeEvent.locationX, e.nativeEvent.locationY, true)
+        endDrag(e.nativeEvent.locationX, e.nativeEvent.locationY, true)
+      }
+      onResponderTerminate={(e) =>
+        endDrag(e.nativeEvent.locationX, e.nativeEvent.locationY, false)
       }
       style={{
         height: SPECTRUM_PX,
@@ -283,6 +297,8 @@ function SaturationSlider({
   onChange: (saturation: number, withAnalytics: boolean) => void;
 }) {
   const [trackW, setTrackW] = useState(1);
+  // Freeze page scroll while the thumb is moving left/right.
+  const { setScrollLocked } = useOnboardingBodyScroll();
   // Gray at this lightness on the left; full-sat color on the right.
   const muted = hslToHex(hsl.h, 0, hsl.l);
   const vivid = hslToHex(hsl.h, 100, hsl.l);
@@ -300,6 +316,11 @@ function SaturationSlider({
     onChange(nx * 100, withAnalytics);
   };
 
+  const endDrag = (x: number, withAnalytics: boolean) => {
+    setScrollLocked(false);
+    setFromX(x, withAnalytics);
+  };
+
   return (
     <View style={{ gap: 8 }}>
       <Text
@@ -315,15 +336,24 @@ function SaturationSlider({
         accessibilityHint="Slide left for more muted, right for more vivid."
         accessibilityValue={{ min: 0, max: 100, now: Math.round(hsl.s) }}
         onLayout={(e) => setTrackW(Math.max(1, e.nativeEvent.layout.width))}
+        // Claim the drag immediately so vertical page scroll cannot start first.
         onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => true}
-        onResponderGrant={(e) => setFromX(e.nativeEvent.locationX, false)}
+        onResponderTerminationRequest={() => false}
+        onResponderGrant={(e) => {
+          setScrollLocked(true);
+          setFromX(e.nativeEvent.locationX, false);
+        }}
         onResponderMove={(e) => setFromX(e.nativeEvent.locationX, false)}
-        onResponderRelease={(e) => setFromX(e.nativeEvent.locationX, true)}
+        onResponderRelease={(e) => endDrag(e.nativeEvent.locationX, true)}
+        onResponderTerminate={(e) => endDrag(e.nativeEvent.locationX, false)}
         style={{
-          height: SLIDER_THUMB_PX,
+          // Taller hit area so the thumb is easy to grab without grazing the page.
+          height: SLIDER_THUMB_PX + 16,
           width: '100%',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          // Extra vertical pad so a slightly diagonal swipe still feels like a slide.
+          paddingVertical: 8
         }}
       >
         {/* Track: gray → current hue at full saturation. */}
@@ -350,6 +380,8 @@ function SaturationSlider({
           style={{
             position: 'absolute',
             left: thumbLeft,
+            // Center the thumb in the taller hit box.
+            top: 8,
             width: SLIDER_THUMB_PX,
             height: SLIDER_THUMB_PX,
             backgroundColor: hslToHex(hsl.h, hsl.s, hsl.l),

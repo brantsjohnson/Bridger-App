@@ -6,7 +6,7 @@
 // favorite picked, the button shower uses that country's flag emoji instead
 // of the usual party mix. Nothing is required: Continue advances empty, and
 // the top-left back arrow is enough to go back (no Skip link under Continue).
-// The amber chip says "Info for the profile."
+// The amber chip says "Shown on your profile."
 //
 // PRODUCT NOTE (not shown on this screen): We star this one as FAV on your
 // map. You can keep adding other places from your profile. That behavior
@@ -17,7 +17,7 @@ import { View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
 import type { GeocodeHit } from '../../lib/geocode';
 import { countryCodeToFlagEmoji } from '../../lib/geocode';
-import { OnboardingStep } from './OnboardingStep';
+import { OnboardingStep, useOnboardingBodyScroll } from './OnboardingStep';
 import { OnboardingPlacePicker } from './OnboardingPlacePicker';
 import { OBField } from './onboarding-ui';
 
@@ -44,6 +44,8 @@ export function PlacesStep({
   onNext: () => void;
   onBack: () => void;
 }) {
+  // THIS SECTION DOES: keep hometown / town fields above the keyboard.
+  const { ensureVisible } = useOnboardingBodyScroll();
   // THIS SECTION DOES: turn the favorite country's code into a flag for Continue.
   const burstEmojis = useMemo(() => {
     const flag = favoritePlaceHit
@@ -56,7 +58,7 @@ export function PlacesStep({
     <OnboardingStep
       step={step}
       total={total}
-      purpose="Info for the profile"
+      purpose="Shown on your profile"
       ask="Your places"
       onContinue={onNext}
       onBack={onBack}
@@ -76,6 +78,7 @@ export function PlacesStep({
           onChange={onChangeHometown}
           placeholder="Where you're from"
           analyticsId={ONBOARDING.taste.hometown_input}
+          onFocusExtra={(anchor) => ensureVisible(anchor)}
         />
         <OBField
           label="Current town"
@@ -83,6 +86,7 @@ export function PlacesStep({
           onChange={onChangeCurrent}
           placeholder="Where you live now"
           analyticsId={ONBOARDING.taste.current_town_input}
+          onFocusExtra={(anchor) => ensureVisible(anchor)}
         />
         <OnboardingPlacePicker
           hit={favoritePlaceHit}

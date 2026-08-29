@@ -22,7 +22,7 @@ export type PickedPhoto = { uri: string };
 const OPTIONS: ImagePicker.ImagePickerOptions = {
   allowsEditing: true,
   aspect: [1, 1],
-  quality: 0.85,
+  quality: 0.72,
   mediaTypes: ['images']
 };
 

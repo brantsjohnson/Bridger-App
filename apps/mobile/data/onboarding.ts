@@ -707,6 +707,130 @@ export async function savePlaces(input: {
 }
 
 /**
+ * Privacy & Control "Edit" — write one row's new text back to Supabase right
+ * away (About Me / song), so Continue is not the only save. Never logs the
+ * typed value. Empty clears the local draft display to "Not added" and replaces
+ * the attribute prefix with nothing when the API allows an empty list.
+ */
+export async function savePrivacyRowValue(
+  rowId: string,
+  value: string
+): Promise<void> {
+  const trimmed = value.trim();
+
+  if (isDemoMode()) {
+    if (rowId === 'about:about-birthday') demoDraftSaved.birthday = trimmed;
+    if (rowId === 'about:about-from') {
+      const places = (demoDraftSaved.places as Record<string, unknown>) ?? {};
+      demoDraftSaved.places = { ...places, hometown: trimmed };
+    }
+    if (rowId === 'about:about-town') {
+      const places = (demoDraftSaved.places as Record<string, unknown>) ?? {};
+      demoDraftSaved.places = { ...places, currentTown: trimmed };
+    }
+    if (rowId === 'about:about-job') {
+      const rn = (demoDraftSaved.rightNow as Record<string, unknown>) ?? {};
+      demoDraftSaved.rightNow = { ...rn, currentJob: trimmed };
+    }
+    if (rowId === 'about:about-dream-job') {
+      const rn = (demoDraftSaved.rightNow as Record<string, unknown>) ?? {};
+      demoDraftSaved.rightNow = { ...rn, dreamJob: trimmed };
+    }
+    if (rowId === 'about:about-favorite-place') {
+      const places = (demoDraftSaved.places as Record<string, unknown>) ?? {};
+      demoDraftSaved.places = {
+        ...places,
+        favoritePlace: trimmed,
+        favoritePlaceHit: null
+      };
+    }
+    if (rowId === 'currently_song') demoDraftSaved.song = trimmed;
+    return;
+  }
+
+  if (rowId === 'currently_song') {
+    if (!trimmed) {
+      await apiFetch('/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ song: { title: '', artist: '' } })
+      });
+      return;
+    }
+    await saveObsessionSong(trimmed);
+    return;
+  }
+
+  if (rowId === 'about:about-birthday') {
+    await saveBirthday(trimmed);
+    return;
+  }
+
+  // About Me text fields: always replacePrefix so a new edit overwrites the old.
+  const aboutMeta: Record<
+    string,
+    { valueId: string; keyLabel: string; defaultTier: Tier }
+  > = {
+    'about:about-from': {
+      valueId: 'about-from',
+      keyLabel: 'Hometown',
+      defaultTier: 'acquaintance'
+    },
+    'about:about-town': {
+      valueId: 'about-town',
+      keyLabel: 'Lives in',
+      defaultTier: 'acquaintance'
+    },
+    'about:about-job': {
+      valueId: 'about-job',
+      keyLabel: 'Work',
+      defaultTier: 'friend'
+    },
+    'about:about-dream-job': {
+      valueId: 'about-dream-job',
+      keyLabel: 'Dream job',
+      defaultTier: 'friend'
+    },
+    'about:about-favorite-place': {
+      valueId: 'about-favorite-place',
+      keyLabel: 'Favorite place',
+      defaultTier: 'friend'
+    }
+  };
+  const meta = aboutMeta[rowId];
+  if (!meta) return;
+
+  await apiFetch('/me/attributes', {
+    method: 'POST',
+    body: JSON.stringify({
+      replacePrefix: rowId,
+      attributes: trimmed
+        ? [
+            {
+              key: rowId,
+              value: {
+                id: meta.valueId,
+                key: meta.keyLabel,
+                value: trimmed,
+                tier: meta.defaultTier
+              },
+              layer: 'profile',
+              visibleToTier: meta.defaultTier
+            }
+          ]
+        : []
+    })
+  });
+
+  // Lives-in also drives the header city pin.
+  if (rowId === 'about:about-town' && trimmed) {
+    await apiFetch('/me/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ homeCity: trimmed })
+    });
+  }
+}
+
+/**
  * ARCHIVED from onboarding (2026-08-28). Kept so we can re-enable the step.
  * Friend Pod "Add your recap" is the live weekly voice capture.
  *

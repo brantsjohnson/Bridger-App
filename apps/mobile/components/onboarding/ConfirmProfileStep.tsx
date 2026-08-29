@@ -16,7 +16,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, Pressable, Text, View } from 'react-native';
 import { ONBOARDING, trackUi } from '@bridger/shared';
 import { withAnalyticsPress } from '@bridger/ui';
-import { OnboardingStep } from './OnboardingStep';
+import { OnboardingStep, useOnboardingBodyScroll } from './OnboardingStep';
 import { PhotoFilterPicker, type PhotoFilterKey } from './PhotoFilterPicker';
 import { FilteredPhoto, isServerPhotoFilter } from './photo-filters/FilteredPhoto';
 import { OB, OB_BORDER } from './onboarding-theme';
@@ -64,6 +64,9 @@ export function ConfirmProfileStep({
   onNext: () => void;
   onBack: () => void;
 }) {
+  // THIS SECTION DOES: slide name fields up when the keyboard covers them.
+  const { ensureVisible } = useOnboardingBodyScroll();
+
   // THIS SECTION DOES: server-rendered looks (Comic, X-ray, Sepia). We cache each
   // result per photo + filter so switching pills does not re-run the work each time.
   const [bakedUrl, setBakedUrl] = useState<string | null>(null);
@@ -73,18 +76,13 @@ export function ConfirmProfileStep({
   const reportRef = useRef(onFilteredMediaIdChange);
   reportRef.current = onFilteredMediaIdChange;
 
-  // THIS SECTION DOES: decide if we can move on. A friend needs to recognize you,
-  // so all three are required: first name, last name, AND a photo. While a
-  // server look (Comic / X-ray / Sepia) is still rendering, Continue stays off so
-  // we never leave before the filtered picture (or a clear fall-back) is ready.
+  // THIS SECTION DOES: decide if we can move on. Name + photo are required.
+  // Server looks may still be baking in the background; Continue stays on so a
+  // slow filter never traps anyone (we save the plain photo, then the flush at
+  // finish can pick up the filtered id if it lands in the draft).
   const hasPhoto = Boolean(photoUri || photoEmoji);
-  const serverLookPending =
-    Boolean(photoUri) && isServerPhotoFilter(photoFilter) && bakedLoading;
   const ready =
-    first.trim().length > 0 &&
-    last.trim().length > 0 &&
-    hasPhoto &&
-    !serverLookPending;
+    first.trim().length > 0 && last.trim().length > 0 && hasPhoto;
   const cameraLabel = photoSource === 'camera' && hasPhoto ? 'Retake' : 'Take a photo';
 
   // THIS SECTION DOES: when a server look is picked, bake it. Live users hit the
@@ -263,6 +261,7 @@ export function ConfirmProfileStep({
             placeholder="Yo"
             autoCapitalize="words"
             analyticsId={ONBOARDING.confirm_profile.first_input}
+            onFocusExtra={(anchor) => ensureVisible(anchor)}
           />
           <OBField
             label="Last name"
@@ -271,6 +270,7 @@ export function ConfirmProfileStep({
             placeholder="Mamma"
             autoCapitalize="words"
             analyticsId={ONBOARDING.confirm_profile.last_input}
+            onFocusExtra={(anchor) => ensureVisible(anchor)}
           />
         </View>
       </View>

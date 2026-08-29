@@ -135,6 +135,8 @@ export const ONBOARDING = {
     invite_slot: aid('onboarding', 'contacts', 'invite_slot'),
     contact_row: aid('onboarding', 'contacts', 'contact_row'),
     contacts_cancel: aid('onboarding', 'contacts', 'contacts_cancel'),
+    /** Dead: the "AWESOME! We'll notify you…" success banner after sync / invite */
+    awesome_banner: aid('onboarding', 'contacts', 'awesome_banner'),
     skip: aid('onboarding', 'contacts', 'skip')
   },
   // Step 7 — how you want friends-of-friends matched to you.
@@ -171,6 +173,12 @@ export const ONBOARDING = {
     spotify: aid('onboarding', 'taste', 'spotify'),
     apple: aid('onboarding', 'taste', 'apple'),
     song_input: aid('onboarding', 'taste', 'song_input'),
+    /** Search button inside the post-connect song picker sheet (never logs query). */
+    song_search: aid('onboarding', 'taste', 'song_search'),
+    /** Tap a search result in the song picker sheet (never title/artist). */
+    song_result: aid('onboarding', 'taste', 'song_result'),
+    /** Dismiss the song picker without picking. */
+    song_search_cancel: aid('onboarding', 'taste', 'song_search_cancel'),
     nights_option: aid('onboarding', 'taste', 'nights_option'),
     color_swatch: aid('onboarding', 'taste', 'color_swatch'),
     /** Fine-tune slider under the spectrum (saturation; method=`slider`). */
@@ -195,6 +203,12 @@ export const ONBOARDING = {
   review: {
     row_audience: aid('onboarding', 'review', 'row_audience'),
     set_all: aid('onboarding', 'review', 'set_all'),
+    /** Open the edit sheet for one privacy row (`field` = row id). */
+    row_edit: aid('onboarding', 'review', 'row_edit'),
+    /** Save the edited text (never logs content). */
+    row_edit_save: aid('onboarding', 'review', 'row_edit_save'),
+    /** Dismiss the edit sheet without saving. */
+    row_edit_cancel: aid('onboarding', 'review', 'row_edit_cancel'),
     terms: aid('onboarding', 'review', 'terms'),
     privacy_policy: aid('onboarding', 'review', 'privacy_policy')
   },

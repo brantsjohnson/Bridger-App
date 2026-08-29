@@ -463,7 +463,10 @@ function Padlock({
   reduceMotion: boolean;
   tone: 'onDark' | 'onLight';
 }) {
-  const shackleY = useRef(new Animated.Value(reduceMotion ? 0 : -26)).current;
+  // How far the shackle lifts when open. The box must leave this much room
+  // above the closed lock, or the arch gets clipped by overflow:hidden parents.
+  const SHACKLE_RISE = 26;
+  const shackleY = useRef(new Animated.Value(reduceMotion ? 0 : -SHACKLE_RISE)).current;
   const bodyY = useRef(new Animated.Value(0)).current;
   const flash = useRef(new Animated.Value(0)).current;
   // White on black intro; ink on eggshell so the lock never disappears.
@@ -481,7 +484,7 @@ function Padlock({
     const cycle = Animated.loop(
       Animated.sequence([
         Animated.timing(shackleY, {
-          toValue: -26,
+          toValue: -SHACKLE_RISE,
           duration: 0,
           useNativeDriver: NATIVE_DRIVER
         }),
@@ -533,8 +536,23 @@ function Padlock({
   }, [reduceMotion, shackleY, bodyY, flash]);
 
   return (
-    <View style={{ width: 92, height: 110, alignSelf: 'center' }}>
-      <Animated.View style={{ height: 34, transform: [{ translateY: shackleY }] }}>
+    <View
+      style={{
+        width: 92,
+        // Closed lock is 110 tall; + rise so the open arch never gets cropped.
+        height: 110 + SHACKLE_RISE,
+        alignSelf: 'center',
+        overflow: 'visible'
+      }}
+    >
+      <Animated.View
+        style={{
+          height: 34,
+          // Park the closed shackle below the rise zone; open (-rise) lands at y=0.
+          marginTop: SHACKLE_RISE,
+          transform: [{ translateY: shackleY }]
+        }}
+      >
         <View
           style={{
             position: 'absolute',

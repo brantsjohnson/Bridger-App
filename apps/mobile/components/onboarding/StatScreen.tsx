@@ -213,12 +213,12 @@ export function StatScreen({
   const stackGap =
     variant === "isolation"
       ? isolationCompact
-        ? 4
-        : 10
+        ? 8
+        : 12
       : variant === "feed"
         ? feedCompact
-          ? 8
-          : 14
+          ? 14
+          : 18
         : variant === "retention"
           ? 20
           : 20;
@@ -244,9 +244,9 @@ export function StatScreen({
           // Space-between keeps the headline up, the post + % in the middle, and
           // the green button at the bottom (feed included, so the square is centered).
           justifyContent: "space-between",
-          gap: isolationCompact || feedCompact ? 10 : 22,
+          gap: isolationCompact || feedCompact ? 14 : 22,
           paddingHorizontal: 24,
-          paddingTop: insets.top + (isolationCompact || feedCompact ? 8 : 14),
+          paddingTop: insets.top + (isolationCompact || feedCompact ? 12 : 14),
           paddingBottom: Math.max(insets.bottom, 12) + 8,
         }}
       >
@@ -272,7 +272,9 @@ export function StatScreen({
 
         {/* THIS SECTION DOES: the animated picture, then the big counting number
             under it. Feed centers the square post in the middle band. Screen time
-            fills the leftover height so its 80 year lines can shrink to fit. */}
+            fills the leftover height so its 80 year lines can shrink to fit.
+            overflow stays visible here so big display digits (240, 18%) are not
+            chopped by the band; graphics that need a clip wrap themselves. */}
         <View
           style={{
             flex: 1,
@@ -286,7 +288,6 @@ export function StatScreen({
                   ? "flex-start"
                   : "center",
             alignItems: "center",
-            overflow: "hidden",
           }}
         >
           {/* THIS SECTION DOES: the animated picture. It only mounts once the
@@ -764,20 +765,32 @@ function StatNumber({
   const pop = useCount(80, reduce);
   const counted = useCountUp(number, 80, reduce);
   // Feed uses a slightly smaller % on short phones so caption + button both fit.
+  // Big Shoulders Display paints tall tops; lineHeight of 1 (or less) chops the
+  // digits against the parent's overflow:hidden. Keep leading a hair over 1 and
+  // pad the top so "240" / "18%" never lose their flat caps.
   const feedSize = compact
-    ? "font-display text-[56px] leading-[0.86] tracking-tight"
-    : "font-display text-[76px] leading-[0.86] tracking-tight";
+    ? "font-display text-[56px] leading-[1.08] tracking-tight"
+    : "font-display text-[76px] leading-[1.08] tracking-tight";
+  const numberPadTop = variant === "retention" ? 14 : variant === "feed" ? 10 : 8;
   return (
-    <Animated.View style={[{ alignItems: "center", flexShrink: 0 }, pop]}>
+    <Animated.View
+      style={[{ alignItems: "center", flexShrink: 0, overflow: "visible" }, pop]}
+    >
       <Text
         className={
           variant === "feed"
             ? feedSize
             : variant === "retention"
-              ? "font-display text-[92px] leading-[0.84] tracking-tight"
-              : "font-display text-[88px] leading-[0.84] tracking-tight"
+              ? "font-display text-[92px] leading-[1.1] tracking-tight"
+              : "font-display text-[88px] leading-[1.08] tracking-tight"
         }
-        style={{ color, letterSpacing: -3 }}
+        style={{
+          color,
+          letterSpacing: -3,
+          paddingTop: numberPadTop,
+          // Android otherwise shaves font padding and can clip the same way.
+          includeFontPadding: true,
+        }}
         accessibilityRole="header"
       >
         {counted}
@@ -1141,8 +1154,6 @@ function FeedCard({
 const ISOLATION_NONE_PCT = 0.12;
 /** Share of adults with only 1–4 close friends (pie + "1 in 2"). */
 const ISOLATION_FEW_PCT = 0.48;
-/** Extra arc length so pink and purple overlap a hair (hides the antialias seam). */
-const ISOLATION_SEAM_OVERLAP = 2;
 
 function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const { height: windowHeight } = useWindowDimensions();
@@ -1153,18 +1164,21 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const stroke = tight ? 26 : compact ? 30 : 34;
   const statFont = tight ? 46 : compact ? 54 : 66;
   const captionFont = tight ? 14 : 16;
-  const stackGap = tight ? 2 : compact ? 4 : 8;
+  const stackGap = tight ? 6 : compact ? 10 : 14;
   const stubLen = tight ? 14 : compact ? 18 : 22;
 
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
   const circ = 2 * Math.PI * r;
+  // Overlap pink and purple by ~1/3 of the stroke so butt caps never flash a seam.
+  const seamOverlap = Math.max(10, stroke * 0.35);
 
   const noneLen = circ * ISOLATION_NONE_PCT;
   const fewLen = circ * ISOLATION_FEW_PCT;
+  const restLen = circ * (1 - ISOLATION_NONE_PCT - ISOLATION_FEW_PCT);
   const filledLen = noneLen + fewLen;
-  // Start both slices at 12 o'clock (quarter turn from SVG's default 3 o'clock).
+  // Start slices at 12 o'clock (quarter turn from SVG's default 3 o'clock).
   const startOffset = circ * 0.25;
 
   // Top number lands first; pie fills next; bottom number waits for the pie.
@@ -1217,9 +1231,11 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   // Split the growing arc into the 12% slice, then the 48% slice.
   const shownNone = Math.min(arcLen, noneLen);
   const shownFew = Math.max(0, arcLen - noneLen);
-  // Purple starts a hair early so it tucks under pink (no bright seam at the join).
-  const fewOffset = startOffset - noneLen + ISOLATION_SEAM_OVERLAP;
-  const fewDash = shownFew > 0 ? shownFew + ISOLATION_SEAM_OVERLAP : 0;
+  // Purple starts early under pink so the join is solid color, no gap.
+  const fewOffset = startOffset - noneLen + seamOverlap;
+  const fewDash = shownFew > 0 ? shownFew + seamOverlap : 0;
+  // Quiet "everyone else" arc only (not a full ring under the colors).
+  const restOffset = startOffset - noneLen - fewLen;
 
   // Midpoints of each filled slice (degrees: 0 = 3 o'clock, −90 = 12 o'clock).
   const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -1243,11 +1259,11 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   // Re-map attach points into the taller SVG (ring is shifted down by stubPad).
   const pinkAySvg = pinkAy + stubPad;
   const fewAySvg = fewAy + stubPad;
-  // Tips sit on the SVG edges so they meet the "1 in X" text above/below.
+  // Tips stop short of the SVG edge so they tuck under the blue text blocks.
   const pinkTipX = cx;
-  const pinkTipYSvg = 2;
+  const pinkTipYSvg = 8;
   const fewTipX = cx;
-  const fewTipYSvg = svgH - 2;
+  const fewTipYSvg = svgH - 8;
 
   return (
     <View
@@ -1258,15 +1274,29 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
         flexShrink: 1,
       }}
     >
-      {/* TOP STAT: 1 in 12 have no close friends. */}
-      <Animated.View style={[{ alignItems: "center" }, topAnim]}>
+      {/* TOP STAT: sits above the stubs (zIndex) so leader lines never cross the type.
+          Blue fill matches the page so any stub tip under here stays hidden. */}
+      <Animated.View
+        style={[
+          {
+            alignItems: "center",
+            zIndex: 2,
+            elevation: 2,
+            backgroundColor: OB.blue,
+            paddingBottom: 4,
+            paddingHorizontal: 8,
+          },
+          topAnim,
+        ]}
+      >
         <Text
           className="font-display tracking-tight"
           style={{
             color: ON_BLUE_ACCENT,
             letterSpacing: -2,
             fontSize: statFont,
-            lineHeight: statFont * 0.86,
+            lineHeight: Math.round(statFont * 1.08),
+            paddingTop: 6,
           }}
           accessibilityRole="header"
         >
@@ -1280,8 +1310,10 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
         </Text>
       </Animated.View>
 
-      {/* THE PIE + STUBS: faint rest, pink 12%, purple 48%, lines to each stat. */}
-      <Animated.View style={{ opacity: pieOpacity, flexShrink: 1 }}>
+      {/* THE PIE + STUBS: stubs first (under the ring), then the colored arcs flush. */}
+      <Animated.View
+        style={{ opacity: pieOpacity, flexShrink: 1, zIndex: 0 }}
+      >
         <View
           accessible={false}
           accessibilityElementsHidden
@@ -1295,49 +1327,9 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
             is one quarter of the ring).
           */}
           <Svg width={size} height={svgH}>
-            {/* Rest of adults (about 40%) — quiet base ring. */}
-            <Circle
-              cx={cx}
-              cy={ringCy}
-              r={r}
-              stroke="rgba(255,255,255,0.28)"
-              strokeWidth={stroke}
-              fill="none"
-            />
-            {/* 48% first (under pink) so the join seam is covered by the pink tip. */}
-            <Circle
-              cx={cx}
-              cy={ringCy}
-              r={r}
-              stroke={OB.purple}
-              strokeWidth={stroke}
-              fill="none"
-              strokeDasharray={`${fewDash} ${circ}`}
-              strokeDashoffset={fewOffset}
-              strokeLinecap="butt"
-            />
-            {/* 12% — no close friends (matches the top "1 in 12"). */}
-            <Circle
-              cx={cx}
-              cy={ringCy}
-              r={r}
-              stroke={ON_BLUE_ACCENT}
-              strokeWidth={stroke}
-              fill="none"
-              strokeDasharray={`${shownNone} ${circ}`}
-              strokeDashoffset={startOffset}
-              strokeLinecap="butt"
-            />
-
-            {/* THIS SECTION DOES: pink stub from the 12% slice up toward "1 in 12". */}
+            {/* THIS SECTION DOES: draw stub paths first so the ring paints over them. */}
             {showPinkStub ? (
               <>
-                <Circle
-                  cx={pinkAx}
-                  cy={pinkAySvg}
-                  r={3.5}
-                  fill={ON_BLUE_ACCENT}
-                />
                 <Path
                   d={`M ${pinkAx} ${pinkAySvg} L ${pinkAx} ${pinkTipYSvg + 6} L ${pinkTipX} ${pinkTipYSvg}`}
                   stroke={ON_BLUE_ACCENT}
@@ -1357,11 +1349,8 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
                 />
               </>
             ) : null}
-
-            {/* THIS SECTION DOES: purple stub from the 48% slice down toward "1 in 2". */}
             {showFewStub ? (
               <>
-                <Circle cx={fewAx} cy={fewAySvg} r={3.5} fill={OB.purple} />
                 <Path
                   d={`M ${fewAx} ${fewAySvg} L ${fewAx} ${fewTipYSvg - 6} L ${fewTipX} ${fewTipYSvg}`}
                   stroke={OB.purple}
@@ -1381,19 +1370,83 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
                 />
               </>
             ) : null}
+
+            {/* Quiet rest (~40%) only in the empty arc — not a full ring under color. */}
+            <Circle
+              cx={cx}
+              cy={ringCy}
+              r={r}
+              stroke="rgba(255,255,255,0.28)"
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={`${restLen + seamOverlap} ${circ}`}
+              strokeDashoffset={restOffset + seamOverlap * 0.5}
+              strokeLinecap="butt"
+            />
+            {/* 48% first (under pink) so the join seam is covered by the pink tip. */}
+            <Circle
+              cx={cx}
+              cy={ringCy}
+              r={r}
+              stroke={OB.purple}
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={`${fewDash} ${circ}`}
+              strokeDashoffset={fewOffset}
+              strokeLinecap="butt"
+            />
+            {/* 12% — no close friends (matches the top "1 in 12"). Extends a hair
+                into purple so butt caps never leave a blue or white seam. */}
+            <Circle
+              cx={cx}
+              cy={ringCy}
+              r={r}
+              stroke={ON_BLUE_ACCENT}
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={`${shownNone > 0 ? shownNone + seamOverlap * 0.5 : 0} ${circ}`}
+              strokeDashoffset={startOffset}
+              strokeLinecap="butt"
+            />
+
+            {/* Attach dots last so they sit on the outer rim of the ring. */}
+            {showPinkStub ? (
+              <Circle
+                cx={pinkAx}
+                cy={pinkAySvg}
+                r={3.5}
+                fill={ON_BLUE_ACCENT}
+              />
+            ) : null}
+            {showFewStub ? (
+              <Circle cx={fewAx} cy={fewAySvg} r={3.5} fill={OB.purple} />
+            ) : null}
           </Svg>
         </View>
       </Animated.View>
 
-      {/* BOTTOM STAT: 1 in 2 have only 1–4 close friends. */}
-      <Animated.View style={[{ alignItems: "center" }, bottomAnim]}>
+      {/* BOTTOM STAT: same blue plate + zIndex so purple stubs stay under the type. */}
+      <Animated.View
+        style={[
+          {
+            alignItems: "center",
+            zIndex: 2,
+            elevation: 2,
+            backgroundColor: OB.blue,
+            paddingTop: 4,
+            paddingHorizontal: 8,
+          },
+          bottomAnim,
+        ]}
+      >
         <Text
           className="font-display tracking-tight"
           style={{
             color: OB.purple,
             letterSpacing: -2,
             fontSize: statFont,
-            lineHeight: statFont * 0.86,
+            lineHeight: Math.round(statFont * 1.08),
+            paddingTop: 6,
           }}
           accessibilityRole="header"
         >

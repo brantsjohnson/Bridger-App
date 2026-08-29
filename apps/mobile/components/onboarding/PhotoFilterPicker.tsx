@@ -1,9 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The row of four photo looks under the profile photo on Confirm your details.
-// Comic, Sepia, Pop art, and X-ray sit in a capsule track like the home nav
-// bar: tap one and the pink pill highlight moves to that label. Under the row
-// a badge says "Done 100% Local" so people know the look never leaves the phone.
+// Pop art (instant, on-device) leads; Comic / Sepia / X-ray run on Bridger
+// servers. Tap one and the pink pill highlight moves to that label. Under the
+// row a badge says whether that look is local or server-side (never AI).
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -18,6 +18,11 @@ export type PhotoFilterKey = 'pop_art' | 'x_ray' | 'comic' | 'sepia';
 /** Human labels shown in the row (order matches FILTER_OPTIONS). */
 const FILTER_OPTIONS: Array<{ key: PhotoFilterKey; label: string; analyticsId: string }> = [
   {
+    key: 'pop_art',
+    label: 'Pop art',
+    analyticsId: ONBOARDING.confirm_profile.filter_pop_art
+  },
+  {
     key: 'comic',
     label: 'Comic',
     analyticsId: ONBOARDING.confirm_profile.filter_comic
@@ -26,11 +31,6 @@ const FILTER_OPTIONS: Array<{ key: PhotoFilterKey; label: string; analyticsId: s
     key: 'sepia',
     label: 'Sepia',
     analyticsId: ONBOARDING.confirm_profile.filter_sepia
-  },
-  {
-    key: 'pop_art',
-    label: 'Pop art',
-    analyticsId: ONBOARDING.confirm_profile.filter_pop_art
   },
   {
     key: 'x_ray',
@@ -54,6 +54,9 @@ export function PhotoFilterPicker({
   value: PhotoFilterKey;
   onChange: (filter: PhotoFilterKey) => void;
 }) {
+  // Pop art is painted on the phone; the other three run on our servers (not AI).
+  const isLocal = value === 'pop_art';
+
   return (
     <View style={{ gap: 8 }}>
       {/* THIS SECTION DOES: the four filter labels in one white capsule.
@@ -108,11 +111,15 @@ export function PhotoFilterPicker({
         })}
       </View>
 
-      {/* THIS SECTION DOES: privacy reassurance under the row (looks never leave the phone). */}
+      {/* THIS SECTION DOES: privacy line under the row (never sent to an AI model). */}
       <AnalyticsRegion
         analyticsId={ONBOARDING.confirm_profile.local_processing_badge}
         interactive={false}
-        accessibilityLabel="Done 100% local. Never sent to an AI model."
+        accessibilityLabel={
+          isLocal
+            ? 'Done 100% local. Never sent to an AI model.'
+            : 'Processed on Bridger servers. Never sent to an AI model.'
+        }
       >
         <View
           style={{
@@ -147,7 +154,7 @@ export function PhotoFilterPicker({
             className="font-sans-m"
             style={{ fontSize: 13, letterSpacing: -0.2, color: LOCAL_BADGE_INK }}
           >
-            Done 100% Local
+            {isLocal ? 'Done 100% Local' : 'On Bridger servers · never AI'}
           </Text>
         </View>
       </AnalyticsRegion>

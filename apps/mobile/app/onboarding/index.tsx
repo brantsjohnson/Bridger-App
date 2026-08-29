@@ -64,6 +64,8 @@ export default function OnboardingScreen() {
   const { setGridColorHex } = useGridColor();
   // Which music connect browser sheet is open (null = idle).
   const [musicBusy, setMusicBusy] = useState<'spotify' | 'apple' | null>(null);
+  // Song search sheet after Spotify / Apple Agree (or when they reopen search).
+  const [songSheetOpen, setSongSheetOpen] = useState(false);
 
   // Open the surface + start the flow once, when the room first appears.
   useEffect(() => {
@@ -96,7 +98,8 @@ export default function OnboardingScreen() {
     };
   }, [step, patch]);
 
-  // THIS SECTION DOES: open Spotify's allow screen, then mark connected + sync taste.
+  // THIS SECTION DOES: open Spotify's allow screen, then mark connected + sync
+  // taste, then pop the song search sheet so they can pick the track on repeat.
   const onConnectSpotify = () => {
     if (musicBusy || draft.spotifyConnected) return;
     setMusicBusy('spotify');
@@ -118,6 +121,7 @@ export default function OnboardingScreen() {
         } catch {
           // Link still succeeded; taste sync can retry later from Settings.
         }
+        setSongSheetOpen(true);
       })
       .catch(() => {
         Alert.alert('Could not link Spotify', 'Try again in a moment.');
@@ -125,7 +129,8 @@ export default function OnboardingScreen() {
       .finally(() => setMusicBusy(null));
   };
 
-  // THIS SECTION DOES: open Apple Music's allow screen, then mark connected + sync taste.
+  // THIS SECTION DOES: open Apple Music's allow screen, then mark connected +
+  // sync taste, then pop the same song search sheet.
   const onConnectApple = () => {
     if (musicBusy || draft.appleConnected) return;
     setMusicBusy('apple');
@@ -149,6 +154,7 @@ export default function OnboardingScreen() {
         } catch {
           // Link still succeeded; taste sync can retry later from Settings.
         }
+        setSongSheetOpen(true);
       })
       .catch(() => {
         Alert.alert('Could not link Apple Music', 'Try again in a moment.');
@@ -322,9 +328,13 @@ export default function OnboardingScreen() {
             spotifyConnected={draft.spotifyConnected}
             appleConnected={draft.appleConnected}
             connectBusy={musicBusy}
+            songSheetOpen={songSheetOpen}
             onChangeSong={(v) => patch({ song: v })}
             onConnectSpotify={onConnectSpotify}
             onConnectApple={onConnectApple}
+            onCloseSongSheet={() => setSongSheetOpen(false)}
+            onPickSong={(label) => patch({ song: label })}
+            onOpenSongSheet={() => setSongSheetOpen(true)}
             onNext={goNext}
             onSkip={goSkip}
             onBack={back ?? (() => {})}
@@ -397,6 +407,7 @@ export default function OnboardingScreen() {
             onInit={flow.initVisibility}
             onSetTier={flow.setVisibilityTier}
             onSetAll={flow.setAllVisibility}
+            onEditValue={flow.updateVisibilityValue}
             onNext={goNext}
             onBack={back ?? (() => {})}
             onOpenTerms={() => void Linking.openURL(TERMS_URL)}
