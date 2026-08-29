@@ -689,10 +689,39 @@ export class MusicService {
   }
 
   private redirectUri(): string {
-    return (
-      this.config.get<string>('SPOTIFY_REDIRECT_URI') ??
-      'http://127.0.0.1:3000/music/spotify/callback'
-    );
+    // THIS SECTION DOES: pick a redirect Spotify can open on a real phone.
+    // Never send the phone to 127.0.0.1 / localhost (that is this laptop, not
+    // the phone). Prefer an explicit public URI, then API_PUBLIC_URL.
+    const configured = this.config.get<string>('SPOTIFY_REDIRECT_URI')?.trim();
+    if (configured && !this.isLoopbackHttpUrl(configured)) {
+      return configured;
+    }
+    const publicBase = this.config.get<string>('API_PUBLIC_URL')?.trim().replace(/\/$/, '');
+    if (publicBase && !this.isLoopbackHttpUrl(publicBase)) {
+      if (configured && this.isLoopbackHttpUrl(configured)) {
+        this.log.warn(
+          'SPOTIFY_REDIRECT_URI is loopback; using API_PUBLIC_URL/music/spotify/callback so phones can finish OAuth.'
+        );
+      }
+      return `${publicBase}/music/spotify/callback`;
+    }
+    if (configured) {
+      this.log.warn(
+        'SPOTIFY_REDIRECT_URI is loopback and API_PUBLIC_URL is missing. Spotify Agree will fail on a physical phone.'
+      );
+      return configured;
+    }
+    return 'http://127.0.0.1:3000/music/spotify/callback';
+  }
+
+  /** True when the URL points at this machine (useless as a phone redirect). */
+  private isLoopbackHttpUrl(url: string): boolean {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      return host === '127.0.0.1' || host === 'localhost' || host === '::1';
+    } catch {
+      return false;
+    }
   }
 
   private tokenSecret(): string {

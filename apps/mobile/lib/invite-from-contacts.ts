@@ -10,7 +10,12 @@
 //
 // PRIVACY: contacts are read on-device only and never uploaded.
 // ============================================
-import * as Contacts from 'expo-contacts';
+import {
+  Contact,
+  ContactField,
+  ContactsSortOrder,
+  requestPermissionsAsync
+} from 'expo-contacts';
 import { Linking, Platform, Share } from 'react-native';
 import { trackProduct } from '@bridger/shared';
 import { createShareInvite } from '../data/invites';
@@ -43,7 +48,9 @@ export async function loadInviteContacts(
     return { contacts: [], permission: 'denied' };
   }
 
-  const perm = await Contacts.requestPermissionsAsync();
+  // THIS SECTION DOES: ask for contacts permission, then read names + phones
+  // with the new class-based expo-contacts API (legacy getContactsAsync throws).
+  const perm = await requestPermissionsAsync();
   const granted = perm.status === 'granted';
   trackProduct('permission_result', {
     permission: 'contacts',
@@ -58,17 +65,17 @@ export async function loadInviteContacts(
     };
   }
 
-  const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
-    pageSize: 300,
-    sort: Contacts.SortTypes.FirstName
-  });
+  const rows = await Contact.getAllDetails(
+    [ContactField.FULL_NAME, ContactField.PHONES] as const,
+    { limit: 300, sortOrder: ContactsSortOrder.GivenName }
+  );
 
   const contacts: ContactPick[] = [];
-  for (const row of data ?? []) {
-    const phone = row.phoneNumbers?.[0]?.number?.trim();
-    if (!row.id || !row.name || !phone) continue;
-    contacts.push({ id: row.id, name: row.name, phone });
+  for (const row of rows) {
+    const phone = row.phones?.[0]?.number?.trim();
+    const name = row.fullName?.trim();
+    if (!row.id || !name || !phone) continue;
+    contacts.push({ id: row.id, name, phone });
   }
   return { contacts, permission: 'granted' };
 }

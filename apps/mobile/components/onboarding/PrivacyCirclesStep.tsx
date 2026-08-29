@@ -3,8 +3,8 @@
 // The screen right before "who sees what." It teaches the three friend
 // circles (Close, Friends, Acquaintances): what each means and how many
 // people fit, using Free Lite caps (5 / 30 / unlimited). Co-op can raise
-// Close and Friends later. The animated padlock from the profile welcome
-// sits up top so this reads as a privacy beat, not just a list.
+// Close and Friends later. The animated padlock sits beside the blurb so
+// this reads as a privacy beat, not just a list.
 //
 // PRIVACY (load-bearing): people learn the tier model here before they
 // pick an audience for each answer on the next screen.
@@ -20,6 +20,7 @@ import { ACCENT_HEX, AnalyticsRegion, useThemeColors } from '@bridger/ui';
 import { ProfileIntroPadlock } from '../profile/ProfileIntroGraphic';
 import { OnboardingStep } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
+import { OBBody } from './onboarding-ui';
 
 /** Free Lite caps: what most people start with before they join co-op. */
 const CAPS = FREE_BENEFITS.circleCaps;
@@ -74,7 +75,7 @@ export function PrivacyCirclesStep({
       total={total}
       purpose="Privacy First"
       ask="Three circles. You pick who sees what."
-      blurb="Next you will set an audience for each answer. Change any of it anytime."
+      // Blurb sits beside the lock in the body (not stacked under the ask).
       cta="Got it"
       smallAsk
       scrollBody
@@ -82,14 +83,30 @@ export function PrivacyCirclesStep({
       onBack={onBack}
     >
       <View style={{ gap: 16 }}>
-        {/* LOCK: same animated padlock as the profile welcome, ink on eggshell. */}
+        {/* LOCK + BLURB: padlock on the left, explainer text on the right. */}
         <AnalyticsRegion
           analyticsId={ONBOARDING.circles.lock}
           interactive={false}
-          accessibilityLabel="Privacy lock"
+          accessibilityLabel="Privacy lock. Next you will set an audience for each answer. Change any of it anytime."
         >
-          <View style={{ alignItems: 'center', paddingVertical: 4 }}>
-            <ProfileIntroPadlock tone="onLight" />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              // Keep the open shackle inside this row (no crop at the top).
+              overflow: 'visible',
+              paddingTop: 2
+            }}
+          >
+            <View style={{ flexShrink: 0 }}>
+              <ProfileIntroPadlock tone="onLight" />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <OBBody>
+                Next you will set an audience for each answer. Change any of it anytime.
+              </OBBody>
+            </View>
           </View>
         </AnalyticsRegion>
 

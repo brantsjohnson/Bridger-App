@@ -19,6 +19,8 @@ const light = THEME.light;
 const BLUE_WASH = '#BBD6FB';
 /** Soft pink fill for callouts (same pale pink as ACCENTS.pink.tintSolid). */
 const PINK_WASH = '#FFC0D7';
+/** Soft green fill when something is done (same pale teal as ACCENTS.teal.tintSolid). */
+const GREEN_WASH = '#9FE7CE';
 
 /** The colors used across every onboarding step. Mirrors the main app tokens. */
 export const OB = {
@@ -36,6 +38,8 @@ export const OB = {
   pink: ACCENT_HEX.pink,
   /** A soft pink wash for callout rows (e.g. "All of the above"). */
   pinkWash: PINK_WASH,
+  /** Soft green fill when something is done (contacts loaded, invite sent). */
+  greenWash: GREEN_WASH,
   /** Brand purple (News accent). Used for fills like the isolation ring. */
   purple: ACCENT_HEX.purple,
   /** Light red for big numbers and accent type on the blue reality-check canvas. */
@@ -73,10 +77,12 @@ export const OB_SHADOW_OFFSET = 5;
 export const OB_BORDER = 2;
 
 /** Big heading: FeloniaPixel (the app header font), all caps, tight and blue.
- *  Big Shoulders Display stays only on the four reality-check screens. */
+ *  Big Shoulders Display stays only on the four reality-check screens.
+ *  Line height stays above the font size so tall pixel glyphs never climb into
+ *  the amber "why we ask" chip above (the YOUR PLACES overlap bug). */
 export const OB_HEADING = {
   fontSize: 50,
-  lineHeight: 46,
+  lineHeight: 54,
   letterSpacing: -1.4,
   textTransform: 'uppercase' as const,
   color: OB.blue
@@ -84,10 +90,10 @@ export const OB_HEADING = {
 
 /** The same heading, one size down, for screens with a lot of content.
  *  Line height stays above the font size so a two-line ask (job + dream job)
- *  never sits on top of itself. */
+ *  never sits on top of itself or the amber chip. */
 export const OB_HEADING_SM = {
   fontSize: 36,
-  lineHeight: 40,
+  lineHeight: 42,
   letterSpacing: -1,
   textTransform: 'uppercase' as const,
   color: OB.blue

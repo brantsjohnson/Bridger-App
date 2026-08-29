@@ -14,23 +14,18 @@ import {
   TextInput,
   View
 } from 'react-native';
-import { ChevronRightIcon, MapPinIcon, SearchIcon } from 'lucide-react-native';
+import { MapPinIcon, SearchIcon } from 'lucide-react-native';
 import { ONBOARDING, trackUi } from '@bridger/shared';
 import { AnalyticsRegion, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import type { GeocodeHit } from '../../lib/geocode';
-import { searchPlaces } from '../../lib/geocode';
+import { formatPlaceTitle, searchPlaces } from '../../lib/geocode';
 import type { TravelPlace } from '../../data/profile';
 import { WorldMapSvg } from '../profile/WorldMapSvg';
 import { useOnboardingBodyScroll } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
 
-/** One clear line for a hit so city + country read as one choice. */
-function hitTitle(h: GeocodeHit): string {
-  if (h.countryName && h.label && h.label !== h.countryName) {
-    return `${h.label}, ${h.countryName}`;
-  }
-  return h.displayName || h.label;
-}
+/** City / state / country only — neighborhoods and hotels stay out of this list. */
+const FAVORITE_LAYERS = ['city', 'state', 'country'] as const;
 
 /**
  * Map + search for the favorite trip. Hometown / current town stay as plain
@@ -74,7 +69,9 @@ export function OnboardingPlacePicker({
         const controller = new AbortController();
         abort.current = controller;
         try {
-          const results = await searchPlaces(q, controller.signal);
+          const results = await searchPlaces(q, controller.signal, {
+            layers: [...FAVORITE_LAYERS]
+          });
           if (controller.signal.aborted) return;
           setHits(results.filter((r) => r.countryCode.length === 2));
         } catch {
@@ -143,12 +140,13 @@ export function OnboardingPlacePicker({
 
       {/* THIS SECTION DOES: search first (above the map) so the keyboard never
           hides the box under a tall map. Magnifying glass marks it as search. */}
-      <View ref={searchBlockRef} style={{ gap: 8 }}>
+      <View ref={searchBlockRef} style={{ gap: 8, width: '100%' }}>
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
+            width: '100%',
             backgroundColor: OB.paper,
             borderWidth: OB_BORDER,
             borderColor: OB.navy,
@@ -189,23 +187,41 @@ export function OnboardingPlacePicker({
           </Text>
         ) : null}
 
-        {/* THIS SECTION DOES: matches as obvious tappable choices (not a quiet
-            subtitle that looks like extra info under the search box). */}
+        {/* THIS SECTION DOES: matches as full-width white rows. Title shows
+            city + state + country so Washington, DC is not confused with
+            Washington state. Tap the whole row to pin it. */}
         {hits.length > 0 ? (
-          <View style={{ gap: 8 }}>
+          <View
+            style={{
+              width: '100%',
+              borderWidth: OB_BORDER,
+              borderColor: OB.navy,
+              backgroundColor: OB.paper,
+              overflow: 'hidden'
+            }}
+          >
             <AnalyticsRegion analyticsId={ONBOARDING.taste.place_pick_hint} interactive={false}>
-              <Text
-                className="font-sans-sb text-[12px]"
-                style={{ letterSpacing: 0.3, color: theme.ink }}
+              <View
+                style={{
+                  paddingHorizontal: 14,
+                  paddingTop: 10,
+                  paddingBottom: 6,
+                  backgroundColor: OB.paper
+                }}
               >
-                Tap a place to pin it
-              </Text>
+                <Text
+                  className="font-sans-sb text-[12px]"
+                  style={{ letterSpacing: 0.3, color: theme.inkSoft }}
+                >
+                  Tap a place to pin it
+                </Text>
+              </View>
             </AnalyticsRegion>
             {hits.map((h, i) => {
-              const title = hitTitle(h);
+              const title = formatPlaceTitle(h);
               return (
                 <Pressable
-                  key={`${h.lat}-${h.lng}-${i}`}
+                  key={`${h.lat}-${h.lng}-${h.state ?? ''}-${i}`}
                   onPress={withAnalyticsPress(ONBOARDING.taste.place_result, () =>
                     pick(h)
                   )}
@@ -216,9 +232,10 @@ export function OnboardingPlacePicker({
                     flexDirection: 'row',
                     alignItems: 'center',
                     gap: 12,
+                    width: '100%',
                     backgroundColor: pressed ? OB.periwinkle : OB.paper,
-                    borderWidth: OB_BORDER,
-                    borderColor: OB.navy,
+                    borderTopWidth: OB_BORDER,
+                    borderTopColor: OB.navy,
                     paddingHorizontal: 14,
                     paddingVertical: 14,
                     minHeight: 52
@@ -226,19 +243,17 @@ export function OnboardingPlacePicker({
                 >
                   <MapPinIcon size={18} color={OB.blue} strokeWidth={2.4} />
                   <Text
-                    className="min-w-0 flex-1 font-sans-b text-[15px]"
-                    style={{ color: OB.ink }}
+                    style={{
+                      flex: 1,
+                      flexShrink: 1,
+                      fontSize: 15,
+                      fontWeight: '700',
+                      color: OB.ink
+                    }}
                     numberOfLines={2}
                   >
                     {title}
                   </Text>
-                  <Text
-                    className="font-sans-sb text-[13px]"
-                    style={{ color: OB.blue }}
-                  >
-                    Choose
-                  </Text>
-                  <ChevronRightIcon size={18} color={OB.blue} strokeWidth={2.6} />
                 </Pressable>
               );
             })}
@@ -258,7 +273,7 @@ export function OnboardingPlacePicker({
           }}
         >
           <Text className="font-sans-b text-[15px]" style={{ color: OB.ink }}>
-            {hit.label}
+            {formatPlaceTitle(hit)}
           </Text>
           <Text className="font-sans-sb text-[12px]" style={{ color: OB.inkSoft }}>
             Selected · search again to change

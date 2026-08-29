@@ -167,6 +167,30 @@ export class IntegrationsHealthService {
         checkedAt
       };
     }
+    // Loopback redirects break Connect on a real phone (Safari hits the phone, not Nest).
+    try {
+      const host = new URL(redirect).hostname.toLowerCase();
+      if (host === '127.0.0.1' || host === 'localhost' || host === '::1') {
+        return {
+          id: 'spotify',
+          label: 'Spotify Web API',
+          status: 'warn',
+          detail:
+            'SPOTIFY_REDIRECT_URI is loopback (127.0.0.1/localhost). Phones cannot finish Agree. Set it to the public API /music/spotify/callback and match the Spotify dashboard.',
+          kind: 'config',
+          checkedAt
+        };
+      }
+    } catch {
+      return {
+        id: 'spotify',
+        label: 'Spotify Web API',
+        status: 'warn',
+        detail: 'SPOTIFY_REDIRECT_URI is not a valid URL.',
+        kind: 'config',
+        checkedAt
+      };
+    }
     try {
       const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
       const res = await fetch('https://accounts.spotify.com/api/token', {
