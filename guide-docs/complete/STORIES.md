@@ -22,12 +22,13 @@ Above the capture button sit three **themed-post squares** (dashed) under a "The
 
 The three themes are **rotatable from the admin console** (see `ADMIN.md`).
 
-### Random update nudges (opt-in)
+### BeReal-like reminders (opt-in)
 
-Under the themed posts sits a **toggle: "Random update nudges"** — about **1–3 surprise taps a day** (BeReal-style timing, Bridger copy). Off by default. Turning it on:
+Under the themed posts sits a **toggle: "BeReal-like reminders"** — **1–3 notifications a day** with BeReal-style random timing to capture your life. Off by default. Turning it on:
 
 - Saves notification pref kind `story_prompt` (same row in Profile → Settings → Notifications).
-- Schedules roughly 1–3 push/in-app prompts per day at random times (server-side when push ships; demo schedules locally).
+- Asks for notification permission in context (if not already granted).
+- Schedules **1–3** push/in-app prompts per day at random times (server-side when push ships; demo schedules locally).
 - When you are **hosting or going** to a **live event**, one of those prompts may be a mid-party nudge: **"📸 Don't forget to capture the mems"** at a random time during the party (once per event, per person). Skipped if you already posted **3 updates today**. Opens `/story/capture?eventId=…` with the event pre-tagged; posting saves the photo to that event's **Photo album** on the event page.
 - Other prompts open `/story/capture` so they can post right then.
 - Not circle-gated (you are nudging yourself). Does **not** appear in the Home notifications widget (push / Notifications page only when delivered).
@@ -232,7 +233,7 @@ interface ThemedPrompt { slug: string; label: string; icon: string; }  // admin-
 - [ ] Max 3 posts/day; video ≤20s. One capture button (tap photo / hold video); no Photo or Text buttons.
 - [ ] After capture the composer prompts an **update** ("what did you do today"), enterable by typing **or voice-to-text**; video updates are auto-transcribed.
 - [ ] Three themed-post squares (admin-rotatable) sit above capture; picking a theme labels the update.
-- [ ] Capture screen offers an opt-in "Random update nudges" toggle (about 1–3 / day); pref is `story_prompt`, also in Settings → Notifications; taps open `/story/capture`.
+- [ ] Capture screen offers an opt-in "BeReal-like reminders" toggle (1–3 notifications a day); pref is `story_prompt`, also in Settings → Notifications; taps open `/story/capture`.
 - [ ] The viewer shows one progress segment per post (≤3), the post, the update text, a bottom row with caption on the left and emoji → comment → record (red dot) on the right (vertically centered), and floating reply balloons that stay on-screen and do not auto-play video.
 - [ ] Tap left = previous, center = pause/resume, right = next. Finishing the last post advances the Home tray sequence with Catch-Up staying at the peek (no open-then-close flash). End of the sequence (or a lone author) shows **"You're all caught up"** with confetti + Done. Opened from a profile still marks watched, then shows the same end screen. Never dismisses under an open Catch-Up. Finishing an author marks them watched: colored tray ring off, tile moves behind unwatched on the next Home paint.
 - [ ] The weekly summary is **AI-written, ~1–2 sentences per day with that day's media**, **pre-generated at post time** (not on swipe), tier-filtered.

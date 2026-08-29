@@ -283,6 +283,12 @@ export async function savePhoto(input: {
 }): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.photo = input.source ?? 'library';
+    // Keep the picked file path on the profile header so About Me + banner
+    // show their real pick instead of the stock demo face.
+    if (input.uri) {
+      const { setMyProfileHeader } = await import('./profile');
+      await setMyProfileHeader({ avatarUrl: input.uri });
+    }
     return;
   }
 

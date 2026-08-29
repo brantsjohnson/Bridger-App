@@ -136,6 +136,11 @@ export type AnalyticsProductEvent =
   | 'bucket_item_updated'
   | 'bucket_item_deleted'
   | 'profile_customized'
+  /**
+   * Profile / About Me photo saved after Take or Upload (confirmed upload, not
+   * the sheet open). method = camera | library. Never the image.
+   */
+  | 'profile_photo_updated'
   /** Theme tokens saved on customize (accent/background/font/mode). */
   | 'profile_theme_saved'
   /** Layout order of movable modules saved on customize. */

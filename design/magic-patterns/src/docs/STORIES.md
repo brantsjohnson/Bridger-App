@@ -17,9 +17,9 @@ Above the capture button sit three **themed-post squares** (dashed) under a "The
 
 The three themes are **rotatable from the admin console** (see `ADMIN.md`).
 
-### Random update nudges (opt-in)
+### BeReal-like reminders (opt-in)
 
-Under the themed posts: a toggle **"Random update nudges"** (about 1–3 surprise taps a day). Off by default. Saves `story_prompt` pref; prompts open capture.
+Under the themed posts: a toggle **"BeReal-like reminders"** (1–3 notifications a day to capture your life). Off by default. Saves `story_prompt` pref; prompts open capture.
 
 ---
 

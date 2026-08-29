@@ -135,7 +135,7 @@ TOP 5  ─ 5 things anyone who knows me should know
 
 ## 5 · About me (moved under Top 5)
 
-Spotify-style **About card**: wide photo on top, name + pin/city, and a bio snippet you can already read. Tap to expand for the full bio plus the about-me field grid. No follower count, no follow button. On a **friend** profile, Favorites album tiles open a **read-only answers sheet** (never the fill-out quiz).
+Spotify-style **About card**: wide photo on top (defaults to their **profile photo**; own Edit mode can Take / Upload a new one — same upload exception as the header avatar), name + pin/city, and a bio snippet you can already read. Tap to expand for the full bio plus the about-me field grid. No follower count, no follow button. On a **friend** profile, Favorites album tiles open a **read-only answers sheet** (never the fill-out quiz).
 
 ```
 ABOUT ME                                   ⌃

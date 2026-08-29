@@ -65,7 +65,10 @@ import {
 } from '../../lib/announcements-intro';
 import { isDemoMode } from '../../lib/demo';
 import { loadPeople } from '../../lib/people-cache';
-import { consumeWelcomeCelebration } from '../../lib/welcome-celebration';
+import {
+  consumeWelcomeCelebration,
+  subscribeWelcomeCelebration
+} from '../../lib/welcome-celebration';
 import { DevPreviewBar } from '../../components/home/DevPreviewBar';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
@@ -161,12 +164,17 @@ export default function HomeScreen() {
   // Prefer a result already saved on the quiz payload (live complete).
   const quizResultId = feed.quiz?.resultId ?? null;
 
-  // THIS SECTION DOES: play the welcome fireworks once, only when Home opens
-  // right after finishing onboarding. consumeWelcomeCelebration() returns true a
-  // single time (the onboarding finish set the flag), so it never replays.
+  // THIS SECTION DOES: play the welcome fireworks once, only right after
+  // finishing onboarding. We check on mount AND subscribe so an already-mounted
+  // Home still wakes up when onboarding marks the flag. consume latches, so a
+  // later remount (e.g. closing the post composer) can never replay the party.
   const [celebrate, setCelebrate] = useState(false);
   useEffect(() => {
-    if (consumeWelcomeCelebration()) setCelebrate(true);
+    const tryShow = () => {
+      if (consumeWelcomeCelebration()) setCelebrate(true);
+    };
+    tryShow();
+    return subscribeWelcomeCelebration(tryShow);
   }, []);
 
   // THIS SECTION DOES: decide whether to show the one-time Announcements intro

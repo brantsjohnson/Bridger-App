@@ -1,10 +1,12 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Capture + compose for a new Update. Tap the shutter for a photo, hold for
-// video (≤20s). Text/overlay and audience come after capture — there is no
-// camera-roll upload path. Video posting shows a co-op lock for free members.
-// Under Themed posts, a toggle opts into random update nudges (about 1–3 a
-// day). Emits the post_story flow + story_posted product event.
+// Capture + compose for a new Update. Live camera: tap the shutter for a photo,
+// hold for video (≤20s). Camera (and mic for video) are asked at the shutter,
+// never at launch. After capture they write a caption under the photo (never
+// drawn on top of it) and pick who sees it. There is no camera-roll upload
+// path. Video posting shows a co-op lock for free members. Under Themed posts,
+// a toggle opts into BeReal-like reminders (1–3 a day). Emits the post_story
+// flow + story_posted product event.
 //
 // ACCESSIBILITY: capture is always a near-black camera UI (fixed #0E0E0E), even
 // in dark mode — never themed `bg-ink`, which flips light and washes out white
@@ -13,13 +15,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
+  Platform,
   Pressable,
   Text,
   TextInput,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDownIcon, LockIcon, TypeIcon } from 'lucide-react-native';
+import {
+  CameraView,
+  useCameraPermissions,
+  useMicrophonePermissions
+} from 'expo-camera';
+import { ChevronDownIcon, LockIcon, SwitchCameraIcon } from 'lucide-react-native';
 import {
   POST_COMPOSER,
   trackClick,
@@ -45,7 +54,13 @@ import {
   getNotificationPrefs,
   setNotificationKindPref
 } from '../../data/notification-prefs';
+import { requestNotificationPermission } from '../../lib/notifications';
 import { useStoryCapture } from '../../hooks/useStoryCapture';
+
+/** Max video length for an update (STORIES.md). */
+const MAX_VIDEO_SECONDS = 20;
+/** How long to hold before we treat it as video, not a photo tap. */
+const HOLD_MS = 600;
 
 // Fixed near-black canvas for the camera sheet (does not follow theme ink).
 const CAPTURE_BG = '#0E0E0E';
@@ -72,15 +87,29 @@ export function CaptureCompose({
 }: Props) {
   const insets = useSafeAreaInsets();
   const { left, prompts, atCap, onCreate } = useStoryCapture();
+  const cameraRef = useRef<CameraView>(null);
+  const [camPerm, requestCamPerm] = useCameraPermissions();
+  const [micPerm, requestMicPerm] = useMicrophonePermissions();
 
   const [theme, setTheme] = useState<string | null>(null);
   const [captured, setCaptured] = useState<null | 'photo' | 'video'>(null);
+  const [captureUri, setCaptureUri] = useState<string | null>(null);
   const [holding, setHolding] = useState(false);
-  const [overlay, setOverlay] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [facing, setFacing] = useState<'front' | 'back'>('back');
+  /** picture until a hold becomes video; CameraView needs the matching mode. */
+  const [cameraMode, setCameraMode] = useState<'picture' | 'video'>('picture');
+  /**
+   * Local flag so we can mount CameraView in the same shutter press that just
+   * got OS permission (the permission hook re-renders a beat later).
+   */
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  // Caption lives under the photo. Never drawn on top of the media.
+  const [caption, setCaption] = useState('');
   const [audience, setAudience] = useState<AudienceLevel>('friend');
   const [group, setGroup] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
-  /** Opt-in random "time to post" nudges — same pref as Settings → Notifications. */
+  /** Opt-in BeReal-like "capture your life" reminders — same pref as Settings. */
   const [randomNudges, setRandomNudges] = useState(false);
   const [taggedEventId, setTaggedEventId] = useState<string | null>(
     initialEventId ?? null
@@ -89,8 +118,40 @@ export function CaptureCompose({
     initialEventTitle
   );
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordingRef = useRef(false);
+  const cameraReadyRef = useRef(false);
+  const cameraReadyWaiters = useRef<Array<() => void>>([]);
   const flowStartedAt = useRef(Date.now());
   const lastStep = useRef('open');
+
+  const nativeCamera = Platform.OS !== 'web';
+  const camGranted = !!camPerm?.granted || cameraEnabled;
+  const showLiveCamera = nativeCamera && camGranted;
+
+  // THIS SECTION DOES: if the OS already granted camera earlier, show the live preview.
+  useEffect(() => {
+    if (camPerm?.granted) setCameraEnabled(true);
+  }, [camPerm?.granted]);
+
+  // THIS SECTION DOES: wait until CameraView says it is ready (after mount / grant).
+  const waitForCameraReady = (): Promise<boolean> =>
+    new Promise((resolve) => {
+      if (cameraReadyRef.current && cameraRef.current) {
+        resolve(true);
+        return;
+      }
+      const timer = setTimeout(() => resolve(false), 4000);
+      cameraReadyWaiters.current.push(() => {
+        clearTimeout(timer);
+        resolve(true);
+      });
+    });
+
+  const onCameraReady = () => {
+    cameraReadyRef.current = true;
+    const waiters = cameraReadyWaiters.current.splice(0);
+    waiters.forEach((fn) => fn());
+  };
 
   useEffect(() => {
     flowStartedAt.current = Date.now();
@@ -115,7 +176,7 @@ export function CaptureCompose({
     if (initialEventTitle) setTaggedEventTitle(initialEventTitle);
   }, [initialEventId, initialEventTitle]);
 
-  // THIS SECTION DOES: load whether random update nudges are already on.
+  // THIS SECTION DOES: load whether BeReal-like reminders are already on.
   useEffect(() => {
     let alive = true;
     void getNotificationPrefs().then((p) => {
@@ -126,15 +187,138 @@ export function CaptureCompose({
     };
   }, []);
 
-  // THIS SECTION DOES: save the random-nudge pref (also listed in Settings).
+  // THIS SECTION DOES: ask for the camera at shutter time, mount the preview, wait until ready.
+  const ensureCamera = async (): Promise<boolean> => {
+    if (!nativeCamera) {
+      Alert.alert(
+        'Use the phone app',
+        'Posting a photo or video works in the Bridger phone app. The web preview cannot open your camera.'
+      );
+      return false;
+    }
+    if (!camPerm?.granted) {
+      const res = await requestCamPerm();
+      trackProduct('permission_result', {
+        permission: 'camera',
+        outcome: res.granted
+          ? 'granted'
+          : res.canAskAgain === false
+            ? 'denied'
+            : 'dismissed',
+        context: 'story_capture'
+      });
+      if (!res.granted) {
+        Alert.alert(
+          'Camera needed',
+          'Allow camera access so you can post an update. You can turn it on in Settings.'
+        );
+        return false;
+      }
+    }
+    // Mount CameraView now (permission hook may lag one frame behind).
+    setCameraEnabled(true);
+    // Already live from a prior grant on this screen.
+    if (cameraReadyRef.current && cameraRef.current) return true;
+    const ready = await waitForCameraReady();
+    if (!ready) {
+      Alert.alert('Camera warming up', 'Give it a second and tap the shutter again.');
+    }
+    return ready;
+  };
+
+  // THIS SECTION DOES: ask for the mic only when they hold for video.
+  const ensureMic = async (): Promise<boolean> => {
+    if (micPerm?.granted) return true;
+    const res = await requestMicPerm();
+    trackProduct('permission_result', {
+      permission: 'mic',
+      outcome: res.granted ? 'granted' : res.canAskAgain === false ? 'denied' : 'dismissed',
+      context: 'story_capture'
+    });
+    if (!res.granted) {
+      Alert.alert(
+        'Microphone needed',
+        'Allow the microphone so your video update has sound.'
+      );
+    }
+    return res.granted;
+  };
+
+  // THIS SECTION DOES: save the reminder pref + ask for push when they turn it on.
   const toggleRandomNudges = (on: boolean) => {
     setRandomNudges(on);
     void setNotificationKindPref('story_prompt', on);
+    if (on) void requestNotificationPermission(true);
     trackProduct('notification_pref_changed', {
       pref: 'story_prompt',
       pref_scope: 'kind',
       enabled: on
     });
+  };
+
+  // THIS SECTION DOES: take one live photo after permission.
+  const takePhoto = async () => {
+    if (atCap) {
+      Alert.alert('Daily limit', 'You can post 3 updates a day. Come back tomorrow.');
+      return;
+    }
+    if (!(await ensureCamera())) return;
+    try {
+      const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
+      if (!photo?.uri) return;
+      lastStep.current = 'capture_photo';
+      trackFlowStep('post_story', 'capture', { method: 'photo' });
+      trackClick(POST_COMPOSER.capture.photo, { method: 'photo' });
+      setCaptureUri(photo.uri);
+      setCaptured('photo');
+    } catch {
+      Alert.alert('Could not take photo', 'Try again in a moment.');
+    }
+  };
+
+  // THIS SECTION DOES: start a ≤20s video when they hold the shutter.
+  const startVideo = async () => {
+    if (!isCoopMember) {
+      setHolding(false);
+      Alert.alert(
+        'Co-op unlock',
+        'Posting video updates is a co-op perk. Watching video is free for everyone.'
+      );
+      trackClick(POST_COMPOSER.capture.hold_video, { method: 'video', is_coop: false });
+      return;
+    }
+    if (!(await ensureCamera())) {
+      setHolding(false);
+      return;
+    }
+    if (!(await ensureMic())) {
+      setHolding(false);
+      return;
+    }
+    setCameraMode('video');
+    setRecording(true);
+    recordingRef.current = true;
+    lastStep.current = 'capture_video';
+    trackFlowStep('post_story', 'capture', { method: 'video' });
+    trackClick(POST_COMPOSER.capture.hold_video, { method: 'video' });
+    try {
+      // Small beat so CameraView can switch into video mode before recordAsync.
+      await new Promise((r) => setTimeout(r, 80));
+      const result = await cameraRef.current?.recordAsync({
+        maxDuration: MAX_VIDEO_SECONDS
+      });
+      if (result?.uri) {
+        setCaptureUri(result.uri);
+        setCaptured('video');
+      }
+    } catch {
+      // Stop / cancel is normal when they lift early; ignore empty results.
+    } finally {
+      recordingRef.current = false;
+      setRecording(false);
+      setHolding(false);
+      setCameraMode('picture');
+    }
   };
 
   const startHold = () => {
@@ -144,33 +328,25 @@ export function CaptureCompose({
     }
     setHolding(true);
     holdTimer.current = setTimeout(() => {
-      if (!isCoopMember) {
-        setHolding(false);
-        Alert.alert(
-          'Co-op unlock',
-          'Posting video updates is a co-op perk. Watching video is free for everyone.'
-        );
-        trackClick(POST_COMPOSER.capture.hold_video, { method: 'video', is_coop: false });
-        return;
-      }
-      lastStep.current = 'capture_video';
-      trackFlowStep('post_story', 'capture', { method: 'video' });
-      trackClick(POST_COMPOSER.capture.hold_video, { method: 'video' });
-      setCaptured('video');
-    }, 600);
+      holdTimer.current = null;
+      void startVideo();
+    }, HOLD_MS);
   };
 
   const endHold = () => {
-    setHolding(false);
+    // Still inside the tap window → photo.
     if (holdTimer.current) {
       clearTimeout(holdTimer.current);
       holdTimer.current = null;
-      if (!captured) {
-        lastStep.current = 'capture_photo';
-        trackFlowStep('post_story', 'capture', { method: 'photo' });
-        trackClick(POST_COMPOSER.capture.photo, { method: 'photo' });
-        setCaptured('photo');
-      }
+      setHolding(false);
+      void takePhoto();
+      return;
+    }
+    // Already recording → stop; recordAsync resolves with the clip.
+    if (recordingRef.current) {
+      cameraRef.current?.stopRecording();
+    } else {
+      setHolding(false);
     }
   };
 
@@ -180,15 +356,15 @@ export function CaptureCompose({
     try {
       lastStep.current = 'post';
       trackFlowStep('post_story', 'post');
-      // Live createPost uploads `uri` when the real camera hands one over.
-      // Fake shutter (no file yet) still posts a caption-only Update.
       await onCreate({
         type: captured,
-        overlayText: overlay || undefined,
+        // Caption under the post only. Never bake text onto the photo.
+        caption: caption.trim() || undefined,
         themeSlug: theme ?? undefined,
         audience,
         group,
         eventId: taggedEventId ?? undefined,
+        uri: captureUri ?? undefined,
         emoji: captured === 'video' ? '🎥' : '📸',
         accent: 'purple'
       });
@@ -215,14 +391,15 @@ export function CaptureCompose({
       <SurfaceHost surface="post_composer" parentScreen="home" open>
         <ComposeInner
           captured={captured}
+          captureUri={captureUri}
           themeLabel={
             theme ? prompts.find((t) => t.slug === theme)?.label : undefined
           }
-          overlay={overlay}
-          setOverlay={(v) => {
+          caption={caption}
+          setCaption={(v) => {
             lastStep.current = 'caption';
             trackFlowStep('post_story', 'caption');
-            setOverlay(v);
+            setCaption(v);
           }}
           audience={audience}
           setAudience={setAudience}
@@ -234,7 +411,11 @@ export function CaptureCompose({
             setTaggedEventId(null);
             setTaggedEventTitle(undefined);
           }}
-          onRetake={() => setCaptured(null)}
+          onRetake={() => {
+            setCaptured(null);
+            setCaptureUri(null);
+            setCaption('');
+          }}
           onPost={() => void handlePost()}
           insetsTop={insets.top}
           insetsBottom={insets.bottom}
@@ -266,13 +447,33 @@ export function CaptureCompose({
           <Text className="font-sans-b text-[12px] text-white/70">{left} left</Text>
         </View>
 
-        <View className="mx-4 mt-4 flex-1 items-center justify-center rounded-2xl bg-white/10">
-          <Text accessible={false} className="text-[64px] opacity-60">
-            📷
-          </Text>
-          <Text className="mt-2 font-sans-sb text-[12px] text-white/50">
-            In-app capture only — no camera roll
-          </Text>
+        {/* LIVE CAMERA: permission asked on shutter; placeholder until granted. */}
+        <View className="relative mx-4 mt-4 flex-1 overflow-hidden rounded-2xl bg-black">
+          {showLiveCamera ? (
+            <CameraView
+              ref={cameraRef}
+              mode={cameraMode}
+              facing={facing}
+              onCameraReady={onCameraReady}
+              style={{ width: '100%', height: '100%' }}
+            />
+          ) : (
+            <View className="flex-1 items-center justify-center px-6">
+              <Text accessible={false} className="text-[64px] opacity-60">
+                📷
+              </Text>
+              <Text className="mt-2 text-center font-sans-sb text-[13px] leading-snug text-white/70">
+                {nativeCamera
+                  ? 'Tap the shutter and allow the camera to post an update. In-app capture only — no camera roll.'
+                  : 'Posting a photo works in the Bridger phone app. In-app capture only — no camera roll.'}
+              </Text>
+            </View>
+          )}
+          {recording ? (
+            <View className="absolute left-3 top-3 rounded-full bg-coral px-3 py-1">
+              <Text className="font-sans-b text-[12px] text-white">Recording…</Text>
+            </View>
+          ) : null}
         </View>
 
         <View className="px-4 pt-5">
@@ -313,7 +514,7 @@ export function CaptureCompose({
             ))}
           </View>
 
-          {/* THIS SECTION DOES: opt into surprise "time to post" nudges (1–3 / day) */}
+          {/* THIS SECTION DOES: opt into BeReal-like capture reminders (1–3 / day) */}
           <View className="mt-3 flex-row items-center gap-3 rounded-card bg-white px-3 py-3">
             <AnalyticsRegion
               analyticsId={POST_COMPOSER.suggested.random_nudges_label}
@@ -321,43 +522,60 @@ export function CaptureCompose({
               className="min-w-0 flex-1"
             >
               <Text className="font-sans-b text-[13px] text-onaccent">
-                Random update nudges
+                BeReal-like reminders
               </Text>
               <Text
                 className="mt-0.5 font-sans-md text-[11px] leading-snug"
                 style={{ color: ON_LIGHT_MUTE }}
               >
-                About 1–3 surprise taps a day, including a mid-party nudge to
-                capture mems when you are at an event.
+                Random reminders to capture your life. 1–3 notifications a day,
+                including a mid-party nudge when you are at an event.
               </Text>
             </AnalyticsRegion>
             <Toggle
               checked={randomNudges}
               onChange={toggleRandomNudges}
-              label="Random update nudges, about 1 to 3 a day"
+              label="BeReal-like reminders, 1 to 3 notifications a day"
               analyticsId={POST_COMPOSER.suggested.random_nudges_toggle}
             />
           </View>
         </View>
 
         <View className="items-center gap-2 pb-2 pt-6">
-          <Pressable
-            onPressIn={startHold}
-            onPressOut={endHold}
-            accessibilityRole="button"
-            accessibilityLabel="Tap for a photo, hold for video"
-            className={cn(
-              'h-20 w-20 items-center justify-center rounded-full border-4 border-white',
-              holding ? 'scale-95 bg-coral' : 'bg-white/20'
-            )}
-          >
-            <View
+          <View className="flex-row items-center gap-8">
+            <Pressable
+              onPress={withAnalyticsPress(POST_COMPOSER.capture.switch_camera, () => {
+                cameraReadyRef.current = false;
+                setFacing((f) => (f === 'front' ? 'back' : 'front'));
+              })}
+              disabled={!showLiveCamera || recording}
+              accessibilityRole="button"
+              accessibilityLabel="Switch camera"
+              className="h-12 w-12 items-center justify-center rounded-full bg-white/15 active:opacity-90"
+            >
+              <SwitchCameraIcon size={22} color="#FFFFFF" strokeWidth={2.4} />
+            </Pressable>
+
+            <Pressable
+              onPressIn={startHold}
+              onPressOut={endHold}
+              accessibilityRole="button"
+              accessibilityLabel="Tap for a photo, hold for video"
               className={cn(
-                'h-14 w-14 rounded-full',
-                holding ? 'bg-coral' : 'bg-white'
+                'h-20 w-20 items-center justify-center rounded-full border-4 border-white',
+                holding || recording ? 'scale-95 bg-coral' : 'bg-white/20'
               )}
-            />
-          </Pressable>
+            >
+              <View
+                className={cn(
+                  'h-14 w-14 rounded-full',
+                  holding || recording ? 'bg-coral' : 'bg-white'
+                )}
+              />
+            </Pressable>
+
+            <View className="h-12 w-12" />
+          </View>
           <View className="flex-row items-center gap-1.5">
             <Text className="font-sans-sb text-[12px] text-white/70">
               Tap photo · hold video
@@ -383,9 +601,10 @@ export function CaptureCompose({
 
 function ComposeInner({
   captured,
+  captureUri,
   themeLabel,
-  overlay,
-  setOverlay,
+  caption,
+  setCaption,
   audience,
   setAudience,
   group,
@@ -399,9 +618,10 @@ function ComposeInner({
   insetsBottom
 }: {
   captured: 'photo' | 'video';
+  captureUri: string | null;
   themeLabel?: string;
-  overlay: string;
-  setOverlay: (v: string) => void;
+  caption: string;
+  setCaption: (v: string) => void;
   audience: AudienceLevel;
   setAudience: (v: AudienceLevel) => void;
   group: string | null;
@@ -435,40 +655,45 @@ function ComposeInner({
           <ChevronDownIcon size={20} color={ON_LIGHT_INK} strokeWidth={2.6} />
         </Pressable>
         <Text className="font-pixel text-[15px] text-white">
-          {themeLabel ?? 'Add text'}
+          {themeLabel ?? 'Update your friends'}
         </Text>
         <View className="w-9" />
       </View>
 
-      <View className="relative mx-4 mt-4 flex-1 items-center justify-center rounded-2xl bg-purple">
-        <Text accessible={false} className="text-[96px]">
-          {captured === 'video' ? '🎥' : '📸'}
-        </Text>
-        {overlay ? (
-          <View className="absolute left-1/2 top-1/3 -translate-x-1/2 -rotate-2 bg-white px-3 py-1">
-            <Text className="font-pixel text-[20px] text-ink">{overlay}</Text>
-          </View>
-        ) : null}
+      {/* PHOTO / VIDEO: clean media only. Caption sits below, never on top. */}
+      <View className="relative mx-4 mt-4 flex-1 items-center justify-center overflow-hidden rounded-2xl bg-purple">
+        {captureUri && captured === 'photo' ? (
+          <Image
+            source={{ uri: captureUri }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            accessibilityLabel="Your captured photo"
+          />
+        ) : (
+          <Text accessible={false} className="text-[96px]">
+            {captured === 'video' ? '🎥' : '📸'}
+          </Text>
+        )}
       </View>
 
       <View className="gap-3 px-4 pt-4">
-        <View className="flex-row items-center gap-2 rounded-full border border-white/30 px-4 py-2.5">
-          <TypeIcon size={16} color="rgba(255,255,255,0.7)" strokeWidth={2.4} />
-          <TextInput
-            value={overlay}
-            onChangeText={setOverlay}
-            placeholder="Add text on top"
-            accessibilityLabel="Overlay text"
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            className="min-w-0 flex-1 font-sans-sb text-[14px] text-white"
-          />
-        </View>
+        {/* CAPTION: under the media, saved as update text (not stamped on the photo). */}
+        <TextInput
+          value={caption}
+          onChangeText={setCaption}
+          placeholder="What did you do today?"
+          accessibilityLabel="Update caption"
+          placeholderTextColor="rgba(255,255,255,0.5)"
+          multiline
+          className="min-h-[44px] rounded-2xl border border-white/30 px-4 py-3 font-sans-sb text-[14px] text-white"
+        />
         <AudiencePicker
           value={audience}
           onChange={setAudience}
           group={group}
           onGroupChange={setGroup}
-          groups={['Climbing crew', 'College friends']}
+          // No fake demo groups. "Or a group" only appears once they have real ones.
+          groups={[]}
           tone="dark"
           levelAnalyticsIds={{
             close: POST_COMPOSER.audience.close,

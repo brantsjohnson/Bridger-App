@@ -90,7 +90,7 @@
 - Capture-only media except profile photo.
 - Audience is chosen per post (concentric tiers + optional exclusions).
 - No view counts.
-- Optional **random update nudges** (about 1–3 a day) are opt-in only. You can turn them off from the capture screen or Settings → Notifications.
+- Optional **BeReal-like reminders** (1–3 notifications a day) are opt-in only. You can turn them off from the capture screen or Settings → Notifications.
 
 ### 7.2 Touch Grass
 

@@ -6,7 +6,7 @@
 // Analytics: PROFILE.card.* / PROFILE.module.*; product events on module done.
 // ============================================
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import type {
   AboutFieldView,
   FavoriteModule,
@@ -47,8 +47,13 @@ import {
   saveTop5,
   TIER_RANK
 } from '../../data/profile';
+import { savePhoto } from '../../data/onboarding';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { searchPlaces } from '../../lib/geocode';
+import {
+  pickProfilePhoto,
+  type PhotoSource
+} from '../../lib/pick-image';
 import { FavoriteAnswersSheet } from './FavoriteAnswersSheet';
 import { ModuleMenuSheet } from './ModuleMenuSheet';
 import { ProfileHeaderBlock } from './ProfileHeaderBlock';
@@ -242,6 +247,46 @@ export function ProfileCard({
     onAnswered?.();
   };
 
+  // THIS SECTION DOES: About Me photo = their real profile pic (live URL), not
+  // the stock demo fixture. Demo still falls back to the dropped-in face file.
+  const liveAvatar =
+    header?.avatarUrl?.trim() || person.avatarUrl?.trim() || '';
+  const aboutPhoto = liveAvatar
+    ? { uri: liveAvatar }
+    : getProfilePhoto(person.id);
+
+  // THIS SECTION DOES: let them swap the About Me (and header) photo while
+  // editing. Same one-upload exception as onboarding: camera or library.
+  const changeAboutPhoto = (source: PhotoSource) => {
+    void (async () => {
+      const picked = await pickProfilePhoto(source);
+      if (!picked) return;
+      try {
+        await savePhoto({ source, uri: picked.uri });
+        trackProduct('profile_photo_updated', { method: source });
+        onAnswered?.();
+      } catch (err) {
+        console.warn('[profile] about-me photo save failed', err);
+        Alert.alert(
+          'Could not save photo',
+          'Try again in a moment. Your other profile details are fine.'
+        );
+      }
+    })();
+  };
+
+  const openAboutPhotoSheet = () => {
+    if (Platform.OS === 'web') {
+      changeAboutPhoto('library');
+      return;
+    }
+    Alert.alert('Change photo', 'This updates your profile photo everywhere.', [
+      { text: 'Take a photo', onPress: () => changeAboutPhoto('camera') },
+      { text: 'Upload', onPress: () => changeAboutPhoto('library') },
+      { text: 'Cancel', style: 'cancel' }
+    ]);
+  };
+
   return (
     <View>
       {showHeader ? (
@@ -268,7 +313,7 @@ export function ProfileCard({
         own={own}
         editable={editable}
         personName={person.name}
-        personPhoto={getProfilePhoto(person.id)}
+        personPhoto={aboutPhoto}
         personEmoji={person.emoji}
         city={header?.city}
         bio={header?.bio}
@@ -292,6 +337,7 @@ export function ProfileCard({
           // Bio lives on the header; open About basics so they can update it there.
           openModule('about_basics');
         }}
+        onChangeAboutPhoto={own ? openAboutPhotoSheet : undefined}
         onReorderAboutFields={(next) => {
           void reorderAboutFields(
             next.map((f) => ({

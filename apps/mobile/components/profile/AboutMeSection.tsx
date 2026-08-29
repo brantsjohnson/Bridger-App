@@ -1,9 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // About me under Top 5. Stays open like Spotify's About card: photo, name,
-// city, and bio. If the bio is long, "Rest of bio" expands the rest. Own
-// profile gets an Edit control at the top that turns on reorder + a clear
-// "Edit" label on each field (and the bio). Friends never see those.
+// city, and bio. The photo is their profile pic (or whatever they set). If
+// the bio is long, "Rest of bio" expands the rest. Own profile gets an Edit
+// control at the top that turns on reorder + a clear "Edit" label on each
+// field (and the bio), plus Change photo on the picture. Friends never see
+// those.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import {
@@ -41,6 +43,7 @@ export function AboutMeSection({
   onAdd,
   onEditField,
   onEditBio,
+  onChangePhoto,
   onReorderFields
 }: {
   name?: string;
@@ -55,6 +58,8 @@ export function AboutMeSection({
   onEditField?: (field: AboutFieldView) => void;
   /** Open the fill flow / editor for the bio. */
   onEditBio?: () => void;
+  /** Own edit mode: open Take / Upload to change this (profile) photo. */
+  onChangePhoto?: () => void;
   /** Persist a new field order after the owner moves rows. */
   onReorderFields?: (next: AboutFieldView[]) => void;
 }) {
@@ -90,6 +95,8 @@ export function AboutMeSection({
   };
 
   const emptyBody = !bio && ordered.length === 0 && !photo;
+  // Own profile in Edit mode: tapping the picture opens Take / Upload.
+  const canChangePhoto = Boolean(editable && onChangePhoto);
 
   return (
     <View>
@@ -129,7 +136,26 @@ export function AboutMeSection({
 
       {/* THIS SECTION DOES: the open About card (photo, name, city, bio). */}
       <View className="overflow-hidden rounded-2xl border border-ink-line bg-canvas">
-        <View className="aspect-[16/10] w-full bg-purple/15">
+        {/* Profile pic (or their pick). In Edit mode, tap to change it. */}
+        <Pressable
+          disabled={!canChangePhoto}
+          onPress={
+            canChangePhoto
+              ? withAnalyticsPress(PROFILE.card.about_me_photo, () => onChangePhoto?.(), {
+                  analyticsProps: { method: 'edit' }
+                })
+              : undefined
+          }
+          accessibilityRole={canChangePhoto ? 'button' : 'image'}
+          accessibilityLabel={
+            canChangePhoto
+              ? 'Change About me photo. Updates your profile photo.'
+              : name
+                ? `${name}'s photo`
+                : 'About me photo'
+          }
+          className="aspect-[16/10] w-full bg-purple/15"
+        >
           {photo ? (
             <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
@@ -137,7 +163,12 @@ export function AboutMeSection({
               <Text className="text-[56px]">{emoji ?? '🙂'}</Text>
             </View>
           )}
-        </View>
+          {canChangePhoto ? (
+            <View className="absolute bottom-2 right-2 rounded-full bg-ink/80 px-3 py-1.5">
+              <Text className="font-sans-b text-[11px] text-canvas">Change photo</Text>
+            </View>
+          ) : null}
+        </Pressable>
 
         <View className="px-3.5 py-3">
           <View className="flex-row items-start justify-between gap-2">

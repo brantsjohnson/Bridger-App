@@ -374,7 +374,7 @@ function RootLayoutNav() {
       <JnameReferralSync />
       {/* Load personal grid tint after auth so SynthGrid matches ColorStep. */}
       <GridColorSync />
-      {/* Mid-party capture nudges when Random update nudges are on. */}
+      {/* Mid-party capture nudges when BeReal-like reminders are on. */}
       <PartyCapturePromptSync />
       {/* Delight gifts mount above navigation so they can play on any screen. */}
       <DelightHost />

@@ -12,11 +12,11 @@
 // skip). There is no "You're in" screen after this; Home plays the welcome
 // fireworks instead.
 //
-// LOOK: blue price panel (the big "$6" scales to the phone width so it never
-// clips), then a Free vs Co-op table that shows the five best reasons side by
-// side. "See more" opens the full list so the difference is clear. Then join /
-// "or" / invite / auth actions. The body scrolls, with a fade and the system
-// scroll bar so the list does not look done.
+// LOOK: blue price panel (full-bleed under the title with a hard straight top
+// edge; "$6 / mo" on the left of the hook copy so the text can use the width),
+// then a Free vs Co-op table (Yes → green check, No → X). "See more" opens the
+// full list. Then join / "or" / invite / auth actions. The body scrolls, with a
+// fade and the system scroll bar so the list does not look done.
 //
 // PAYMENT: "Join the co-op" opens our own join sheet (JoinCoopSheet), where the
 // person picks a pay method (App Store / Google Play / Card, by device) and then
@@ -46,14 +46,16 @@ const INVITE_GOAL = 3;
 /** Hold Join this long to reveal "Have an auth code?" (Easter egg, not a timer). */
 const AUTH_CODE_HOLD_MS = 10_000;
 
+/** Matches OnboardingStep PAGE_X so the blue price panel can bleed edge-to-edge. */
+const COOP_PAGE_X = 24;
+
 /**
- * Size the big "$6" so it fits the phone width and never clips its top.
- * Narrow phones get a smaller number; roomy phones stop growing past 56.
- * Line height stays a bit taller than the font so display glyphs are not cut.
+ * Size the big "$6" so it fits beside the hook text and never clips its top.
+ * Narrow phones get a smaller number; roomy phones stop growing past 48.
  */
 function priceTypeForWidth(width: number): { fontSize: number; lineHeight: number } {
-  const fontSize = Math.round(Math.min(56, Math.max(40, width * 0.135)));
-  return { fontSize, lineHeight: Math.round(fontSize * 1.15) };
+  const fontSize = Math.round(Math.min(48, Math.max(34, width * 0.1)));
+  return { fontSize, lineHeight: Math.round(fontSize * 1.12) };
 }
 
 /**
@@ -146,10 +148,59 @@ function CoopLink({
 const COOP_COL_TINT = OB.periwinkle;
 
 /**
+ * One Free / Co-op cell value. Plain Yes → green check, plain No → X, so the
+ * table reads at a glance. Other values (1 vote, 30 days, …) stay as words.
+ * ACCESSIBILITY: the spoken label is still Yes / No, not only the glyph.
+ */
+function CompareValue({
+  value,
+  emphasize
+}: {
+  value: string;
+  /** Co-op column: stronger ink when it is not a check / X. */
+  emphasize?: boolean;
+}) {
+  if (value === 'Yes') {
+    return (
+      <Text
+        accessible
+        accessibilityLabel="Yes"
+        className="font-sans-b text-[18px]"
+        style={{ color: OB.green, textAlign: 'center' }}
+      >
+        ✓
+      </Text>
+    );
+  }
+  if (value === 'No') {
+    return (
+      <Text
+        accessible
+        accessibilityLabel="No"
+        className="font-sans-b text-[16px]"
+        style={{ color: OB.inkFaint, textAlign: 'center' }}
+      >
+        ✕
+      </Text>
+    );
+  }
+  return (
+    <Text
+      className={emphasize ? 'font-sans-b text-[13px]' : 'font-sans-sb text-[13px]'}
+      style={{
+        color: emphasize ? OB.blue : OB.inkFaint,
+        textAlign: 'center'
+      }}
+    >
+      {value}
+    </Text>
+  );
+}
+
+/**
  * One row of the Free vs Co-op table: the feature name on the left, then the
  * free value and the co-op value in two cells. The co-op cell is tinted so the
- * better plan stands out. Values like "Yes" are shown bold in blue on the
- * co-op side so a quick glance reads as "you get more here".
+ * better plan stands out.
  */
 function CompareRow({
   label,
@@ -188,12 +239,7 @@ function CompareRow({
           justifyContent: 'center'
         }}
       >
-        <Text
-          className="font-sans-sb text-[13px]"
-          style={{ color: OB.inkFaint, textAlign: 'center' }}
-        >
-          {free}
-        </Text>
+        <CompareValue value={free} />
       </View>
       {/* What a co-op member gets (highlighted column). */}
       <View
@@ -206,19 +252,14 @@ function CompareRow({
           backgroundColor: COOP_COL_TINT
         }}
       >
-        <Text
-          className="font-sans-b text-[13px]"
-          style={{ color: OB.blue, textAlign: 'center' }}
-        >
-          {member}
-        </Text>
+        <CompareValue value={member} emphasize />
       </View>
     </View>
   );
 }
 
 /**
- * The Free vs Co-op comparison. Shows the five best rows first; "See more"
+ * The Free vs Co-op comparison. Shows the headline rows first; "See more"
  * reveals the full list so the person can see exactly what each plan gets.
  * The table itself is a read-only region (dead-click); only "See more" is
  * tappable.
@@ -232,8 +273,6 @@ function PlanCompare({
 }) {
   const rows = showAll ? COOP_PLAN_COMPARISON : COOP_PLAN_COMPARISON.filter((r) => r.top);
   const hiddenCount = COOP_PLAN_COMPARISON.length - COOP_PLAN_COMPARISON.filter((r) => r.top).length;
-  // Notes under the table sit on the canvas; follow theme ink in dark mode.
-  const theme = useThemeColors();
 
   return (
     <View style={{ gap: 10 }}>
@@ -306,14 +345,6 @@ function PlanCompare({
           {showAll ? 'See less' : `See more (${hiddenCount})`}
         </Text>
       </Pressable>
-
-      {/* HONEST NOTE: no ads on any plan; membership is what keeps it that way. */}
-      <Text
-        className="font-sans-sb text-[12px]"
-        style={{ color: theme.inkMute, textAlign: 'center', lineHeight: 17 }}
-      >
-        No ads on any plan. Members are what keep it that way.
-      </Text>
     </View>
   );
 }
@@ -469,7 +500,7 @@ export function CoopStep({
   };
 
   // THIS SECTION DOES: run the real purchase after they pick method + plan in
-  // the sheet. Keep the sheet open while busy so a cancel returns them to it.
+  // the sheet. Keep the sheet open on cancel / error so they can try again.
   const handleChoose = (
     method: 'apple' | 'google' | 'card',
     plan: 'monthly' | 'yearly'
@@ -477,7 +508,13 @@ export function CoopStep({
     if (joining) return;
     setJoining(true);
     void Promise.resolve(onJoin(method, plan))
-      .then(() => setJoinSheetOpen(false))
+      .then(() => {
+        // Only close after a confirmed join; errors / cancels stay on the sheet.
+        setJoinSheetOpen(false);
+      })
+      .catch(() => {
+        // Parent already showed an alert (or cancel was quiet). Sheet stays open.
+      })
       .finally(() => setJoining(false));
   };
 
@@ -521,22 +558,19 @@ export function CoopStep({
         </OBHardShadow>
       ) : null}
 
-      {/* OPTION B: open RevenueCat paywall (monthly / yearly). Hold 10s for auth code. */}
+      {/* OPTION B: open our join sheet (monthly / yearly). Hold 10s for auth code.
+          celebrate={false}: do not open the emoji Modal first. iOS will not show
+          the join sheet on top of that Modal, so Join looked like a dead tap. */}
       <OBCTA
         label={joining ? 'Opening membership…' : 'Join the co-op'}
         analyticsId={ONBOARDING.coop.join_paid}
         onPress={handleJoinPress}
         onLongPress={() => setAuthLinkVisible(true)}
         delayLongPress={AUTH_CODE_HOLD_MS}
+        celebrate={false}
         disabled={joining}
         accessibilityLabel="Join the co-op. Opens payment options: monthly or yearly."
       />
-      <Text
-        className="font-sans-sb text-[12px]"
-        style={{ color: theme.inkMute, textAlign: 'center', lineHeight: 17 }}
-      >
-        Pick monthly or yearly next. Cancel anytime.
-      </Text>
 
       {/* OR: sits between join and invite so the two paths read as a choice. */}
       <Text
@@ -568,14 +602,7 @@ export function CoopStep({
             >
               {inviteNote}
             </Text>
-          ) : (
-            <Text
-              className="font-sans-sb text-[12px]"
-              style={{ color: theme.inkMute, textAlign: 'center', lineHeight: 17 }}
-            >
-              Opens your contacts or share sheet with a Bridger invite link.
-            </Text>
-          )}
+          ) : null}
         </View>
       ) : (
         <View style={{ flexDirection: 'row' }}>
@@ -613,39 +640,64 @@ export function CoopStep({
         footer={footer}
       >
         <View style={{ gap: 14 }}>
-          {/* THE HOOK AND THE HONEST PRICE, on one solid blue panel. */}
-          <View style={{ padding: 16, backgroundColor: OB.blue }}>
-            <Text className="font-sans-sb text-[13.5px]" style={{ lineHeight: 20, color: OB.onColor }}>
-              Members get perks and share the profits. Free access unlocks when you
-              invite {INVITE_GOAL} friends.
-            </Text>
+          {/* THE HOOK + PRICE: full-bleed blue with a hard straight top edge
+              (bleed cancels the page padding so the panel is not inset). Price
+              sits on the left so the copy can use the rest of the width. */}
+          <View
+            style={{
+              marginHorizontal: -COOP_PAGE_X,
+              marginTop: -8,
+              paddingVertical: 16,
+              paddingHorizontal: COOP_PAGE_X,
+              backgroundColor: OB.blue,
+              // Straight seam under the italic title (no diagonal optical edge).
+              borderTopWidth: OB_BORDER,
+              borderTopColor: OB.navy
+            }}
+          >
             <View
               style={{
-                marginTop: 10,
                 flexDirection: 'row',
-                alignItems: 'baseline',
-                flexWrap: 'wrap',
-                gap: 10,
-                // Extra top air so tall display glyphs are not clipped by the panel.
-                paddingTop: 4,
-                overflow: 'visible'
+                alignItems: 'center',
+                gap: 14
               }}
             >
-              <Text
-                className="font-display"
+              {/* PRICE: compact stack on the left ($6 / a month). */}
+              <View
+                accessible
+                accessibilityLabel="$6 a month"
                 style={{
-                  fontSize: priceType.fontSize,
-                  lineHeight: priceType.lineHeight,
-                  letterSpacing: -2,
-                  color: OB.amber,
-                  // Android: stop the system from adding extra padding that can clip.
-                  includeFontPadding: false
+                  flexShrink: 0,
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  minWidth: 72,
+                  paddingTop: 2
                 }}
               >
-                $6
-              </Text>
-              <Text className="font-sans-b text-[15px]" style={{ color: OB.onColor }}>
-                a month
+                <Text
+                  className="font-display"
+                  style={{
+                    fontSize: priceType.fontSize,
+                    lineHeight: priceType.lineHeight,
+                    letterSpacing: -2,
+                    color: OB.amber,
+                    includeFontPadding: false
+                  }}
+                >
+                  $6
+                </Text>
+                <Text className="font-sans-b text-[13px]" style={{ color: OB.onColor, marginTop: -2 }}>
+                  / mo
+                </Text>
+              </View>
+
+              {/* HOOK COPY: takes the leftover width next to the price. */}
+              <Text
+                className="font-sans-sb text-[13.5px]"
+                style={{ flex: 1, lineHeight: 20, color: OB.onColor, minWidth: 0 }}
+              >
+                Members get perks and share the profits. Free access unlocks when you
+                invite {INVITE_GOAL} friends.
               </Text>
             </View>
             {clamped > 0 ? (
@@ -657,7 +709,7 @@ export function CoopStep({
             ) : null}
           </View>
 
-          {/* THE COMPARISON: five best reasons side by side, "See more" for the
+          {/* THE COMPARISON: headline reasons side by side, "See more" for the
               rest, so free vs co-op is clear at a glance. */}
           <PlanCompare
             showAll={showAllPerks}

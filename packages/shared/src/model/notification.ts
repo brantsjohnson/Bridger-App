@@ -11,7 +11,7 @@
 export type NotificationKind =
   | 'story_reply'
   | 'story_reply_elsewhere'
-  /** Opt-in: random "time to post" nudges, about 1–3 times a day */
+  /** Opt-in: BeReal-like capture reminders, 1–3 notifications a day */
   | 'story_prompt'
   | 'connect_request'
   | 'mutual_connection'
@@ -173,9 +173,9 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
   },
   {
     kind: 'story_prompt',
-    label: 'Random update nudges',
+    label: 'BeReal-like reminders',
     description:
-      'Surprise taps about 1–3 times a day, including one mid-party nudge to capture mems when you are at an event',
+      'Random reminders to capture your life, 1–3 notifications a day (BeReal-style). Includes a mid-party nudge when you are at an event',
     section: 'Updates & replies',
     circleGated: false,
     homePreview: false,
