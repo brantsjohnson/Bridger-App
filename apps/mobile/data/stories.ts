@@ -273,13 +273,15 @@ export async function answerCatchUpItem(
   });
 }
 
-/** Themed capture squares. */
+/** Themed capture squares. Seed fixtures first so the UI never waits on the API. */
 export async function listThemedPrompts(): Promise<ThemedPrompt[]> {
   if (isDemoMode()) return THEMED_PROMPTS;
   try {
-    return await apiFetch<ThemedPrompt[]>('/content/themed-prompts');
+    const rows = await apiFetch<ThemedPrompt[]>('/content/themed-prompts');
+    // Empty admin config → keep the three defaults so capture is never blank.
+    return rows.length > 0 ? rows : THEMED_PROMPTS;
   } catch {
-    return [];
+    return THEMED_PROMPTS;
   }
 }
 

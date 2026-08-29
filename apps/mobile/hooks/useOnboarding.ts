@@ -420,8 +420,19 @@ export function useOnboarding(onDone: () => void) {
     }
   }, [index]);
 
+  // Stable handle so Co-op re-renders do not rebuild `complete` and risk a
+  // second finish pass. Always call the latest onDone the parent passed in.
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+  // Blocks a double Continue / Join from running the finish line twice.
+  const completingRef = useRef(false);
+
   /** The finish line — Co-op (the last step) calls this. Always leaves to Home. */
   const complete = useCallback(async () => {
+    if (completingRef.current) return;
+    completingRef.current = true;
     // THIS SECTION DOES: one last pass so every draft answer is in Supabase,
     // even if an earlier step's save failed quietly.
     try {
@@ -445,8 +456,8 @@ export function useOnboarding(onDone: () => void) {
     // launch never tries to drop them back into a run they already completed.
     void clearOnboardingProgress();
     clearDevPreview();
-    onDone();
-  }, [onDone, startedAt]);
+    onDoneRef.current();
+  }, [startedAt]);
 
   /** Build the Privacy & Control rows from the taste answers (no onboarding recap). */
   const initVisibility = useCallback(() => {

@@ -451,17 +451,18 @@ export default function OnboardingScreen() {
             onJoin={async (method, plan) => {
               // Buys the chosen plan via the store / card (or soft join in
               // demo). Only finish onboarding after a confirmed purchase.
+              // Rethrow so CoopStep keeps the join sheet open on cancel / error.
               try {
                 await joinCoop(true, method, plan);
                 void flow.complete();
               } catch (err) {
-                // User closed the sheet: stay on this step. Real errors show an alert.
                 const { PurchaseCancelledError } = await import('../../data/coop');
-                if (err instanceof PurchaseCancelledError) return;
+                if (err instanceof PurchaseCancelledError) throw err;
                 Alert.alert(
                   'Could not join',
                   err instanceof Error ? err.message : 'Try again in a moment.'
                 );
+                throw err;
               }
             }}
             onInvitesComplete={() => {

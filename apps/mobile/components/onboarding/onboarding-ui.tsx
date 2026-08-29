@@ -556,7 +556,8 @@ export function OBCTA({
   disabled = false,
   accessibilityLabel,
   tone = 'pink',
-  burstEmojis
+  burstEmojis,
+  celebrate = true
 }: {
   label: string;
   onPress?: () => void;
@@ -577,6 +578,12 @@ export function OBCTA({
    * the favorite country's flag so Continue explodes that flag instead.
    */
   burstEmojis?: string[];
+  /**
+   * False = fire onPress right away with no emoji Modal. Use this when the tap
+   * opens another Modal/sheet (Join the co-op): iOS will not show a second
+   * Modal on top of the burst, so the sheet would look like it did nothing.
+   */
+  celebrate?: boolean;
 }) {
   const reduce = useReduceMotion();
   const btnRef = useRef<View>(null);
@@ -601,7 +608,9 @@ export function OBCTA({
     trackClick(analyticsId, analyticsProps);
     Keyboard.dismiss();
 
-    if (reduce) {
+    // No shower (or Reduce Motion): run the action now. Critical for Join,
+    // which opens its own Modal; a burst Modal would block that sheet on iOS.
+    if (reduce || !celebrate) {
       onPress();
       setTimeout(() => {
         advancing.current = false;

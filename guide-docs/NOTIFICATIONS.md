@@ -258,7 +258,7 @@ Settings shows one row per `kind` (not a bucket like "Events"). Section headers 
 | `story_reply` | Replies to your update | close | yes | **no** (replies row) | on |
 | `story_reply_elsewhere` | Replies to your comments | close | yes | yes | on |
 | `recap_reaction` | Recap reactions | close | yes | yes | on |
-| `story_prompt` | Random update nudges (1–3 / day) | — | no | **no** (push / Notifications page) | **off** |
+| `story_prompt` | BeReal-like reminders (1–3 / day) | — | no | **no** (push / Notifications page) | **off** |
 | `birthday` | Birthdays | birthdays | yes | yes | on |
 | `custom_date` | Saved dates | birthdays | yes | yes | on |
 | `friend_check_in` | Check-in nudges | birthdays | yes | yes | on |

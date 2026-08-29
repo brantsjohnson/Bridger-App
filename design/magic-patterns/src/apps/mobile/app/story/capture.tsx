@@ -140,19 +140,18 @@ export function StoryCaptureScreen({ onClose }: {onClose?: () => void;}) {
           )}
         </div>
 
-        {/* Opt-in surprise "time to post" nudges (about 1–3 a day) */}
+        {/* Opt-in BeReal-like capture reminders (1–3 a day) */}
         <div className="mt-3 flex items-center gap-3 rounded-card bg-white px-3 py-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-ink">Random update nudges</p>
+            <p className="text-[13px] font-bold text-ink">BeReal-like reminders</p>
             <p className="mt-0.5 text-[11px] font-medium leading-snug text-ink-soft">
-              About 1–3 surprise taps a day. Opens this screen when it is time to
-              post.
+              Random reminders to capture your life. 1–3 notifications a day.
             </p>
           </div>
           <Toggle
             checked={randomNudges}
             onChange={setRandomNudges}
-            label="Random update nudges, about 1 to 3 a day"
+            label="BeReal-like reminders, 1 to 3 notifications a day"
           />
         </div>
       </div>

@@ -337,11 +337,6 @@ export function StoryViewer({
             {post.emoji}
           </Text>
         )}
-        {post.overlayText ? (
-          <View className="absolute left-1/2 top-[32%] -translate-x-1/2 -rotate-2 bg-white px-3 py-1">
-            <Text className="font-pixel text-[20px] text-[#1C1B16]">{post.overlayText}</Text>
-          </View>
-        ) : null}
         {/* Quiet pause cue so people know they stopped the clip. */}
         {userPaused && !overlayPaused ? (
           <View className="absolute inset-0 items-center justify-center bg-black/25">

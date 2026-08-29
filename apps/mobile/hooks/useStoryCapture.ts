@@ -12,11 +12,13 @@ import {
   listThemedPrompts,
   type CreatePostInput
 } from '../data/stories';
+import { THEMED_PROMPTS } from '../data/fixtures/stories';
 
 export function useStoryCapture() {
-  const [left, setLeft] = useState(0);
+  const [left, setLeft] = useState(3);
   const [cap, setCap] = useState(3);
-  const [prompts, setPrompts] = useState<ThemedPrompt[]>([]);
+  // Seed the three squares right away so capture never sits empty for ~2s.
+  const [prompts, setPrompts] = useState<ThemedPrompt[]>(THEMED_PROMPTS);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {

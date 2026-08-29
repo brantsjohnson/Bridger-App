@@ -95,6 +95,7 @@ export function ProfilePageShell({
   onOpenAbout,
   onEditAboutField,
   onEditBio,
+  onChangeAboutPhoto,
   onReorderAboutFields,
   onOpenObsession,
   onOpenFavoritesModule,
@@ -128,6 +129,8 @@ export function ProfilePageShell({
   onOpenAbout?: () => void;
   onEditAboutField?: (field: AboutFieldView) => void;
   onEditBio?: () => void;
+  /** Own profile: open Take / Upload to change the About Me (profile) photo. */
+  onChangeAboutPhoto?: () => void;
   onReorderAboutFields?: (next: AboutFieldView[]) => void;
   onOpenObsession?: () => void;
   onOpenFavoritesModule?: (id: string) => void;
@@ -302,6 +305,7 @@ export function ProfilePageShell({
             onAdd={onOpenAbout}
             onEditField={onEditAboutField}
             onEditBio={onEditBio}
+            onChangePhoto={onChangeAboutPhoto}
             onReorderFields={onReorderAboutFields}
           />
         );

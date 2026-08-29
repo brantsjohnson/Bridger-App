@@ -17,7 +17,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDownIcon, TypeIcon } from 'lucide-react-native';
+import { ChevronDownIcon } from 'lucide-react-native';
 import {
   ACTIVITY_CAPTURE,
   dismissSurface,
@@ -33,8 +33,6 @@ import {
   type AudienceLevel
 } from '@bridger/ui';
 import { createPost } from '../../data/activity';
-
-const DEMO_GROUPS = ['Climbing crew', 'College friends'];
 
 type Props = {
   open: boolean;
@@ -160,28 +158,23 @@ export function ActivityCaptureSheet({
 
         {captured ? (
           <View className="gap-3 px-4 pt-4">
-            <View className="flex-row items-center gap-2 rounded-full border border-white/30 px-4 py-2.5">
-              <TypeIcon
-                size={16}
-                color="rgba(255,255,255,0.7)"
-                strokeWidth={2.4}
-              />
-              <TextInput
-                value={caption}
-                onChangeText={setCaption}
-                placeholder="Caption"
-                accessibilityLabel="Caption"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                className="min-w-0 flex-1 font-sans-sb text-[14px] text-white"
-              />
-            </View>
+            <TextInput
+              value={caption}
+              onChangeText={setCaption}
+              placeholder="Caption"
+              accessibilityLabel="Caption"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              multiline
+              className="min-h-[44px] rounded-2xl border border-white/30 px-4 py-3 font-sans-sb text-[14px] text-white"
+            />
 
             <AudiencePicker
               value={audience}
               onChange={setAudience}
               group={group}
               onGroupChange={setGroup}
-              groups={DEMO_GROUPS}
+              // No fake demo groups until they have real ones.
+              groups={[]}
               tone="dark"
             />
 

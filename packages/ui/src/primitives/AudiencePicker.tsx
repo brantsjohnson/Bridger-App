@@ -2,8 +2,9 @@
 // WHAT THIS FILE DOES (plain English):
 // "Who sees this" — the concentric audience picker used when you post an
 // Update, contribute to an activity, or share anything. Picking a wider circle
-// lights the tighter ones too (Close ⊂ Friends ⊂ Everyone). Optional named
-// groups sit underneath. Tone "dark" is for the capture composer.
+// lights the tighter ones too (Close ⊂ Friends ⊂ Everyone). Named groups only
+// show when the person actually has some. Tone "dark" is for the capture
+// composer.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -14,10 +15,10 @@ import { useThemeColors } from '../tokens';
 
 export type AudienceLevel = 'close' | 'friend' | 'everyone';
 
-const LEVELS: Array<{ id: AudienceLevel; label: string; sub: string }> = [
-  { id: 'close', label: 'Close', sub: 'Your closest people' },
-  { id: 'friend', label: 'Friends', sub: 'Friends circle' },
-  { id: 'everyone', label: 'Everyone', sub: 'All your people' }
+const LEVELS: Array<{ id: AudienceLevel; label: string }> = [
+  { id: 'close', label: 'Close' },
+  { id: 'friend', label: 'Friends' },
+  { id: 'everyone', label: 'Everyone' }
 ];
 
 /** Concentric: picking a wider circle lights the tighter ones too. */
@@ -32,7 +33,7 @@ type Props = {
   onChange: (v: AudienceLevel) => void;
   /** on a dark capture sheet, or on a normal surface */
   tone?: 'light' | 'dark';
-  /** co-op custom groups, shown alongside the three tiers */
+  /** co-op custom groups, shown only when the person has at least one */
   groups?: string[];
   /** the selected custom group, which replaces the tier choice */
   group?: string | null;
@@ -85,9 +86,9 @@ export function AudiencePicker({
               })}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              accessibilityLabel={`${l.label}. ${l.sub}`}
+              accessibilityLabel={l.label}
               className={cn(
-                'min-h-[44px] flex-1 rounded-2xl border px-2 py-2.5',
+                'min-h-[44px] flex-1 items-center justify-center rounded-2xl border px-2 py-2.5',
                 dark
                   ? on
                     ? 'border-white bg-white/15'
@@ -128,20 +129,12 @@ export function AudiencePicker({
                   {l.label}
                 </Text>
               </View>
-              <Text
-                numberOfLines={1}
-                className={cn(
-                  'mt-0.5 font-sans-sb text-[10px] opacity-70',
-                  dark ? 'text-white' : 'text-ink'
-                )}
-              >
-                {l.sub}
-              </Text>
             </Pressable>
           );
         })}
       </View>
 
+      {/* Groups only when they have some. Empty = no "Or a group" section. */}
       {groups.length > 0 ? (
         <View>
           <Text

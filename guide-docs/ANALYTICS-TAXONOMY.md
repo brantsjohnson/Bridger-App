@@ -158,6 +158,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `bucket_item_updated` | an item's text / friends / privacy is saved | `friend_tagged` (bool), `visibility` |
 | `bucket_item_deleted` | an item is removed | `method` (`swipe` / `edit_mode` / `sheet`) |
 | `profile_customized` | customize is saved | `changes_count`, `dwell_ms` |
+| `profile_photo_updated` | profile / About me photo saved after Take or Upload (not sheet open) | `method` (`camera`\|`library`) — never the image |
 | `profile_theme_saved` | Theme tokens saved (accent / background / font / mode) on customize | `accent`, `background`, `font`, `mode`, `dwell_ms` — never CSS or asset URLs |
 | `profile_layout_saved` | Layout order of movable modules saved | `module_count`, `dwell_ms` |
 | `connection_revealed` | a reveal completes | `recorded_where` (bool), `added_note` (bool), `meet_context` (`just-met` \| `already-know`), `to_tier` — NEVER place/note text or names |
@@ -407,7 +408,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 |---|---|
 | `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list` (record `first_interaction` → what they open first) |
 | `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `tier_control`, `edit` (rearrange mode), `settings_gear` (own only: gear next to Edit → Settings), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
-| `card` | `mutuals`, `top5`, `top5_row`, `about_me` (**dead**), `about_me_toggle`, `about_me_edit`, `about_me_bio_more`, `about_me_field_edit`, `about_me_reorder` (method=`up`\|`down`), `upcoming`, `upcoming_row`, `obsession`, `obsession_square`, `favorites`, `favorites_tile`, `favorites_to_start`, `see_all` (pill under top-4 grids), `greatest_hits`, `greatest_hits_photo` (**dead**), `where_met`, `hobbies_widget` (method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin`, `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module`, `widget_edit` (pencil on a widget box), `widget_reorder` (method=`up`\|`down`). `currently` retired (see Renames) |
+| `card` | `mutuals`, `top5`, `top5_row`, `about_me` (**dead**), `about_me_toggle`, `about_me_edit`, `about_me_bio_more`, `about_me_field_edit`, `about_me_reorder` (method=`up`\|`down`), `about_me_photo` (own Edit: Take/Upload; updates avatar), `upcoming`, `upcoming_row`, `obsession`, `obsession_square`, `favorites`, `favorites_tile`, `favorites_to_start`, `see_all` (pill under top-4 grids), `greatest_hits`, `greatest_hits_photo` (**dead**), `where_met`, `hobbies_widget` (method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin`, `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module`, `widget_edit` (pencil on a widget box), `widget_reorder` (method=`up`\|`down`). `currently` retired (see Renames) |
 | `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `hobby_search` (focus search; never logs query text), **`hobby_category` (dead)**, `hobby_add_own`, `hobby_custom_name`, `hobby_custom_emoji`, `hobby_custom_save`, `hobby_custom_remove`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
 | `intro` *(surface `profile_intro`)* | **`body` (dead)**, `continue` (visible label: Hell yeah; dismisses once forever) |
 | `stories_calendar` | `day` (opens story), `month_nav`, `storage_bar` |
@@ -761,7 +762,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-07 | `events.host.brought_count` (counts row) | retired (id kept); attribution in `event_people_sheet` | Host event page: two wide pills (going/invited); brought moves into list rows |
 | 2026-08-07 | — | `events.detail.date_chip`, `events.detail.countdown` + `event_guest_invited` (`via` host\|attendee) | Date square in header; flip-tile countdown; invite attribution |
 | 2026-08-08 | — | `events.gate.*` | Events marketing gate (memories wall) before first host create |
-| 2026-08-11 | — | `post_composer.suggested.random_nudges_toggle` / `random_nudges_label` + `story_prompt` kind | Opt-in random update nudges (~1–3 / day) on capture |
+| 2026-08-11 | — | `post_composer.suggested.random_nudges_toggle` / `random_nudges_label` + `story_prompt` kind | Opt-in BeReal-like reminders (1–3 / day) on capture |
 | 2026-08-23 | — | `post_composer.suggested.event_tag_label` / `event_tag_clear`; `events.detail.photo_album_header` / `photo_album_tile`; `party_capture_prompt_sent` | Mid-party capture nudge + event album tagging |
 | 2026-08-25 | `auth.welcome` text beats (`brand`/`beat_body`/`progress_bar`, now dead) | one-off CRT terminal intro (surface `auth`, non-interactive, no skip) | First-open experience replaced by the CRT intro (plays once per install, then sign-in) |
 | 2026-08-25 | `demo_mode_entered` `method: logo_password` | added `method: logo_onboard` (3-tap logo → password `onboard`) | Demo bypass straight into a fresh onboarding run (dev/preview only); reuses `auth.sign_in.brand_logo` |
@@ -802,4 +803,5 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-29 | — | `onboarding.contacts.awesome_banner` (dead) | Green success banner after contacts sync / invite: "AWESOME! We'll notify you when friends join." |
 | 2026-08-29 | — | `onboarding.taste.song_search` / `song_result` / `song_search_cancel` + surface `onboarding_song_search_sheet` | After music connect, sheet to search + pick the song on repeat |
 | 2026-08-29 | — | `onboarding.review.row_edit` / `row_edit_save` / `row_edit_cancel` + surface `onboarding_privacy_edit_sheet` | Privacy & Control corner Edit updates text + Supabase immediately |
+| 2026-08-29 | — | `profile.card.about_me_photo` + `profile_photo_updated` | About me card uses live avatar; Edit → Take/Upload updates profile photo |
 |

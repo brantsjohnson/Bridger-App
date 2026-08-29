@@ -838,6 +838,8 @@ export const PROFILE = {
     about_me_field_edit: aid('profile', 'card', 'about_me_field_edit'),
     /** Reorder an about-me field (method=up|down). */
     about_me_reorder: aid('profile', 'card', 'about_me_reorder'),
+    /** Own Edit mode: tap About me photo to Take / Upload (updates avatar). */
+    about_me_photo: aid('profile', 'card', 'about_me_photo'),
     upcoming: aid('profile', 'card', 'upcoming'),
     upcoming_row: aid('profile', 'card', 'upcoming_row'),
     obsession: aid('profile', 'card', 'obsession'),

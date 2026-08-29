@@ -2,7 +2,7 @@
 // WHAT THIS FILE DOES (plain English):
 // While you are at a party you said you are going to (or hosting), sends one
 // surprise "capture the mems" notification at a random time mid-event — but
-// only if you turned on Random update nudges on the capture screen, and only
+// only if you turned on BeReal-like reminders on the capture screen, and only
 // if you still have room in your 3-posts-a-day quota. Demo mode schedules
 // locally; live push will ship server-side later.
 // ============================================
