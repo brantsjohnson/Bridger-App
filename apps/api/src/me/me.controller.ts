@@ -31,6 +31,9 @@ import { DemoWeekService } from '../demo-week/demo-week.service';
 import { PosthogService } from '../posthog/posthog.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
+/** The four profile-photo looks people can pick. */
+type AvatarFilter = 'pop_art' | 'comic' | 'x_ray' | 'sepia';
+
 /** What the app may send to PATCH /me. Every field is optional (partial save). */
 interface UpdateMeBody {
   /** Display name (first + last), from the onboarding "name" step. */
@@ -38,12 +41,26 @@ interface UpdateMeBody {
   /**
    * Media id of the uploaded profile photo, from the onboarding confirm-profile
    * step. The file already lives in the private media bucket; here we just point
-   * the identity row at it.
+   * the identity row at it. Usually the filtered (baked) copy.
    */
   avatarMediaId?: string;
+  /**
+   * Unfiltered source photo id. Kept so Profile Edit can switch looks without
+   * a re-upload. Optional when saving a plain photo with no look.
+   */
+  avatarOriginalMediaId?: string | null;
+  /** Which look is baked into avatarMediaId (null clears the look key). */
+  avatarFilter?: AvatarFilter | null;
   /** Set true from the final "welcome-in" screen when setup is done. */
   onboardingComplete?: boolean;
 }
+
+const AVATAR_FILTERS = new Set<AvatarFilter>([
+  'pop_art',
+  'comic',
+  'x_ray',
+  'sepia'
+]);
 
 /**
  * What the app sends to PATCH /me/onboarding-progress. `step` is the screen the
@@ -119,10 +136,12 @@ export class MeController {
       .eq('id', user.id)
       .maybeSingle();
 
-    // Your public face: name + avatar reference.
+    // Your public face: name + avatar reference + which look was baked.
     const { data: identity } = await this.supabase.admin
       .from('user_identity')
-      .select('display_name, avatar_media_id, profile_song')
+      .select(
+        'display_name, avatar_media_id, avatar_original_media_id, avatar_filter, profile_song'
+      )
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -134,6 +153,9 @@ export class MeController {
       .maybeSingle();
 
     const avatarUrl = await this.signAvatarUrl(identity?.avatar_media_id);
+    const avatarOriginalUrl = await this.signAvatarUrl(
+      identity?.avatar_original_media_id
+    );
 
     return {
       authUserId: user.id,
@@ -141,8 +163,12 @@ export class MeController {
       profile: account,
       name: identity?.display_name ?? null,
       avatarMediaId: identity?.avatar_media_id ?? null,
+      avatarOriginalMediaId: identity?.avatar_original_media_id ?? null,
+      avatarFilter: identity?.avatar_filter ?? null,
       // Short-lived signed URL for the header / profile photo (null if none).
       avatarUrl,
+      // Unfiltered original (for Edit → switch look). Null when never baked.
+      avatarOriginalUrl,
       // Missing settings row = brand-new account = not onboarded yet.
       onboardingComplete: settings?.onboarding_complete ?? false,
       // Resume point for a run that was interrupted (null before start / after
@@ -165,6 +191,8 @@ export class MeController {
       user_id: string;
       display_name?: string;
       avatar_media_id?: string;
+      avatar_original_media_id?: string | null;
+      avatar_filter?: string | null;
     } = { user_id: user.id };
     if (typeof body?.name === 'string') {
       identityPatch.display_name = body.name.trim();
@@ -172,9 +200,24 @@ export class MeController {
     if (typeof body?.avatarMediaId === 'string') {
       identityPatch.avatar_media_id = body.avatarMediaId;
     }
+    if (body?.avatarOriginalMediaId === null) {
+      identityPatch.avatar_original_media_id = null;
+    } else if (typeof body?.avatarOriginalMediaId === 'string') {
+      identityPatch.avatar_original_media_id = body.avatarOriginalMediaId;
+    }
+    if (body?.avatarFilter === null) {
+      identityPatch.avatar_filter = null;
+    } else if (
+      typeof body?.avatarFilter === 'string' &&
+      AVATAR_FILTERS.has(body.avatarFilter)
+    ) {
+      identityPatch.avatar_filter = body.avatarFilter;
+    }
     if (
       identityPatch.display_name !== undefined ||
-      identityPatch.avatar_media_id !== undefined
+      identityPatch.avatar_media_id !== undefined ||
+      identityPatch.avatar_original_media_id !== undefined ||
+      identityPatch.avatar_filter !== undefined
     ) {
       const { data: existing } = await this.supabase.admin
         .from('user_identity')
@@ -184,12 +227,23 @@ export class MeController {
       if (existing) {
         // Only the fields that were sent — never wipe name when saving a photo
         // (or the reverse).
-        const fields: { display_name?: string; avatar_media_id?: string } = {};
+        const fields: {
+          display_name?: string;
+          avatar_media_id?: string;
+          avatar_original_media_id?: string | null;
+          avatar_filter?: string | null;
+        } = {};
         if (identityPatch.display_name !== undefined) {
           fields.display_name = identityPatch.display_name;
         }
         if (identityPatch.avatar_media_id !== undefined) {
           fields.avatar_media_id = identityPatch.avatar_media_id;
+        }
+        if (identityPatch.avatar_original_media_id !== undefined) {
+          fields.avatar_original_media_id = identityPatch.avatar_original_media_id;
+        }
+        if (identityPatch.avatar_filter !== undefined) {
+          fields.avatar_filter = identityPatch.avatar_filter;
         }
         const { error } = await this.supabase.admin
           .from('user_identity')

@@ -88,7 +88,16 @@ type QuizData = {
     label: string;
     accent: EventItem['accent'];
     friendIds: string[];
+    friends?: Array<{
+      userId: string;
+      percent: number;
+      compatibilityPercent: number;
+    }>;
   }>;
+  /** Your own result label (J-name), independent of friend buckets. */
+  myResultLabel?: string | null;
+  myResultAccent?: EventItem['accent'];
+  myResultPercent?: number | null;
 };
 
 export function NextEventWidget({
@@ -427,7 +436,11 @@ export function QuizWidget({
   /** Override the Take button analytics id (standing J-name prompt uses take_prompt). */
   takeAnalyticsId?: string;
 }) {
-  const mine = quiz.results.find((r) => r.id === resultId);
+  // Your result comes from myResultLabel (or resultId), not from friend buckets.
+  // Friend buckets only power "Your versions" / who-got-who.
+  const myLabel = quiz.myResultLabel ?? resultId;
+  const myAccent = quiz.myResultAccent ?? 'purple';
+  const completed = Boolean(myLabel);
   const c = useThemeColors();
   const takeId = takeAnalyticsId ?? HOME.this_week.take_quiz;
 
@@ -440,7 +453,7 @@ export function QuizWidget({
   const cycling = Boolean(quiz.coverImages?.length);
 
   if (size === 'full') {
-    if (!mine) {
+    if (!completed || !myLabel) {
       return (
         <Card className="overflow-hidden p-0">
           <View className={cycling ? 'relative h-52 w-full' : 'h-24 w-full'}>
@@ -485,11 +498,16 @@ export function QuizWidget({
 
     return (
       <View className="gap-3">
-        <View style={ORGANIC.bold} className={cn('p-6', ACCENTS[mine.accent].tintSolid)}>
+        <View style={ORGANIC.bold} className={cn('p-6', ACCENTS[myAccent].tintSolid)}>
           <Text className="text-center font-sans-b text-[12px] text-ink-soft">{quiz.title}</Text>
           <Text className="mt-1.5 text-center font-pixel text-[24px] leading-tight text-ink">
-            {mine.label}
+            {myLabel}
           </Text>
+          {typeof quiz.myResultPercent === 'number' ? (
+            <Text className="mt-1 text-center font-sans-sb text-[12px] text-ink-soft">
+              {quiz.myResultPercent}% match
+            </Text>
+          ) : null}
           <View className="mt-3 items-center">
             <ButtonSecondary
               size="sm"
@@ -497,11 +515,25 @@ export function QuizWidget({
               analyticsId={HOME.quiz.share}
               accessibilityLabel="Share this quiz"
               onPress={() => {
-                void Share.share({
-                  message: `Take "${quiz.title}" on Bridger.${
-                    mine ? ` I got: ${mine.label}.` : ''
-                  }`
-                });
+                void (async () => {
+                  // Prefer the stable server share link so friends who take it
+                  // can connect back to you. Fall back to a plain invite line.
+                  let url: string | undefined;
+                  if (quiz.id === 'what-j-name') {
+                    try {
+                      const { getJnameShareLink } = await import('../../lib/jname-api');
+                      const share = await getJnameShareLink();
+                      url = share?.url;
+                    } catch {
+                      url = undefined;
+                    }
+                  }
+                  await Share.share({
+                    message: url
+                      ? `I'm ${myLabel} on Bridger. Which J are you? ${url}`
+                      : `Take "${quiz.title}" on Bridger. I got: ${myLabel}.`
+                  });
+                })();
               }}
             >
               Share quiz
@@ -515,7 +547,7 @@ export function QuizWidget({
               <Text className="font-sans-b text-[13px] text-ink">
                 {quiz.id === 'what-j-name' ? 'Your versions' : 'Who got who'}
               </Text>
-              <Pressable onPress={() => onOpenResult(mine.id)}>
+              <Pressable onPress={() => onOpenResult(myLabel)}>
                 <Text className="font-sans-b text-[12px] text-purple">See more</Text>
               </Pressable>
             </View>
@@ -527,20 +559,35 @@ export function QuizWidget({
                     .sort((a, b) => b.friendIds.length - a.friendIds.length)
                     .slice(0, 3)
                 : quiz.results
-              ).map((r) => (
-                <Pressable
-                  key={r.id}
-                  onPress={() => onOpenResult(r.id)}
-                  className="w-full flex-row items-center gap-3 rounded-card border border-ink-line bg-surface px-4 py-3 active:opacity-90"
-                >
-                  <Text className="min-w-0 flex-1 font-sans-b text-[13px] text-ink" numberOfLines={1}>
-                    {quiz.id === 'what-j-name'
-                      ? `Your version of ${r.label}`
-                      : `${r.label} · ${r.friendIds.length}`}
-                  </Text>
-                  <AvatarStack people={faceStack(r.friendIds)} />
-                </Pressable>
-              ))}
+              ).map((r) => {
+                // Average compatibility in this bucket for a quick "how you line up".
+                const comps = (r.friends ?? []).map((f) => f.compatibilityPercent);
+                const avgCompat =
+                  comps.length > 0
+                    ? Math.round(comps.reduce((a, b) => a + b, 0) / comps.length)
+                    : null;
+                return (
+                  <Pressable
+                    key={r.id}
+                    onPress={() => onOpenResult(r.id)}
+                    className="w-full flex-row items-center gap-3 rounded-card border border-ink-line bg-surface px-4 py-3 active:opacity-90"
+                  >
+                    <View className="min-w-0 flex-1">
+                      <Text className="font-sans-b text-[13px] text-ink" numberOfLines={1}>
+                        {quiz.id === 'what-j-name'
+                          ? `Your version of ${r.label}`
+                          : `${r.label} · ${r.friendIds.length}`}
+                      </Text>
+                      {quiz.id === 'what-j-name' && avgCompat != null ? (
+                        <Text className="mt-0.5 font-sans-sb text-[11px] text-ink-mute">
+                          {avgCompat}% compatible
+                        </Text>
+                      ) : null}
+                    </View>
+                    <AvatarStack people={faceStack(r.friendIds)} />
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         ) : null}
@@ -552,7 +599,7 @@ export function QuizWidget({
     <Pressable
       onPress={withAnalyticsPress(
         takeId,
-        resultId ? () => onOpenResult(resultId) : onTake
+        completed ? () => onOpenResult(myLabel!) : onTake
       )}
       accessibilityRole="button"
       className="min-h-[140px] w-full overflow-hidden rounded-card active:opacity-90"
@@ -570,10 +617,10 @@ export function QuizWidget({
       </View>
       <View className="flex-1 justify-between bg-[#D5C2FF] p-4">
         <Text className="font-sans-b text-[13px] leading-snug text-onaccent">
-          {resultId ? mine?.label ?? quiz.title : quiz.title}
+          {completed ? myLabel ?? quiz.title : quiz.title}
         </Text>
         <Text className="mt-1 font-sans-b text-[11px] text-onaccent/75">
-          {resultId
+          {completed
             ? quiz.id === 'what-j-name'
               ? 'Your versions'
               : 'Who got who'

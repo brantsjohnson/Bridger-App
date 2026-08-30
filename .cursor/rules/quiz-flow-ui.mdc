@@ -1,18 +1,18 @@
 ---
-description: Discover / Connect Over quiz take UI — congruent checkbox rows, accent select, willow emoji burst, always-on keyboard, no page chrome.
+description: Discover / Connect Over quiz take UI — congruent checkbox rows, accent select, emoji burst, always-on keyboard, no page chrome.
 globs: apps/mobile/quizzes/**/*.{tsx,ts}
 alwaysApply: false
 ---
 
 # Quiz take UI (Connect Over / Discover)
 
-Use `apps/mobile/quizzes/discover/_shared/QuizTakeShell.tsx` (+ `QuizOptionTile`, `EmojiBurst`).
+Use `apps/mobile/quizzes/discover/_shared/QuizTakeShell.tsx` (+ `QuizOptionTile`). Bursts use shared `HobbyEmojiBurst` (same as hobbies / onboarding).
 
 ## Hard rules
 
 1. **Congruent rows** — same radius checkbox+label tiles (not wildly different fun shapes, not big in-tile emoji).
 2. **Selected** — full accent fill on the row + checkbox colored in with a tick. Color is the main signal; no floating check badge.
-3. **Emoji burst** — option emoji launches from the tap, arcs up, then falls off-screen (willow / toss-and-fall ~1.6s). Not a radial party pop. Respect Reduce Motion.
+3. **Emoji burst** — option emoji launches from the tap via `HobbyEmojiBurst` (power boom), arcs up, then falls all the way off the bottom of the page. Respect Reduce Motion.
 4. **Always-on type box** — focused by default on take; typing and tapping options both work. No "Add a note" toggle.
 5. **Advance** — mobile: Return / → on the type box. Desktop (web): Continue button. No `1/2` page chrome.
 6. **Tight spacing** — compact option gap; avoid huge empty mid-screen voids.

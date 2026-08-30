@@ -4,7 +4,7 @@
 // Pop art leads with an instant on-device Warhol preview; all four looks
 // (Pop art, Comic, Sepia, X-ray) bake on Bridger servers so the filtered face
 // is the saved avatar everywhere. Tap one and the pink pill highlight moves.
-// Under the row a badge says preview vs server save (never AI).
+// Under the row a badge says Pop art ran on the phone (not AI).
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -50,13 +50,20 @@ const FILTER_LABEL_INK = '#1C1B16';
 
 export function PhotoFilterPicker({
   value,
-  onChange
+  onChange,
+  analyticsIds
 }: {
   value: PhotoFilterKey;
   onChange: (filter: PhotoFilterKey) => void;
+  /**
+   * Optional overrides when this row is reused outside onboarding (e.g. Profile
+   * Edit). Defaults to the Confirm-your-details ids.
+   */
+  analyticsIds?: Partial<Record<PhotoFilterKey, string>>;
 }) {
   // Pop art previews on the phone; every look (including Pop art) saves via
   // Bridger servers so the filtered face is what friends see as your avatar.
+  // Badge only shows for Pop art. Other looks skip the line so people just continue.
   const isPopArtPreview = value === 'pop_art';
 
   return (
@@ -78,10 +85,11 @@ export function PhotoFilterPicker({
       >
         {FILTER_OPTIONS.map(({ key, label, analyticsId }) => {
           const active = key === value;
+          const id = analyticsIds?.[key] ?? analyticsId;
           return (
             <Pressable
               key={key}
-              onPress={withAnalyticsPress(analyticsId, () => onChange(key))}
+              onPress={withAnalyticsPress(id, () => onChange(key))}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               accessibilityLabel={label}
@@ -113,55 +121,51 @@ export function PhotoFilterPicker({
         })}
       </View>
 
-      {/* THIS SECTION DOES: privacy line under the row (never sent to an AI model). */}
-      <AnalyticsRegion
-        analyticsId={ONBOARDING.confirm_profile.local_processing_badge}
-        interactive={false}
-        accessibilityLabel={
-          isPopArtPreview
-            ? 'Preview on device. Saved on Bridger servers. Never sent to an AI model.'
-            : 'Processed on Bridger servers. Never sent to an AI model.'
-        }
-      >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            alignSelf: 'stretch',
-            borderRadius: 999,
-            backgroundColor: LOCAL_BADGE_BG,
-            paddingHorizontal: 14,
-            paddingVertical: 10
-          }}
+      {/* THIS SECTION DOES: Pop art only. Says the look ran on the phone, not AI. */}
+      {isPopArtPreview ? (
+        <AnalyticsRegion
+          analyticsId={ONBOARDING.confirm_profile.local_processing_badge}
+          interactive={false}
+          accessibilityLabel="Ran 100 percent locally. Not AI."
         >
-          <View style={{ width: 22, height: 16, alignItems: 'center', justifyContent: 'center' }}>
-            <LaptopIcon size={18} color={LOCAL_BADGE_INK} strokeWidth={2.2} />
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              alignSelf: 'stretch',
+              borderRadius: 999,
+              backgroundColor: LOCAL_BADGE_BG,
+              paddingHorizontal: 14,
+              paddingVertical: 10
+            }}
+          >
+            <View style={{ width: 22, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+              <LaptopIcon size={18} color={LOCAL_BADGE_INK} strokeWidth={2.2} />
+              <Text
+                accessible={false}
+                style={{
+                  position: 'absolute',
+                  fontSize: 7,
+                  lineHeight: 8,
+                  fontWeight: '700',
+                  color: LOCAL_BADGE_INK,
+                  marginTop: 2
+                }}
+              >
+                {'<>'}
+              </Text>
+            </View>
             <Text
-              accessible={false}
-              style={{
-                position: 'absolute',
-                fontSize: 7,
-                lineHeight: 8,
-                fontWeight: '700',
-                color: LOCAL_BADGE_INK,
-                marginTop: 2
-              }}
+              className="font-sans-m"
+              style={{ fontSize: 13, letterSpacing: -0.2, color: LOCAL_BADGE_INK }}
             >
-              {'<>'}
+              Ran 100% locally - not AI
             </Text>
           </View>
-          <Text
-            className="font-sans-m"
-            style={{ fontSize: 13, letterSpacing: -0.2, color: LOCAL_BADGE_INK }}
-          >
-            {isPopArtPreview
-              ? 'Preview local · saved on Bridger · never AI'
-              : 'On Bridger servers · never AI'}
-          </Text>
-        </View>
-      </AnalyticsRegion>
+        </AnalyticsRegion>
+      ) : null}
     </View>
   );
 }

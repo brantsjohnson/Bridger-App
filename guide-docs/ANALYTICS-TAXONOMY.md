@@ -72,6 +72,7 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `edit_bucket_sheet` | `profile` (own Bucket list tab) | edit / delete a want — do they open then bail? |
 | `profile_intro` | `profile` (own, first visit) | mandatory one-time black welcome before fill (Events/Discover vibe) |
 | `profile_search_sheet` | `profile` (own or friend) | search this profile's visible fields — never logs query text |
+| `photo_look_sheet` | `profile` (own, Edit) | switch profile photo look (Pop art / Comic / Sepia / X-ray) — open then bail? save? |
 | `assistant` | Settings (opt-in only) | relationship Assistant chat — never logs query/note/transcript text |
 
 **Rule:** opening a sheet emits `surface_opened`; closing without acting emits `surface_dismissed` with `dwell_ms`. That single pair answers "do people open this and give up?"
@@ -124,6 +125,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `quick_check_kept` | Announcements quick check: user confirmed the stale fact is still true | `—` (never the question text) |
 | `quick_check_removed` | Announcements quick check: user said the fact is no longer true | `—` (never the question text) |
 | `friend_added` | a connection is **confirmed** (redeem / server create — not share-sheet or scan-button tap) | `method` (qr/link/scan/suggestion), `via` |
+| `connect_requested` | a FoF connect request is **confirmed** from reveal Screen 3 (POST /connections success) | `surface` (`reveal`), `method` (`bridge`), `via_present` (bool) — never names |
 | `invite_link_shared` | OS share completed or SMS compose opened with an invite link (not the tap alone; dismiss ≠ share) | `method` (`sms`\|`share`), `context` (`onboarding`\|`invite_access`), optional `slot` (1\|2\|3) — never names/phones |
 | `friend_retiered` | a friend moves tiers (**not** just a drag) | `from_tier`, `to_tier` |
 | `friend_removed` / `friend_blocked` / `friend_reported` | the action completes | `—` |
@@ -159,6 +161,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `bucket_item_deleted` | an item is removed | `method` (`swipe` / `edit_mode` / `sheet`) |
 | `profile_customized` | customize is saved | `changes_count`, `dwell_ms` |
 | `profile_photo_updated` | profile / About me photo saved after Take or Upload (not sheet open) | `method` (`camera`\|`library`) — never the image |
+| `profile_photo_filter_updated` | own profile saved a new photo look from Edit → Photo look sheet (confirmed bake) | `filter` (`pop_art`\|`comic`\|`x_ray`\|`sepia`) — never the image |
 | `profile_theme_saved` | Theme tokens saved (accent / background / font / mode) on customize | `accent`, `background`, `font`, `mode`, `dwell_ms` — never CSS or asset URLs |
 | `profile_layout_saved` | Layout order of movable modules saved | `module_count`, `dwell_ms` |
 | `connection_revealed` | a reveal completes | `recorded_where` (bool), `added_note` (bool), `meet_context` (`just-met` \| `already-know`), `to_tier` — NEVER place/note text or names |
@@ -244,7 +247,7 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 ### `chrome` (floating tab bar — global)
 | section | elements |
 |---|---|
-| `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper), `profile_icon` (your face on the far-right of the pill — opens Profile; moved here from the header, replaces `*.top_nav.profile_icon`); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
+| `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper), `profile_icon` (single-person line icon on the far-right of the pill — opens Profile; selected = ink pill like the other tabs; moved here from the header, replaces `*.top_nav.profile_icon`); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
 
 ### `onboarding`
 New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → privacy circles → privacy & control → [screentime stat] → [co-op intro] → co-op. The four stat interstitials and the co-op intro splash do not count in the progress bar. Finishing Co-op completes onboarding and lands on Home, which plays the one-time welcome fireworks (own surface `welcome_celebration`). The old "You're in" screen (`welcome_in`) was removed 2026-08-28. The onboarding Recap voice step is archived; weekly recaps stay on Friend Pod.
@@ -280,7 +283,7 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `inside_jokes_strip` | `note`, `add`, **`sticky_note_body` (dead — do they tap the note itself?)** |
 | `ask_the_group` | `create_poll`, `ask_question`, `see_previous_polls`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, `open_events` (empty This week → Events tab), `example_card` (seeded Event Example; self-hides after tap), **`example_badge` (dead — "Example" pill)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `coming_up` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "Add friends to get reminders.")** |
+| `coming_up` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — blue teach card when nothing is due)**, `empty_dismiss` (X hides Coming up until real items) |
 | `activity` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open`, `heart`, `post` |
 | `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `take`, `open_result`, `share`, `take_prompt` (standing "Which J name are you?" when no live quiz payload) |
 | `coop` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open_portal`, `join`, `use_free` |
@@ -407,7 +410,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | section | elements |
 |---|---|
 | `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list` (record `first_interaction` → what they open first) |
-| `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `tier_control`, `edit` (rearrange mode), `settings_gear` (own only: gear next to Edit → Settings), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
+| `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `post_prompt` (own only: empty dashed story tile → opens `post_composer`), `tier_control`, `edit` (rearrange mode + opens Photo look sheet), `settings_gear` (own only: gear next to Edit → Settings), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), `filter_pop_art` / `filter_comic` / `filter_sepia` / `filter_x_ray` (Photo look pills), `photo_look_save`, `photo_look_dismiss`, **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
 | `card` | `mutuals`, `top5`, `top5_row`, `about_me` (**dead**), `about_me_toggle`, `about_me_edit`, `about_me_bio_more`, `about_me_field_edit`, `about_me_reorder` (method=`up`\|`down`), `about_me_photo` (own Edit: Take/Upload; updates avatar), `upcoming`, `upcoming_row`, `obsession`, `obsession_square`, `favorites`, `favorites_tile`, `favorites_to_start`, `see_all` (pill under top-4 grids), `greatest_hits`, `greatest_hits_photo` (**dead**), `where_met`, `hobbies_widget` (method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin`, `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module`, `widget_edit` (pencil on a widget box), `widget_reorder` (method=`up`\|`down`). `currently` retired (see Renames) |
 | `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `hobby_search` (focus search; never logs query text), **`hobby_category` (dead)**, `hobby_add_own`, `hobby_custom_name`, `hobby_custom_emoji`, `hobby_custom_save`, `hobby_custom_remove`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
 | `intro` *(surface `profile_intro`)* | **`body` (dead)**, `continue` (visible label: Hell yeah; dismisses once forever) |
@@ -592,6 +595,10 @@ Settings: `profile.settings.assistant_toggle`, `profile.settings.assistant_open`
 | section | elements |
 |---|---|
 | `flow` | `how_you_met_choice`, `record_place_toggle`, `tier_choice`, `meet_note`, `meet_note_toggle`, `continue`, `see_profile`, `tap_next` (story forward), `tap_prev` (story back), `close` (X → new connection's profile), **`progress` (dead)**, **`orbs` (dead)**, **`venn` (dead, legacy)** |
+| `quiz_matches` | `info` (opens `section_info_tooltip`, method=hover\|tap — "From the quizzes you both took") |
+| `suggestions` | **`title` (dead)** ("People you might click with"), **`card` (dead)** (FoF card body), `add` (Add FoF), `optin_toggle` (Turn on Discover) |
+
+Pairs with product events `connection_revealed` (beat 0 commit) and `connect_requested` (Screen 3 Add, confirmed POST only).
 
 ### `coop` (benefits + multi-page portal)
 | section | elements |
@@ -796,6 +803,8 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-28 | — | `messages.conversation.contact_card_chip` | Shared-card bubble: Contact card label + message icon; expands fields (`method: dropdown`); never `tel:` |
 | 2026-08-28 | — | `home.this_week.open_events` | Empty This week widget tap opens the Events tab |
 | 2026-08-28 | — | `home.coming_up.empty_body` | Coming up null line: "Add friends to get reminders." |
+| 2026-08-30 | `home.coming_up.empty_body` copy "Add friends to get reminders." | soft announcement card: birthdays / custom dates will show here | Same dead-click id; clearer empty state for new accounts |
+| 2026-08-30 | Coming up empty soft card | blue row + calendar icon + grammar fix + `empty_dismiss` (X) | Matches real Coming up capsules; section hides until items exist |
 | 2026-08-28 | onboarding step `recap` (between places and privacy-control) | archived; progress bar 14→13 question screens | Voice recap stays on Friend Pod; `taste.recap_*` ids kept for history |
 | 2026-08-28 | onboarding `welcome_in` screen (`welcome_in.lets_go` / `next_cards`) | removed; new Home surface `welcome_celebration` (`overlay.continue` / dead `overlay.body`) | "You're in" screen replaced by one-time fireworks party on Home; `welcome_in.*` ids kept for history |
 | 2026-08-28 | — | `onboarding.circles.lock` / `tier_card`; step `privacy-circles` before `privacy-control` | Teach Close / Friends / Acquaintances + Free Lite caps; progress bar 13→14 |
@@ -806,4 +815,9 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-29 | — | `onboarding.review.row_edit` / `row_edit_save` / `row_edit_cancel` + surface `onboarding_privacy_edit_sheet` | Privacy & Control corner Edit updates text + Supabase immediately |
 | 2026-08-29 | — | `profile.card.about_me_photo` + `profile_photo_updated` | About me card uses live avatar; Edit → Take/Upload updates profile photo |
 | 2026-08-30 | — | `home.this_week.example_card` / **`example_badge` (dead)**; `home.notifications_preview.example_row` / **`example_badge` (dead)**; `home.quiz.take_prompt`; `home.stories_row.post_prompt` | Empty Home sections show seeded Examples that self-hide after tap; Quiz always shows J-name prompt; Stories CTA "Post a story!" |
+| 2026-08-30 | — | `profile.header.post_prompt` | Own empty dashed story tile opens post composer |
+| 2026-08-30 | — | `reveal.suggestions.title` / `card` (dead), `add`, `optin_toggle` + `connect_requested` | Reveal Screen 3 FoF suggestions (who + why + Add) or Discover opt-in nudge |
+| 2026-08-30 | — | `reveal.quiz_matches.info` | i-tip on "How you line up": "From the quizzes you both took" (footer line removed) |
+| 2026-08-30 | Reveal close 🎉 emoji + bottom "Tap right…" hint | fireworks backdrop behind close; no tap hint | Same story tap zones; close feels like welcome party |
+| 2026-08-30 | — | `profile.header.filter_*` / `photo_look_save` / `photo_look_dismiss` + surface `photo_look_sheet` + `profile_photo_filter_updated` | Edit opens Photo look sheet to switch among the four baked looks |
 |

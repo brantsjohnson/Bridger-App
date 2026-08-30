@@ -32,10 +32,44 @@ export type HomeQuiz = {
     label: string;
     accent: 'teal' | 'amber' | 'coral' | 'purple' | 'pink' | 'blue' | 'green';
     friendIds: string[];
+    /** Per-friend compatibility with you (J-name only; fun % only). */
+    friends?: Array<{
+      userId: string;
+      percent: number;
+      compatibilityPercent: number;
+    }>;
   }>;
   /** Set when the signed-in user already finished this quiz. */
   resultId?: string | null;
+  /** Your own J-name result label for Home (independent of friend buckets). */
+  myResultLabel?: string | null;
+  myResultAccent?: 'teal' | 'amber' | 'coral' | 'purple' | 'pink' | 'blue' | 'green';
+  myResultPercent?: number | null;
 };
+
+const JNAME_ACCENTS = [
+  'teal',
+  'amber',
+  'coral',
+  'purple',
+  'pink',
+  'blue',
+  'green'
+] as const;
+
+const JNAME_ACCENT_BY: Record<string, (typeof JNAME_ACCENTS)[number]> = {
+  Justin: 'pink',
+  Josh: 'green',
+  Joey: 'amber',
+  James: 'blue',
+  Jake: 'coral',
+  Jared: 'purple',
+  John: 'teal'
+};
+
+function accentForJName(name: string, index = 0): (typeof JNAME_ACCENTS)[number] {
+  return JNAME_ACCENT_BY[name] ?? JNAME_ACCENTS[index % JNAME_ACCENTS.length];
+}
 
 /** Demo archive: older quizzes friends took that you have not. */
 const DEMO_ARCHIVED: Array<{
@@ -95,52 +129,56 @@ export async function getLiveQuiz(): Promise<HomeQuiz | null> {
       cover: QUIZ.cover,
       coverImages: HOME_COVER_FACES,
       results: QUIZ.results.map((r) => ({ ...r, friendIds: [...r.friendIds] })),
-      resultId: demoResultId
+      resultId: demoResultId,
+      myResultLabel: demoResultId,
+      myResultAccent: demoResultId ? accentForJName(demoResultId) : undefined,
+      myResultPercent: demoResultId ? 87 : null
     };
+  }
+
+  // J-name is the standing Home quiz. Load it from /jname/* so we do not depend
+  // on admin_config.live_quiz_slug or the generic quiz_results table.
+  try {
+    const board = await apiFetch<{
+      buckets: Array<{
+        jName: string;
+        friendIds: string[];
+        friends?: Array<{
+          userId: string;
+          percent: number;
+          compatibilityPercent: number;
+        }>;
+      }>;
+      myResult?: { jName: string; percent: number } | null;
+    }>('/jname/leaderboard');
+
+    const my = board?.myResult ?? null;
+    return {
+      id: 'what-j-name',
+      title: 'Which "J" name are you?',
+      description: 'Find out which J name you are. Share it with friends.',
+      comparable: true,
+      cover: { kind: 'color', bg: '#101012' },
+      coverImages: HOME_COVER_FACES,
+      resultId: my?.jName ?? null,
+      myResultLabel: my?.jName ?? null,
+      myResultAccent: my?.jName ? accentForJName(my.jName) : undefined,
+      myResultPercent: my?.percent ?? null,
+      results: (board?.buckets ?? []).map((b, i) => ({
+        id: b.jName,
+        label: b.jName,
+        accent: accentForJName(b.jName, i),
+        friendIds: b.friendIds ?? [],
+        friends: b.friends
+      }))
+    };
+  } catch {
+    // Fall through to the generic featured quiz if J-name is not reachable.
   }
 
   try {
     const live = await apiFetch<LiveQuiz>('/quizzes/current');
-    const home = toHomeQuiz(live);
-    // J-name quiz: overlay the dedicated friend board (grows as friends take it).
-    if (home.id === 'what-j-name' || live.slug === 'what-j-name') {
-      try {
-        const board = await apiFetch<{
-          buckets: Array<{ jName: string; friendIds: string[] }>;
-        }>('/jname/leaderboard');
-        if (board?.buckets?.length) {
-          const accents = [
-            'teal',
-            'amber',
-            'coral',
-            'purple',
-            'pink',
-            'blue',
-            'green'
-          ] as const;
-          const accentBy: Record<string, (typeof accents)[number]> = {
-            Justin: 'pink',
-            Josh: 'green',
-            Joey: 'amber',
-            James: 'blue',
-            Jake: 'coral',
-            Jared: 'purple',
-            John: 'teal'
-          };
-          home.results = board.buckets.map((b, i) => ({
-            id: b.jName,
-            label: b.jName,
-            accent: accentBy[b.jName] ?? accents[i % accents.length],
-            friendIds: b.friendIds
-          }));
-          home.comparable = true;
-        }
-      } catch {
-        // Keep the generic quiz payload if the board isn't ready yet.
-      }
-      home.coverImages = HOME_COVER_FACES;
-    }
-    return home;
+    return toHomeQuiz(live);
   } catch {
     return null;
   }

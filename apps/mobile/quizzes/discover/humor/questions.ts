@@ -34,18 +34,13 @@ export type HumorQuestion = {
 
 export const HUMOR_INSTRUCTIONS = {
   title: 'Your Funny Bone',
-  headline: 'What actually makes you laugh?',
-  lead: 'Pick what actually makes you laugh. Skip the comedy jargon.',
+  headline: 'What makes you laugh?',
+  lead: 'Pick what actually cracks you up.',
   rules: [
-    'Tap anything that fits — more than one is fine.',
-    'Shows and movies: pick favorites, not homework.',
-    'Type a note anytime. Return or → when you are ready.'
-  ],
-  phaseLabels: {
-    1: 'What you laugh at',
-    2: 'How you joke',
-    3: 'A few finer points'
-  }
+    'More than one is fine.',
+    'Shows and movies: favorites only.',
+    'Add a note anytime.'
+  ]
 } as const;
 
 export const HUMOR_QUESTIONS: HumorQuestion[] = [
@@ -71,7 +66,7 @@ export const HUMOR_QUESTIONS: HumorQuestion[] = [
     prompt: "Which matters most?",
     maxSelect: 2,
     options: [
-      { id: 'a', emoji: '⏱️', label: "Timing.", weights: { register: 0.8 } },      { id: 'b', emoji: '🎙️', label: "Delivery.", weights: { register: 1.2 } },      { id: 'c', emoji: '✍️', label: "Writing.", weights: { craft: 1.5 } },      { id: 'd', emoji: '🎭', label: "Characters.", weights: { absurdity: 0.2, irony: -0.2 } },      { id: 'e', emoji: '🎉', label: "Surprise.", weights: { absurdity: 1.0, irony: 0.4 } },    ]
+      { id: 'a', emoji: '⏱️', label: "Timing", weights: { register: 0.8 } },      { id: 'b', emoji: '🎙️', label: "Delivery", weights: { register: 1.2 } },      { id: 'c', emoji: '✍️', label: "Writing", weights: { craft: 1.5 } },      { id: 'd', emoji: '🎭', label: "Characters", weights: { absurdity: 0.2, irony: -0.2 } },      { id: 'e', emoji: '🎉', label: "Surprise", weights: { absurdity: 1.0, irony: 0.4 } },    ]
   },
   {
     id: 'h04',

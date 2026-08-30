@@ -38,11 +38,11 @@ export type ValuesQuestion = {
 export const VALUES_INSTRUCTIONS = {
   title: 'What Gets You Going',
   headline: 'What would you miss most?',
-  lead: 'Pick the answer that feels best immediately. Choose one answer only. Several may fit — pick the one you would miss most.',
+  lead: 'Go with your gut. One pick only.',
   rules: [
-    'You may skip up to three questions without explaining.',
-    'Optional: text a short why under your pick — like a chat bubble.',
-    'There are no good or bad answers.'
+    'You can skip up to three.',
+    'Add a short note if you want.',
+    'No wrong answers.'
   ],
   maxSkips: 3
 } as const;

@@ -271,6 +271,10 @@ export async function saveName(name: string): Promise<void> {
  * capture-only). Demo just records the source; live uploads the picked file to
  * the private media bucket, then PATCH /me with the new avatar media id so it
  * shows on your profile behind the house filter.
+ *
+ * When a look was baked (Pop art / Comic / X-ray / Sepia), `filteredMediaId` is
+ * the avatar face and `originalMediaId` + `filter` are kept so Edit can switch
+ * looks later without a re-upload.
  */
 export async function savePhoto(input: {
   source?: PhotoSource | null;
@@ -280,23 +284,43 @@ export async function savePhoto(input: {
    * present we just point the avatar at it, skipping the upload of the plain photo.
    */
   filteredMediaId?: string | null;
+  /** Unfiltered source media id (for re-baking a different look later). */
+  originalMediaId?: string | null;
+  /** Which look is baked into filteredMediaId. */
+  filter?: 'pop_art' | 'comic' | 'x_ray' | 'sepia' | null;
+  /**
+   * Demo only: the plain local photo URI when `uri` is already a baked preview.
+   * Lets Edit switch looks without losing the source.
+   */
+  originalUri?: string | null;
 }): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.photo = input.source ?? 'library';
-    // Keep the picked file path on the profile header so About Me + banner
-    // show their real pick instead of the stock demo face.
+    // Keep the picked (or baked preview) path on the profile header so About Me
+    // + banner show the look they chose, not a stock demo face.
     if (input.uri) {
       const { setMyProfileHeader } = await import('./profile');
-      await setMyProfileHeader({ avatarUrl: input.uri });
+      await setMyProfileHeader({
+        avatarUrl: input.uri,
+        avatarFilter: input.filter ?? null,
+        avatarOriginalUrl: input.originalUri ?? input.uri
+      });
     }
     return;
   }
 
-  // A server look (Comic / X-ray / Sepia) is already stored: point identity at it.
+  // A server look is already stored: point identity at the filtered copy and
+  // remember the original + look key for later Edit switches.
   if (input.filteredMediaId) {
     await apiFetch('/me', {
       method: 'PATCH',
-      body: JSON.stringify({ avatarMediaId: input.filteredMediaId })
+      body: JSON.stringify({
+        avatarMediaId: input.filteredMediaId,
+        ...(input.originalMediaId
+          ? { avatarOriginalMediaId: input.originalMediaId }
+          : {}),
+        ...(input.filter ? { avatarFilter: input.filter } : {})
+      })
     });
     // THIS SECTION DOES: refresh the in-memory face so Home header updates now.
     try {
@@ -321,7 +345,11 @@ export async function savePhoto(input: {
   );
   await apiFetch('/me', {
     method: 'PATCH',
-    body: JSON.stringify({ avatarMediaId: mediaId })
+    body: JSON.stringify({
+      avatarMediaId: mediaId,
+      avatarOriginalMediaId: mediaId,
+      avatarFilter: null
+    })
   });
   try {
     const { loadPeople } = await import('../lib/people-cache');
@@ -968,6 +996,9 @@ export async function flushOnboardingDraft(draft: {
   photoSource: PhotoSource | null;
   photoUri: string | null;
   filteredMediaId: string | null;
+  originalMediaId: string | null;
+  bakedPhotoUri: string | null;
+  photoFilter: 'pop_art' | 'comic' | 'x_ray' | 'sepia';
   birthday: string;
   connectStyles: string[];
   notifPrefs: string[];
@@ -998,12 +1029,15 @@ export async function flushOnboardingDraft(draft: {
     }
   }
 
-  if (draft.photoUri || draft.filteredMediaId) {
+  if (draft.photoUri || draft.filteredMediaId || draft.bakedPhotoUri) {
     try {
       await savePhoto({
         source: draft.photoSource,
-        uri: draft.photoUri ?? undefined,
-        filteredMediaId: draft.filteredMediaId
+        uri: draft.bakedPhotoUri ?? draft.photoUri ?? undefined,
+        filteredMediaId: draft.filteredMediaId,
+        originalMediaId: draft.originalMediaId,
+        filter: draft.photoFilter,
+        originalUri: draft.photoUri
       });
     } catch (err) {
       console.warn('flushOnboardingDraft: photo failed', err);

@@ -3,8 +3,9 @@
 // Your own Profile tab — Spotify-artist layout. Square header with Edit and a
 // Settings gear on the photo; View as + search sit under it. Stories / Inside
 // jokes / Bucket list stay as sibling tabs. Settings opens from the gear (not
-// a tab). The floating pill nav STAYS here (your face on the pill is how you
-// got here), but there is no top "Profile" title bar. Analytics: surface=profile.
+// a tab). The floating pill nav STAYS here (the single-person icon on the
+// pill is how you got here), but there is no top "Profile" title bar.
+// Analytics: surface=profile.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -24,10 +25,12 @@ import { listArchivedQuizzes } from '../../data/quiz';
 import { ProfileCard } from '../../components/profile/ProfileCard';
 import { ProfileHeaderBlock } from '../../components/profile/ProfileHeaderBlock';
 import { ProfileIntro } from '../../components/profile/ProfileIntro';
+import { PhotoLookSheet } from '../../components/profile/PhotoLookSheet';
 import {
   ProfileSearchSheet,
   type ProfileSearchHit
 } from '../../components/profile/ProfileSearchSheet';
+import type { PhotoFilterKey } from '../../components/onboarding/PhotoFilterPicker';
 import { StoryCalendar } from '../../components/profile/StoryCalendar';
 import { BucketList } from '../../components/profile/BucketList';
 import { ProfileSettings } from '../../components/profile/ProfileSettings';
@@ -64,6 +67,14 @@ export default function ProfileScreen() {
   // Settings is a gear on the photo, not a tab. When open, hide tab content.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // Edit also opens the Photo look sheet so they can switch among the 4 looks.
+  const [photoLookOpen, setPhotoLookOpen] = useState(false);
+  // Live look while the Photo look sheet is open (painted over the hero).
+  const [photoLookPreview, setPhotoLookPreview] = useState<{
+    filter: PhotoFilterKey;
+    bakedUrl: string | null;
+    bakedLoading: boolean;
+  } | null>(null);
   const [asTier, setAsTier] = useState<Tier>('close');
   const [searchOpen, setSearchOpen] = useState(false);
   const [untakenQuizzes, setUntakenQuizzes] = useState<
@@ -185,17 +196,44 @@ export default function ProfileScreen() {
             else router.replace('/home');
           }}
           onToggleEdit={() => {
-            setEditing((v) => !v);
+            setEditing((v) => {
+              const next = !v;
+              // Entering Edit: open Photo look so they can switch filters.
+              // Leaving Edit (Done): close the sheet too.
+              setPhotoLookOpen(next);
+              return next;
+            });
             setAsTier('close');
             setSettingsOpen(false);
           }}
           onOpenSettings={() => {
             setEditing(false);
+            setPhotoLookOpen(false);
             setSettingsOpen(true);
           }}
           onViewAs={setAsTier}
           onOpenStory={() => router.push('/story/me?from=profile')}
+          onAddStory={() => router.push('/story/capture?from=profile')}
           onSearch={() => setSearchOpen(true)}
+          previewFilter={photoLookPreview?.filter ?? null}
+          previewBakedUrl={photoLookPreview?.bakedUrl ?? null}
+          previewBakedLoading={photoLookPreview?.bakedLoading ?? false}
+        />
+
+        <PhotoLookSheet
+          visible={photoLookOpen}
+          onClose={() => {
+            setPhotoLookOpen(false);
+            setPhotoLookPreview(null);
+          }}
+          onSaved={() => void profile.refresh()}
+          currentFilter={
+            (headerWithCity?.avatarFilter as PhotoFilterKey | null | undefined) ??
+            null
+          }
+          avatarUrl={headerWithCity?.avatarUrl ?? null}
+          originalUrl={headerWithCity?.avatarOriginalUrl ?? null}
+          onPreviewChange={setPhotoLookPreview}
         />
 
         <View style={{ marginTop: PROFILE_HEADER_TO_TABS, paddingHorizontal: 16 }}>
@@ -241,6 +279,7 @@ export default function ProfileScreen() {
               asTier={asTier}
               onAnswered={() => void profile.refresh()}
               onOpenStory={() => router.push('/story/me?from=profile')}
+              onAddStory={() => router.push('/story/capture?from=profile')}
               onOpenEvent={(id) => router.push(`/event/${id}` as Href)}
             />
 

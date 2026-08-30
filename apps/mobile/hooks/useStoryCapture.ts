@@ -23,11 +23,16 @@ export function useStoryCapture() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    // THIS SECTION DOES: load quota + themed squares. Both helpers already
+    // fail soft, but we still catch here so a surprise throw never surfaces
+    // as a LogBox banner over the camera shutter.
     try {
       const [quota, themed] = await Promise.all([getPostQuota(), listThemedPrompts()]);
       setLeft(quota.left);
       setCap(quota.cap);
       setPrompts(themed);
+    } catch {
+      // Keep the seeded defaults (3 left, fixture prompts).
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Shared chrome for Discover quiz takes. Congruent checkbox rows, accent when
-// selected, always-on type box (keyboard ready), willow emoji burst from the
-// tap. No page chrome (1/2). On phones, Enter advances — Continue is desktop.
+// selected, always-on type box (keyboard ready), emoji burst from the tap
+// (same gravity shower as hobbies / onboarding). No page chrome (1/2). On
+// phones, Enter advances. Continue is desktop.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -23,12 +24,14 @@ import {
   ACCENTS,
   ButtonPrimary,
   ButtonSecondary,
+  HobbyEmojiBurst,
+  type HobbyBurstOrigin,
   Reveal,
   cn,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
-import { EmojiBurst, type BurstOrigin } from './EmojiBurst';
+import { fireEmojiBurstHaptics } from '../../../lib/celebration-haptics';
 import { QuizOptionTile, type QuizTileOption } from './QuizOptionTile';
 
 export type QuizShellIds = {
@@ -62,7 +65,6 @@ type Props = {
   onBack: () => void;
   intro: IntroCopy;
   onStart: () => void;
-  phaseLabel?: string;
   stepLabel: string;
   prompt: string;
   questionEmoji?: string;
@@ -98,7 +100,6 @@ export function QuizTakeShell({
   onBack,
   intro,
   onStart,
-  phaseLabel,
   stepLabel,
   prompt,
   questionEmoji,
@@ -122,7 +123,7 @@ export function QuizTakeShell({
   const inputRef = useRef<TextInput>(null);
   // Many bursts can be falling at once — a new pick never resets an old shower.
   const [bursts, setBursts] = useState<
-    Array<{ key: number; emoji: string; origin: BurstOrigin }>
+    Array<{ key: number; emoji: string; origin: HobbyBurstOrigin }>
   >([]);
 
   // THIS SECTION DOES: keep the type box ready whenever a question is showing.
@@ -132,7 +133,7 @@ export function QuizTakeShell({
     return () => clearTimeout(t);
   }, [phase, open, prompt]);
 
-  const handleToggle = (opt: QuizTileOption, origin: BurstOrigin) => {
+  const handleToggle = (opt: QuizTileOption, origin: HobbyBurstOrigin) => {
     const turningOn = !selected.includes(opt.id);
     onToggle(opt.id, opt.emoji);
     if (turningOn) {
@@ -157,6 +158,23 @@ export function QuizTakeShell({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1 bg-canvas"
       >
+        {/* THIS SECTION DOES: boom shower over the whole screen (window
+            coordinates), so pieces fall all the way off the bottom. */}
+        {bursts.map((b) => (
+          <HobbyEmojiBurst
+            key={b.key}
+            play
+            emoji={b.emoji}
+            origin={b.origin}
+            count={18}
+            power="boom"
+            onPlayStart={fireEmojiBurstHaptics}
+            onDone={() =>
+              setBursts((prev) => prev.filter((x) => x.key !== b.key))
+            }
+          />
+        ))}
+
         <View
           style={{ paddingTop: insets.top + 6, paddingBottom: insets.bottom }}
           className="flex-1"
@@ -168,18 +186,6 @@ export function QuizTakeShell({
               token.tintSolid
             )}
           />
-
-          {bursts.map((b) => (
-            <EmojiBurst
-              key={b.key}
-              play
-              emoji={b.emoji}
-              origin={b.origin}
-              onDone={() =>
-                setBursts((prev) => prev.filter((x) => x.key !== b.key))
-              }
-            />
-          ))}
 
           <View className="z-10 flex-row items-center gap-3 px-4">
             <Pressable
@@ -218,13 +224,7 @@ export function QuizTakeShell({
               <View className="min-h-0 flex-1">
                 <Reveal key={prompt} index={0}>
                   <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
-                    {[
-                      phaseLabel,
-                      stepLabel,
-                      maxSelect > 1 ? `up to ${maxSelect}` : null
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {stepLabel}
                   </Text>
                   <Pressable
                     onPress={() =>

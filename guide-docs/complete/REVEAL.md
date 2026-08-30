@@ -40,7 +40,7 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 
 ## Screen 2 — more in common
 
-- **How you line up:** compatibility scores from matching-only quizzes, one number each — e.g. `95% compatible in Humor`, `72% in Values`. The bar is in the quiz's color. PRIVACY: only the dimension + number cross the connection, never the answers.
+- **How you line up:** compatibility scores from matching-only quizzes, one number each — e.g. `95% compatible in Your Funny Bone`, `72% compatible in What Gets You Going`. Use the quiz's **in-app title**, never the backend slug. The bar is in the quiz's color. PRIVACY: only the title + number cross the connection, never the answers.
 - **Heading:** `You've also got…`
 - **Up to 3** more commonalities, each an **icon + short line**. Shared hobbies show both follow-up answers here (your answer + theirs) — the Discover surface shows the hobby titles only; the answers appear in the reveal / In common.
 
@@ -49,6 +49,7 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 - **Confetti** icon.
 - **Big headline:** `You two should click.`
 - **Subtext:** `Revisit anytime under "In common"`
+- **Friend-of-friend suggestions (when Discover matching is on):** up to 3 people who pass the compatibility threshold across this new bridge. Each card shows name/photo, `via {mutual}`, the "why" line (shared thread), and an **Add** button that sends a connect request (they still accept on Discover). If Discover matching is off, show a gentle **Turn on Discover** nudge instead of inventing suggestions.
 - **Primary button:** `See {name}'s profile` — pinned to the **bottom bar** (not inline), so it always sits at the very bottom.
 
 ## Navigation
@@ -80,14 +81,14 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 | `HowYouMetStep` | screen 0: just-met / already-know (checkmarks + filled color) + optional tier buckets (already-know) + place checkbox (in person) or short note (Discover) |
 | `RevealProgressBars` | 3 segments; current bar fills over ~5.5s then advances; holds full on the close card |
 | `RevealOrbs` | two profile photos float in, dissolve into yellow + green circles, overlap mixes to orange |
-| `QuizMatchList` | compatibility scores from matching-only quizzes (e.g. "95% in Humor") |
+| `QuizMatchList` | compatibility scores from matching-only quizzes (e.g. "95% in Humor"); source note lives on the section **i** tip |
 | `RevealScreen` | dark screen: headline + body |
-| `RevealClose` | confetti + big line + subtext (button lives in the bottom bar) |
+| `RevealClose` | fireworks behind the close area + big line + subtext (button lives in the bottom bar) |
 
 ---
 
 ## Copy (use these exactly — they carry the charm)
 
-`{their full name}` (screen 0 top) · `How did you two meet?` · `We just met` · `We already know each other` · `Want to add them to a circle?` · `Optional · Close, Friends, or Acquaintances` · `Record where you met` · `Add a note` · `via {name}` (screens 1–3) · `What connects you most` · `You both live for climbing` (dynamic) · `You've also got…` · `You two should click.` · `See {name}'s profile` · `Revisit anytime under "In common"`
+`{their full name}` (screen 0 top) · `How did you two meet?` · `We just met` · `We already know each other` · `Want to add them to a circle?` · `Optional · Close, Friends, or Acquaintances` · `Record where you met` · `Add a note` · `via {name}` (screens 1–3) · `What connects you most` · `You both live for climbing` (dynamic) · `How you line up` · i-tip `From the quizzes you both took` · `You've also got…` · `You two should click.` · `See {name}'s profile` · `Revisit anytime under "In common"`
 
-Everything else: minimal copy.
+Everything else: minimal copy. Story beats advance on left/right tap zones with **no** bottom "tap right / tap left" hint.

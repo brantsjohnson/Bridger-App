@@ -220,9 +220,6 @@ export function HumorFlow({
         lastStep.current = 'h01';
         trackFlowStep('your_funny_bone', 'take_start', { quiz_id: 'humor' });
       }}
-      phaseLabel={
-        question ? HUMOR_INSTRUCTIONS.phaseLabels[question.phase] : undefined
-      }
       stepLabel={`${index + 1} of ${total}`}
       prompt={question?.prompt ?? ''}
       questionEmoji={question ? PHASE_EMOJI[question.phase] : '😂'}

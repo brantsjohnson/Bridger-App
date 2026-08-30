@@ -174,7 +174,9 @@ export function FriendPodWidget({
             Your friends' week
           </Text>
           <Text numberOfLines={1} className="font-sans-sb text-[12px]" style={{ color: metaColor }}>
-            {voices.length} recaps · {minutes} min
+            {voices.length === 0
+              ? 'No recaps yet · add yours'
+              : `${voices.length} recaps · ${minutes} min`}
           </Text>
         </View>
 

@@ -167,13 +167,20 @@ export function NewsScreen() {
     <Screen tone="intro">
       <ScreenHeader title="News" />
       <ScreenBody>
-        {/* Center paper + copy in the open space under the header / above the tab bar. */}
-        <div
-          className="flex flex-col items-center justify-center px-6"
-          style={{ minHeight: 'calc(100vh - 220px)' }}
-        >
-          <NewsPaperGraphic />
-          <div className="mt-10 flex flex-col items-center text-center">
+        {/*
+          Park paper + copy at the top of the body (same spot the real feed
+          will start). Do not vertical-center — the headline stays under the
+          paper slot even while the paper spins away.
+        */}
+        <div className="flex flex-col items-center pt-2">
+          <div
+            aria-hidden="true"
+            style={{ width: GRID_W * SCALE, height: GRID_H * SCALE }}
+            className="flex items-center justify-center"
+          >
+            <NewsPaperGraphic />
+          </div>
+          <div className="mt-10 flex flex-col items-center px-2 text-center">
             <p
               className="font-pixel text-[18px] text-purple"
               style={{ letterSpacing: '0.22em', color: '#6B2FEA' }}

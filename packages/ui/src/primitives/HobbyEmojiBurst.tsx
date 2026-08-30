@@ -1,18 +1,22 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// When you tap a hobby chip, eight copies of that hobby's emoji shoot up from
-// the tap, then fall with gravity and fade out. Same toss as the web picker:
-// mostly upward, a little to the side, then they drop. Reduce Motion skips it.
+// When you tap a hobby chip (or a quiz answer), copies of that emoji shoot up
+// from the tap, then fall with gravity all the way off the bottom of the
+// screen before they wink out. Same toss as the web picker: mostly upward, a
+// little to the side, then they drop. Reduce Motion skips it.
 // ============================================
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import { Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
 import { NATIVE_DRIVER, useReduceMotion } from '../lib/whimsy';
 
-/** Whole toss + fade. Long enough to read as gravity, not a blink.
- *  (~20% snappier than the old 2400ms so the shower feels a little quicker.) */
-const DURATION_MS = 1920;
-/** Frames we bake so the path matches the web physics (about 60fps). */
-const SIM_FRAMES = 150;
+/** Base toss length for a chip. Boom runs longer so pieces clear the screen. */
+const CHIP_DURATION_MS = 1920;
+/** How long one simulation step is meant to represent (keeps speed steady). */
+const MS_PER_FRAME = CHIP_DURATION_MS / 150;
+/** Never simulate forever if a piece somehow stalls above the fold. */
+const MAX_FRAMES = 360;
+/** Extra pixels past the bottom edge before we call it "off screen". */
+const PAST_BOTTOM_PAD = 48;
 
 export type HobbyBurstOrigin = { x: number; y: number };
 
@@ -34,14 +38,19 @@ type Piece = {
   xs: number[];
   ys: number[];
   size: number;
+  /** How long this piece keeps flying (longer path = longer time). */
+  durationMs: number;
 };
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-/** Walk gravity math. Chip matches the web picker. Boom sprays wider and faster. */
-function simulatePiece(power: 'chip' | 'boom'): Piece {
+/**
+ * Walk gravity math until the emoji is past the bottom of the page.
+ * Chip matches the web picker. Boom sprays wider and faster.
+ */
+function simulatePiece(power: 'chip' | 'boom', minFallY: number): Piece {
   const boom = power === 'boom';
   const angle = boom
     ? (-160 + Math.random() * 140) * (Math.PI / 180)
@@ -54,14 +63,21 @@ function simulatePiece(power: 'chip' | 'boom'): Piece {
   let py = 0;
   const xs: number[] = [0];
   const ys: number[] = [0];
-  for (let f = 1; f <= SIM_FRAMES; f++) {
+  // THIS SECTION DOES: keep stepping until the emoji is below the page.
+  for (let f = 1; f <= MAX_FRAMES; f++) {
     px += vx;
     py += vy;
     vy += gravity;
     xs.push(px);
     ys.push(py);
+    if (py >= minFallY) break;
   }
-  return { xs, ys, size: boom ? rand(24, 36) : rand(18, 24) };
+  return {
+    xs,
+    ys,
+    size: boom ? rand(24, 36) : rand(18, 24),
+    durationMs: Math.round(xs.length * MS_PER_FRAME)
+  };
 }
 
 export function HobbyEmojiBurst({
@@ -74,15 +90,19 @@ export function HobbyEmojiBurst({
   onDone
 }: Props) {
   const reduce = useReduceMotion();
+  const { height: screenH } = useWindowDimensions();
   const n = Math.max(1, count);
   const progress = useRef(
     Array.from({ length: n }, () => new Animated.Value(0))
   ).current;
 
+  // How far below the tap a piece must travel to clear the bottom edge.
+  const minFallY = Math.max(160, screenH - origin.y + PAST_BOTTOM_PAD);
+
   // THIS SECTION DOES: give each emoji its own toss path, once, so they fan out.
   const pieces: Piece[] = useMemo(
-    () => Array.from({ length: n }, () => simulatePiece(power)),
-    [n, power]
+    () => Array.from({ length: n }, () => simulatePiece(power, minFallY)),
+    [n, power, minFallY]
   );
 
   useEffect(() => {
@@ -92,10 +112,11 @@ export function HobbyEmojiBurst({
       return;
     }
     onPlayStart?.();
-    const runs = progress.map((a) =>
+    // THIS SECTION DOES: each piece runs for as long as its path needs.
+    const runs = progress.map((a, i) =>
       Animated.timing(a, {
         toValue: 1,
-        duration: DURATION_MS,
+        duration: pieces[i]!.durationMs,
         easing: Easing.linear,
         useNativeDriver: NATIVE_DRIVER
       })
@@ -130,9 +151,9 @@ export function HobbyEmojiBurst({
           inputRange,
           outputRange: p.ys
         });
-        // Hold full, then fade after the toss (same as the web frame > 120 fade).
+        // Stay solid until the emoji is almost off the bottom, then wink out.
         const opacity = t.interpolate({
-          inputRange: [0, 0.04, 0.72, 1],
+          inputRange: [0, 0.04, 0.9, 1],
           outputRange: [0, 1, 1, 0]
         });
 

@@ -21,6 +21,7 @@ export type AttentionSection =
   | 'quiz'
   | 'pod'
   | 'inside_jokes'
+  | 'roster'
   | 'touch_grass'
   | 'hosting'
   | 'going'

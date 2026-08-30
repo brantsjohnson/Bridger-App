@@ -24,10 +24,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type {
   JnameLeaderboard,
+  JnameMyResult,
   JnameResultInput,
   JnameShareResponse,
   JnameSharedView
 } from '@bridger/shared';
+import { jnameCompatibilityPercent } from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -71,6 +73,22 @@ export class JnameService {
     return new Set(otherIds.filter((id) => !blocked.has(id)));
   }
 
+  // --- Read my saved result (null if I have not taken the quiz yet). ---
+  async getMyResult(userId: string): Promise<JnameMyResult | null> {
+    const { data, error } = await this.supabase.admin
+      .from('jname_results')
+      .select('j_name, percent, top_names')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      jName: data.j_name,
+      percent: data.percent,
+      topNames: Array.isArray(data.top_names) ? data.top_names : []
+    };
+  }
+
   // --- Save (or overwrite on retake) this person's result + notify friends. ---
   async saveResult(userId: string, body: JnameResultInput) {
     if (!body?.jName) {
@@ -101,6 +119,12 @@ export class JnameService {
     );
     if (error) throw error;
 
+    // Keep the public share page in sync when they retake (same token, new snapshot).
+    await this.supabase.admin
+      .from('jname_shares')
+      .update({ j_name: body.jName, percent })
+      .eq('sharer_id', userId);
+
     if (isNewResult) {
       await this.notifyFriendsOfTopMatch(userId, body.jName);
     }
@@ -108,38 +132,68 @@ export class JnameService {
     return { ok: true };
   }
 
-  // --- "Your version of X": friends grouped by the J-name they got. ---
+  // --- "Your version of X": friends grouped by J-name + how you line up. ---
   async getLeaderboard(userId: string): Promise<JnameLeaderboard> {
+    const myResult = await this.getMyResult(userId);
     const friends = await this.friendIdsOf(userId);
     if (!friends.size) {
-      return { buckets: [], teaserLimit: 3 };
+      return { buckets: [], teaserLimit: 3, myResult };
     }
 
     const friendList = Array.from(friends);
     const { data: rows, error } = await this.supabase.admin
       .from('jname_results')
-      .select('user_id, j_name')
+      .select('user_id, j_name, percent')
       .in('user_id', friendList);
     if (error) throw error;
 
-    const byName = new Map<string, string[]>();
+    type Acc = {
+      friendIds: string[];
+      friends: Array<{
+        userId: string;
+        percent: number;
+        compatibilityPercent: number;
+      }>;
+    };
+    const byName = new Map<string, Acc>();
     for (const row of rows ?? []) {
-      const list = byName.get(row.j_name) ?? [];
-      list.push(row.user_id);
+      const compatibilityPercent = myResult
+        ? jnameCompatibilityPercent(
+            {
+              jName: myResult.jName,
+              percent: myResult.percent,
+              topNames: myResult.topNames
+            },
+            { jName: row.j_name, percent: row.percent }
+          )
+        : 0;
+      const list = byName.get(row.j_name) ?? { friendIds: [], friends: [] };
+      list.friendIds.push(row.user_id);
+      list.friends.push({
+        userId: row.user_id,
+        percent: row.percent,
+        compatibilityPercent
+      });
       byName.set(row.j_name, list);
     }
 
     // Biggest groups first so the Home teaser's top 3 are the busiest ones.
     // New personas appear as friends take the quiz (the board grows).
     const buckets = Array.from(byName.entries())
-      .map(([jName, friendIds]) => ({ jName, friendIds }))
+      .map(([jName, acc]) => ({
+        jName,
+        friendIds: acc.friendIds,
+        friends: acc.friends.sort(
+          (a, b) => b.compatibilityPercent - a.compatibilityPercent
+        )
+      }))
       .sort(
         (a, b) =>
           b.friendIds.length - a.friendIds.length ||
           a.jName.localeCompare(b.jName)
       );
 
-    return { buckets, teaserLimit: 3 };
+    return { buckets, teaserLimit: 3, myResult };
   }
 
   // --- Get (or make once) this person's stable share link. ---

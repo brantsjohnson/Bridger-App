@@ -182,7 +182,9 @@ module.exports = ({ config }) => ({
     },
     demoUnlock: process.env.EXPO_PUBLIC_DEMO_UNLOCK ?? '0',
     demoMode: process.env.EXPO_PUBLIC_DEMO_MODE ?? '0',
-    // RevenueCat public SDK key (Test Store or platform app key). Safe to ship.
-    revenueCatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? ''
+    // RevenueCat public SDK keys (safe to ship). Prefer platform keys when set.
+    revenueCatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '',
+    revenueCatIosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
+    revenueCatAndroidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? ''
   }
 });

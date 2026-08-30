@@ -45,9 +45,10 @@ import { ResultCardStage } from './ResultCardStage';
 import { JnameLeaderboard } from './JnameLeaderboard';
 import { QUIZ_OPTION_IMAGES } from './images';
 import { buildResultLink, captureCard, saveImageToPhotos, shareImage, shareLink } from './share';
-import { fetchJnameLeaderboard, getJnameShareLink, saveJnameResult } from '../../lib/jname-api';
+import { fetchJnameLeaderboard, fetchJnameMyResult, getJnameShareLink, saveJnameResult } from '../../lib/jname-api';
 import { QUIZ as DEMO_QUIZ } from '../../data/fixtures/catalog';
 import { isDemoMode } from '../../lib/demo';
+import type { LeaderboardBucket } from './JnameLeaderboard';
 
 // THIS SECTION DOES: describe just the parts of quiz.json this screen reads.
 type Answer = {
@@ -122,7 +123,7 @@ export default function WhatJNameQuiz() {
   const [picks, setPicks] = useState<string[]>([]);
   const [revealStep, setRevealStep] = useState(0);
   const [result, setResult] = useState(sessionResult);
-  const [board, setBoard] = useState<Array<{ jName: string; friendIds: string[] }>>([]);
+  const [board, setBoard] = useState<LeaderboardBucket[]>([]);
   // Where the "Download PNG" button is up to, so we can say if it worked.
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   // A transient quip shown after an answer, with what to do on Continue.
@@ -130,6 +131,8 @@ export default function WhatJNameQuiz() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   // Emoji showers live here so they keep falling after we leave the tile screen.
   const [bursts, setBursts] = useState<LiveBurst[]>([]);
+  // True while we check Supabase for a prior result on cold open.
+  const [hydrating, setHydrating] = useState(!sessionResult && !isDemoMode());
 
   function spawnBurst(emojis: readonly string[], origin: { x: number; y: number }) {
     setBursts((prev) => [
@@ -137,6 +140,32 @@ export default function WhatJNameQuiz() {
       { key: Date.now() + Math.random(), emojis, origin }
     ]);
   }
+
+  // THIS SECTION DOES: on open, load a saved result from the server so a cold
+  // start still shows your card (not just this JS session's memory).
+  useEffect(() => {
+    if (sessionResult || isDemoMode()) {
+      setHydrating(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const saved = await fetchJnameMyResult();
+      if (cancelled) return;
+      if (saved?.jName) {
+        const res = { jName: saved.jName, percent: saved.percent };
+        sessionResult = res;
+        setResult(res);
+        setPhase('result');
+        const live = await fetchJnameLeaderboard();
+        if (!cancelled && live?.buckets) setBoard(live.buckets);
+      }
+      setHydrating(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // THIS SECTION DOES: load the friend board whenever we land on a saved result
   // (re-opening the quiz) so "your versions" is ready without re-taking.
@@ -147,7 +176,15 @@ export default function WhatJNameQuiz() {
         setBoard(
           DEMO_QUIZ.results
             .filter((r) => r.friendIds.length > 0)
-            .map((r) => ({ jName: r.label, friendIds: [...r.friendIds] }))
+            .map((r) => ({
+              jName: r.label,
+              friendIds: [...r.friendIds],
+              friends: r.friendIds.map((userId) => ({
+                userId,
+                percent: 80,
+                compatibilityPercent: 85
+              }))
+            }))
             .sort((a, b) => b.friendIds.length - a.friendIds.length)
         );
         return;
@@ -159,6 +196,7 @@ export default function WhatJNameQuiz() {
 
   // --- START + ABANDON tracking ---
   useEffect(() => {
+    if (hydrating) return;
     if (!sessionResult) {
       trackProduct('quiz_started', { surface: 'quiz', method: 'tap' });
       startedAt.current = Date.now();
@@ -172,7 +210,7 @@ export default function WhatJNameQuiz() {
         });
       }
     };
-  }, []);
+  }, [hydrating]);
 
   function close() {
     if (router.canGoBack()) router.back();
@@ -302,7 +340,15 @@ export default function WhatJNameQuiz() {
         setBoard(
           DEMO_QUIZ.results
             .filter((r) => r.friendIds.length > 0)
-            .map((r) => ({ jName: r.label, friendIds: [...r.friendIds] }))
+            .map((r) => ({
+              jName: r.label,
+              friendIds: [...r.friendIds],
+              friends: r.friendIds.map((userId) => ({
+                userId,
+                percent: 80,
+                compatibilityPercent: 85
+              }))
+            }))
             .sort((a, b) => b.friendIds.length - a.friendIds.length)
         );
         return;
@@ -336,6 +382,10 @@ export default function WhatJNameQuiz() {
   // ============================================
 
   // Opening beat: yellow commentary, then the gender question.
+  if (hydrating) {
+    return withLeaveAsk(<BrutalistLoading onBack={requestLeave} />);
+  }
+
   if (phase === 'intro') {
     const intro = FLOW.find((f) => f.id === 'intro');
     return withLeaveAsk(

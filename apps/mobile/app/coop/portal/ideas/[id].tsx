@@ -65,7 +65,8 @@ export default function CoopIdeaDetailScreen() {
         hideProfile
         analyticsSurface="coop"
       />
-      <ScreenBody>
+      {/* KEYBOARD: reply field needs room while typing. */}
+      <ScreenBody adjustKeyboardInsets>
         <PortalPanel accent="amber" fill="solid" shape="banner" className="mb-3">
           <Text className="font-sans-b text-[11px] uppercase text-onaccent/80">
             {idea.category} · {idea.status.replace(/_/g, ' ')}

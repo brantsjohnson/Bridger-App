@@ -2,7 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // Mode 2: after beat 0 sets the friendship tier, compute what two connected
 // people share (reveal + In common). Never invents filler when overlap is thin.
-// Quiz answers/explanations never cross — only dimension label + %.
+// Quiz answers/explanations never cross — only the quiz's in-app title + %.
+// Hobby follow-up answers, favorites items, and music picks/artists all count.
 // ============================================
 import {
   ForbiddenException,
@@ -24,6 +25,14 @@ const TIER_RANK: Record<string, number> = {
   acquaintance: 1,
   friend: 2,
   close: 3
+};
+
+type AttrEntry = {
+  fp: string;
+  key: string;
+  label: string;
+  layer: string;
+  detail?: string;
 };
 
 @Injectable()
@@ -61,39 +70,58 @@ export class MatchingOverlapService {
         ?.tier ?? 'acquaintance';
 
     // Each side filtered by what THAT person shares at the tier they granted.
-    const mine = await this.attrsVisibleAt(viewerId, otherGranted);
-    const theirs = await this.attrsVisibleAt(otherId, viewerGranted);
+    const mineList = [
+      ...(await this.attrsVisibleAt(viewerId, otherGranted)),
+      ...(await this.musicPicksVisibleAt(viewerId, otherGranted))
+    ];
+    const theirsList = [
+      ...(await this.attrsVisibleAt(otherId, viewerGranted)),
+      ...(await this.musicPicksVisibleAt(otherId, viewerGranted))
+    ];
+    const mine = new Map(mineList.map((e) => [e.fp, e]));
+    const theirs = new Map(theirsList.map((e) => [e.fp, e]));
 
     const overlaps: Array<OverlapItemDto & { w: number }> = [];
     for (const [fp, m] of mine) {
       const t = theirs.get(fp);
       if (!t) continue;
-      const w = await this.idf.weightForKey(m.key);
-      const musicArtist = m.key.startsWith('music.artist.');
-      overlaps.push({
-        kind: kindFromLayer(m.layer),
-        title: musicArtist
+      const idfKey =
+        m.key.startsWith('fav:') || m.key === 'fav'
+          ? 'fav'
+          : m.key.startsWith('music.pick') || m.key === 'music.pick'
+            ? 'music.pick'
+            : m.key;
+      const w = await this.idf.weightForKey(idfKey);
+      const isMusic = fp.startsWith('music.');
+      const kind = kindFromLayer(m.layer, m.key);
+      const title =
+        isMusic || kind === 'hobby'
           ? `You both love ${m.label}`
-          : `You both ${m.label}`,
+          : kind === 'this_or_that'
+            ? `You both picked ${m.label}`
+            : `You both ${m.label}`;
+      overlaps.push({
+        kind,
+        title,
         pairedAnswers:
           m.detail && t.detail
             ? { yours: m.detail, theirs: t.detail }
             : undefined,
-        // Shared music artists are conversation gold — nudge weight slightly up.
-        w: musicArtist ? w * 1.15 : w
+        // Shared music is conversation gold — nudge weight slightly up.
+        w: isMusic ? w * 1.15 : w
       });
     }
     overlaps.sort((a, b) => b.w - a.w);
 
     const cfg = await this.config.getActive();
-    const strongest = overlaps[0]
-      ? stripW(overlaps[0])
-      : null;
-    const extras = overlaps
-      .slice(1, 1 + cfg.revealExtrasMax)
-      .map(stripW);
+    const strongest = overlaps[0] ? stripW(overlaps[0]) : null;
+    const extras = overlaps.slice(1, 1 + cfg.revealExtrasMax).map(stripW);
 
-    const quizCompat = await this.quizCompat(viewerId, otherId, cfg.confidenceFloor);
+    const quizCompat = await this.quizCompat(
+      viewerId,
+      otherId,
+      cfg.confidenceFloor
+    );
 
     const base: RevealPayloadDto = {
       strongest,
@@ -125,10 +153,14 @@ export class MatchingOverlapService {
     return data;
   }
 
+  /**
+   * Attributes the owner shares at the granted tier, expanded so one fav group
+   * becomes many item fingerprints (and hobby follow-ups keep their answer).
+   */
   private async attrsVisibleAt(
     ownerId: string,
     grantedTier: string
-  ): Promise<Map<string, { key: string; label: string; layer: string; detail?: string }>> {
+  ): Promise<AttrEntry[]> {
     const need = TIER_RANK[grantedTier] ?? 1;
     const { data } = await this.supabase.admin
       .from('attributes')
@@ -136,20 +168,44 @@ export class MatchingOverlapService {
       .eq('owner_id', ownerId)
       .neq('visible_to_tier', 'none');
 
-    const out = new Map<
-      string,
-      { key: string; label: string; layer: string; detail?: string }
-    >();
+    const out: AttrEntry[] = [];
     for (const row of data ?? []) {
       const rank = TIER_RANK[row.visible_to_tier] ?? 0;
       if (rank === 0 || rank > need) continue;
+
+      // THIS SECTION DOES: expand fav: group rows into one fingerprint per item.
+      if (
+        typeof row.key === 'string' &&
+        row.key.startsWith('fav:') &&
+        row.value &&
+        typeof row.value === 'object' &&
+        !Array.isArray(row.value)
+      ) {
+        const items = (row.value as { items?: unknown }).items;
+        if (Array.isArray(items)) {
+          for (const raw of items) {
+            if (typeof raw !== 'string') continue;
+            const item = raw.trim();
+            if (!item) continue;
+            out.push({
+              fp: `fav.item::${item.toLowerCase()}`,
+              key: 'fav',
+              label: item,
+              layer: row.layer
+            });
+          }
+          continue;
+        }
+      }
+
       const label = labelOf(row.key, row.value);
       const detail = detailOf(row.value);
       // Music artists: match on the artist name so Spotify ↔ Apple Music can overlap.
       const fp = row.key.startsWith('music.artist.')
         ? `music.artist::${label.toLowerCase()}`
         : `${row.key}::${label}`;
-      out.set(fp, {
+      out.push({
+        fp,
         key: row.key,
         label,
         layer: row.layer,
@@ -159,19 +215,68 @@ export class MatchingOverlapService {
     return out;
   }
 
+  /**
+   * Music picks (song of the week, fav track/album/artist) visible at the
+   * granted tier, fingerprinted by normalized title + artist.
+   */
+  private async musicPicksVisibleAt(
+    ownerId: string,
+    grantedTier: string
+  ): Promise<AttrEntry[]> {
+    const need = TIER_RANK[grantedTier] ?? 1;
+    const { data } = await this.supabase.admin
+      .from('music_picks')
+      .select('kind, title, artist_name, visible_to_tier')
+      .eq('owner_id', ownerId)
+      .in('kind', [
+        'listening_now',
+        'song_of_week',
+        'fav_track',
+        'fav_album',
+        'fav_artist'
+      ]);
+
+    const out: AttrEntry[] = [];
+    for (const row of data ?? []) {
+      const rank = TIER_RANK[row.visible_to_tier] ?? 0;
+      if (rank === 0 || rank > need) continue;
+      const title = (row.title ?? '').trim();
+      if (!title) continue;
+      const artist = (row.artist_name ?? '').trim();
+      const label = artist ? `${title} by ${artist}` : title;
+      const fp = `music.pick::${`${title} ${artist}`.toLowerCase().trim()}`;
+      out.push({
+        fp,
+        key: 'music.pick',
+        label,
+        layer: 'profile'
+      });
+    }
+    return out;
+  }
+
+  /**
+   * One confidence-weighted % per shared Discover quiz, labeled by the
+   * in-app title (e.g. "Your Funny Bone"). Never returns answers.
+   */
   private async quizCompat(
     a: string,
     b: string,
     floor: number
-  ): Promise<{ quizId: string; dimension: string; percent: number }[]> {
+  ): Promise<
+    { quizId: string; title: string; dimension: string; percent: number }[]
+  > {
     const { data: regs } = await this.supabase.admin
       .from('quiz_registry')
-      .select('slug, quiz_id')
+      .select('slug, quiz_id, title')
       .in('slug', [...DISCOVER_QUIZ_IDS]);
     const byId = new Map(
       (regs ?? [])
         .filter((r) => r.quiz_id)
-        .map((r) => [r.quiz_id as string, r.slug as string])
+        .map((r) => [
+          r.quiz_id as string,
+          { slug: r.slug as string, title: (r.title as string) || (r.slug as string) }
+        ])
     );
     const quizIds = [...byId.keys()];
     if (!quizIds.length) return [];
@@ -182,8 +287,13 @@ export class MatchingOverlapService {
       .in('user_id', [a, b])
       .in('quiz_id', quizIds);
 
-    const out: { quizId: string; dimension: string; percent: number }[] = [];
-    for (const [quizId, slug] of byId) {
+    const out: {
+      quizId: string;
+      title: string;
+      dimension: string;
+      percent: number;
+    }[] = [];
+    for (const [quizId, meta] of byId) {
       const ar = results?.find((r) => r.user_id === a && r.quiz_id === quizId);
       const br = results?.find((r) => r.user_id === b && r.quiz_id === quizId);
       if (!ar || !br) continue;
@@ -191,15 +301,28 @@ export class MatchingOverlapService {
       const sb = (br.dimension_scores ?? {}) as Record<string, number>;
       const ca = (ar.confidence ?? {}) as Record<string, number>;
       const cb = (br.confidence ?? {}) as Record<string, number>;
+      let sum = 0;
+      let n = 0;
       for (const dim of new Set([...Object.keys(sa), ...Object.keys(sb)])) {
         if ((ca[dim] ?? 1) < floor || (cb[dim] ?? 1) < floor) continue;
-        const sim = 1 - Math.min(1, Math.abs(Number(sa[dim] ?? 0) - Number(sb[dim] ?? 0)));
-        out.push({
-          quizId: slug,
-          dimension: dim,
-          percent: Math.round(sim * 100)
-        });
+        const sim =
+          1 -
+          Math.min(
+            1,
+            Math.abs(Number(sa[dim] ?? 0) - Number(sb[dim] ?? 0))
+          );
+        const w = Math.min(Number(ca[dim] ?? 1), Number(cb[dim] ?? 1));
+        sum += sim * w;
+        n += w;
       }
+      if (n <= 0) continue;
+      const percent = Math.round((sum / n) * 100);
+      out.push({
+        quizId: meta.slug,
+        title: meta.title,
+        dimension: meta.title,
+        percent
+      });
     }
     return out;
   }
@@ -274,7 +397,10 @@ export class MatchingOverlapService {
     if (!items.length && conn.met_context) {
       items.push({
         kind: 'note',
-        label: conn.met_context === 'just-met' ? 'Just met' : 'Already knew each other',
+        label:
+          conn.met_context === 'just-met'
+            ? 'Just met'
+            : 'Already knew each other',
         date
       });
     }
@@ -297,18 +423,37 @@ function labelOf(key: string, value: unknown): string {
   return key.replace(/^.*\./, '').replace(/_/g, ' ');
 }
 
+/**
+ * Pull a side-by-side detail (hobby follow-up answer, or a freeform note).
+ * Hobbies store the answer at value.followUp.answer.
+ */
 function detailOf(value: unknown): string | undefined {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const v = value as Record<string, unknown>;
-    if (typeof v.detail === 'string') return v.detail;
-    if (typeof v.note === 'string') return v.note;
+    if (typeof v.detail === 'string' && v.detail.trim()) return v.detail.trim();
+    if (typeof v.note === 'string' && v.note.trim()) return v.note.trim();
+    const fu =
+      v.followUp && typeof v.followUp === 'object' && !Array.isArray(v.followUp)
+        ? (v.followUp as Record<string, unknown>)
+        : null;
+    if (fu && typeof fu.answer === 'string' && fu.answer.trim()) {
+      return fu.answer.trim();
+    }
   }
   return undefined;
 }
 
-function kindFromLayer(layer: string): OverlapItemDto['kind'] {
-  if (layer === 'hobby') return 'hobby';
-  if (layer === 'place') return 'place';
-  if (layer === 'this_or_that') return 'this_or_that';
+function kindFromLayer(
+  layer: string,
+  key?: string
+): OverlapItemDto['kind'] {
+  if (layer === 'hobby' || (key && key.startsWith('hobby:'))) return 'hobby';
+  if (layer === 'place' || (key && key.startsWith('place:'))) return 'place';
+  if (
+    layer === 'this_or_that' ||
+    (key && (key.startsWith('tot:') || key.startsWith('this_or_that')))
+  ) {
+    return 'this_or_that';
+  }
   return 'attribute';
 }

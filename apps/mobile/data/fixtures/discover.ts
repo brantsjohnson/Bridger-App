@@ -98,8 +98,22 @@ export type QuizMatch = {
 
 /** Demo compatibility scores shown in the reveal's "how you line up" section. */
 export const QUIZ_MATCHES: QuizMatch[] = [
-  { key: 'q-humor', quizId: 'humor', dimension: 'Humor', score: 95, emoji: '😂', accent: 'coral' },
-  { key: 'q-values', quizId: 'values', dimension: 'Values', score: 72, emoji: '🧭', accent: 'purple' }
+  {
+    key: 'q-humor',
+    quizId: 'humor',
+    dimension: 'Your Funny Bone',
+    score: 95,
+    emoji: '😂',
+    accent: 'coral'
+  },
+  {
+    key: 'q-values',
+    quizId: 'values',
+    dimension: 'What Gets You Going',
+    score: 72,
+    emoji: '🧭',
+    accent: 'purple'
+  }
 ];
 
 /** One question inside a private matching module. */

@@ -186,8 +186,8 @@ function Credit({
 }
 
 /**
- * The "+" tile that sits among the notes. An empty wall still reads as
- * something to fill in rather than a void.
+ * Blank sticky note with a +. Shows on an empty Inside Jokes wall so the
+ * page still feels like something you can fill in (not a dead void).
  */
 export function AddNoteTile({
   label = 'Add an Inside Joke',
@@ -206,13 +206,15 @@ export function AddNoteTile({
       accessibilityRole="button"
       accessibilityLabel={label}
       className={cn(
-        'w-full items-center justify-center gap-1.5 border-2 border-dashed border-ink-line bg-surface/60 p-4 active:bg-[#F1ECFF]',
-        tall ? 'min-h-[132px]' : 'min-h-[104px]'
+        // Empty post-it: warm paper fill + dashed edge so it reads as "add me".
+        'w-full items-center justify-center gap-1.5 border-2 border-dashed border-ink/25 bg-[#FFF6C8] p-4 active:bg-[#FFEFA8]',
+        tall ? 'min-h-[132px]' : 'min-h-[104px]',
+        '-rotate-1'
       )}
     >
-      <View className="h-8 w-8 items-center justify-center rounded-full bg-purple">
+      <View className="h-9 w-9 items-center justify-center rounded-full bg-purple">
         {/* Icon + (not a Text "+") so font metrics cannot shove it off-center. */}
-        <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
+        <PlusIcon size={18} color="#FFFFFF" strokeWidth={3} />
       </View>
       <Text className="text-center font-sans-b text-[13px] text-ink-soft">{label}</Text>
     </Pressable>

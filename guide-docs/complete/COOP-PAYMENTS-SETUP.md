@@ -102,21 +102,36 @@ Keep **test** keys in local `apps/api/.env` for day-to-day development.
 
 ## 4 · EAS / device test
 
-In-app purchases do **not** work in Expo Go. Use an EAS development build on a
-real device (Sandbox Apple ID / Play license tester).
+In-app purchases do **not** work in Expo Go. Use an EAS development or
+**TestFlight / preview** build on a real device (Sandbox Apple ID / Play
+license tester).
+
+### Public SDK keys in the build
+
+`EXPO_PUBLIC_REVENUECAT_API_KEY` (and optional `…_IOS_KEY` / `…_ANDROID_KEY`)
+must be present at **EAS Build** time. They are set in:
+
+- `apps/mobile/eas.json` → each profile's `env` block, and
+- Expo project env (`eas env`) for preview / production / development
+
+Without them, Join shows a false "not Expo Go" style failure even on TestFlight.
+Prefer the App Store key (`appl_…`) and Play key (`goog_…`) for store builds;
+the Test Store key (`test_…`) is fine for early wiring. Preview builds
+(`EXPO_PUBLIC_DEMO_UNLOCK=1`) soft-join when the store path is not ready yet so
+testers can still open the member portal.
 
 ```bash
 cd apps/mobile
 npx eas-cli login   # if needed
-npx eas-cli build --profile development_device --platform ios
+npx eas-cli build --profile preview --platform ios
 # and/or
-npx eas-cli build --profile development_device --platform android
+npx eas-cli build --profile development_device --platform ios
 ```
 
 Then:
 
 1. Install the build; sign in to Bridger.
-2. Join → App Store / Play sheet → confirm.
+2. Join → App Store / Play sheet → confirm (or soft-join on preview if SKUs are not live).
 3. Confirm `coop_memberships` and (after deploy) webhook sync.
 4. Web card path: open Checkout with test card `4242…` against the **test** API.
 

@@ -53,7 +53,8 @@ export default function CoopVoteScreen() {
         analyticsSurface="coop"
         titleAnalyticsId={COOP.vote.section_header}
       />
-      <ScreenBody>
+      {/* KEYBOARD: vote note field needs room while typing. */}
+      <ScreenBody adjustKeyboardInsets>
         <PortalNav />
         <SectionTitle
           title="Current beta"

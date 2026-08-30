@@ -1,12 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The app's phone line to the server for the "What J name are you..." quiz:
-// save my result, get my share link, read a shared result page, and (after
-// signup) connect me to the friend who invited me. In demo mode everything is
-// local, so these quietly do nothing. Network hiccups never crash the quiz.
+// save my result, load my saved result, get my share link, read a shared
+// result page, load the friend board (with compatibility), and (after signup)
+// connect me to the friend who invited me. In demo mode mutating calls quietly
+// do nothing. Network hiccups never crash the quiz.
 // ============================================
 import type {
   JnameLeaderboard,
+  JnameMyResult,
   JnameResolveReferralInput,
   JnameResultInput,
   JnameSharedView,
@@ -25,6 +27,16 @@ export async function saveJnameResult(input: JnameResultInput): Promise<void> {
     });
   } catch {
     // Non-fatal: the on-screen result still shows.
+  }
+}
+
+// THIS SECTION DOES: load my saved result so Home and re-open show completed.
+export async function fetchJnameMyResult(): Promise<JnameMyResult | null> {
+  if (isDemoMode()) return null;
+  try {
+    return await apiFetch<JnameMyResult | null>('/jname/result');
+  } catch {
+    return null;
   }
 }
 

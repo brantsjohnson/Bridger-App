@@ -66,4 +66,15 @@ export class MatchingController {
   ) {
     return this.bridge.suggestForConnection(user.id, connectionId);
   }
+
+  /** Reveal Screen 3: up to 3 FoF who pass the threshold (or an opt-in flag). */
+  @Get('reveal-bridges/:personId')
+  revealBridges(
+    @CurrentUser() user: AuthUser,
+    @Param('personId') personId: string,
+    @Query('limit') limit?: string
+  ) {
+    const n = Math.min(3, Math.max(1, Number(limit) || 3));
+    return this.bridge.suggestManyForPerson(user.id, personId, n);
+  }
 }

@@ -118,8 +118,15 @@ type Draft = {
   photoEmoji: string | null;
   /** Which look is picked under the photo (Pop art / X-ray / Comic / Sepia). */
   photoFilter: PhotoFilterKey;
-  /** Server-baked picture id to save as the avatar (Comic), or null for plain. */
+  /** Server-baked picture id to save as the avatar, or null for plain. */
   filteredMediaId: string | null;
+  /** Unfiltered media id (live) so Edit can switch looks later. */
+  originalMediaId: string | null;
+  /**
+   * Demo / preview: a baked data-URL (or signed URL) to show as the avatar
+   * when there is no server media id yet.
+   */
+  bakedPhotoUri: string | null;
   birthday: string;
   contactsSynced: boolean;
   invited: boolean;
@@ -150,6 +157,8 @@ const EMPTY_DRAFT: Draft = {
   photoEmoji: null,
   photoFilter: 'pop_art',
   filteredMediaId: null,
+  originalMediaId: null,
+  bakedPhotoUri: null,
   birthday: '',
   contactsSynced: false,
   invited: false,
@@ -325,12 +334,61 @@ export function useOnboarding(onDone: () => void) {
       switch (leaving) {
         case 'confirm-profile': {
           // REQUIRED: name + photo must reach the server before we advance.
+          // If a look was picked but the bake has not finished yet, finish it
+          // here so the profile avatar is the filtered face, not the plain one.
           await saveName(`${snapshot.firstName} ${snapshot.lastName}`.trim());
-          if (snapshot.photoUri || snapshot.filteredMediaId) {
+          let filteredMediaId = snapshot.filteredMediaId;
+          let originalMediaId = snapshot.originalMediaId;
+          let bakedPhotoUri = snapshot.bakedPhotoUri;
+
+          if (
+            snapshot.photoUri &&
+            snapshot.photoFilter &&
+            !filteredMediaId &&
+            !isDemoMode()
+          ) {
+            try {
+              const { bakeServerPhotoFilter } = await import('../lib/photo-filters');
+              const baked = await bakeServerPhotoFilter(
+                snapshot.photoUri,
+                snapshot.photoFilter
+              );
+              filteredMediaId = baked.mediaId;
+              originalMediaId = baked.originalMediaId;
+              bakedPhotoUri = baked.url;
+            } catch (err) {
+              console.warn('[onboarding] late filter bake failed; saving plain', err);
+            }
+          }
+
+          if (
+            isDemoMode() &&
+            snapshot.photoUri &&
+            snapshot.photoFilter &&
+            !bakedPhotoUri
+          ) {
+            try {
+              const { bakeClientPhotoFilter } = await import(
+                '../lib/client-photo-filters'
+              );
+              const url = await bakeClientPhotoFilter(
+                snapshot.photoUri,
+                snapshot.photoFilter
+              );
+              if (url) bakedPhotoUri = url;
+            } catch {
+              // Native demo may not paint looks; plain photo is fine.
+            }
+          }
+
+          if (snapshot.photoUri || filteredMediaId || bakedPhotoUri) {
             await savePhoto({
               source: snapshot.photoSource,
-              uri: snapshot.photoUri ?? undefined,
-              filteredMediaId: snapshot.filteredMediaId
+              uri: bakedPhotoUri ?? snapshot.photoUri ?? undefined,
+              filteredMediaId,
+              originalMediaId,
+              filter: snapshot.photoFilter,
+              originalUri: snapshot.photoUri
             });
           } else if (!snapshot.photoEmoji) {
             // Live requires a real photo; demo may use an emoji stand-in.

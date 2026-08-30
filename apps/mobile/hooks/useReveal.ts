@@ -1,16 +1,18 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// React hook for the Connection Reveal. Loads what you share with someone,
-// remembers the "how did you two meet?" answers (including optional circle
-// and optional note), and commits them when you leave Screen 0.
+// React hook for the Connection Reveal. Loads who you just connected with
+// for Screen 0, remembers the "how did you two meet?" answers, and AFTER
+// commit loads what you share + friend-of-friend suggestions for Screens 1–3.
 //
 // Fires the connection_revealed product event — never with place text, note
 // text, or names. Only bools and tier labels.
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
 import { trackProduct, type MeetContext, type Tier } from '@bridger/shared';
+import { getRevealBridges } from '../data/discover';
 import {
-  getReveal,
+  getRevealBase,
+  getRevealOverlap,
   saveHowYouMet,
   type RevealPayload
 } from '../data/reveal';
@@ -33,10 +35,11 @@ export function useReveal(personId: string, viaFriendId?: string) {
   const [meetNote, setMeetNote] = useState('');
   const [committed, setCommitted] = useState(false);
 
+  // THIS SECTION DOES: load identity only (no overlap — live would 403).
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const next = await getReveal(personId, viaFriendId);
+      const next = await getRevealBase(personId, viaFriendId);
       setPayload(next);
       // Discover path: don't push a place checkbox they can't use.
       setRecordPlace(!next.via);
@@ -50,7 +53,7 @@ export function useReveal(personId: string, viaFriendId?: string) {
   }, [refresh]);
 
   /**
-   * Persist Screen 0 and fire the product outcome.
+   * Persist Screen 0, then load overlap + FoF bridges for the story screens.
    * PRIVACY: analytics gets recorded_where / added_note (bools) and tier only —
    * never the place string, note text, or names.
    */
@@ -71,6 +74,14 @@ export function useReveal(personId: string, viaFriendId?: string) {
       to_tier: result.tier
     });
     setCommitted(true);
+
+    // THIS SECTION DOES: now that met_context exists, fetch what you share.
+    try {
+      const overlap = await getRevealOverlap(personId);
+      setPayload((prev) => (prev ? { ...prev, ...overlap } : prev));
+    } catch {
+      // Thin overlap is fine — story still plays with empty others.
+    }
     return result;
   }, [
     context,
@@ -81,6 +92,27 @@ export function useReveal(personId: string, viaFriendId?: string) {
     tier,
     payload?.via
   ]);
+
+  /**
+   * Re-fetch FoF bridges after the viewer turns Discover matching on from
+   * the Screen 3 nudge.
+   */
+  const reloadBridges = useCallback(async () => {
+    try {
+      const bridges = await getRevealBridges(personId);
+      setPayload((prev) =>
+        prev
+          ? {
+              ...prev,
+              discoverable: bridges.discoverable,
+              bridgeSuggestions: bridges.suggestions
+            }
+          : prev
+      );
+    } catch {
+      // Keep whatever we already have.
+    }
+  }, [personId]);
 
   return {
     payload,
@@ -96,6 +128,7 @@ export function useReveal(personId: string, viaFriendId?: string) {
     setMeetNote,
     commit,
     committed,
-    canContinue: context !== null
+    canContinue: context !== null,
+    reloadBridges
   };
 }

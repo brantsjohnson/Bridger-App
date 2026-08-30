@@ -272,7 +272,7 @@ function HeaderChrome({
   ) : null;
 
   // Left slot: Back arrow on detail screens; nothing on top-level tabs so the
-  // title sits flush left (the profile face moved to the bottom nav pill).
+  // title sits flush left (Profile opens from the bottom-nav person icon).
   const leading = backMode ? (
     <Pressable
       onPress={withAnalyticsPress(resolvedBackId, onBack)}
@@ -375,6 +375,13 @@ export function ScreenBody({
   padded = true,
   /** leave room for the floating tab bar (turn off on auth / full-screen flows) */
   tabBarInset = true,
+  /**
+   * KEYBOARD: only turn this on for screens with mid-page text fields.
+   * Off by default because iOS can leave a tall empty scroll gap after the
+   * keyboard closes (or leak that gap onto other screens). Sheets already
+   * lift themselves; use this only when a field lives in the page scroll.
+   */
+  adjustKeyboardInsets = false,
   /** Set false while dragging roster rows so the page doesn't fight the finger. */
   scrollEnabled = true,
   className
@@ -382,6 +389,7 @@ export function ScreenBody({
   children: React.ReactNode;
   padded?: boolean;
   tabBarInset?: boolean;
+  adjustKeyboardInsets?: boolean;
   scrollEnabled?: boolean;
   className?: string;
 }) {
@@ -395,14 +403,18 @@ export function ScreenBody({
       // Transparent so intro's black canvas shows through (web ScrollView
       // otherwise paints white and the gate looks like graph paper).
       style={{ backgroundColor: 'transparent' }}
-      // KEYBOARD: on iOS, lift scroll content so mid-page fields (notes,
-      // bucket list, event form fields) stay visible while typing.
       keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+      // KEYBOARD: opt-in only. Default off so Home / Co-op / Friends do not
+      // show a blank keyboard-sized hole when you are not typing.
+      automaticallyAdjustKeyboardInsets={
+        adjustKeyboardInsets && Platform.OS === 'ios'
+      }
       contentContainerStyle={{
         // Header is full-bleed (own horizontal pad). Body content is padded below.
         paddingTop: hasHeader ? 0 : 8,
-        paddingBottom: tabBarInset ? 140 : 32
+        // Tab pill clearance only (not keyboard height). Sheets / opt-in
+        // adjustKeyboardInsets handle typing space.
+        paddingBottom: tabBarInset ? 108 : 32
       }}
     >
       {/* Title row scrolls away with the page; zIndex keeps + taps on the header. */}

@@ -21,7 +21,7 @@ export const INTRO_CARDS: { id: string; lines: string[] }[] = [
   {
     id: 'intro-1',
     lines: [
-      'We match you by what makes you laugh, what you care about, who you are, and how you click with people.'
+      'We match you on humor, values, vibe, and how you click with people.'
     ]
   },
   {
@@ -31,27 +31,25 @@ export const INTRO_CARDS: { id: string; lines: string[] }[] = [
   {
     id: 'intro-3',
     lines: [
-      "Things like ADHD, anxiety, depression, OCD, or bipolar can change how you feel and act each day. You don't pick that. It's just part of you."
+      "Things like ADHD, anxiety, or depression can shape your days. You don't pick that."
     ]
   },
   {
     id: 'intro-4',
     lines: [
-      'You can tell us about it if you want. It helps us find people who fit you better. Like:',
-      'people who go at your speed',
-      'people who just get it'
+      'Share if you want. It helps us find people who go at your speed, or who just get it.'
     ]
   },
   {
     id: 'intro-5',
     lines: [
-      "Don't want to? That's okay. You'll still get matches. We just won't know this part, so sometimes a match might feel a little off."
+      "Skip if you want. You'll still get matches. We just won't know this part."
     ]
   },
   {
     id: 'intro-6',
     lines: [
-      'What you share is private. We keep it off your profile. Your matches never see it. You can change it or turn it off anytime.'
+      'Private. Off your profile. Matches never see it. Change it anytime.'
     ]
   }
 ];

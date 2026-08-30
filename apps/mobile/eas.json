@@ -14,7 +14,8 @@
         "EXPO_PUBLIC_DEMO_UNLOCK": "1",
         "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY": "test_meyZMMQiyxENSUeWnTnQtvHasDs"
       }
     },
     "development_device": {
@@ -31,7 +32,8 @@
         "EXPO_PUBLIC_DEMO_UNLOCK": "1",
         "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY": "test_meyZMMQiyxENSUeWnTnQtvHasDs"
       }
     },
     "preview": {
@@ -47,7 +49,8 @@
         "EXPO_PUBLIC_DEMO_UNLOCK": "1",
         "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY": "test_meyZMMQiyxENSUeWnTnQtvHasDs"
       }
     },
     "production": {
@@ -61,7 +64,8 @@
         "EXPO_PUBLIC_DEMO_UNLOCK": "0",
         "EXPO_PUBLIC_API_URL": "https://jiyzei8qqu.us-east-1.awsapprunner.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fewtcanrxmdzyqhlgpdr.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_Wa3WgxhqMYFY0hlHJEmosQ_ABH1dnoF",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY": "test_meyZMMQiyxENSUeWnTnQtvHasDs"
       }
     }
   },

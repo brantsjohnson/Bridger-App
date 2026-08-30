@@ -10,6 +10,7 @@
 // *secret* key in the app; only the public SDK key belongs here.
 // ============================================
 import { Platform } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import Purchases, {
   LOG_LEVEL,
   PACKAGE_TYPE,
@@ -41,47 +42,88 @@ export type PaywallOutcome =
   | { status: 'error'; message: string };
 
 let configured = false;
+/** Last Bridger user id we logged into RevenueCat as (for lazy re-configure). */
+let lastAppUserId: string | null = null;
 
-/** Public SDK key from env (Test Store key works for local / preview testing). */
+/** True when this binary is Expo Go (no custom native IAP modules). */
+function isExpoGo(): boolean {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
+
+/** Read a string from Expo extra (baked at EAS build time via app.config.js). */
+function extraString(key: string): string {
+  const extra = Constants.expoConfig?.extra as Record<string, unknown> | undefined;
+  const v = extra?.[key];
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+/**
+ * Public SDK key from env (inlined at Metro bundle time) or from Expo extra
+ * (app.config.js). Prefer the platform App Store / Play key when set; fall
+ * back to the shared Test Store key for local / early builds.
+ */
 function publicApiKey(): string | null {
-  const shared = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim();
   if (Platform.OS === 'ios') {
-    return (
+    const ios =
       process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY?.trim() ||
-      shared ||
-      null
-    );
+      extraString('revenueCatIosKey');
+    if (ios) return ios;
   }
   if (Platform.OS === 'android') {
-    return (
+    const android =
       process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY?.trim() ||
-      shared ||
-      null
-    );
+      extraString('revenueCatAndroidKey');
+    if (android) return android;
   }
-  // Web: native IAP is not available; Stripe / RC Billing would be separate.
+  const shared =
+    process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim() ||
+    extraString('revenueCatApiKey');
   return shared || null;
+}
+
+/** Why purchases cannot run right now (plain English for alerts). */
+export function purchasesUnavailableMessage(): string {
+  if (isDemoMode()) {
+    return 'Demo mode uses a free soft join. Leave demo to buy a real membership.';
+  }
+  if (Platform.OS === 'web') {
+    return 'Join on the iOS or Android app to pay with the App Store or Google Play.';
+  }
+  if (isExpoGo()) {
+    return 'In-app purchases need a development or TestFlight build (not Expo Go).';
+  }
+  if (!publicApiKey()) {
+    return 'Membership purchases are not configured in this build yet. Ask the Bridger team to add the RevenueCat App Store key and ship a new build.';
+  }
+  if (!configured) {
+    return 'Membership is still starting up. Wait a second and try again.';
+  }
+  return 'Membership purchases are not available right now. Try again in a moment.';
 }
 
 /** True when this build can talk to the store (native + key present). */
 export function purchasesAvailable(): boolean {
   if (isDemoMode()) return false;
+  if (isExpoGo()) return false;
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return false;
   return Boolean(publicApiKey());
 }
 
 /**
  * Configure RevenueCat once per app launch, then log in as this Bridger user.
- * Call again when the signed-in user changes (login / logout).
+ * Call again when the signed-in user changes (login / logout). Safe to call
+ * right before a purchase if configure had not finished yet.
  */
 export async function configurePurchases(appUserId: string | null): Promise<void> {
+  lastAppUserId = appUserId;
   if (isDemoMode()) return;
+  if (isExpoGo()) return;
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
 
   const apiKey = publicApiKey();
   if (!apiKey) {
     console.warn(
-      'RevenueCat: missing EXPO_PUBLIC_REVENUECAT_API_KEY (or platform key). Purchases disabled.'
+      'RevenueCat: missing public SDK key (EXPO_PUBLIC_REVENUECAT_*). Purchases disabled.'
     );
     return;
   }
@@ -113,9 +155,17 @@ export async function configurePurchases(appUserId: string | null): Promise<void
   }
 }
 
+/** Make sure RevenueCat is configured before a buy / restore (handles slow boot). */
+async function ensureConfigured(): Promise<boolean> {
+  if (configured) return true;
+  if (!purchasesAvailable()) return false;
+  await configurePurchases(lastAppUserId);
+  return configured;
+}
+
 /** Fresh CustomerInfo from RevenueCat (who they are + what they own). */
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
-  if (!purchasesAvailable() || !configured) return null;
+  if (!(await ensureConfigured())) return null;
   try {
     return await Purchases.getCustomerInfo();
   } catch (err) {
@@ -138,7 +188,7 @@ export async function checkCoopEntitlement(): Promise<boolean> {
 
 /** Current offering (holds monthly + yearly packages when configured). */
 export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
-  if (!purchasesAvailable() || !configured) return null;
+  if (!(await ensureConfigured())) return null;
   try {
     const offerings = await Purchases.getOfferings();
     return offerings.current ?? null;
@@ -163,10 +213,13 @@ export async function getCoopPackages(): Promise<{
   const monthly =
     byId(COOP_PACKAGE_IDS.monthly) ??
     offering.availablePackages.find((p) => p.packageType === PACKAGE_TYPE.MONTHLY) ??
+    // RevenueCat default package ids when the dashboard uses $rc_monthly.
+    byId('$rc_monthly') ??
     null;
   const yearly =
     byId(COOP_PACKAGE_IDS.yearly) ??
     offering.availablePackages.find((p) => p.packageType === PACKAGE_TYPE.ANNUAL) ??
+    byId('$rc_annual') ??
     null;
 
   return { monthly, yearly, offering };
@@ -181,13 +234,10 @@ export async function getCoopPackages(): Promise<{
 export async function purchaseCoopPlan(
   plan: 'monthly' | 'yearly'
 ): Promise<PaywallOutcome> {
-  if (!purchasesAvailable() || !configured) {
+  if (!(await ensureConfigured())) {
     return {
       status: 'unavailable',
-      message:
-        Platform.OS === 'web'
-          ? 'Join on the iOS or Android app to pay with the App Store or Google Play.'
-          : 'In-app purchases need a development / TestFlight build (not Expo Go).'
+      message: purchasesUnavailableMessage()
     };
   }
   const { monthly, yearly } = await getCoopPackages();
@@ -197,7 +247,8 @@ export async function purchaseCoopPlan(
   if (!pkg) {
     return {
       status: 'unavailable',
-      message: 'Membership options are not ready yet. Try again in a moment.'
+      message:
+        'Membership options are not ready in the store yet. Try again after the next app update, or ask the Bridger team.'
     };
   }
   return purchaseCoopPackage(pkg);
@@ -207,10 +258,10 @@ export async function purchaseCoopPlan(
 export async function purchaseCoopPackage(
   pkg: PurchasesPackage
 ): Promise<PaywallOutcome> {
-  if (!purchasesAvailable() || !configured) {
+  if (!(await ensureConfigured())) {
     return {
       status: 'unavailable',
-      message: 'In-app purchases need a native build with RevenueCat configured.'
+      message: purchasesUnavailableMessage()
     };
   }
   try {
@@ -236,13 +287,10 @@ export async function purchaseCoopPackage(
  * Uses presentPaywallIfNeeded so people who already have the entitlement skip it.
  */
 export async function presentCoopPaywall(): Promise<PaywallOutcome> {
-  if (!purchasesAvailable() || !configured) {
+  if (!(await ensureConfigured())) {
     return {
       status: 'unavailable',
-      message:
-        Platform.OS === 'web'
-          ? 'Join on the iOS or Android app to pay with Apple Pay or Google Play.'
-          : 'In-app purchases need a development / TestFlight build (not Expo Go).'
+      message: purchasesUnavailableMessage()
     };
   }
 
@@ -288,10 +336,10 @@ export async function presentCoopPaywall(): Promise<PaywallOutcome> {
 
 /** Restore previous App Store / Play purchases onto this Bridger account. */
 export async function restorePurchases(): Promise<PaywallOutcome> {
-  if (!purchasesAvailable() || !configured) {
+  if (!(await ensureConfigured())) {
     return {
       status: 'unavailable',
-      message: 'Restore only works in a native iOS or Android build.'
+      message: purchasesUnavailableMessage()
     };
   }
   try {
@@ -316,10 +364,10 @@ export async function restorePurchases(): Promise<PaywallOutcome> {
 export async function presentCustomerCenter(): Promise<
   { ok: true } | { ok: false; message: string }
 > {
-  if (!purchasesAvailable() || !configured) {
+  if (!(await ensureConfigured())) {
     return {
       ok: false,
-      message: 'Membership management needs the iOS or Android app.'
+      message: purchasesUnavailableMessage()
     };
   }
   try {

@@ -94,6 +94,16 @@ export type MyProfileHeader = {
   book?: { title: string; author: string };
   /** Signed URL for the profile photo (live). Demo uses fixtures instead. */
   avatarUrl?: string | null;
+  /**
+   * Which look is baked into avatarUrl (pop_art / comic / x_ray / sepia).
+   * Null means the plain photo. Used by Edit to highlight the active pill.
+   */
+  avatarFilter?: 'pop_art' | 'comic' | 'x_ray' | 'sepia' | null;
+  /**
+   * Unfiltered source photo URL (signed live, or local demo URI). Edit re-bakes
+   * from this when they switch looks.
+   */
+  avatarOriginalUrl?: string | null;
 };
 
 /**
@@ -203,7 +213,7 @@ async function replaceAttributes(
   });
 }
 
-/** Header bits: city, bio, profile song, avatar. */
+/** Header bits: city, bio, profile song, avatar + look. */
 export async function getMyProfileHeader(): Promise<MyProfileHeader> {
   if (isDemoMode()) return { ...demoHeader, song: { ...demoHeader.song } };
   const p = await apiFetch<{
@@ -212,13 +222,17 @@ export async function getMyProfileHeader(): Promise<MyProfileHeader> {
     song: { title: string; artist: string };
     book?: { title: string; author: string } | null;
     avatarUrl?: string | null;
+    avatarFilter?: 'pop_art' | 'comic' | 'x_ray' | 'sepia' | null;
+    avatarOriginalUrl?: string | null;
   }>('/me/profile');
   return {
     city: p.city ?? '',
     bio: p.bio ?? '',
     song: { title: p.song?.title ?? '', artist: p.song?.artist ?? '' },
     book: p.book?.title ? { title: p.book.title, author: p.book.author } : undefined,
-    avatarUrl: p.avatarUrl ?? null
+    avatarUrl: p.avatarUrl ?? null,
+    avatarFilter: p.avatarFilter ?? null,
+    avatarOriginalUrl: p.avatarOriginalUrl ?? null
   };
 }
 

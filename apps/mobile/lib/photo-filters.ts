@@ -19,8 +19,12 @@ export type ServerPhotoFilter = 'pop_art' | 'comic' | 'x_ray' | 'sepia';
 
 /** What the phone gets back: the finished picture's id and a link to show it. */
 export type BakedPhoto = {
+  /** Filtered picture to use as the avatar. */
   mediaId: string;
+  /** Short-lived preview link for the filtered picture. */
   url: string;
+  /** Unfiltered upload we baked from (kept so Edit can switch looks later). */
+  originalMediaId: string;
 };
 
 /**
@@ -66,8 +70,12 @@ export async function bakeServerPhotoFilter(
   const originalMediaId = await uploadOriginalOnce(uri);
 
   // THIS SECTION DOES: ask the API to repaint it and give back the finished picture.
-  return apiFetch<BakedPhoto>('/photo-filters/apply', {
-    method: 'POST',
-    body: JSON.stringify({ mediaId: originalMediaId, filter })
-  });
+  const baked = await apiFetch<Omit<BakedPhoto, 'originalMediaId'>>(
+    '/photo-filters/apply',
+    {
+      method: 'POST',
+      body: JSON.stringify({ mediaId: originalMediaId, filter })
+    }
+  );
+  return { ...baked, originalMediaId };
 }

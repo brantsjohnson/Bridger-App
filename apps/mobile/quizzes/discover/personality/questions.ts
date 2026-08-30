@@ -30,13 +30,11 @@ export type PersonalityQuestion = {
 
 export const PERSONALITY_INSTRUCTIONS = {
   title: 'Your Vibe',
-  lead: 'Answer based on what you are usually like when your mental-health symptoms are relatively manageable.',
+  lead: 'Answer for a typical day, when you feel mostly okay.',
   rules: [
-    'Choose the answer that feels closest most often.',
-    'You may choose two answers when they are genuinely tied. Try not to choose more than two.',
-    'There are no good or bad answers.',
-    'Choose "None of these" when none of the answers fit.',
-    'Optional: text a short why under your picks — like a chat bubble.'
+    'Pick what you usually do.',
+    'Two answers max if both fit.',
+    'No wrong answers.'
   ]
 } as const;
 

@@ -87,14 +87,13 @@ export default function TabsLayout() {
         tabBar={({ state, navigation }) => {
           const current = state.routes[state.index]?.name as string;
           // Messages opens from the header, not the pill — hide the bar there so
-          // nothing looks "half selected". Profile now lives ON the pill (your
-          // face on the far-right), so the bar STAYS on Profile.
+          // nothing looks "half selected". Profile lives ON the pill (single-person
+          // icon on the far-right), so the bar STAYS on Profile.
           if (current === 'messages') return null;
           return (
             <TabBarWithAcknowledge
               current={current}
               badges={badges}
-              profile={profile}
               onProfilePress={openProfile}
               onNavigate={(key: TabKey) => {
                 const route = state.routes.find((r) => r.name === key);
@@ -133,13 +132,11 @@ export default function TabsLayout() {
 function TabBarWithAcknowledge({
   current,
   badges,
-  profile,
   onProfilePress,
   onNavigate
 }: {
   current: string;
   badges: Partial<Record<TabKey, boolean>>;
-  profile: React.ComponentProps<typeof FloatingTabBar>['profile'];
   onProfilePress: () => void;
   onNavigate: (key: TabKey) => void;
 }) {
@@ -152,7 +149,6 @@ function TabBarWithAcknowledge({
     <FloatingTabBar
       value={current}
       badges={badges}
-      profile={profile}
       onProfilePress={onProfilePress}
       onChange={(key: TabKey) => {
         acknowledgeTab(key);

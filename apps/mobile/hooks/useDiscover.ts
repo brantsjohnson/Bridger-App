@@ -6,6 +6,7 @@
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
 import type { ApprovalRequest, DiscoverSettings, Suggestion } from '@bridger/shared';
+import { DISCOVER_QUIZ_IDS } from '@bridger/shared';
 import {
   acceptRequest,
   addSuggestion,
@@ -105,9 +106,26 @@ export function useDiscover() {
     setSuggestions(await listSuggestions());
   }, []);
 
+  // THIS SECTION DOES: flip the card to Done right away, then re-check the
+  // server so a relaunch still shows Done (scores already saved by save*).
   const onCompleteModule = useCallback(async (moduleId: string) => {
+    setCompletedModuleIds((prev) =>
+      prev.includes(moduleId) ? prev : [...prev, moduleId]
+    );
     await completeMatchModule(moduleId);
-    setCompletedModuleIds(await listCompletedModules());
+    try {
+      const fromServer = await listCompletedModules();
+      setCompletedModuleIds((prev) => {
+        // Server tracks the four score quizzes. Keep local-only Done tags
+        // (Behind the Scenes) plus the module we just finished.
+        const localOnly = prev.filter(
+          (id) => !(DISCOVER_QUIZ_IDS as readonly string[]).includes(id)
+        );
+        return [...new Set([...fromServer, ...localOnly, moduleId])];
+      });
+    } catch {
+      // Keep the optimistic Done if the completed list cannot refresh.
+    }
   }, []);
 
   const loadCommonalities = useCallback(async (personId: string): Promise<Commonality[]> => {

@@ -79,8 +79,8 @@ discover/
 
 - `_shared/thresholds.ts` — AI/ML adapt floors per quiz
 - `_shared/disclosure-context.ts` — safe slice for every measurement quiz
-- `_shared/QuizTakeShell.tsx` (+ OptionTile, EmojiBurst) — flair UI: accent,
-  fun shapes, emoji burst, paged options (no scroll), note chip
+- `_shared/QuizTakeShell.tsx` (+ OptionTile) — flair UI: accent,
+  fun shapes, emoji burst (same HobbyEmojiBurst as hobbies), note chip
 
 ## Anchoring (what each question measures)
 

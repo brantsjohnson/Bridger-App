@@ -14,6 +14,12 @@ const SCALE = 10;
 const GRID_W = 34;
 const GRID_H = 26;
 
+/** Outer box the News screen reserves so "Local updates!" stays put under the paper. */
+export const NEWS_PAPER_SIZE = {
+  width: GRID_W * SCALE,
+  height: GRID_H * SCALE
+} as const;
+
 // Dark-edition colors from the Magic Patterns design.
 const PAPER = '#f4f1e8';
 const INK = '#141414';

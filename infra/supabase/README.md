@@ -47,7 +47,14 @@ enforced at the row level — even a bug in the API can't leak a closer-tier fie
 | 0019 | Weekly Recap Podcast tables, `story_type` audio, rolling expiry, purge function + RLS |
 | 0020 | `client_not_found_hits` — 404 / broken-path trail for the admin console (server-only) |
 | 0021 | `user_settings.onboarding_complete` |
+| 0043 | J-name quiz: `jname_results` / `jname_shares` / `jname_referrals` (+ RLS) |
+| 0044 | Demo week invite access |
+| 0045 | `stories.event_id` |
+| 0046 | Profile color onboarding |
 | 0047 | `user_settings.profile_intro_seen` — one-time Profile welcome dismissed |
+| 0048 | Onboarding progress |
+| 0049 | Payment providers + discoverable default off |
+| 0050 | Set `admin_config.live_quiz_slug` to `what-j-name` when unset |
 | 0022 | `connections.met_note` — Discover how-you-met freeform note |
 | 0023 | `events.cover` + `event_assignments` (+ RLS) |
 | 0038 | `event_invites.invited_by` — who invited each guest (null = host) |

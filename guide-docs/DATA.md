@@ -74,7 +74,7 @@ Organized by domain so it's easy to navigate. Key columns shown (not exhaustive)
 ### Identity & settings (Zone A)
 ```
 users            id · auth_provider · status · created_at
-user_identity    user_id⟶users · display_name · avatar_media_id⟶media · profile_song    [PII]
+user_identity    user_id⟶users · display_name · avatar_media_id⟶media · avatar_original_media_id⟶media · avatar_filter · profile_song    [PII]
 user_contacts    user_id⟶users · email · phone (via Supabase Auth)                        [PII]
 user_settings    user_id⟶users · discoverable · notif_prefs(jsonb {kinds,circles}) · home_city(coarse) · onboarding_complete · profile_intro_seen
                  · meet_scope(nearby|anywhere) · theme · locale · profile_color(#RRGGBB|null)
@@ -222,7 +222,7 @@ quizzes            id · version · goal · dimensions(jsonb) · moderator_instr
 quiz_questions     id · quiz_id⟶quizzes · prompt · type(single|multi) · options(jsonb: label + dimension weights) · allow_explain
 quiz_responses     id · quiz_id · user_id⟶users · question_id · selected_option_ids · explain_text
 quiz_results       user_id⟶users · quiz_id · dimension_scores(jsonb, deterministic rubric) · confidence(jsonb, AI moderator) · completed_at   [feeds attributes → matching Zone B/C]
-jname_results      user_id⟶users(PK) · j_name · percent · top_names(text[]: top J-names by score, for match alerts) · updated_at   [Which J name; retakes overwrite; RLS owner-only; friend reads via Nest; cascade]
+jname_results      user_id⟶users(PK) · j_name · percent · top_names(text[]: top J-names by score, for match alerts) · updated_at   [Which J name; retakes overwrite; RLS owner-only; friend reads via Nest; pairwise fun compatibility % derived at read time from both results; cascade]
 jname_shares       token(PK) · sharer_id⟶users(unique) · j_name · percent   [one stable public share link per person; snapshot; public web view reads via Nest service role; cascade]
 jname_referrals    id · token⟶jname_shares · sharer_id⟶users · invited_user_id⟶users|null · anon_ref(opaque, logged-out) · opened_at · resolved_at   [who opened a link / who-invited-whom; resolved after signup by Nest; RLS: sharer or invited can read; cascade]
 disclosure_profiles user_id⟶users · version · status(pending|skipped|completed) · match_weight_preference(use|a_little|barely?) · matching_enabled · completed_at · updated_at
