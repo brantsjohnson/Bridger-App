@@ -238,3 +238,30 @@ export function scoreAttachment(
     version: 1
   };
 }
+
+/**
+ * Turn a scored result into the flat 0–1 map the matching API stores.
+ * Anxiety / avoidance are stored 0–100 on the client; matching wants 0–1.
+ * PRIVACY: scores + confidence only — never answers or style blurbs.
+ */
+export function attachmentToMatchDimensions(r: AttachmentScoreResult): {
+  dimensionScores: Record<string, number>;
+  confidence: Record<string, number>;
+  version: number;
+} {
+  return {
+    dimensionScores: {
+      anxiety: clamp01(r.anxiety / 100),
+      avoidance: clamp01(r.avoidance / 100)
+    },
+    confidence: {
+      anxiety: clamp01(
+        Number.isFinite(r.confidence.anxiety) ? r.confidence.anxiety : 1
+      ),
+      avoidance: clamp01(
+        Number.isFinite(r.confidence.avoidance) ? r.confidence.avoidance : 1
+      )
+    },
+    version: r.version
+  };
+}

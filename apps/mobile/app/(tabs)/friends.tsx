@@ -224,63 +224,71 @@ export default function FriendsScreen() {
           </View>
         ) : null}
 
-        {/* THIS SECTION DOES: Friend Pod + Inside Jokes when you have people. */}
-        {!empty ? (
-          <>
-            <View>
-              <SectionTitle
-                title="Friend Pod"
-                description="A short recap of your friends' week, bundled so you can catch up fast."
-                infoAnalyticsId={FRIENDS.pod.info}
-                parentScreen="friends"
-                section="pod"
-                className="mb-2"
-                showDot={!!sectionDots.pod}
-                dotColor={friendsDot}
-              />
-              <FriendPodWidget
-                size="full"
-                onPlay={() => void openPlayer()}
-                onRecord={openRecorder}
-                onSubmitQuestion={() => setQuestionOpen(true)}
-              />
-            </View>
+        {/* THIS SECTION DOES: Friend Pod always — record even with zero friends
+            (your clip just has nobody to hear it yet). */}
+        <View>
+          <SectionTitle
+            title="Friend Pod"
+            description={
+              empty
+                ? 'Record your week now. Once friends join, they can hear it here.'
+                : "A short recap of your friends' week, bundled so you can catch up fast."
+            }
+            infoAnalyticsId={FRIENDS.pod.info}
+            parentScreen="friends"
+            section="pod"
+            className="mb-2"
+            showDot={!!sectionDots.pod}
+            dotColor={friendsDot}
+          />
+          <FriendPodWidget
+            size="full"
+            onPlay={() => void openPlayer()}
+            onRecord={openRecorder}
+            onSubmitQuestion={() => setQuestionOpen(true)}
+          />
+        </View>
 
-            <View className="mt-7">
-              <SectionTitle
-                title="Inside jokes"
-                description="Little notes and quotes you save with friends so the good moments stick around."
-                infoAnalyticsId={FRIENDS.inside_jokes.info}
-                parentScreen="friends"
-                section="inside_jokes"
-                className="mb-2"
-                showDot={!!sectionDots.inside_jokes}
-                dotColor={friendsDot}
-                action={
-                  // + opens the sheet to post a new sticky note
-                  <Pressable
-                    onPress={withAnalyticsPress(FRIENDS.inside_jokes.add, () => setJokeOpen(true))}
-                    accessibilityRole="button"
-                    accessibilityLabel="Add an Inside Joke"
-                    className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
-                  >
-                    {/* Icon + (not a Text "+") so font metrics cannot shove it off-center. */}
-                    <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
-                  </Pressable>
-                }
-              />
-              <InsideJokesWidget
-                size="full"
-                jokes={jokes}
-                analyticsIds={{
-                  note: FRIENDS.inside_jokes.note,
-                  add: FRIENDS.inside_jokes.add,
-                  noteBody: FRIENDS.inside_jokes.note_body
-                }}
-              />
-            </View>
-          </>
-        ) : null}
+        {/* THIS SECTION DOES: Inside jokes always — empty wall shows a + post-it. */}
+        <View className="mt-7">
+          <SectionTitle
+            title="Inside jokes"
+            description={
+              empty
+                ? 'Save the first joke now. Tag friends once they are here.'
+                : 'Little notes and quotes you save with friends so the good moments stick around.'
+            }
+            infoAnalyticsId={FRIENDS.inside_jokes.info}
+            parentScreen="friends"
+            section="inside_jokes"
+            className="mb-2"
+            showDot={!!sectionDots.inside_jokes}
+            dotColor={friendsDot}
+            action={
+              // Header + still opens the sheet when the wall already has notes.
+              jokes.length > 0 ? (
+                <Pressable
+                  onPress={withAnalyticsPress(FRIENDS.inside_jokes.add, () => setJokeOpen(true))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add an Inside Joke"
+                  className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
+                >
+                  <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
+                </Pressable>
+              ) : null
+            }
+          />
+          <InsideJokesWidget
+            size="full"
+            jokes={jokes}
+            onAdd={() => setJokeOpen(true)}
+            analyticsIds={{
+              note: FRIENDS.inside_jokes.note,
+              add: FRIENDS.inside_jokes.add,
+              noteBody: FRIENDS.inside_jokes.note_body
+            }}
+          />
+        </View>
 
         {/* THIS SECTION DOES: a short tip while Edit mode is on. */}
         {editing && !empty ? (
@@ -289,24 +297,38 @@ export default function FriendsScreen() {
           </Text>
         ) : null}
 
-        {/* THIS SECTION DOES: empty state, or the tiered friends roster. */}
-        {empty ? (
-          <View className="mt-4">
-            <ColdStart onAdd={() => openAddFriend()} inviteLocked={!canInvite} />
-          </View>
-        ) : (
-          <FriendsRoster
-            sections={filteredSections}
-            editing={editing}
-            onOpenPerson={(p) =>
-              router.push({ pathname: '/person/[id]', params: { id: p.id } })
+        {/* THIS SECTION DOES: friends roster, or the invite empty card under the pods. */}
+        <View className="mt-7">
+          <SectionTitle
+            title="Friends"
+            description={
+              empty
+                ? 'Your circle lives here once people join.'
+                : 'Close, Friends, and Acquaintances — who sees what.'
             }
-            onOpenStory={(p) => router.push(`/story/${p.id}?from=profile`)}
-            onOpenMove={openMove}
-            onDropTier={(p, tier) => void retierPerson(p, tier)}
-            onDraggingChange={setRosterDragging}
+            infoAnalyticsId={FRIENDS.roster.info}
+            parentScreen="friends"
+            section="roster"
+            className="mb-2"
+            showDot={!!sectionDots.roster}
+            dotColor={friendsDot}
           />
-        )}
+          {empty ? (
+            <ColdStart onAdd={() => openAddFriend()} inviteLocked={!canInvite} />
+          ) : (
+            <FriendsRoster
+              sections={filteredSections}
+              editing={editing}
+              onOpenPerson={(p) =>
+                router.push({ pathname: '/person/[id]', params: { id: p.id } })
+              }
+              onOpenStory={(p) => router.push(`/story/${p.id}?from=profile`)}
+              onOpenMove={openMove}
+              onDropTier={(p, tier) => void retierPerson(p, tier)}
+              onDraggingChange={setRosterDragging}
+            />
+          )}
+        </View>
       </ScreenBody>
 
       {/* THIS SECTION DOES: sheets that open from the page (add, scan, recap, jokes, move). */}

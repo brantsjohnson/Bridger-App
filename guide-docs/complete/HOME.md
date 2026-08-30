@@ -112,7 +112,7 @@ The top of Home is a single **swipeable carousel** that consolidates what used t
 Home keeps its widget shells for a new user. Quiz, Activity, Stories, Co-op, and Notifications each show their own null copy inside the box. Announcements show the one-time intro until dismissed; after that they stay out until something is live.
 
 - **This week** (next-event widget) — when empty, one quiet line; tap opens the **Events** tab.
-- **Coming up** — when empty, one line: **"Add friends to get reminders."** When filled, rows open that friend's profile.
+- **Coming up** — when empty (new account / nothing due), a **blue** teach row (calendar icon + copy + **X**): **"Anything important about your friends, like birthdays or custom dates you've saved, will show up here when it's coming up!"** X dismisses forever on-device; the section hides until a real item appears. When filled, rows open that friend's profile.
 
 ### Assistant on Home (opt-in)
 

@@ -82,11 +82,13 @@ Confirm-or-deny for incoming connections happens in Discover under **"Wants to c
 
 ## 6 · Adding someone → the reveal, and the re-accessible tab
 
-Adding/confirming triggers the **connection reveal** from `ARCHITECTURE.md` (strongest link → other commonalities). New here: that "what you have in common" view must be **re-openable any time**, not just at the moment of connecting. So it becomes a **tab on the person's profile**:
+Adding/confirming triggers the **connection reveal** from `ARCHITECTURE.md` / `REVEAL.md` (how you met → strongest link → other commonalities → close). New here: that "what you have in common" view must be **re-openable any time**, not just at the moment of connecting. So it becomes a **tab on the person's profile**:
 
 ```
 person/[id]  →  tabs:  [ About them ]  [ In common ]
 ```
+
+Reveal Screen 3 may also show **friends of friends** across the new bridge (up to 3, threshold-gated) when Discover matching is on, each with who + why + Add. Add posts a normal connect request that lands in the recipient's Discover "Wants to connect" list (`NOTIFICATIONS.md` `connect_request`). When Discover is off, Screen 3 shows a gentle opt-in nudge instead.
 
 `In common` replays the same commonality content on demand. This means `person/[id]` in `ARCHITECTURE.md` gains a tabbed layout, and the reveal component is reused inside it.
 

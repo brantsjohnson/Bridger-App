@@ -19,6 +19,7 @@ Same underlying comparison logic (find + rank shared things); different privacy 
 
 1. **`discover-refresh`** (Nest cron/worker + on-demand endpoint) — nightly batch + on-demand: ranked "people you should meet" per user, from the friends-of-friends graph.
 2. **`bridge-suggest`** (Nest endpoint) — triggered when A↔B connect. Look across the new bridge: A's friend for B, B's friend for A. **Prefer reciprocal pairs** (A's friend X fits B AND B's friend Y fits A — a budding group of four). Surfaced only AFTER the reveal completes, never during it; max one bridge suggestion per new connection; cooldown before repeats.
+   - **`reveal-bridges`** (Nest `GET /matching/reveal-bridges/:personId`) — powers **reveal Screen 3**: same FoF scoring, up to 3 suggestions that pass the threshold, prefer friends of the newly connected person. Returns `{ discoverable, suggestions }`. When Discover matching is off, returns `discoverable:false` and an empty list (client shows an opt-in nudge). No cooldown (fresh each open). Add from a card posts a normal connect request (`madeVia: suggestion`).
 3. **`event-suggest`** (Nest endpoint) — for an event: score friends-of-invitees (+ host's eligible graph) against the event's activity/theme attributes and the confirmed attendee set. Powers host guest suggestions and each guest's "{N} to meet" count (`EVENTS.md`).
 
 ## Hard eligibility gates (before any scoring)
@@ -67,11 +68,13 @@ This is the user-visible payoff. When two people connect, the client runs the re
 
 ## What the engine compares (both must allow it at current tier)
 
-- **Shared hobbies** — and where both have follow-up answers, return BOTH answers as a pair (the instant conversation starter; suggestion cards only ever show titles, the reveal/In-common may show paired answers).
+- **Shared hobbies** — and where both have follow-up answers (`value.followUp.answer`), return BOTH answers as a pair (the instant conversation starter; suggestion cards only ever show titles, the reveal/In-common may show paired answers).
 - **Matching this-or-that picks** (including both-both).
 - **Places both have been** (+ co-op shared-place photos for In common).
-- **Matchable quiz compatibility** — per shared quiz, per dimension: a % (dimension label + number ONLY — never answers, never explanations). Computed from dimension-score similarity, shown only for dimensions where BOTH confidences ≥ `CONFIDENCE_FLOOR`. Round to whole %.
-- **Other shared matchable attributes** (favs, deeper answers flagged matchable), tier-permitting.
+- **Matchable quiz compatibility** — per shared Discover quiz (`personality` / `values` / `humor` / `attachment`), one confidence-weighted % labeled with the quiz's **in-app title** from `quiz_registry.title` (e.g. "Your Funny Bone"). Never answers, never explanations, never backend slugs in the UI. Quizzes persist via `POST /discover/quizzes/:slug/complete` (client-scored dimensions → `quiz_results` + `quiz.{slug}.*` attributes, `visible_to_tier: none`, `matchable: true`).
+- **Favorites at item level** — expand `fav:` group rows into individual items so "Thai" matches "Thai".
+- **Music** — shared artists (`music.artist.*`, name-normalized across Spotify/Apple) and shared music picks (`music_picks`: fav track/album/artist, song of week).
+- **Other shared matchable attributes**, tier-permitting.
 - **Meeting memory** (beat 0's coarse place / note / via-mutual / event) — stored on the connection, editable/removable by either, visible only to the two.
 - **Mutual friends** (for the In-common mutuals strip; respects blocks — a blocked mutual never appears).
 

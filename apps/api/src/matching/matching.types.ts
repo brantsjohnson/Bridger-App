@@ -72,7 +72,14 @@ export type OverlapItemDto = {
 export type RevealPayloadDto = {
   viaMutual?: { firstName: string };
   strongest: OverlapItemDto | null;
-  quizCompat: { quizId: string; dimension: string; percent: number }[];
+  quizCompat: {
+    quizId: string;
+    /** In-app quiz title (e.g. "Your Funny Bone"). */
+    title: string;
+    /** Same as title for backward-compatible UI. */
+    dimension: string;
+    percent: number;
+  }[];
   extras: OverlapItemDto[];
 };
 

@@ -103,10 +103,10 @@ The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → 
 - **Back** — overlaid top-left on the photo (semi-transparent circle), Spotify-style.
 - **Name** — large **pixel** font, overlaid bottom-left on the photo (white on a dark fade).
 - **City** — pin icon + city overlaid under the name on the photo (the "Verified Artist" slot).
-- **Edit** (own) — overlaid top-right on the photo; toggles rearrange mode. Theme/CSS stay on Settings → Customize / Customize look.
+- **Edit** (own) — overlaid top-right on the photo; toggles rearrange mode **and** opens the **Photo look** sheet so you can switch among the four looks (Pop art / Comic / Sepia / X-ray) you first picked in onboarding. The **active look is painted over the Spotify hero** (Pop art = Warhol 4-tile from the original; other looks = baked avatar). Theme/CSS stay on Settings → Customize / Customize look.
 - **⚙ Settings** (own) — gear to the right of Edit on the photo; opens Settings (§14). Not a tab.
 - **▶ Play recap** — appears only when the person has a recap/podcast entry; opens the player (`RECAP-PODCAST.md`).
-- **Story tile** — Home-style cover (story media), not a second face Avatar. Ring if unseen.
+- **Story tile** — Home-style cover (story media), not a second face Avatar. Ring if unseen. **Own + empty:** dashed tile; tap opens capture to post an update (`post_prompt`).
 - **Compact pill** — View as (own) or friend-level tier (friend), small, to the left of search.
 - **Search** — fills the rest of the action row; searches visible fields on *this* profile (never logs query text). Replaces the old top-right / overflow search slot.
 - **Tier / View as pill** — compact control left of search. Friend: re-tier (fires `friend_retiered` on change). Own: View as Close / Friends / Everyone. Message stays in the friend screen header.
@@ -351,7 +351,7 @@ Every field is an `Attribute` with its own `visibleToTier` **and** `matchable` f
 ## Acceptance criteria
 
 - [ ] Own and friend profiles render the **same Spotify-style composition**; differences are edit access, tier filtering, and tabs.
-- [ ] Header: square photo, name, city line, ▶ recap (only if present), current-story square, **tier control** (friend) / **Edit + ⚙ Settings + View as** (own), and a **search** control that searches this profile's content.
+- [ ] Header: square photo, name, city line, ▶ recap (only if present), current-story square (own empty → tap opens capture), **tier control** (friend) / **Edit + ⚙ Settings + View as** (own), and a **search** control that searches this profile's content.
 - [ ] The page order matches §2: Mutuals → Top 5 → About me → Upcoming → Current Obsession → Favorites (+hobbies) → Places → Where you met.
 - [ ] **Top 5** captures up to 5 ordered "things to know," each optionally imaged, each tier-visible.
 - [ ] **About me** sits under Top 5, shows city when collapsed, and expands to bio-first + a grid of fields; no follower/follow UI.

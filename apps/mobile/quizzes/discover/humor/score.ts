@@ -223,3 +223,28 @@ export function scoreHumor(
     version: 1
   };
 }
+
+/**
+ * Turn a scored result into the flat 0–1 map the matching API stores.
+ * PRIVACY: scores + confidence only — never answers, media ids, or notes.
+ */
+export function humorToMatchDimensions(r: HumorScoreResult): {
+  dimensionScores: Record<string, number>;
+  confidence: Record<string, number>;
+  version: number;
+} {
+  const dimensionScores: Record<string, number> = {};
+  const confidence: Record<string, number> = {};
+  for (const a of r.axes) {
+    if (!Number.isFinite(a.score)) continue;
+    dimensionScores[a.key] = clamp01(a.score);
+    confidence[a.key] = clamp01(
+      Number.isFinite(a.confidence) ? a.confidence : 1
+    );
+  }
+  if (Number.isFinite(r.breadth)) {
+    dimensionScores.breadth = clamp01(r.breadth);
+    confidence.breadth = 0.6;
+  }
+  return { dimensionScores, confidence, version: r.version };
+}

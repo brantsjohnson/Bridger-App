@@ -94,6 +94,7 @@ export function ProfileCard({
   onOpenMutuals,
   onAnswered,
   onOpenStory,
+  onAddStory,
   onOpenEvent
 }: {
   person: Person;
@@ -126,6 +127,8 @@ export function ProfileCard({
   onOpenMutuals?: () => void;
   onAnswered?: () => void;
   onOpenStory?: () => void;
+  /** Own profile: empty dashed story tile → capture. */
+  onAddStory?: () => void;
   onOpenEvent?: (id: string) => void;
 }) {
   // PRIVACY: only fields shared at or below the viewing tier are shown
@@ -303,6 +306,7 @@ export function ProfileCard({
             onRetier={onRetier}
             onPlayRecap={onPlayRecap}
             onOpenStory={onOpenStory}
+            onAddStory={onAddStory}
             onSearch={onSearch}
           />
         </View>

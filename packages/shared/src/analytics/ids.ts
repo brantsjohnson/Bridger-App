@@ -289,8 +289,9 @@ export const CHROME = {
     tab_events: aid('chrome', 'tab_bar', 'tab_events'),
     tab_discover: aid('chrome', 'tab_bar', 'tab_discover'),
     tab_news: aid('chrome', 'tab_bar', 'tab_news'),
-    // Your face on the far-right of the pill — opens your Profile page.
+    // Single-person icon on the far-right of the pill — opens your Profile page.
     // Replaces the old header avatar (`*.top_nav.profile_icon`, retired).
+    // Visual: line icon (not photo) so selected state matches the other tab pills.
     profile_icon: aid('chrome', 'tab_bar', 'profile_icon')
   }
 } as const;
@@ -418,8 +419,10 @@ export const HOME = {
   coming_up: {
     section_header: aid('home', 'coming_up', 'section_header'),
     info: aid('home', 'coming_up', 'info'),
-    /** Dead-click target for the "Add friends to get reminders" null line. */
-    empty_body: aid('home', 'coming_up', 'empty_body')
+    /** Dead-click target for the empty Coming up teach card body. */
+    empty_body: aid('home', 'coming_up', 'empty_body'),
+    /** X on the empty Coming up teach card (hides section until real items). */
+    empty_dismiss: aid('home', 'coming_up', 'empty_dismiss')
   },
   activity: {
     section_header: aid('home', 'activity', 'section_header'),
@@ -826,6 +829,8 @@ export const PROFILE = {
     settings_gear: aid('profile', 'header', 'settings_gear'),
     play_recap: aid('profile', 'header', 'play_recap'),
     story_tile: aid('profile', 'header', 'story_tile'),
+    /** Own profile, empty story tile → opens post composer (same idea as Home post_prompt). */
+    post_prompt: aid('profile', 'header', 'post_prompt'),
     tier_control: aid('profile', 'header', 'tier_control'),
     edit: aid('profile', 'header', 'edit'),
     view_as: aid('profile', 'header', 'view_as'),
@@ -835,7 +840,16 @@ export const PROFILE = {
     overflow: aid('profile', 'header', 'overflow'),
     header_bg: aid('profile', 'header', 'header_bg'),
     /** Opens co-op Customize (theme) from rearrange mode. */
-    customize_look: aid('profile', 'header', 'customize_look')
+    customize_look: aid('profile', 'header', 'customize_look'),
+    /** Photo look pills on the Edit → Photo look sheet. */
+    filter_pop_art: aid('profile', 'header', 'filter_pop_art'),
+    filter_comic: aid('profile', 'header', 'filter_comic'),
+    filter_sepia: aid('profile', 'header', 'filter_sepia'),
+    filter_x_ray: aid('profile', 'header', 'filter_x_ray'),
+    /** Save the chosen look on the Photo look sheet. */
+    photo_look_save: aid('profile', 'header', 'photo_look_save'),
+    /** Dismiss Photo look without saving. */
+    photo_look_dismiss: aid('profile', 'header', 'photo_look_dismiss')
   },
   card: {
     /** @deprecated Absorbed into obsession squares. Kept for history. */
@@ -1457,6 +1471,22 @@ export const REVEAL = {
     orbs: aid('reveal', 'flow', 'orbs'),
     /** dead — legacy Venn id, kept so old events still resolve */
     venn: aid('reveal', 'flow', 'venn')
+  },
+  /** "How you line up" quiz compatibility scores on the others story beat. */
+  quiz_matches: {
+    /** i-icon — opens section_info_tooltip ("From the quizzes you both took") */
+    info: aid('reveal', 'quiz_matches', 'info')
+  },
+  /** Screen 3 FoF suggestions (or the opt-in nudge when Discover is off). */
+  suggestions: {
+    /** dead — "People you might click with" heading */
+    title: aid('reveal', 'suggestions', 'title'),
+    /** dead — the FoF card body (Add is its own id) */
+    card: aid('reveal', 'suggestions', 'card'),
+    /** Add a FoF from the reveal */
+    add: aid('reveal', 'suggestions', 'add'),
+    /** Turn on Discover matching from the nudge */
+    optin_toggle: aid('reveal', 'suggestions', 'optin_toggle')
   }
 } as const;
 

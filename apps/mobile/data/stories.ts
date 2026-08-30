@@ -290,7 +290,14 @@ export async function getPostQuota(): Promise<{ left: number; cap: number }> {
   if (isDemoMode()) {
     return { left: demoPostsLeft, cap: DAILY_POST_CAP };
   }
-  return apiFetch<{ left: number; cap: number }>('/stories/quota');
+  // THIS SECTION DOES: if the phone cannot reach the API (common on device
+  // builds pointed at a dead host), keep the default 3-left so capture still
+  // opens instead of throwing a red LogBox over the shutter.
+  try {
+    return await apiFetch<{ left: number; cap: number }>('/stories/quota');
+  } catch {
+    return { left: DAILY_POST_CAP, cap: DAILY_POST_CAP };
+  }
 }
 
 /**

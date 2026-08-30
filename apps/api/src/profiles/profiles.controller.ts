@@ -138,7 +138,9 @@ export class ProfilesController {
   async getMyProfile(@CurrentUser() user: AuthUser) {
     const { data: identity } = await this.supabase.admin
       .from('user_identity')
-      .select('display_name, avatar_media_id')
+      .select(
+        'display_name, avatar_media_id, avatar_original_media_id, avatar_filter'
+      )
       .eq('user_id', user.id)
       .maybeSingle();
 
@@ -158,12 +160,19 @@ export class ProfilesController {
     const byKey = new Map((attrs ?? []).map((a) => [a.key, a.value]));
     const song = (byKey.get('currently_song') as { title?: string; artist?: string } | undefined) ?? {};
     const avatarUrl = await this.signAvatarUrl(identity?.avatar_media_id);
+    const avatarOriginalUrl = await this.signAvatarUrl(
+      identity?.avatar_original_media_id
+    );
 
     return {
       name: identity?.display_name ?? '',
       avatarMediaId: identity?.avatar_media_id ?? null,
+      avatarOriginalMediaId: identity?.avatar_original_media_id ?? null,
+      avatarFilter: identity?.avatar_filter ?? null,
       // Short-lived signed URL so the profile header can show the real photo.
       avatarUrl,
+      // Unfiltered original so Edit can switch looks without a re-upload.
+      avatarOriginalUrl,
       city: settings?.home_city ?? '',
       bio: ((byKey.get('bio') as { text?: string } | undefined)?.text) ?? '',
       song: { title: song.title ?? '', artist: song.artist ?? '' },

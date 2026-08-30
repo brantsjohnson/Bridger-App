@@ -3,14 +3,14 @@
 // The bottom navigation — a detached, elongated capsule that floats inset
 // from the screen edge (not a flush full-width bar), per DESIGN.md. Five
 // destinations: Home, Friends, Events, Discover, News. Messages moved up
-// to the header (top-right icon). Your Profile now lives here too: your face
-// sits on the far-right of the pill (it used to be the header avatar). The
-// selected tab is a stretched pill, same language as the long toggle thumb,
-// not a tight circle.
+// to the header (top-right icon). Your Profile lives on the far-right too,
+// as a single-person line icon (same look as the other tabs, not a photo).
+// The selected tab is a stretched pill, same language as the long toggle
+// thumb, not a tight circle.
 //
 // Each tab has its own accent (active fill + notification dot):
 //   Home teal · Friends coral/orange · Events touch-grass green ·
-//   Discover amber/yellow · News purple.
+//   Discover amber/yellow · News purple · Profile ink (black).
 // Discover uses a globe (the "www"/world icon) and News uses Lucide's
 // Newspaper icon. Inactive icons stay muted. A small matching-color dot
 // marks something new. Each tab press emits chrome.tab_bar.* analytics.
@@ -23,15 +23,12 @@ import {
   GlobeIcon,
   HouseIcon,
   NewspaperIcon,
+  UserIcon,
   UsersIcon
 } from 'lucide-react-native';
-import type { ImageSourcePropType } from 'react-native';
-import type { Accent } from '@bridger/shared';
 import { CHROME } from '@bridger/shared';
 import { ACCENT_HEX, useThemeColors } from '../tokens';
-import { cn } from '../lib/cn';
 import { withAnalyticsPress } from '../lib/analytics';
-import { Avatar } from '../primitives/Avatar';
 
 export type TabKey = 'home' | 'friends' | 'events' | 'discover' | 'news';
 
@@ -68,36 +65,28 @@ const TABS: Array<{
   }
 ];
 
-/** Your face for the far-right profile button (mirrors the old header avatar). */
-type NavProfile = {
-  name: string;
-  emoji?: string;
-  accent?: Accent;
-  photo?: ImageSourcePropType;
-};
-
 export function FloatingTabBar({
   value,
   onChange,
   badges = {},
-  profile,
   onProfilePress
 }: {
   value: TabKey | string;
   onChange: (key: TabKey) => void;
   /** When true for a tab, show that tab's colored notification dot. */
   badges?: Partial<Record<TabKey, boolean>>;
-  /** Your face for the far-right profile button. Omit to hide it. */
-  profile?: NavProfile;
-  /** Tap the profile face → open your Profile page. */
+  /** Tap the single-person icon → open your Profile page. */
   onProfilePress?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
 
-  // THIS SECTION DOES: show your profile face on the far-right only when we know
-  // who you are and where to send the tap (both come from the tabs layout).
-  const showProfile = !!profile && !!onProfilePress;
+  // THIS SECTION DOES: show the Profile slot on the far-right only when the
+  // tabs layout told us where a tap should go.
+  const showProfile = !!onProfilePress;
+  // Profile uses ink so the selected pill matches the other tabs' fill style
+  // (white icon on a solid capsule) without borrowing another tab's accent.
+  const profileActive = value === 'profile';
 
   return (
     <View
@@ -142,35 +131,24 @@ export function FloatingTabBar({
           );
         })}
 
-        {/* THE PROFILE FACE: far-right of the pill; opens your Profile page.
-            Fixed square hit target so a missing photo never collapses the slot.
-            When you're ON Profile, a dark ring hugs the face so this pill spot
-            reads as "selected" (like the filled tab pills do). */}
-        {showProfile && profile ? (
+        {/* THE PROFILE ICON: far-right single-person outline; opens Profile.
+            Same stretched-pill select treatment as the other five tabs. */}
+        {showProfile ? (
           <Pressable
             onPress={withAnalyticsPress(CHROME.tab_bar.profile_icon, onProfilePress, {
               analyticsProps: { surface: String(value) }
             })}
             accessibilityRole="button"
             accessibilityLabel="Your profile"
-            accessibilityState={{ selected: value === 'profile' }}
-            className="relative min-h-[44px] min-w-[44px] items-center justify-center rounded-full active:opacity-80"
+            accessibilityState={{ selected: profileActive }}
+            style={profileActive ? { backgroundColor: c.ink } : undefined}
+            className="relative min-h-[44px] min-w-[44px] flex-1 items-center justify-center rounded-full active:opacity-80"
           >
-            <View
-              style={
-                value === 'profile'
-                  ? { borderWidth: 2, borderColor: c.ink, borderRadius: 999, padding: 1 }
-                  : undefined
-              }
-            >
-              <Avatar
-                name={profile.name}
-                emoji={profile.emoji}
-                accent={profile.accent}
-                photo={profile.photo}
-                size="sm"
-              />
-            </View>
+            <UserIcon
+              size={20}
+              color={profileActive ? '#FFFFFF' : c.inkMute}
+              strokeWidth={profileActive ? 2.6 : 2}
+            />
           </Pressable>
         ) : null}
       </View>

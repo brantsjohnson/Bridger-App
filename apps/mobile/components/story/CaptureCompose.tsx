@@ -43,7 +43,6 @@ import {
   AnalyticsRegion,
   AudiencePicker,
   ButtonPrimary,
-  ButtonSecondary,
   SurfaceHost,
   Toggle,
   cn,
@@ -465,8 +464,8 @@ export function CaptureCompose({
               </Text>
               <Text className="mt-2 text-center font-sans-sb text-[13px] leading-snug text-white/70">
                 {nativeCamera
-                  ? 'Tap the shutter and allow the camera to post an update. In-app capture only — no camera roll.'
-                  : 'Posting a photo works in the Bridger phone app. In-app capture only — no camera roll.'}
+                  ? 'Tap the shutter and allow the camera to post an update. In-app capture only. No camera roll.'
+                  : 'Posting a photo works in the Bridger phone app. In-app capture only. No camera roll.'}
               </Text>
             </View>
           )}
@@ -529,7 +528,7 @@ export function CaptureCompose({
                 className="mt-0.5 font-sans-md text-[11px] leading-snug"
                 style={{ color: ON_LIGHT_MUTE }}
               >
-                Random reminders to capture your life. 1–3 notifications a day,
+                Random reminders to capture your life. 1-3 notifications a day,
                 including a mid-party nudge when you are at an event.
               </Text>
             </AnalyticsRegion>
@@ -585,15 +584,17 @@ export function CaptureCompose({
               <LockIcon size={12} color="rgba(255,255,255,0.6)" strokeWidth={2.6} />
             ) : null}
           </View>
-          <ButtonSecondary
-            size="sm"
-            tone="ghost"
-            onPress={onClose}
+          {/* THIS SECTION DOES: leave without posting. Hardcoded white label
+              so it stays readable on the fixed near-black camera canvas even
+              when the phone is in light mode (themed text-ink would go dark). */}
+          <Pressable
+            onPress={withAnalyticsPress(POST_COMPOSER.actions.discard, onClose)}
+            accessibilityRole="button"
             accessibilityLabel="Not now"
-            className="text-white"
+            className="min-h-[44px] items-center justify-center px-4 py-2 active:opacity-80"
           >
-            Not now
-          </ButtonSecondary>
+            <Text className="font-sans-b text-[13px] text-white">Not now</Text>
+          </Pressable>
         </View>
       </View>
     </SurfaceHost>

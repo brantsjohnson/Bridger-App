@@ -2,13 +2,12 @@
 // WHAT THIS FILE DOES (plain English):
 // One congruent answer row: checkbox + label. Selected = accent fill and a
 // colored-in checked box. The option emoji is NOT shown in the tile — it flies
-// out as a willow burst from the tap instead.
+// out as a burst from the middle of the tap instead.
 // ============================================
 import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { Accent } from '@bridger/shared';
-import { ACCENTS, cn } from '@bridger/ui';
-import type { BurstOrigin } from './EmojiBurst';
+import { ACCENTS, cn, type HobbyBurstOrigin } from '@bridger/ui';
 
 export type QuizTileOption = {
   id: string;
@@ -20,7 +19,7 @@ type Props = {
   option: QuizTileOption;
   selected: boolean;
   accent: Accent;
-  onPress: (origin: BurstOrigin) => void;
+  onPress: (origin: HobbyBurstOrigin) => void;
 };
 
 /** Same corner on every tile so the stack feels one family. */
@@ -32,8 +31,8 @@ export function QuizOptionTile({ option, selected, accent, onPress }: Props) {
 
   const handlePress = () => {
     ref.current?.measureInWindow((x, y, w, h) => {
-      // Pass the whole tile so the burst can pour from its full width.
-      onPress({ x, y, width: w, height: h });
+      // Middle of the tile — same origin point hobbies and onboarding use.
+      onPress({ x: x + w / 2, y: y + h / 2 });
     });
   };
 

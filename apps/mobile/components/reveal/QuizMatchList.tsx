@@ -6,6 +6,8 @@
 // These live only in the connection reveal + In common flow, never on a
 // profile card. PRIVACY: only the dimension + number are shown, no answers.
 // Colors are fixed cream-on-dark because the reveal stays dark in dark mode.
+// Source note ("From the quizzes you both took") lives on the section i-icon
+// in the reveal screen, not as a footer line under these cards.
 // ============================================
 import React from 'react';
 import { Text, View } from 'react-native';
@@ -14,7 +16,6 @@ import type { QuizMatch } from '../../data/discover';
 
 /** Fixed cream on the dark reveal — theme tokens flip in dark mode. */
 const ON_DARK = '#F5F0E6';
-const ON_DARK_MUTE = 'rgba(245, 240, 230, 0.6)';
 const TRACK = 'rgba(245, 240, 230, 0.14)';
 
 export function QuizMatchList({ items }: { items: QuizMatch[] }) {
@@ -59,9 +60,6 @@ export function QuizMatchList({ items }: { items: QuizMatch[] }) {
           </View>
         );
       })}
-      <Text className="mt-0.5 text-center font-sans-md text-[11px]" style={{ color: ON_DARK_MUTE }}>
-        From the quizzes you both took
-      </Text>
     </View>
   );
 }

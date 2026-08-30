@@ -48,7 +48,7 @@ Self-contained. Two behaviors Magic Patterns kept missing. Keep UI copy minimal 
 1. **Your result.**
 2. **Share quiz** — a shareable link (friends, or people without an account).
 3. **"Who got who" dashboard** *(only if the quiz supports comparison)* — your friends **grouped by result**, each group showing avatars + a count. Example: *Coastal cruiser · 3 · [avatars] · Mountain roamer · 2 · [avatars]*.
-4. **See more / tap a result** → full breakdown: who got each result, **how you compare**, and the friend-group dynamic (e.g. "you and Priya matched").
+4. **See more / tap a result** → full breakdown: who got each result, **how you compare** (for Which J name: a fun % compatible when both of you finished), and the friend-group dynamic (e.g. "you and Priya matched").
 
 If a quiz has **no comparison feature**, show only the result + share (no dashboard).
 

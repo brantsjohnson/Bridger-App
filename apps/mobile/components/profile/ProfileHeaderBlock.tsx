@@ -2,9 +2,10 @@
 // WHAT THIS FILE DOES (plain English):
 // The Spotify-artist header: full-bleed photo with the back button, pixel
 // name, and pin+city sitting ON TOP of the picture (name/city at the bottom
-// like "Verified Artist"). Below the photo: story tile · compact View as /
-// tier pill · search. Own profiles also get Edit and a gear for Settings;
-// friends can pass a Message control for the top-right of the photo.
+// like "Verified Artist"). The onboarding photo look (Pop art / Comic / Sepia /
+// X-ray) is painted OVER the hero, not just on small avatars. Below the photo:
+// story tile · compact View as / tier pill · search. Own profiles also get Edit
+// and a gear for Settings; friends can pass a Message control for the top-right.
 // ============================================
 import React, { useState } from 'react';
 import {
@@ -44,6 +45,10 @@ import { isDemoMode } from '../../lib/demo';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import type { MyProfileHeader } from '../../data/profile';
 import {
+  FilteredPhoto
+} from '../onboarding/photo-filters/FilteredPhoto';
+import type { PhotoFilterKey } from '../onboarding/PhotoFilterPicker';
+import {
   PROFILE_ACTION_ROW_GAP,
   PROFILE_CITY_SIZE,
   PROFILE_GUTTER,
@@ -81,9 +86,14 @@ export function ProfileHeaderBlock({
   onRetier,
   onPlayRecap,
   onOpenStory,
+  onAddStory,
   onSearch,
   /** Optional top-right control on the photo (e.g. Message on a friend). */
-  heroTrailing
+  heroTrailing,
+  /** Live Photo look preview while the Edit sheet is open (overrides saved look). */
+  previewFilter = null,
+  previewBakedUrl = null,
+  previewBakedLoading = false
 }: {
   person: Person;
   header: MyProfileHeader | null;
@@ -101,8 +111,13 @@ export function ProfileHeaderBlock({
   onRetier?: (tier: Tier) => void;
   onPlayRecap?: () => void;
   onOpenStory?: () => void;
+  /** Own profile: empty dashed tile opens capture to post an update. */
+  onAddStory?: () => void;
   onSearch?: () => void;
   heroTrailing?: React.ReactNode;
+  previewFilter?: PhotoFilterKey | null;
+  previewBakedUrl?: string | null;
+  previewBakedLoading?: boolean;
 }) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -113,53 +128,94 @@ export function ProfileHeaderBlock({
   // Prefer the live signed URL from the header, then the person's cached URL,
   // then the demo fixture photo. Emoji fills in when nothing else is there.
   const liveUri = header?.avatarUrl?.trim() || person.avatarUrl?.trim();
+  const originalUri = header?.avatarOriginalUrl?.trim() || null;
   const photo = avatarPhotoFor(person.id, liveUri);
+  // THIS SECTION DOES: paint the chosen look OVER the hero photo. Pop art
+  // redraws as the Warhol grid from the plain original (never double-filters a
+  // baked single tile). Comic / Sepia / X-ray use the baked avatar image.
+  // While Edit → Photo look is open, previewFilter can override the saved look.
+  const activeFilter: PhotoFilterKey | null =
+    previewFilter ?? header?.avatarFilter ?? null;
+  const filterSourceUri = originalUri || liveUri || null;
+  const showWarholHero =
+    activeFilter === 'pop_art' &&
+    Boolean(originalUri || (previewFilter === 'pop_art' && filterSourceUri));
+  const showBakedFilterHero =
+    activeFilter != null &&
+    activeFilter !== 'pop_art' &&
+    Boolean(filterSourceUri);
+  const filterBakedUrl =
+    previewFilter != null
+      ? previewBakedUrl
+      : liveUri || null;
+  const showFilteredHero = showWarholHero || showBakedFilterHero;
   const hasStory = !!person.story;
   const storySeen = person.story === 'seen';
-  // THIS SECTION DOES: only pull a demo story thumbnail in demo mode. In live
-  // mode a person with no real story must NOT show a bundled fixture photo.
-  const storyCover = isDemoMode() ? getStoryMedia(person.id)[0] : undefined;
+  // Own empty tile: tapping starts a new update (same door as Home's Post a story).
+  const canAddStory = own && !hasStory && !!onAddStory;
+  // THIS SECTION DOES: only load a story cover when they actually posted.
+  // No post → empty tile (never fill with their profile photo). Demo mode
+  // uses the bundled story media; live mode waits for real story media later.
+  const storyCover =
+    hasStory && isDemoMode() ? getStoryMedia(person.id)[0] : undefined;
   const tier = person.tier ?? 'friend';
   const ringTone: RingTone = own ? 'me' : ringToneForTier(tier);
 
   const [viewAsOpen, setViewAsOpen] = useState(false);
   const [tierOpen, setTierOpen] = useState(false);
 
-  // THIS SECTION DOES: the compact story cover (photo/emoji, not another face).
+  // THIS SECTION DOES: Home-style story cover when there is a post; own empty
+  // tile is a "post an update" button; friends' empty tiles stay quiet.
   const storyInner = (
     <Pressable
       onPress={
         hasStory
           ? withAnalyticsPress(PROFILE.header.story_tile, () => onOpenStory?.())
-          : undefined
+          : canAddStory
+            ? withAnalyticsPress(PROFILE.header.post_prompt, () => onAddStory?.())
+            : undefined
       }
-      disabled={!hasStory}
-      accessibilityRole={hasStory ? 'button' : 'image'}
+      disabled={!hasStory && !canAddStory}
+      accessibilityRole={hasStory || canAddStory ? 'button' : 'image'}
       accessibilityLabel={
         hasStory
           ? storySeen
             ? 'Open current story, watched'
             : 'Open current story, new'
-          : 'No current story'
+          : canAddStory
+            ? 'Post a story'
+            : 'No current story'
       }
       className={cn(
-        'h-full w-full overflow-hidden bg-purple/20 active:opacity-90',
+        'h-full w-full overflow-hidden active:opacity-90',
+        hasStory ? 'bg-purple/20' : 'bg-surface',
         storySeen && 'rounded-card'
       )}
     >
-      {storyCover?.type === 'photo' ? (
+      {hasStory && storyCover?.type === 'photo' ? (
         <Image
           source={storyCover.source}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
         />
-      ) : photo ? (
-        // No story: show your own face (not a demo thumbnail) so the tile reads as you.
-        <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-      ) : (
+      ) : hasStory ? (
+        // Posted, but cover is emoji (or live media not wired yet).
         <View className="h-full w-full items-center justify-center">
           <Text className="text-[28px]">{person.emoji ?? '🙂'}</Text>
         </View>
+      ) : canAddStory ? (
+        // Own + no post: same cue as Home's empty Stories tile.
+        <View className="h-full w-full items-center justify-center gap-1.5 px-1.5">
+          <Text accessible={false} className="text-[20px] text-ink-soft">
+            ＋
+          </Text>
+          <Text className="text-center font-sans-b text-[11px] leading-tight text-ink-soft">
+            Post a story!
+          </Text>
+        </View>
+      ) : (
+        // Friend with no post: leave the tile blank.
+        <View className="h-full w-full" />
       )}
     </Pressable>
   );
@@ -189,7 +245,18 @@ export function ProfileHeaderBlock({
           }
           style={{ position: 'absolute', top: 0, left: 0, width, height: heroH }}
         >
-          {photo ? (
+          {showFilteredHero && activeFilter && filterSourceUri ? (
+            // Filter sits OVER the hero: Warhol grid for Pop art, baked look otherwise.
+            <View style={{ width, height: heroH, overflow: 'hidden' }}>
+              <FilteredPhoto
+                uri={showWarholHero ? (originalUri || filterSourceUri) : filterSourceUri}
+                filter={activeFilter}
+                bakedUrl={showWarholHero ? null : filterBakedUrl}
+                bakedLoading={previewFilter != null ? previewBakedLoading : false}
+                accessibilityLabel={`${person.name}'s photo`}
+              />
+            </View>
+          ) : photo ? (
             <Image source={photo} style={{ width, height: heroH }} resizeMode="cover" />
           ) : (
             <View className="h-full w-full items-center justify-center bg-purple/40">
@@ -335,7 +402,13 @@ export function ProfileHeaderBlock({
                 {storyInner}
               </GradientRing>
             ) : (
-              <View className="h-full w-full overflow-hidden rounded-card border border-ink-line">
+              // Posted+seen: solid border. No post: dashed empty tile (no face fill).
+              <View
+                className={cn(
+                  'h-full w-full overflow-hidden rounded-card border',
+                  hasStory ? 'border-ink-line' : 'border-dashed border-ink-line'
+                )}
+              >
                 {storyInner}
               </View>
             )}

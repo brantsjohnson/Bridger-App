@@ -4,8 +4,8 @@
 // J-name result link (https://bridger.app/q/<token>). If they have the app
 // installed the link opens the app to this same screen; if not, it opens on the
 // web and still works. It shows the sharer's result and invites them to take
-// the quiz. To actually SEE which of their friends is their "Jake", they have
-// to make an account (that gate is the leaderboard, coming in the next phase).
+// the quiz. Seeing friend results and compatibility needs an account (the
+// signed-in leaderboard at GET /jname/leaderboard).
 //
 // PRIVACY: opening this page records only an opaque "someone opened this link"
 // note so we can connect a later signup to the friend who invited them. No

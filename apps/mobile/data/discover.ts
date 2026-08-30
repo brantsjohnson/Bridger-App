@@ -13,9 +13,13 @@ import type {
   Suggestion
 } from '@bridger/shared';
 import type { AttachmentScoreResult } from '../quizzes/discover/attachment/score';
+import { attachmentToMatchDimensions } from '../quizzes/discover/attachment/score';
 import type { HumorScoreResult } from '../quizzes/discover/humor/score';
+import { humorToMatchDimensions } from '../quizzes/discover/humor/score';
 import type { PersonalityScoreResult } from '../quizzes/discover/personality/score';
+import { personalityToMatchDimensions } from '../quizzes/discover/personality/score';
 import type { ValuesScoreResult } from '../quizzes/discover/values/score';
+import { valuesToMatchDimensions } from '../quizzes/discover/values/score';
 import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
 import { loadPeople } from '../lib/people-cache';
@@ -35,6 +39,29 @@ import {
 
 export type { Commonality, MatchModule, ModuleQuestion, QuizMatch };
 export { ABOUT_ME_CATEGORIES };
+
+/** One friend-of-friend card shown on reveal Screen 3. */
+export type BridgeSuggestion = {
+  id: string;
+  personId: string;
+  viaFriendId: string;
+  sharedThread: string;
+  signals: string[];
+};
+
+/** Emoji / accent for quiz compatibility bars, keyed by internal slug. */
+const EMOJI_BY_SLUG: Record<string, string> = {
+  humor: '😂',
+  values: '🧭',
+  personality: '✨',
+  attachment: '🤝'
+};
+const ACCENT_BY_SLUG: Record<string, QuizMatch['accent']> = {
+  humor: 'coral',
+  values: 'purple',
+  personality: 'teal',
+  attachment: 'blue'
+};
 
 /** PRIVACY: people you've blocked never appear as suggestions or bridges. */
 const demoBlockedIds = new Set<string>();
@@ -263,9 +290,21 @@ export async function getCommonalities(personId?: string): Promise<Commonality[]
   }
   if (!personId) return [];
   const payload = await apiFetch<{
-    strongest: { title: string; kind?: string } | null;
-    extras: Array<{ title: string; kind?: string }>;
-    fullList?: Array<{ title: string; kind?: string }>;
+    strongest: {
+      title: string;
+      kind?: string;
+      pairedAnswers?: { yours: string; theirs: string };
+    } | null;
+    extras: Array<{
+      title: string;
+      kind?: string;
+      pairedAnswers?: { yours: string; theirs: string };
+    }>;
+    fullList?: Array<{
+      title: string;
+      kind?: string;
+      pairedAnswers?: { yours: string; theirs: string };
+    }>;
   }>(
     `/matching/overlap/${encodeURIComponent(personId)}?variant=in_common`
   );
@@ -278,7 +317,9 @@ export async function getCommonalities(personId?: string): Promise<Commonality[]
   return list.map((item, i) => ({
     key: `ov-${i}`,
     label: item.title,
-    strongest: i === 0
+    strongest: i === 0,
+    yours: item.pairedAnswers?.yours,
+    theirs: item.pairedAnswers?.theirs
   }));
 }
 
@@ -290,37 +331,121 @@ export async function getQuizMatches(personId?: string): Promise<QuizMatch[]> {
   if (isDemoMode()) return QUIZ_MATCHES.map((q) => ({ ...q }));
   if (!personId) return [];
   const payload = await apiFetch<{
-    quizCompat: Array<{ quizId: string; dimension: string; percent: number }>;
+    quizCompat: Array<{
+      quizId: string;
+      title?: string;
+      dimension: string;
+      percent: number;
+    }>;
   }>(`/matching/overlap/${encodeURIComponent(personId)}?variant=reveal`);
   return (payload.quizCompat ?? []).map((q, i) => ({
     key: `qm-${i}`,
     quizId: q.quizId,
-    dimension: q.dimension,
+    // Prefer the in-app title ("Your Funny Bone") over a raw dimension key.
+    dimension: q.title ?? q.dimension,
     score: q.percent,
-    emoji: '✨',
-    accent: 'teal' as const
+    emoji: EMOJI_BY_SLUG[q.quizId] ?? '✨',
+    accent: ACCENT_BY_SLUG[q.quizId] ?? 'teal'
   }));
 }
 
-export async function listMatchModules(): Promise<MatchModule[]> {
+/**
+ * Friend-of-friend suggestions for reveal Screen 3.
+ * PRIVACY: only when the viewer opted into Discover; otherwise empty + false.
+ */
+export async function getRevealBridges(
+  personId?: string
+): Promise<{ discoverable: boolean; suggestions: BridgeSuggestion[] }> {
   if (isDemoMode()) {
-    return MATCH_MODULES.map((m) => ({
-      ...m,
-      questions: m.questions.map((q) => ({ ...q }))
-    }));
+    const suggestions = FIXTURE_SUGGESTIONS.filter((s) => s.personId !== personId)
+      .slice(0, 3)
+      .map((s) => ({
+        id: s.id,
+        personId: s.personId,
+        viaFriendId: s.viaFriendId,
+        sharedThread: s.sharedThread,
+        signals: [...s.signals]
+      }));
+    return { discoverable: demoSettings.discoverable, suggestions };
   }
-  // TODO: GET /quizzes/match-modules
-  return [];
+  if (!personId) return { discoverable: false, suggestions: [] };
+  try {
+    const payload = await apiFetch<{
+      discoverable: boolean;
+      suggestions: Array<{
+        personId: string;
+        viaFriendId?: string;
+        sharedThread: string;
+        signals: string[];
+        score?: number;
+      }>;
+    }>(
+      `/matching/reveal-bridges/${encodeURIComponent(personId)}?limit=3`
+    );
+    return {
+      discoverable: Boolean(payload.discoverable),
+      suggestions: (payload.suggestions ?? []).map((s, i) => ({
+        id: `bridge-${s.personId}-${i}`,
+        personId: s.personId,
+        viaFriendId: s.viaFriendId ?? '',
+        sharedThread: s.sharedThread,
+        signals: [...(s.signals ?? [])]
+      }))
+    };
+  } catch {
+    return { discoverable: false, suggestions: [] };
+  }
 }
 
+/** Send a connect request from reveal Screen 3 (bridge suggestion). */
+export async function connectFromReveal(
+  personId: string,
+  viaFriendId: string
+): Promise<void> {
+  if (isDemoMode()) return;
+  await apiFetch('/connections', {
+    method: 'POST',
+    body: JSON.stringify({
+      targetId: personId,
+      madeVia: 'suggestion',
+      viaFriendId: viaFriendId || undefined
+    })
+  });
+}
+
+/**
+ * Connect Over cards always come from the on-device catalog (titles, emoji,
+ * accent). The server only stores scores after you finish — it does not own
+ * the card list. Demo and live share the same five modules.
+ */
+export async function listMatchModules(): Promise<MatchModule[]> {
+  return MATCH_MODULES.map((m) => ({
+    ...m,
+    questions: m.questions.map((q) => ({ ...q }))
+  }));
+}
+
+/**
+ * Which Connect Over modules this person already finished (Done tags).
+ * Live mode asks the API so Done survives relaunch; scores stay on the server.
+ */
 export async function listCompletedModules(): Promise<string[]> {
   if (isDemoMode()) return [...demoCompletedModules];
-  return [];
+  try {
+    const payload = await apiFetch<{ completed?: string[] }>(
+      '/discover/quizzes/completed'
+    );
+    return Array.isArray(payload?.completed) ? [...payload.completed] : [];
+  } catch {
+    // Matching API may be down; still show the cards as To do.
+    return [];
+  }
 }
 
 /**
  * PRIVACY: answers are private matchable signals only — never written onto a
- * profile card. Demo just marks the module done.
+ * profile card. Demo marks the module done; live mode relies on the save*
+ * calls (which already wrote quiz_results) and refreshes Done from the API.
  */
 export async function completeMatchModule(moduleId: string): Promise<void> {
   if (isDemoMode()) {
@@ -329,7 +454,9 @@ export async function completeMatchModule(moduleId: string): Promise<void> {
     }
     return;
   }
-  // TODO: POST /quizzes/match-modules/:id/complete (private ProfileAttributes)
+  // Live: humor / personality / values / attachment already POSTed via
+  // save*Result. Disclosure still has no server path — mark nothing here.
+  void moduleId;
 }
 
 /**
@@ -390,8 +517,11 @@ export async function savePersonalityResult(
     }
     return;
   }
-  // TODO: POST /discover/quizzes/personality/complete
-  void result;
+  // Live: store the scored dials for matching (scores only, never answers).
+  await apiFetch('/discover/quizzes/personality/complete', {
+    method: 'POST',
+    body: JSON.stringify(personalityToMatchDimensions(result))
+  });
 }
 
 export async function getPersonalityResult(): Promise<PersonalityScoreResult | null> {
@@ -427,8 +557,11 @@ export async function saveAttachmentResult(
     }
     return;
   }
-  // TODO: POST /discover/quizzes/attachment/complete
-  void result;
+  // Live: store the scored dials for matching (scores only, never answers).
+  await apiFetch('/discover/quizzes/attachment/complete', {
+    method: 'POST',
+    body: JSON.stringify(attachmentToMatchDimensions(result))
+  });
 }
 
 export async function getAttachmentResult(): Promise<AttachmentScoreResult | null> {
@@ -464,8 +597,11 @@ export async function saveValuesResult(
     }
     return;
   }
-  // TODO: POST /discover/quizzes/values/complete
-  void result;
+  // Live: store the scored dials for matching (scores only, never answers).
+  await apiFetch('/discover/quizzes/values/complete', {
+    method: 'POST',
+    body: JSON.stringify(valuesToMatchDimensions(result))
+  });
 }
 
 export async function getValuesResult(): Promise<ValuesScoreResult | null> {
@@ -503,8 +639,11 @@ export async function saveHumorResult(
     }
     return;
   }
-  // TODO: POST /discover/quizzes/humor/complete
-  void result;
+  // Live: store the scored dials for matching (scores only, never answers).
+  await apiFetch('/discover/quizzes/humor/complete', {
+    method: 'POST',
+    body: JSON.stringify(humorToMatchDimensions(result))
+  });
 }
 
 export async function getHumorResult(): Promise<HumorScoreResult | null> {

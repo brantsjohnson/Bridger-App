@@ -32,11 +32,11 @@ export type AttachmentQuestion = {
 export const ATTACHMENT_INSTRUCTIONS = {
   title: 'The Friend Zone',
   headline: 'How are you with your people?',
-  lead: 'There are no good or bad answers here. Pick what feels most like your first reaction, even if another answer could fit too.',
+  lead: 'Go with your first reaction.',
   rules: [
-    'If two really fit, you can choose two.',
+    'Two is fine if both fit.',
     "Don't overthink it.",
-    'Optional: text a short why under your picks — like a chat bubble.'
+    'Add a short note if you want.'
   ]
 } as const;
 

@@ -63,6 +63,10 @@ import {
   markAnnouncementsIntroDismissed
 } from '../../lib/announcements-intro';
 import {
+  hasDismissedComingUpEmpty,
+  markComingUpEmptyDismissed
+} from '../../lib/coming-up-empty';
+import {
   loadPlaceholderDismissals,
   markPlaceholderDismissed,
   type HomePlaceholderSection
@@ -155,7 +159,10 @@ const STANDING_JNAME_QUIZ = {
   comparable: QUIZ.comparable,
   cover: QUIZ.cover,
   coverImages: HOME_COVER_FACES,
-  results: QUIZ.results.map((r) => ({ ...r, friendIds: [] as string[] }))
+  results: QUIZ.results.map((r) => ({ ...r, friendIds: [] as string[] })),
+  resultId: null as string | null,
+  myResultLabel: null as string | null,
+  myResultPercent: null as number | null
 };
 
 export default function HomeScreen() {
@@ -184,6 +191,8 @@ export default function HomeScreen() {
   const [placeholderGone, setPlaceholderGone] = useState<
     Record<HomePlaceholderSection, boolean>
   >({ event: false, alerts: false });
+  // Empty Coming up teach card: hide the whole section after X until real items.
+  const [comingUpEmptyGone, setComingUpEmptyGone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
@@ -207,12 +216,15 @@ export default function HomeScreen() {
   }, []);
 
   // THIS SECTION DOES: decide whether to show the one-time Announcements intro
-  // (live only — demo uses the sample quick-check instead).
+  // and whether the empty Coming up teach card was already closed (live only).
   useEffect(() => {
     if (isDemoMode()) return;
     let cancelled = false;
     void hasDismissedAnnouncementsIntro().then((dismissed) => {
       if (!cancelled) setShowIntro(!dismissed);
+    });
+    void hasDismissedComingUpEmpty().then((dismissed) => {
+      if (!cancelled) setComingUpEmptyGone(dismissed);
     });
     return () => {
       cancelled = true;
@@ -281,6 +293,10 @@ export default function HomeScreen() {
       if (w.key === 'alerts') {
         const hasUnread = feed.notifications.some((n) => n.unread !== false);
         return hasUnread || !placeholderGone.alerts;
+      }
+      // Empty Coming up: show the blue teach card until they hit X.
+      if (w.key === 'comingup') {
+        return feed.comingUp.length > 0 || !comingUpEmptyGone;
       }
       return true;
     }
@@ -468,6 +484,10 @@ export default function HomeScreen() {
             onOpenPerson={(personId) =>
               router.push({ pathname: '/person/[id]', params: { id: personId } })
             }
+            onDismissEmpty={() => {
+              setComingUpEmptyGone(true);
+              void markComingUpEmptyDismissed();
+            }}
           />
         );
       case 'ask':
@@ -489,15 +509,19 @@ export default function HomeScreen() {
         ) : null;
       case 'quiz': {
         // THIS SECTION DOES: always show Which J name are you (live quiz or
-        // standing prompt). Never leave an empty Quiz shell.
+        // standing prompt). Never leave an empty Quiz shell. Completed state
+        // comes from jname_results (resultId / myResultLabel), even when the
+        // standing fallback card is used.
         const quiz = feed.quiz ?? STANDING_JNAME_QUIZ;
         const standing = !feed.quiz;
+        const completedId =
+          quiz.myResultLabel ?? quiz.resultId ?? quizResultId ?? null;
         return (
           <QuizWidget
             size={widget.size}
             quiz={quiz}
-            resultId={standing ? null : quizResultId}
-            takeAnalyticsId={standing ? HOME.quiz.take_prompt : undefined}
+            resultId={completedId}
+            takeAnalyticsId={standing && !completedId ? HOME.quiz.take_prompt : undefined}
             onTake={() => router.push(`/quiz/${quiz.id}` as Href)}
             onOpenResult={() => router.push(`/quiz/${quiz.id}` as Href)}
           />

@@ -11,13 +11,22 @@
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { XIcon } from 'lucide-react-native';
+import { InfoIcon, XIcon } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { REVEAL, openSurface, trackFlowCompleted, trackFlowStarted, trackFlowStep } from '@bridger/shared';
+import {
+  REVEAL,
+  SECTION_INFO_TOOLTIP,
+  openSurface,
+  trackFlowCompleted,
+  trackFlowStarted,
+  trackFlowStep,
+  trackProduct
+} from '@bridger/shared';
 import {
   Avatar,
   ButtonPrimary,
+  InfoPopover,
   NotFoundScreen,
   Screen,
   ScreenBody,
@@ -30,6 +39,10 @@ import { RevealClose } from '../../components/reveal/RevealClose';
 import { RevealOrbs } from '../../components/reveal/RevealOrbs';
 import { RevealProgressBars } from '../../components/reveal/RevealProgressBars';
 import { useReveal } from '../../hooks/useReveal';
+import {
+  connectFromReveal,
+  setDiscoverable
+} from '../../data/discover';
 import { personExists } from '../../data/people';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { reportNotFoundHit } from '../../lib/route-trail';
@@ -63,7 +76,8 @@ export default function RevealRoute() {
     meetNote,
     setMeetNote,
     commit,
-    canContinue
+    canContinue,
+    reloadBridges
   } = useReveal(personId, viaId);
 
   const [frame, setFrame] = useState<Frame>('met');
@@ -290,12 +304,26 @@ export default function RevealRoute() {
             <View className="mt-8 gap-6">
               {payload.quizMatches.length > 0 ? (
                 <View>
-                  <Text
-                    className="mb-3 text-center font-sans-b text-[18px]"
-                    style={{ color: REVEAL_FG }}
-                  >
-                    How you line up
-                  </Text>
+                  {/* Title + i-icon: the tip explains these scores come from quizzes. */}
+                  <View className="mb-3 flex-row items-center justify-center gap-1.5">
+                    <Text
+                      className="font-sans-b text-[18px]"
+                      style={{ color: REVEAL_FG }}
+                    >
+                      How you line up
+                    </Text>
+                    <InfoPopover
+                      description="From the quizzes you both took"
+                      title="How you line up"
+                      infoAnalyticsId={REVEAL.quiz_matches.info}
+                      dismissAnalyticsId={SECTION_INFO_TOOLTIP.chrome.dismiss}
+                      bodyAnalyticsId={SECTION_INFO_TOOLTIP.body.body}
+                      parentScreen="reveal"
+                      section="quiz_matches"
+                    >
+                      <InfoIcon size={16} color={REVEAL_MUTE} strokeWidth={2.4} />
+                    </InfoPopover>
+                  </View>
                   <QuizMatchList items={payload.quizMatches} />
                 </View>
               ) : null}
@@ -311,7 +339,29 @@ export default function RevealRoute() {
             </View>
           ) : null}
 
-          {frame === 'close' ? <RevealClose /> : null}
+          {frame === 'close' ? (
+            <RevealClose
+              suggestions={payload.bridgeSuggestions}
+              discoverable={payload.discoverable}
+              theirName={first}
+              onAdd={(bridgePersonId, bridgeViaId) => {
+                void (async () => {
+                  await connectFromReveal(bridgePersonId, bridgeViaId);
+                  trackProduct('connect_requested', {
+                    surface: 'reveal',
+                    method: 'bridge',
+                    via_present: Boolean(bridgeViaId)
+                  });
+                })();
+              }}
+              onEnableDiscover={() => {
+                void (async () => {
+                  await setDiscoverable(true);
+                  await reloadBridges();
+                })();
+              }}
+            />
+          ) : null}
         </ScreenBody>
 
         {/* Story tap zones: left half = back, right half = forward. They sit on
@@ -355,13 +405,8 @@ export default function RevealRoute() {
               {`See ${first}'s profile`}
             </ButtonPrimary>
           ) : (
-            // Story cards move on tap — no button, just a gentle hint.
-            <Text
-              className="text-center font-sans-md text-[12px]"
-              style={{ color: REVEAL_MUTE }}
-            >
-              Tap right to keep going · tap left to go back
-            </Text>
+            // Story cards move on left/right tap zones — no bottom hint copy.
+            null
           )}
         </View>
       </View>

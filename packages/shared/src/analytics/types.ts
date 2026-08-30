@@ -87,6 +87,11 @@ export type AnalyticsProductEvent =
   | 'friend_removed'
   | 'friend_blocked'
   | 'friend_reported'
+  /**
+   * Connect request sent from reveal Screen 3 (FoF bridge). Confirmed POST only.
+   * Props: surface=reveal, method=bridge, via_present (bool). Never names.
+   */
+  | 'connect_requested'
   /** private note / date / check-in saved on a friend (never note text) */
   | 'friend_note_added'
   | 'friend_note_deleted'
@@ -141,6 +146,11 @@ export type AnalyticsProductEvent =
    * the sheet open). method = camera | library. Never the image.
    */
   | 'profile_photo_updated'
+  /**
+   * Own profile: saved a new photo look (Pop art / Comic / X-ray / Sepia) from
+   * Edit. Confirmed bake + save only. Property: `filter` (opaque key).
+   */
+  | 'profile_photo_filter_updated'
   /** Theme tokens saved on customize (accent/background/font/mode). */
   | 'profile_theme_saved'
   /** Layout order of movable modules saved on customize. */

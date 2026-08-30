@@ -184,6 +184,10 @@ function useProtectedRoute() {
   const [seenWelcome, setSeenWelcome] = useState(true);
   const [onbReady, setOnbReady] = useState(false);
   const [onbComplete, setOnbComplete] = useState(true);
+  // THIS SECTION DOES: after login, wait for the server "finished onboarding?"
+  // answer before sending anyone into the onboarding flow. A fresh install has
+  // no local flag, so without this wait a returning person gets asked again.
+  const [onbServerReady, setOnbServerReady] = useState(false);
   const [accessReady, setAccessReady] = useState(false);
   const [accessGranted, setAccessGranted] = useState(true);
 
@@ -207,13 +211,20 @@ function useProtectedRoute() {
     })();
   }, []);
 
+  // THIS SECTION DOES: once someone is signed in, ask the server if they already
+  // finished onboarding (and whether they have invite access). Update the local
+  // flag so a reinstall still skips the setup run.
   useEffect(() => {
     if (!session?.user?.id) {
       setAccessGranted(true);
+      setOnbServerReady(true);
       return;
     }
+    setOnbServerReady(false);
     void (async () => {
-      const done = isOnboardingCompleteCached() || (await getOnboardingComplete());
+      const done = await getOnboardingComplete();
+      setOnbComplete(done);
+      setOnbServerReady(true);
       if (!done) {
         setAccessGranted(true);
         return;
@@ -228,7 +239,10 @@ function useProtectedRoute() {
   }, [session?.user?.id]);
 
   useEffect(() => {
+    // Wait for the server onboarding check when signed in, so we never bounce a
+    // returning account into onboarding off an empty device flag.
     if (loading || !welcomeReady || !onbReady || !accessReady) return;
+    if (session && !onbServerReady) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboarding = segments[0] === 'onboarding';
     const inInviteAccess = segments[0] === 'invite-access';
@@ -298,6 +312,7 @@ function useProtectedRoute() {
     seenWelcome,
     onbReady,
     onbComplete,
+    onbServerReady,
     accessReady,
     accessGranted
   ]);

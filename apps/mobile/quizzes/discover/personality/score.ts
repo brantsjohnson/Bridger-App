@@ -237,6 +237,28 @@ export function scorePersonality(
   };
 }
 
+/**
+ * Turn a scored result into the flat 0–1 map the matching API stores.
+ * PRIVACY: only matchable traits (drops neuroticism). Never answers or notes.
+ */
+export function personalityToMatchDimensions(r: PersonalityScoreResult): {
+  dimensionScores: Record<string, number>;
+  confidence: Record<string, number>;
+  version: number;
+} {
+  const dimensionScores: Record<string, number> = {};
+  const confidence: Record<string, number> = {};
+  for (const t of r.traits) {
+    if (!t.matchable) continue;
+    if (!Number.isFinite(t.score)) continue;
+    dimensionScores[t.key] = clamp01(t.score);
+    confidence[t.key] = clamp01(
+      Number.isFinite(t.confidence) ? t.confidence : 1
+    );
+  }
+  return { dimensionScores, confidence, version: r.version };
+}
+
 function peakAbsForQuestion(
   q: PersonalityQuestion,
   key: PersonalityDimensionKey

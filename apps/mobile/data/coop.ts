@@ -85,24 +85,39 @@ export async function joinCoop(
   // THIS SECTION DOES: Apple / Google buy the chosen plan (monthly or yearly)
   // straight from our own paywall via RevenueCat + StoreKit / Play Billing.
   // Membership is granted on the server only after a confirmed purchase /
-  // restore (never on the tap that opens the store sheet).
+  // restore (never on the tap that begins the store sheet).
   if (method === 'apple' || method === 'google') {
     const { purchaseCoopPlan } = await import('../lib/purchases');
+    const { isDemoUnlockAllowed } = await import('../lib/demo');
     const outcome = await purchaseCoopPlan(plan);
     if (outcome.status === 'cancelled' || outcome.status === 'not_presented') {
       throw new PurchaseCancelledError();
     }
+    if (outcome.status === 'purchased' || outcome.status === 'restored') {
+      // Confirmed purchase / restore: mirror onto Bridger membership (webhook
+      // also syncs renewals later).
+      const membership = await apiFetch<CoopMembership>('/coop/membership', {
+        method: 'POST',
+        body: JSON.stringify({ join: true, method: outcome.method })
+      });
+      trackProduct('coop_joined', { method: outcome.method, plan });
+      return membership;
+    }
+    // Preview / TestFlight builds (DEMO_UNLOCK on) often ship before the App
+    // Store (appl_) key and SKUs are fully wired. Soft-join so testers can
+    // still open the member portal. Production Store builds never take this path.
+    if (isDemoUnlockAllowed() && !isDemoMode()) {
+      const membership = await apiFetch<CoopMembership>('/coop/membership', {
+        method: 'POST',
+        body: JSON.stringify({ join: true, method: 'soft', plan })
+      });
+      trackProduct('coop_joined', { method: 'soft', plan });
+      return membership;
+    }
     if (outcome.status === 'unavailable' || outcome.status === 'error') {
       throw new Error(outcome.message);
     }
-    // Confirmed purchase / restore: mirror onto Bridger membership (webhook
-    // also syncs renewals later).
-    const membership = await apiFetch<CoopMembership>('/coop/membership', {
-      method: 'POST',
-      body: JSON.stringify({ join: true, method: outcome.method })
-    });
-    trackProduct('coop_joined', { method: outcome.method, plan });
-    return membership;
+    throw new Error('Could not complete membership. Try again in a moment.');
   }
 
   // THIS SECTION DOES: Card opens Stripe Checkout in the browser for the chosen

@@ -3,19 +3,27 @@
 // Everything the Connection Reveal and the friend "In common" tab need:
 // load what you share, save how you met (coarse place only), and read
 // shared place photos. Demo mode keeps state in memory for the session.
-// Live mode will call the connections / matching APIs — same names either way.
+// Live mode calls the connections / matching APIs — same names either way.
 //
 // PRIVACY (load-bearing):
 // - Place is coarse ("RiNo, Denver") and approximate — never GPS / street.
 // - Only the two people see the how-you-met memory; either can edit or remove.
 // - Analytics never gets place strings, names, or commonality text —
 //   only opaque outcomes like recorded_where (bool).
+// - Overlap + FoF bridges load AFTER beat 0 (how-you-met) is saved.
 // ============================================
 import type { HowYouMet, MeetContext, Person, Tier } from '@bridger/shared';
 import { apiFetch } from '../lib/api';
 import { isDemoMode } from '../lib/demo';
 import { getCachedPerson, loadPeople } from '../lib/people-cache';
-import { getCommonalities, getQuizMatches, type Commonality, type QuizMatch } from './discover';
+import {
+  getCommonalities,
+  getQuizMatches,
+  getRevealBridges,
+  type BridgeSuggestion,
+  type Commonality,
+  type QuizMatch
+} from './discover';
 import {
   HOW_YOU_MET as FIXTURE_HOW,
   NEARBY_AREA,
@@ -25,7 +33,7 @@ import {
 import { SUGGESTIONS, REQUESTS } from './fixtures/discover';
 import { getMe, personById } from './people';
 
-export type { SharedPlace };
+export type { SharedPlace, BridgeSuggestion };
 export { NEARBY_AREA };
 
 /** What the reveal screen needs to paint one connection celebration. */
@@ -41,7 +49,36 @@ export type RevealPayload = {
   all: Commonality[];
   /** Compatibility scores from matching-only quizzes (e.g. "95% in Humor") */
   quizMatches: QuizMatch[];
+  /** FoF suggestions for Screen 3 (who + why + Add) */
+  bridgeSuggestions: BridgeSuggestion[];
+  /** Whether the viewer has Discover matching on */
+  discoverable: boolean;
 };
+
+/** Just the identity bits Screen 0 needs before beat 0 is committed. */
+export type RevealBase = Pick<
+  RevealPayload,
+  | 'person'
+  | 'me'
+  | 'via'
+  | 'strongest'
+  | 'others'
+  | 'all'
+  | 'quizMatches'
+  | 'bridgeSuggestions'
+  | 'discoverable'
+>;
+
+/** Overlap + bridges that load after how-you-met is saved. */
+export type RevealOverlap = Pick<
+  RevealPayload,
+  | 'strongest'
+  | 'others'
+  | 'all'
+  | 'quizMatches'
+  | 'bridgeSuggestions'
+  | 'discoverable'
+>;
 
 // --- DEMO STATE: mutates so saving how-you-met sticks for this session ---
 let demoHowYouMet: Record<string, HowYouMet[]> = Object.fromEntries(
@@ -65,30 +102,64 @@ function resolveViaId(personId: string, viaFriendId?: string): string | undefine
 }
 
 /**
- * Load everything the reveal (and In common tab) needs for one person.
+ * Identity-only load for Screen 0. Does NOT call overlap (live would 403
+ * before met_context exists).
+ */
+export async function getRevealBase(
+  personId: string,
+  viaFriendId?: string
+): Promise<RevealBase> {
+  const person = personById(personId);
+  const me = getMe();
+  const viaId = resolveViaId(personId, viaFriendId);
+  const via = viaId ? personById(viaId) : null;
+  return {
+    person,
+    me,
+    via,
+    strongest: null,
+    others: [],
+    all: [],
+    quizMatches: [],
+    bridgeSuggestions: [],
+    discoverable: false
+  };
+}
+
+/**
+ * Overlap + FoF bridges. Call AFTER saveHowYouMet so met_context exists.
+ */
+export async function getRevealOverlap(
+  personId: string
+): Promise<RevealOverlap> {
+  const [all, quizMatches, bridges] = await Promise.all([
+    getCommonalities(personId),
+    getQuizMatches(personId),
+    getRevealBridges(personId)
+  ]);
+  const strongest = all.find((c) => c.strongest) ?? all[0] ?? null;
+  const others = all.filter((c) => c.key !== strongest?.key).slice(0, 3);
+  return {
+    strongest,
+    others,
+    all,
+    quizMatches,
+    bridgeSuggestions: bridges.suggestions,
+    discoverable: bridges.discoverable
+  };
+}
+
+/**
+ * Full payload for the In common tab (met_context already exists there).
  * PRIVACY: commonalities already respect tier on the live API; demo shows fixtures.
  */
 export async function getReveal(
   personId: string,
   viaFriendId?: string
 ): Promise<RevealPayload> {
-  const person = personById(personId);
-  const me = getMe();
-  const viaId = resolveViaId(personId, viaFriendId);
-  const via = viaId ? personById(viaId) : null;
-
-  // Full overlap list — strongest flagged, rest for "you've also got".
-  // Live: matching/RAG is deferred, so getCommonalities / getQuizMatches return
-  // [] until that module ships. Person / me / via already come from the cache.
-  const all = await getCommonalities(personId);
-
-  const strongest = all.find((c) => c.strongest) ?? all[0] ?? null;
-  const others = all.filter((c) => c.key !== strongest?.key).slice(0, 3);
-
-  // Matching-quiz scores ("95% in Humor") — shown in the reveal, never on a card.
-  const quizMatches = await getQuizMatches(personId);
-
-  return { person, me, via, strongest, others, all, quizMatches };
+  const base = await getRevealBase(personId, viaFriendId);
+  const overlap = await getRevealOverlap(personId);
+  return { ...base, ...overlap };
 }
 
 /**

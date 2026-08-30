@@ -3553,21 +3553,27 @@ export type Database = {
       }
       user_identity: {
         Row: {
+          avatar_filter: string | null
           avatar_media_id: string | null
+          avatar_original_media_id: string | null
           display_name: string | null
           profile_song: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          avatar_filter?: string | null
           avatar_media_id?: string | null
+          avatar_original_media_id?: string | null
           display_name?: string | null
           profile_song?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          avatar_filter?: string | null
           avatar_media_id?: string | null
+          avatar_original_media_id?: string | null
           display_name?: string | null
           profile_song?: string | null
           updated_at?: string
@@ -3577,6 +3583,13 @@ export type Database = {
           {
             foreignKeyName: "fk_user_identity_avatar"
             columns: ["avatar_media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_identity_avatar_original_media_id_fkey"
+            columns: ["avatar_original_media_id"]
             isOneToOne: false
             referencedRelation: "media"
             referencedColumns: ["id"]

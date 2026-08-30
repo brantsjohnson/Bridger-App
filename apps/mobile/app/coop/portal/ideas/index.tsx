@@ -115,7 +115,8 @@ export default function CoopIdeasScreen() {
         analyticsSurface="coop"
         titleAnalyticsId={COOP.ideas.section_header}
       />
-      <ScreenBody>
+      {/* KEYBOARD: idea form fields need room while typing. */}
+      <ScreenBody adjustKeyboardInsets>
         <PortalNav />
         <View className="mb-3 flex-row items-start justify-between gap-3">
           <View className="min-w-0 flex-1">

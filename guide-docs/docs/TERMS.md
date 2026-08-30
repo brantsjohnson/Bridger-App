@@ -108,6 +108,7 @@
 - Taking quizzes and **answering** polls is free.
 - **Creating** polls / "ask the group" is a co-op perk.
 - Quiz "who got who" / "your versions" is friends-only where implemented (account required to see friend results).
+- **J-name compatibility:** when you and an added friend have both finished Which J name are you, Bridger may show a fun % for how you line up on that quiz. It is entertainment only, not a clinical, dating, or ranking score.
 - **Sharing your result:** you can save your result card image to your phone or send the image / a result link to other apps (Instagram, Snapchat, Messages, etc.). Once you share it off Bridger you are responsible for it, and the app you send it to has its own terms. Result links you share are meant to invite friends to take the quiz; do not use them to spam.
 
 ### 7.4b Optional surprises (delights)
@@ -150,7 +151,7 @@
 - You may delete any field; deletion removes it from Bridger's store.
 - Co-op profile customization is a **skin** only: it cannot invent, hide, or delete your facts. Theme and Layout are no-code. Custom CSS/HTML (Code tier) is admin-gated and not generally available yet; when it ships it must not include scripts, tracking pixels, or off-Bridger assets. Customized profiles are UGC and may be reverted to the native layout after a report.
 - Co-op **Greatest hits** photos are UGC you upload to Bridger-hosted storage (up to 3). Same report / revert expectations as other profile media; they are not off-platform hotlinks.
-- **Profile photo "looks"** (Pop art, Comic, X-ray, Sepia) are cosmetic filters you apply to your own photo. All four are baked on Bridger's own servers with a standard image tool (no AI, no third party); Pop art also shows an instant on-device preview. A filtered photo is still your content and the same acceptable-use, who-sees, report, and deletion rules apply.
+- **Profile photo "looks"** (Pop art, Comic, X-ray, Sepia) are cosmetic filters you apply to your own photo during onboarding, and you may change them later from Profile Edit. All four are baked on Bridger's own servers with a standard image tool (no AI, no third party); Pop art also shows an instant on-device preview. A filtered photo is still your content and the same acceptable-use, who-sees, report, and deletion rules apply.
 - Viewers may always choose "View original" or a standing "always show plain pages" preference.
 - **Storage meter:** co-op members see used vs included media storage. Going over shows an overage price before any charge (current wave: display stub only; no silent charges). Free accounts use the rolling story window.
 
@@ -168,6 +169,7 @@
 - Summaries are grounded in your own words/transcripts. Thin days may show no summary. You can delete Updates (and their derived summaries) at any time.
 - Bridger does **not** guarantee that model-assisted text is complete or free of error. Harmful or objectionable model output can be reported like other content.
 - Discover suggestions use what you marked matchable; you can turn Discoverable off anytime. We do not use time-in-app or click analytics to rank people. Turning Discover off or deleting your account removes matching data about you.
+- After you connect with someone, the connection reveal may show what you share (hobbies, favorites, music, quiz compatibility by the quiz's in-app title) and, if Discover matching is on, up to a few friends of friends Bridger thinks you might click with. You can send them a connect request from that screen; they still have to accept.
 - A future **Local map** (friend radar on Discover) will be opt-in only and for people you already know who choose to share nearby presence. It is not live yet (Discover shows Coming soon only). It is not a stranger or dating map.
 - **Behind the Scenes** is optional. You may share private context (for example mental-health related) to help matching go at your pace. It never appears on your profile and other people never see it. You choose how strongly matching may use it, you can skip it, and you can edit or remove it in Settings. Bridger does not use it to exclude or hide you from others.
 - **Your Vibe** and other Discover quizzes are optional private modules. Results help introductions; they are not shown on your profile. Optional written explanations stay private. Emotional-sensitivity style signals are not used to block who you can meet.
@@ -236,6 +238,7 @@
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-30 | Reveal Screen 3 may suggest friends of friends (Discover on) or nudge to turn Discover on; connect requests from that screen still need the other person to accept. Quiz compatibility on reveal uses in-app titles. |
 | 2026-08-28 | Co-op paywall: custom in-app join sheet (pick method by device, then monthly $6 / yearly $60 with 2 months free); Apple Pay / Google Pay marks not used (IAP methods). Yearly price set to $60. Server webhooks emit coop_renewed / coop_expired (opaque user id only). |
 | 2026-08-28 | Co-op payments: RevenueCat (Apple/Google) + Stripe Checkout for card on web; card not offered inside iOS for digital membership |
 | 2026-08-27 | Apple Music link (optional): not Bridger login; MusicKit authorize; taste sync for shared artists; disconnect deletes tokens + taste; Apple Music / Spotify ToS apply to each link |
@@ -271,6 +274,7 @@
 | 2026-08-20 | Quiz result sharing: save card image or send image/result link to other apps; user owns/responsible once shared off Bridger; links are quiz invites, not for spam |
 | 2026-08-20 | J-name share links: stable per-person link; opening one may connect a later signup to the friend who invited them; free public web view, but seeing your friends' results needs an account |
 | 2026-08-21 | J-name "your versions" board is friends-only (account required); alerts when someone opens your quiz link or a friend lands on one of your top J picks |
+| 2026-08-30 | J-name: after you and a friend both finish, you can see how compatible you are on that quiz (fun % only; not a clinical or dating score) |
 | 2026-08-21 | Hobby bank includes optional culture / advocacy / wellness labels plus add-your-own; same visibility and matchable rules; none required |
 | 2026-08-19 | Product analytics opt-in in Settings; opt-out stops capture and purges the PostHog person |
 | 2026-08-27 | Onboarding invite progress carries into co-op: invite 3 friends CTA shows N/3 already invited, or drops when all 3 slots are filled |

@@ -190,3 +190,25 @@ export function scoreValues(
     version: 1
   };
 }
+
+/**
+ * Turn a scored result into the flat 0–1 map the matching API stores.
+ * Skips pending dials (loyalty / honesty). PRIVACY: scores only, never answers.
+ */
+export function valuesToMatchDimensions(r: ValuesScoreResult): {
+  dimensionScores: Record<string, number>;
+  confidence: Record<string, number>;
+  version: number;
+} {
+  const dimensionScores: Record<string, number> = {};
+  const confidence: Record<string, number> = {};
+  for (const d of r.dials) {
+    if (d.pending || d.score == null) continue;
+    if (!Number.isFinite(d.score)) continue;
+    dimensionScores[d.key] = clamp01(d.score);
+    confidence[d.key] = clamp01(
+      Number.isFinite(d.confidence) ? d.confidence : 1
+    );
+  }
+  return { dimensionScores, confidence, version: r.version };
+}

@@ -26,6 +26,13 @@ import { JnameService } from './jname.service';
 export class JnameController {
   constructor(private readonly jname: JnameService) {}
 
+  // --- Signed-in: read my saved result (null if I have not taken it). ---
+  @Get('result')
+  @UseGuards(SupabaseAuthGuard)
+  myResult(@CurrentUser() user: AuthUser) {
+    return this.jname.getMyResult(user.id);
+  }
+
   // --- Signed-in: save my result (also called again on a retake). ---
   @Post('result')
   @UseGuards(SupabaseAuthGuard)

@@ -162,7 +162,8 @@ export default function CoopBenefitsScreen() {
         analyticsSurface="coop"
         titleAnalyticsId={COOP.benefits.page_title}
       />
-      <ScreenBody>
+      {/* KEYBOARD: redeem-code field is mid-page; lift only while typing. */}
+      <ScreenBody adjustKeyboardInsets>
         <AnalyticsRegion analyticsId={COOP.benefits.hero} interactive={false}>
           <View style={ORGANIC.banner} className="mb-4 overflow-hidden bg-teal p-5">
             <Text className="font-pixel text-[17px] leading-tight text-onaccent">

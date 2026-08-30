@@ -36,7 +36,7 @@ export function ConfirmProfileStep({
   photoEmoji,
   photoFilter,
   onChangePhotoFilter,
-  onFilteredMediaIdChange,
+  onFilteredBakeChange,
   onChangeFirst,
   onChangeLast,
   onPickPhoto,
@@ -54,11 +54,14 @@ export function ConfirmProfileStep({
   photoFilter: PhotoFilterKey;
   onChangePhotoFilter: (filter: PhotoFilterKey) => void;
   /**
-   * Reports the media id to save as the avatar: the server-baked picture when a
-   * look (Pop art / Comic / X-ray / Sepia) is ready, or null to save the plain
-   * photo instead.
+   * Reports the bake result: filtered media id (live), original media id, and
+   * a preview URL (demo data-URL or signed link). Null clears all three.
    */
-  onFilteredMediaIdChange: (mediaId: string | null) => void;
+  onFilteredBakeChange: (bake: {
+    mediaId: string | null;
+    originalMediaId: string | null;
+    previewUrl: string | null;
+  } | null) => void;
   onChangeFirst: (v: string) => void;
   onChangeLast: (v: string) => void;
   onPickPhoto: (s: PhotoSource) => void;
@@ -74,15 +77,16 @@ export function ConfirmProfileStep({
   // preview while this bake finishes for the saved avatar.
   const [bakedUrl, setBakedUrl] = useState<string | null>(null);
   const [bakedLoading, setBakedLoading] = useState(false);
-  const bakedCache = useRef<Map<string, { url: string; mediaId: string }>>(new Map());
-  // Keep the latest "report id up" callback without re-triggering the effect.
-  const reportRef = useRef(onFilteredMediaIdChange);
-  reportRef.current = onFilteredMediaIdChange;
+  const bakedCache = useRef<
+    Map<string, { url: string; mediaId: string; originalMediaId: string }>
+  >(new Map());
+  // Keep the latest "report bake up" callback without re-triggering the effect.
+  const reportRef = useRef(onFilteredBakeChange);
+  reportRef.current = onFilteredBakeChange;
 
   // THIS SECTION DOES: decide if we can move on. Name + photo are required.
   // Server looks may still be baking in the background; Continue stays on so a
-  // slow filter never traps anyone (we save the plain photo, then the flush at
-  // finish can pick up the filtered id if it lands in the draft).
+  // slow filter never traps anyone (we finish the bake on Continue if needed).
   const hasPhoto = Boolean(photoUri || photoEmoji);
   const ready =
     first.trim().length > 0 && last.trim().length > 0 && hasPhoto;
@@ -104,7 +108,11 @@ export function ConfirmProfileStep({
     if (cached) {
       setBakedLoading(false);
       setBakedUrl(cached.url);
-      reportRef.current(cached.mediaId || null);
+      reportRef.current({
+        mediaId: cached.mediaId || null,
+        originalMediaId: cached.originalMediaId || null,
+        previewUrl: cached.url
+      });
       return;
     }
 
@@ -112,39 +120,55 @@ export function ConfirmProfileStep({
     setBakedLoading(true);
     setBakedUrl(null);
 
-    const finish = (url: string | null, mediaId: string | null) => {
+    const finish = (
+      url: string | null,
+      mediaId: string | null,
+      originalMediaId: string | null
+    ) => {
       if (cancelled) return;
       if (url) {
-        bakedCache.current.set(cacheKey, { url, mediaId: mediaId ?? '' });
+        bakedCache.current.set(cacheKey, {
+          url,
+          mediaId: mediaId ?? '',
+          originalMediaId: originalMediaId ?? ''
+        });
         setBakedUrl(url);
       } else {
         setBakedUrl(null);
       }
-      reportRef.current(mediaId);
+      reportRef.current(
+        url || mediaId
+          ? {
+              mediaId,
+              originalMediaId,
+              previewUrl: url
+            }
+          : null
+      );
       setBakedLoading(false);
     };
 
     if (isDemoMode()) {
       if (Platform.OS !== 'web') {
-        finish(null, null);
+        finish(null, null, null);
         return;
       }
       bakeClientPhotoFilter(photoUri, serverFilter)
-        .then((url) => finish(url, null))
-        .catch(() => finish(null, null));
+        .then((url) => finish(url, null, null))
+        .catch(() => finish(null, null, null));
       return () => {
         cancelled = true;
       };
     }
 
     bakeServerPhotoFilter(photoUri, serverFilter)
-      .then((res) => finish(res.url, res.mediaId))
+      .then((res) => finish(res.url, res.mediaId, res.originalMediaId))
       .catch((err) => {
         // Surface a quiet failure so a missing API never looks like a broken filter.
         if (__DEV__) {
           console.warn('[photo-filter] bake failed', serverFilter, err);
         }
-        finish(null, null);
+        finish(null, null, null);
       });
 
     return () => {
