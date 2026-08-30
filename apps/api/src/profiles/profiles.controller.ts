@@ -223,7 +223,7 @@ export class ProfilesController {
         : rawPresentation;
 
     return {
-      discoverable: data?.discoverable ?? true,
+      discoverable: data?.discoverable ?? false,
       meetScope: data?.meet_scope ?? 'nearby',
       homeCity: data?.home_city ?? '',
       notifPrefs: data?.notif_prefs ?? {},

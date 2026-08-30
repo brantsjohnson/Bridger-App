@@ -30,15 +30,15 @@ import { PersonAvatar } from '../PersonAvatar';
 import { EventDateChip } from '../event/EventDateChip';
 import { QuizCoverCycler } from './QuizCoverCycler';
 import { meetSuggestionsForEvent } from '../../data/events';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { personById } from '../../data/people';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
+import type { WidgetSize } from './HomeWidget';
 
 /** Tailwind h-52 / h-28 in px (default 1rem = 16px). Matches QuizWidget banner heights. */
 const QUIZ_COVER_H_FULL = 208;
 const QUIZ_COVER_H_HALF = 112;
-import type { WidgetSize } from './HomeWidget';
 
-/** AvatarStack row with real photos when a demo pic exists for that person. */
+/** AvatarStack row with real photos when we have a live or demo pic. */
 function faceStack(
   ids: string[],
   limit = 3
@@ -47,7 +47,7 @@ function faceStack(
   emoji?: string;
   accent?: EventItem['accent'];
   personId: string;
-  photo: ReturnType<typeof getProfilePhoto>;
+  photo: ReturnType<typeof avatarPhotoFor>;
 }> {
   return ids.slice(0, limit).map((id) => {
     const p = personById(id);
@@ -56,7 +56,7 @@ function faceStack(
       emoji: p.emoji,
       accent: p.accent,
       personId: p.id,
-      photo: getProfilePhoto(p.id)
+      photo: avatarPhotoFor(p.id, p.avatarUrl)
     };
   });
 }
@@ -416,16 +416,20 @@ export function QuizWidget({
   quiz,
   resultId,
   onTake,
-  onOpenResult
+  onOpenResult,
+  takeAnalyticsId
 }: {
   size: WidgetSize;
   quiz: QuizData;
   resultId: string | null;
   onTake: () => void;
   onOpenResult: (id: string) => void;
+  /** Override the Take button analytics id (standing J-name prompt uses take_prompt). */
+  takeAnalyticsId?: string;
 }) {
   const mine = quiz.results.find((r) => r.id === resultId);
   const c = useThemeColors();
+  const takeId = takeAnalyticsId ?? HOME.this_week.take_quiz;
 
   // Cover fills the top of the card like events.
   const cover: Cover =
@@ -469,7 +473,7 @@ export function QuizWidget({
                 size="md"
                 tone="solid"
                 onPress={onTake}
-                analyticsId={HOME.this_week.take_quiz}
+                analyticsId={takeId}
               >
                 Take the quiz
               </ButtonSecondary>
@@ -547,7 +551,7 @@ export function QuizWidget({
   return (
     <Pressable
       onPress={withAnalyticsPress(
-        HOME.this_week.take_quiz,
+        takeId,
         resultId ? () => onOpenResult(resultId) : onTake
       )}
       accessibilityRole="button"

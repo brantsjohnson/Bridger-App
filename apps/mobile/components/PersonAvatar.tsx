@@ -1,13 +1,13 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// A thin wrapper around Avatar that looks up the person by id and, if you
-// dropped a profile photo into assets/demo/profile-pics/, shows that photo
-// instead of their emoji. Use this anywhere you already have a person id.
+// A thin wrapper around Avatar that looks up the person by id and shows their
+// real profile photo when we have one (live signed URL, or a demo fixture).
+// Use this anywhere you already have a person id.
 // ============================================
 import React from 'react';
 import type { Accent } from '@bridger/shared';
 import { Avatar, type WashStoryRing } from '@bridger/ui';
-import { getProfilePhoto } from '../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../lib/avatar-photo';
 import { personById } from '../data/people';
 
 export function PersonAvatar({
@@ -37,14 +37,13 @@ export function PersonAvatar({
   const wash: WashStoryRing =
     ringWash ??
     (p.tier === 'close' ? 'close' : p.tier === 'acquaintance' ? 'acquaintance' : 'friend');
-  const liveUri = p.avatarUrl?.trim();
   return (
     <Avatar
       name={name ?? p.name}
       emoji={emoji ?? p.emoji}
       accent={accent ?? p.accent}
       personId={id}
-      photo={liveUri ? { uri: liveUri } : getProfilePhoto(id)}
+      photo={avatarPhotoFor(id, p.avatarUrl)}
       size={size}
       story={story ?? p.story}
       ringWash={wash}

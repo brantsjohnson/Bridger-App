@@ -10,7 +10,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   Text,
   TextInput,
@@ -113,6 +115,11 @@ export function ActivityCaptureSheet({
       onRequestClose={dismiss}
       accessibilityViewIsModal
     >
+      {/* KEYBOARD: when writing a caption, keep the field and Post above the keys. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <View
         style={{
           paddingTop: Math.max(insets.top, 12),
@@ -204,6 +211,7 @@ export function ActivityCaptureSheet({
           </View>
         )}
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

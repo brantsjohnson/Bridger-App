@@ -6,7 +6,9 @@
 // ============================================
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -100,6 +102,11 @@ export function CommentSheet({
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
+      {/* KEYBOARD: lift the replies sheet so the reply box stays above the keys. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <View className="flex-1 justify-end">
         <Pressable
           accessibilityRole="button"
@@ -219,6 +226,7 @@ export function CommentSheet({
             </View>
           </View>
         </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

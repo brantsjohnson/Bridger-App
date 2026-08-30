@@ -55,7 +55,8 @@ export function ConfirmProfileStep({
   onChangePhotoFilter: (filter: PhotoFilterKey) => void;
   /**
    * Reports the media id to save as the avatar: the server-baked picture when a
-   * server look (Comic or X-ray) is ready, or null to save the plain photo instead.
+   * look (Pop art / Comic / X-ray / Sepia) is ready, or null to save the plain
+   * photo instead.
    */
   onFilteredMediaIdChange: (mediaId: string | null) => void;
   onChangeFirst: (v: string) => void;
@@ -67,8 +68,10 @@ export function ConfirmProfileStep({
   // THIS SECTION DOES: slide name fields up when the keyboard covers them.
   const { ensureVisible } = useOnboardingBodyScroll();
 
-  // THIS SECTION DOES: server-rendered looks (Comic, X-ray, Sepia). We cache each
-  // result per photo + filter so switching pills does not re-run the work each time.
+  // THIS SECTION DOES: server-baked looks (Pop art, Comic, X-ray, Sepia). We
+  // cache each result per photo + filter so switching pills does not re-run
+  // the work each time. Pop art still shows the Warhol grid as an instant
+  // preview while this bake finishes for the saved avatar.
   const [bakedUrl, setBakedUrl] = useState<string | null>(null);
   const [bakedLoading, setBakedLoading] = useState(false);
   const bakedCache = useRef<Map<string, { url: string; mediaId: string }>>(new Map());

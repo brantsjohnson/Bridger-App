@@ -5,14 +5,15 @@
 // (work, chores, commute, exercise). Then devices take a huge pink bite.
 // Then the tiny leftover: only 4.0 years spent in person with people.
 //
-// Each beat colors a band, then opens a roomy accordion under that band with
+// Each beat colors a band, then opens a tight accordion under that band with
 // the icon + the SAME big thick caption that used to sit under the whole
-// stack (so we do not show a tiny line and a giant line at once). The next
-// beat closes the previous accordion and opens the new one, so the sections
-// below slide down. After a band is filled, tap it again to reopen or hide
-// its caption. Captions type in letter by letter (skipped when Reduce Motion
-// is on). The green "Let's try again" button waits until the last caption is
-// done.
+// stack (so we do not show a tiny line and a giant line at once). Year lines
+// keep a fixed thickness so mid-story does not leave a huge empty blue hole.
+// The next beat closes the previous accordion and opens the new one, so the
+// sections below slide down. After a band is filled, tap it again to reopen
+// or hide its caption. Captions type in letter by letter (skipped when
+// Reduce Motion is on). The green "Let's try again" button waits until the
+// last caption is done.
 //
 // ACCESSIBILITY: the hash-line picture is decorative aside from the band
 // taps. The changing sentence is real text. Reduce Motion skips waits and
@@ -41,10 +42,11 @@ const HOLD_MS = 3000;
 /** How long each typed character waits before the next one appears. */
 const TYPE_MS = 32;
 /**
- * Open accordion height: icon + big display caption (up to ~3 lines).
- * Tall on purpose so the stack between bands is not squished.
+ * Fallback accordion height before we measure the real caption row.
+ * Kept tight (icon + ~2 display lines) so we do not leave a big blue hole
+ * under short lines like "11.6 years on work & school."
  */
-const STAT_ROW_H = 108;
+const STAT_ROW_FALLBACK_H = 72;
 /** How long open/close of a caption row takes. */
 const ACCORDION_MS = 340;
 
@@ -238,12 +240,12 @@ export function ScreenTimeVisual({
   const typingSlice = beat > 0 ? beat - 1 : null;
 
   return (
-    <View style={{ flex: 1, minHeight: 0, width: "100%", gap: 16 }}>
+    <View style={{ width: "100%", gap: 12 }}>
       {/* THE LIFE BAR: bands stack; each opens a big caption accordion under itself. */}
       <AnalyticsRegion
         analyticsId={ONBOARDING.stat.visual}
         interactive={false}
-        style={{ flex: 1, minHeight: 0, width: "100%" }}
+        style={{ width: "100%" }}
       >
         <LifeBar
           filled={linesBeat}
@@ -288,6 +290,11 @@ export function ScreenTimeVisual({
  * like one even stack (almost touching, never a random double-wide stripe).
  */
 const TICK_GAP = 1;
+/**
+ * Fixed thickness for every year line. Do NOT flex-fill the screen: stretching
+ * unfilled bands left a huge empty blue hole under the open caption.
+ */
+const TICK_H = 3;
 
 /**
  * Stack of year-bands. Under each filled band, an accordion can open with that
@@ -318,8 +325,9 @@ function LifeBar({
 }) {
   return (
     // No gap between siblings: closed accordions are height 0, and a flex gap
-    // would punch uneven blue holes between bands.
-    <View style={{ flex: 1, minHeight: 0, width: "100%" }}>
+    // would punch uneven blue holes between bands. Height follows the ticks
+    // (fixed) + open caption, not the leftover screen.
+    <View style={{ width: "100%" }}>
       {SLICES.map((slice, sliceIndex) => {
         const on = sliceIndex < filled;
         // Revealed = this beat of the story has started (band may still be
@@ -333,8 +341,7 @@ function LifeBar({
           open && typingSlice === sliceIndex && beat === sliceIndex + 1;
         return (
           <React.Fragment key={slice.key}>
-            {/* THE BAND: flex share by tick count. Every hash line inside uses
-                the same flex:1 share + the same 1px gap (no leftover thickening). */}
+            {/* THE BAND: one fixed-height hash line per year tick. */}
             <YearBand
               slice={slice}
               sliceIndex={sliceIndex}
@@ -363,8 +370,8 @@ function LifeBar({
 }
 
 /**
- * One color band of year-hash lines. Each line gets the same flex share and
- * the same tiny gap, so all 80 years look the same thickness across the life.
+ * One color band of year-hash lines. Each year is the same fixed thickness so
+ * mid-story unfilled life does not balloon into empty blue.
  */
 function YearBand({
   slice,
@@ -414,10 +421,6 @@ function YearBand({
       }
       accessibilityState={on ? { expanded: open } : undefined}
       style={{
-        flexGrow: slice.ticks,
-        flexShrink: 1,
-        flexBasis: 0,
-        minHeight: 0,
         width: "100%",
         overflow: "hidden",
         // Same 1px blue stripe between every year line in this band.
@@ -428,10 +431,7 @@ function YearBand({
         <View
           key={`${slice.key}-${t}`}
           style={{
-            // Equal share of the band: every year line is the same thickness.
-            flexGrow: 1,
-            flexShrink: 1,
-            flexBasis: 0,
+            height: TICK_H,
             width: "100%",
             backgroundColor: on ? slice.color : FAINT,
           }}
@@ -443,8 +443,8 @@ function YearBand({
 
 /**
  * Smooth open/close row under a color band. Holds the icon + the big display
- * caption (the old small between-band line is gone). Height animates so the
- * bands below slide instead of jumping. Reduce Motion snaps.
+ * caption. Height follows the real content size (measured), so short captions
+ * do not leave a tall empty blue strip. Reduce Motion snaps.
  */
 function SliceCaptionRow({
   open,
@@ -463,13 +463,17 @@ function SliceCaptionRow({
   onTextVisible: (b: number) => void;
   onTypingDone: () => void;
 }) {
-  const height = useRef(new Animated.Value(open ? STAT_ROW_H : 0)).current;
+  // THIS SECTION DOES: remember how tall the caption actually is, then animate
+  // the accordion to that height (not a fixed oversized slot).
+  const [contentH, setContentH] = useState(STAT_ROW_FALLBACK_H);
+  const height = useRef(new Animated.Value(open ? STAT_ROW_FALLBACK_H : 0)).current;
   const opacity = useRef(new Animated.Value(open ? 1 : 0)).current;
   const Icon = slice.Icon;
+  const openH = Math.max(contentH, 1);
 
   useEffect(() => {
     if (reduceMotion) {
-      height.setValue(open ? STAT_ROW_H : 0);
+      height.setValue(open ? openH : 0);
       opacity.setValue(open ? 1 : 0);
       return;
     }
@@ -477,7 +481,7 @@ function SliceCaptionRow({
     // mix native + JS drivers on the same animated node tree.
     Animated.parallel([
       Animated.timing(height, {
-        toValue: open ? STAT_ROW_H : 0,
+        toValue: open ? openH : 0,
         duration: ACCORDION_MS,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
@@ -489,7 +493,7 @@ function SliceCaptionRow({
         useNativeDriver: false,
       }),
     ]).start();
-  }, [open, reduceMotion, height, opacity]);
+  }, [open, openH, reduceMotion, height, opacity]);
 
   return (
     <Animated.View
@@ -498,20 +502,21 @@ function SliceCaptionRow({
       importantForAccessibility="no-hide-descendants"
     >
       <View
+        onLayout={(e) => {
+          const h = Math.ceil(e.nativeEvent.layout.height);
+          if (h > 0 && h !== contentH) setContentH(h);
+        }}
         style={{
-          height: STAT_ROW_H,
           flexDirection: "row",
-          alignItems: "flex-start",
+          alignItems: "center",
           gap: 10,
-          paddingTop: 10,
-          paddingBottom: 8,
+          paddingTop: 6,
+          paddingBottom: 6,
           paddingHorizontal: 2,
         }}
       >
         {/* Keep the slice emoji / icon beside the big caption. */}
-        <View style={{ paddingTop: 4 }}>
-          <Icon size={22} color={slice.color} strokeWidth={2.4} />
-        </View>
+        <Icon size={22} color={slice.color} strokeWidth={2.4} />
         <AnalyticsRegion
           analyticsId={ONBOARDING.stat.caption}
           interactive={false}

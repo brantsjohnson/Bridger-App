@@ -285,7 +285,12 @@ export default function RoadTripQuiz({ slug }: { slug: string }) {
                   <AvatarStack
                     people={r.friendIds.slice(0, 3).map((id) => {
                       const p = personById(id);
-                      return { name: p.name, emoji: p.emoji, accent: p.accent };
+                      return {
+                        name: p.name,
+                        emoji: p.emoji,
+                        accent: p.accent,
+                        personId: p.id
+                      };
                     })}
                   />
                 </View>

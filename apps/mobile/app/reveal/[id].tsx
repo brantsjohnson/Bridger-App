@@ -31,7 +31,7 @@ import { RevealOrbs } from '../../components/reveal/RevealOrbs';
 import { RevealProgressBars } from '../../components/reveal/RevealProgressBars';
 import { useReveal } from '../../hooks/useReveal';
 import { personExists } from '../../data/people';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { reportNotFoundHit } from '../../lib/route-trail';
 
 type Frame = 'met' | 'strongest' | 'others' | 'close';
@@ -213,7 +213,7 @@ export default function RevealRoute() {
                 emoji={payload.person.emoji}
                 accent={payload.person.accent}
                 personId={payload.person.id}
-                photo={getProfilePhoto(payload.person.id)}
+                photo={avatarPhotoFor(payload.person.id, payload.person.avatarUrl)}
                 diameter={meetFace}
               />
               <Text
@@ -230,7 +230,7 @@ export default function RevealRoute() {
                 emoji={payload.person.emoji}
                 accent={payload.person.accent}
                 personId={payload.person.id}
-                photo={getProfilePhoto(payload.person.id)}
+                photo={avatarPhotoFor(payload.person.id, payload.person.avatarUrl)}
                 size="xl"
               />
               <Text

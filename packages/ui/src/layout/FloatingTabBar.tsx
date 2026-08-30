@@ -3,9 +3,10 @@
 // The bottom navigation — a detached, elongated capsule that floats inset
 // from the screen edge (not a flush full-width bar), per DESIGN.md. Five
 // destinations: Home, Friends, Events, Discover, News. Messages moved up
-// to the header (top-right icon), and your Profile lives in the header
-// avatar instead. The selected tab is a stretched pill, same language as
-// the long toggle thumb, not a tight circle.
+// to the header (top-right icon). Your Profile now lives here too: your face
+// sits on the far-right of the pill (it used to be the header avatar). The
+// selected tab is a stretched pill, same language as the long toggle thumb,
+// not a tight circle.
 //
 // Each tab has its own accent (active fill + notification dot):
 //   Home teal · Friends coral/orange · Events touch-grass green ·
@@ -24,10 +25,13 @@ import {
   NewspaperIcon,
   UsersIcon
 } from 'lucide-react-native';
+import type { ImageSourcePropType } from 'react-native';
+import type { Accent } from '@bridger/shared';
 import { CHROME } from '@bridger/shared';
 import { ACCENT_HEX, useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
 import { withAnalyticsPress } from '../lib/analytics';
+import { Avatar } from '../primitives/Avatar';
 
 export type TabKey = 'home' | 'friends' | 'events' | 'discover' | 'news';
 
@@ -64,18 +68,36 @@ const TABS: Array<{
   }
 ];
 
+/** Your face for the far-right profile button (mirrors the old header avatar). */
+type NavProfile = {
+  name: string;
+  emoji?: string;
+  accent?: Accent;
+  photo?: ImageSourcePropType;
+};
+
 export function FloatingTabBar({
   value,
   onChange,
-  badges = {}
+  badges = {},
+  profile,
+  onProfilePress
 }: {
   value: TabKey | string;
   onChange: (key: TabKey) => void;
   /** When true for a tab, show that tab's colored notification dot. */
   badges?: Partial<Record<TabKey, boolean>>;
+  /** Your face for the far-right profile button. Omit to hide it. */
+  profile?: NavProfile;
+  /** Tap the profile face → open your Profile page. */
+  onProfilePress?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
+
+  // THIS SECTION DOES: show your profile face on the far-right only when we know
+  // who you are and where to send the tap (both come from the tabs layout).
+  const showProfile = !!profile && !!onProfilePress;
 
   return (
     <View
@@ -119,6 +141,38 @@ export function FloatingTabBar({
             </Pressable>
           );
         })}
+
+        {/* THE PROFILE FACE: far-right of the pill; opens your Profile page.
+            Fixed square hit target so a missing photo never collapses the slot.
+            When you're ON Profile, a dark ring hugs the face so this pill spot
+            reads as "selected" (like the filled tab pills do). */}
+        {showProfile && profile ? (
+          <Pressable
+            onPress={withAnalyticsPress(CHROME.tab_bar.profile_icon, onProfilePress, {
+              analyticsProps: { surface: String(value) }
+            })}
+            accessibilityRole="button"
+            accessibilityLabel="Your profile"
+            accessibilityState={{ selected: value === 'profile' }}
+            className="relative min-h-[44px] min-w-[44px] items-center justify-center rounded-full active:opacity-80"
+          >
+            <View
+              style={
+                value === 'profile'
+                  ? { borderWidth: 2, borderColor: c.ink, borderRadius: 999, padding: 1 }
+                  : undefined
+              }
+            >
+              <Avatar
+                name={profile.name}
+                emoji={profile.emoji}
+                accent={profile.accent}
+                photo={profile.photo}
+                size="sm"
+              />
+            </View>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

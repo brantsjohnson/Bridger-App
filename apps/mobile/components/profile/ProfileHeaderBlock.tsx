@@ -39,7 +39,9 @@ import {
   withAnalyticsPress,
   type RingTone
 } from '@bridger/ui';
-import { getProfilePhoto, getStoryMedia } from '../../data/fixtures/demo-media';
+import { getStoryMedia } from '../../data/fixtures/demo-media';
+import { isDemoMode } from '../../lib/demo';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import type { MyProfileHeader } from '../../data/profile';
 import {
   PROFILE_ACTION_ROW_GAP,
@@ -111,10 +113,12 @@ export function ProfileHeaderBlock({
   // Prefer the live signed URL from the header, then the person's cached URL,
   // then the demo fixture photo. Emoji fills in when nothing else is there.
   const liveUri = header?.avatarUrl?.trim() || person.avatarUrl?.trim();
-  const photo = liveUri ? { uri: liveUri } : getProfilePhoto(person.id);
+  const photo = avatarPhotoFor(person.id, liveUri);
   const hasStory = !!person.story;
   const storySeen = person.story === 'seen';
-  const storyCover = getStoryMedia(person.id)[0];
+  // THIS SECTION DOES: only pull a demo story thumbnail in demo mode. In live
+  // mode a person with no real story must NOT show a bundled fixture photo.
+  const storyCover = isDemoMode() ? getStoryMedia(person.id)[0] : undefined;
   const tier = person.tier ?? 'friend';
   const ringTone: RingTone = own ? 'me' : ringToneForTier(tier);
 
@@ -149,6 +153,9 @@ export function ProfileHeaderBlock({
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
         />
+      ) : photo ? (
+        // No story: show your own face (not a demo thumbnail) so the tile reads as you.
+        <Image source={photo} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       ) : (
         <View className="h-full w-full items-center justify-center">
           <Text className="text-[28px]">{person.emoji ?? '🙂'}</Text>

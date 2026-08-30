@@ -3,22 +3,23 @@
 // The scaffold every screen is built from, so all screens share the same shape:
 //  - Screen: fills the display and paints the background (eggshell canvas by
 //    default; onboarding/fill flows may go full color).
-//  - ScreenHeader: the page title row (pixel title, Edit, profile). It lives
-//    at the top of the scrolling page — it scrolls off as you go down, and
-//    only comes back when you return to the very top. No mid-page tuck/reveal.
-//    Back uses solid ink + canvas chevron so it stays visible in dark mode.
+//  - ScreenHeader: the page title row (pixel title, Edit, messages). The title
+//    sits flush left now — your profile face moved to the far-right of the
+//    bottom nav pill. It lives at the top of the scrolling page — it scrolls
+//    off as you go down, and only comes back when you return to the very top.
+//    No mid-page tuck/reveal. Back uses solid ink + canvas chevron so it stays
+//    visible in dark mode.
 //  - ScreenBody: the scrolling content; renders the registered header first,
 //    then the screen's children. Padded so the floating tab bar never covers
 //    the last item.
 // ============================================
 import React, { useLayoutEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeftIcon, SendIcon } from 'lucide-react-native';
 import type { Accent } from '@bridger/shared';
 import { useThemeColors } from '../tokens';
 import { cn } from '../lib/cn';
-import { Avatar } from '../primitives/Avatar';
 import { PixelHeading } from '../primitives/PixelHeading';
 import { AnalyticsRegion, withAnalyticsPress } from '../lib/analytics';
 import { useProfileLink } from './ProfileLink';
@@ -223,15 +224,11 @@ export function Screen({
 function HeaderChrome({
   title,
   onBack,
-  onProfile,
-  profile,
-  hideProfile = false,
   onMessages,
   hideMessages = false,
   trailing,
   analyticsSurface,
   titleAnalyticsId,
-  profileAnalyticsId,
   messagesAnalyticsId,
   backAnalyticsId
 }: ScreenHeaderProps) {
@@ -242,12 +239,11 @@ function HeaderChrome({
   const intro = tone === 'intro';
 
   // THIS SECTION DOES: figure out which chrome buttons this header shows.
-  // Detail screens (with a Back arrow) keep the old shape; top-level tabs get
-  // the new one — profile photo on the LEFT of the title, messages on the RIGHT.
+  // Your profile face no longer lives here — it moved to the far-right of the
+  // bottom nav pill. Detail screens still keep the Back arrow on the left;
+  // top-level tabs now start with the title itself (nothing on the left), so
+  // the title shifts left to fill the old avatar's spot. Messages stays RIGHT.
   const backMode = !!onBack;
-  const openProfile = onProfile ?? link.open;
-  const face = profile ?? link.profile;
-  const showProfile = !hideProfile && !!openProfile && !!face;
   const openMessages = onMessages ?? link.openMessages;
   // Messages shortcut only rides in the top-right of top-level tabs (never in
   // back mode, so detail screens stay clean).
@@ -256,37 +252,12 @@ function HeaderChrome({
   const resolvedTitleId =
     titleAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.page_title` : undefined);
-  const resolvedProfileId =
-    profileAnalyticsId ??
-    (analyticsSurface ? `${analyticsSurface}.top_nav.profile_icon` : undefined);
   const resolvedMessagesId =
     messagesAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.messages_icon` : undefined);
   const resolvedBackId =
     backAnalyticsId ??
     (analyticsSurface ? `${analyticsSurface}.top_nav.back` : undefined);
-
-  // --- THE PROFILE BUTTON: your photo; opens your Profile page ---
-  // Fixed 40×40 hit target so a missing/failing photo never collapses the
-  // left header slot (that made every tab look like it had no profile pic).
-  const profileButton =
-    showProfile && face ? (
-      <Pressable
-        onPress={withAnalyticsPress(resolvedProfileId, openProfile)}
-        accessibilityRole="button"
-        accessibilityLabel="Your profile"
-        className="shrink-0 active:opacity-80"
-        style={{ width: 40, height: 40 }}
-      >
-        <Avatar
-          name={face.name}
-          emoji={face.emoji}
-          accent={face.accent}
-          photo={face.photo}
-          size="header"
-        />
-      </Pressable>
-    ) : null;
 
   // --- THE MESSAGES BUTTON: paper-airplane; opens your inbox ---
   const messagesButton = showMessages ? (
@@ -300,7 +271,8 @@ function HeaderChrome({
     </Pressable>
   ) : null;
 
-  // Left slot: Back arrow on detail screens, otherwise your profile photo.
+  // Left slot: Back arrow on detail screens; nothing on top-level tabs so the
+  // title sits flush left (the profile face moved to the bottom nav pill).
   const leading = backMode ? (
     <Pressable
       onPress={withAnalyticsPress(resolvedBackId, onBack)}
@@ -313,13 +285,10 @@ function HeaderChrome({
     >
       <ChevronLeftIcon size={22} color={c.canvas} strokeWidth={3} />
     </Pressable>
-  ) : (
-    profileButton
-  );
+  ) : null;
 
-  // Right slot: screen's own trailing controls, then Messages (tabs) or the
-  // profile photo (detail screens that still opt into it).
-  const rightExtra = backMode ? profileButton : messagesButton;
+  // Right slot: screen's own trailing controls, then Messages (top-level tabs).
+  const rightExtra = backMode ? null : messagesButton;
 
   return (
     <View
@@ -426,6 +395,10 @@ export function ScreenBody({
       // Transparent so intro's black canvas shows through (web ScrollView
       // otherwise paints white and the gate looks like graph paper).
       style={{ backgroundColor: 'transparent' }}
+      // KEYBOARD: on iOS, lift scroll content so mid-page fields (notes,
+      // bucket list, event form fields) stay visible while typing.
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       contentContainerStyle={{
         // Header is full-bleed (own horizontal pad). Body content is padded below.
         paddingTop: hasHeader ? 0 : 8,

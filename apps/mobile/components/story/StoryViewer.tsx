@@ -39,7 +39,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { clearStoryReplyNotifications, markStorySeen } from '../../data/feed';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { useStoryViewer } from '../../hooks/useStoryViewer';
 import { CatchUpPanel } from './CatchUpPanel';
 import { CircleRecorder } from './CircleRecorder';
@@ -381,7 +381,8 @@ export function StoryViewer({
                 name={author.name}
                 emoji={author.emoji}
                 accent={author.accent}
-                photo={getProfilePhoto(author.id)}
+                personId={author.id}
+                photo={avatarPhotoFor(author.id, author.avatarUrl)}
                 size="sm"
               />
               <View className="absolute -bottom-0.5 -right-0.5 h-4 w-4 items-center justify-center rounded-full bg-white">

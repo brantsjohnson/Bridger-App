@@ -2,7 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // The traffic cop for profile-photo looks. Given a photo and the currently
 // picked filter, it shows the right version of the photo:
-//   - Pop art: drawn instantly on the phone (SVG recolor).
+//   - Pop art: the 4-tile Warhol grid draws instantly on the phone as a preview
+//     while the server bakes a single-tile pop JPEG for the saved avatar.
 //   - Comic / X-ray / Sepia: rendered on the server; while we wait we show a
 //     spinner, then the finished picture; if it fails we fall back to plain.
 //
@@ -27,8 +28,13 @@ const FILL = {
   height: '100%' as const
 };
 
-/** Looks that are painted on the server instead of on the phone. */
-const SERVER_FILTERS = new Set<PhotoFilterKey>(['comic', 'x_ray', 'sepia']);
+/** Looks that are painted on the server (all four). Pop art still previews live. */
+const SERVER_FILTERS = new Set<PhotoFilterKey>([
+  'pop_art',
+  'comic',
+  'x_ray',
+  'sepia'
+]);
 
 export function FilteredPhoto({
   uri,
@@ -39,13 +45,14 @@ export function FilteredPhoto({
 }: {
   uri: string;
   filter: PhotoFilterKey;
-  /** Server-rendered preview link, once ready (Comic, X-ray, or Sepia). */
+  /** Server-rendered preview link, once ready (Comic, X-ray, Sepia, Pop art). */
   bakedUrl?: string | null;
   /** True while the server is rendering a server-side look. */
   bakedLoading?: boolean;
   accessibilityLabel?: string;
 }) {
-  // THIS SECTION DOES: the Pop art look, drawn live on the phone.
+  // THIS SECTION DOES: Pop art keeps the instant Warhol grid as the onboarding
+  // preview. The server bake (single-tile pop) is what becomes the avatar.
   if (filter === 'pop_art') {
     return <WarholPhoto uri={uri} />;
   }
@@ -90,9 +97,14 @@ export function FilteredPhoto({
   );
 }
 
-/** True when this filter key is rendered on the server. */
+/** True when this filter key is baked on the server for the saved avatar. */
 export function isServerPhotoFilter(
   filter: PhotoFilterKey
 ): filter is ServerPhotoFilter {
-  return filter === 'comic' || filter === 'x_ray' || filter === 'sepia';
+  return (
+    filter === 'pop_art' ||
+    filter === 'comic' ||
+    filter === 'x_ray' ||
+    filter === 'sepia'
+  );
 }

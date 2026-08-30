@@ -2,9 +2,10 @@
 // WHAT THIS FILE DOES (plain English):
 // The Messages tab — Bridger's capped inbox (5 texts per person per day).
 // Deliberately small: find a friend, open a thread, expand your contact card
-// dropdown to edit fields. Conversation rows use organic accent tiles
-// (Magic Patterns blobs). Data comes from useMessages so demo fixtures and
-// the live API share this screen.
+// dropdown to edit fields. Conversation rows are name + preview only (no
+// profile pics). Color and shape of each blob still show whose turn it is.
+// Data comes from useMessages so demo fixtures and the live API share this
+// screen.
 // SECURITY: message bodies are end-to-end encrypted at rest — staff cannot read them.
 // ============================================
 import React, { useEffect, useState } from 'react';
@@ -22,7 +23,6 @@ import {
 } from '@bridger/shared';
 import {
   AnalyticsRegion,
-  Avatar,
   EmptyState,
   MESSAGE_SHAPES,
   Screen,
@@ -41,7 +41,6 @@ import type { ThreadRow } from '../../data/messages';
 import { ContactCardPanel } from '../../components/messages/ContactCardPanel';
 import { NewMessageSheet } from '../../components/messages/NewMessageSheet';
 import { startThreadWith } from '../../data/messages';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { useMessages } from '../../hooks/useMessages';
 
 // --- STATUS SHAPE: turn a thread into one of three card outlines ---
@@ -89,6 +88,9 @@ export default function MessagesScreen() {
       <ScreenHeader
         title="Messages"
         analyticsSurface="messages"
+        // No profile circle here — this screen is already one hop from the
+        // header photo, and conversation rows are name-only (no faces).
+        hideProfile
         // Messages now opens from the header shortcut, so give it a way back.
         onBack={() => {
           if (router.canGoBack()) router.back();
@@ -203,15 +205,7 @@ export default function MessagesScreen() {
                           style={{ ...shape, backgroundColor: fill }}
                           className="min-h-[44px] w-full flex-row items-center gap-3 overflow-hidden px-4 py-3.5 active:opacity-90"
                         >
-                          {/* White ring keeps every face readable on the color. */}
-                          <View className="rounded-full bg-white/90 p-[2px]">
-                            <Avatar
-                              name={t.name}
-                              emoji={t.emoji}
-                              accent={t.accent}
-                              photo={getProfilePhoto(t.personId)}
-                            />
-                          </View>
+                          {/* Name + preview only — no profile pic on this list. */}
                           <View className="min-w-0 flex-1">
                             <Text
                               numberOfLines={1}

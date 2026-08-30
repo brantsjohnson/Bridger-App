@@ -8,6 +8,7 @@ import { Pressable, Text, View } from 'react-native';
 import { SproutIcon, XIcon } from 'lucide-react-native';
 import { Avatar, ORGANIC, cn } from '@bridger/ui';
 import { personById } from '../data/people';
+import { avatarPhotoFor } from '../lib/avatar-photo';
 
 export function FreeNowStrip({
   when,
@@ -35,7 +36,14 @@ export function FreeNowStrip({
             const p = personById(id);
             return (
               <View key={id} className={cn('rounded-full', i > 0 && '-ml-2')}>
-                <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                <Avatar
+                  name={p.name}
+                  emoji={p.emoji}
+                  accent={p.accent}
+                  personId={p.id}
+                  photo={avatarPhotoFor(p.id, p.avatarUrl)}
+                  size="xs"
+                />
               </View>
             );
           })}

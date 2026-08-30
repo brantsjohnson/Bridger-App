@@ -3,7 +3,8 @@
 // Your own Profile tab — Spotify-artist layout. Square header with Edit and a
 // Settings gear on the photo; View as + search sit under it. Stories / Inside
 // jokes / Bucket list stay as sibling tabs. Settings opens from the gear (not
-// a tab). Pill nav is hidden. Analytics: surface=profile.
+// a tab). The floating pill nav STAYS here (your face on the pill is how you
+// got here), but there is no top "Profile" title bar. Analytics: surface=profile.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -148,6 +149,19 @@ export default function ProfileScreen() {
     return hits;
   }, [profile]);
 
+  // THIS SECTION DOES: make sure the location pin is filled. The header city
+  // comes from home_city, but if onboarding only stored "Lives in"/"Hometown"
+  // as an About Me field, fall back to that so the pin is never blank.
+  const headerWithCity = useMemo(() => {
+    if (!profile.header) return profile.header;
+    if (profile.header.city?.trim()) return profile.header;
+    const findAbout = (label: string) =>
+      profile.about.find((f) => f.key.trim().toLowerCase() === label)?.value?.trim();
+    const fallbackCity = findAbout('lives in') || findAbout('hometown') || '';
+    if (!fallbackCity) return profile.header;
+    return { ...profile.header, city: fallbackCity };
+  }, [profile.header, profile.about]);
+
   // THIS SECTION DOES: leave Settings when the person picks a content tab.
   const onChangeTab = (next: string) => {
     setSettingsOpen(false);
@@ -156,11 +170,12 @@ export default function ProfileScreen() {
 
   return (
     <Screen tone="canvas">
-      <ScreenBody tabBarInset={false} padded={false}>
+      {/* tabBarInset keeps the last content clear of the floating pill (now shown here). */}
+      <ScreenBody padded={false}>
         {/* THIS SECTION DOES: Spotify header (back/name/city ON the photo). */}
         <ProfileHeaderBlock
           person={profile.me}
-          header={profile.header}
+          header={headerWithCity}
           own
           editing={editing}
           empty={false}
@@ -208,7 +223,7 @@ export default function ProfileScreen() {
           <View style={{ marginTop: PROFILE_TABS_TO_CONTENT }}>
             <ProfileCard
               person={profile.me}
-              header={profile.header}
+              header={headerWithCity}
               about={profile.about}
               hobbies={profile.hobbies}
               favs={profile.favs}

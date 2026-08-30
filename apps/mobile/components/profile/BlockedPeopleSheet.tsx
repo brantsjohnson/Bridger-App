@@ -39,7 +39,13 @@ export function BlockedPeopleSheet({
                   key={p.id}
                   className="flex-row items-center gap-3 rounded-card border border-ink-line bg-surface px-3.5 py-2.5"
                 >
-                  <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="sm" />
+                  <Avatar
+                    name={p.name}
+                    emoji={p.emoji}
+                    accent={p.accent}
+                    personId={p.id}
+                    size="sm"
+                  />
                   <Text numberOfLines={1} className="min-w-0 flex-1 font-sans-b text-[14px] text-ink">
                     {p.name}
                   </Text>

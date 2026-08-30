@@ -7,7 +7,7 @@
 // (never the joke text or people's names).
 // ============================================
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { trackProduct } from '@bridger/shared';
 import {
   ACCENTS,
@@ -73,6 +73,11 @@ export function AddInsideJokeSheet({
 
   return (
     <Sheet open={open} onClose={close} title="Add an Inside Joke">
+      <ScrollView
+        className="max-h-[70vh]"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View className="gap-4">
         <TextField
           label="The quote"
@@ -154,6 +159,7 @@ export function AddInsideJokeSheet({
           </ButtonSecondary>
         </View>
       </View>
+      </ScrollView>
     </Sheet>
   );
 }

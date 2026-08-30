@@ -244,7 +244,7 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 ### `chrome` (floating tab bar — global)
 | section | elements |
 |---|---|
-| `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
+| `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper), `profile_icon` (your face on the far-right of the pill — opens Profile; moved here from the header, replaces `*.top_nav.profile_icon`); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
 
 ### `onboarding`
 New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → privacy circles → privacy & control → [screentime stat] → [co-op intro] → co-op. The four stat interstitials and the co-op intro splash do not count in the progress bar. Finishing Co-op completes onboarding and lands on Home, which plays the one-time welcome fireworks (own surface `welcome_celebration`). The old "You're in" screen (`welcome_in`) was removed 2026-08-28. The onboarding Recap voice step is archived; weekly recaps stay on Friend Pod.
@@ -273,16 +273,16 @@ Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='o
 | `top_nav` | `search`, `messages_icon`, **`header_logo` (dead)**, **`page_title` (dead)**, `profile_icon`, `edit_layout` |
 | `announcements` | `carousel` (swipe, `carousel_depth`), `card`, `touch_grass_im_in`, `touch_grass_details`, `touch_grass_dismiss`, `quick_check_yes`, `quick_check_edit`, `quick_check_dismiss` (X closes with no answer), **`quick_check_body` (dead)**, **`quick_check_result` (dead — "Kept it." / "Removed…" banner)**, `intro_card` (one-time explainer; tap dismisses), `intro_dismiss` (X), **`intro_body` (dead)**, `coop_card`, `coming_up_card`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `assistant` | `open`, `mic`, `stop_listen`, `suggestion`, `dismiss`, `draft_approve`, `draft_edit`, `event_approve`, `composer`, `send`, `confirm`, `cancel`, **`mark` (dead)**, **`body` (dead)**, **`event_preview` (dead)**, **`transcript` (dead)**, **`empty_state` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap); legacy `open_card` unused |
-| `stories_row` | `your_story` (opens `post_composer`), `story_tile`, `tier_filter`, `add_after_post` (the "+"), **`stories_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `stories_row` | `your_story` (opens `post_composer`), `story_tile`, `tier_filter`, `add_after_post` (the "+"), **`stories_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `post_prompt` (empty Stories CTA: "Post a story!") |
 | `responses` | `response`, `reply`, `responses_header` (opens your story replies / comments) |
 | `touch_grass_button` | `send` (opens `touch_grass_sheet`) |
-| `notifications_preview` | `row`, `see_all` (card body or See all → Notifications page), **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "All caught up!")** |
+| `notifications_preview` | `row`, `see_all` (card body or See all → Notifications page), **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "All caught up!")**, `example_row` (seeded Notification Example; self-hides after tap), **`example_badge` (dead — "Example" pill)** |
 | `inside_jokes_strip` | `note`, `add`, **`sticky_note_body` (dead — do they tap the note itself?)** |
 | `ask_the_group` | `create_poll`, `ask_question`, `see_previous_polls`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, `open_events` (empty This week → Events tab), **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `this_week` | `play_recap`, `add_recap`, `take_quiz`, `next_event`, `open_events` (empty This week → Events tab), `example_card` (seeded Event Example; self-hides after tap), **`example_badge` (dead — "Example" pill)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `coming_up` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), **`empty_body` (dead — "Add friends to get reminders.")** |
 | `activity` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open`, `heart`, `post` |
-| `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `take`, `open_result`, `share` |
+| `quiz` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `take`, `open_result`, `share`, `take_prompt` (standing "Which J name are you?" when no live quiz payload) |
 | `coop` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `open_portal`, `join`, `use_free` |
 | `cold_start` | **`body` (dead)**, `cta` (method=link/qr/scan) |
 
@@ -717,6 +717,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Date | Old ID | New ID | Reason |
 |---|---|---|---|
+| 2026-08-30 | `*.top_nav.profile_icon` (header avatar, all tabs) | `chrome.tab_bar.profile_icon` (pill far-right) | Global nav update: profile face moved from the top-left header to the far-right of the bottom nav pill; titles now sit flush left. Old `top_nav.profile_icon` ids kept, retired |
 | 2026-08-05 | `home.responses.responses_header` (dead) | `home.responses.responses_header` (interactive) | Header row opens story replies; matched Magic Patterns + HOME.md |
 | 2026-08-05 | — | `notifications.*` surface + `notification_opened` / `notification_see_all` | Notifications page + destination map (`NOTIFICATIONS.md`) |
 | 2026-08-05 | — | `home.notifications_preview.empty_body` | Home Notifications "All caught up!" null state |
@@ -804,4 +805,5 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-29 | — | `onboarding.taste.song_search` / `song_result` / `song_search_cancel` + surface `onboarding_song_search_sheet` | After music connect, sheet to search + pick the song on repeat |
 | 2026-08-29 | — | `onboarding.review.row_edit` / `row_edit_save` / `row_edit_cancel` + surface `onboarding_privacy_edit_sheet` | Privacy & Control corner Edit updates text + Supabase immediately |
 | 2026-08-29 | — | `profile.card.about_me_photo` + `profile_photo_updated` | About me card uses live avatar; Edit → Take/Upload updates profile photo |
+| 2026-08-30 | — | `home.this_week.example_card` / **`example_badge` (dead)**; `home.notifications_preview.example_row` / **`example_badge` (dead)**; `home.quiz.take_prompt`; `home.stories_row.post_prompt` | Empty Home sections show seeded Examples that self-hide after tap; Quiz always shows J-name prompt; Stories CTA "Post a story!" |
 |

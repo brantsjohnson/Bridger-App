@@ -14,8 +14,7 @@ import {
   ScreenBody,
   ScreenHeader,
   SectionTitle,
-  TAB_COLOR,
-  withAnalyticsPress
+  TAB_COLOR
 } from '@bridger/ui';
 import {
   DEFAULT_HOME_LAYOUT,
@@ -63,6 +62,11 @@ import {
   hasDismissedAnnouncementsIntro,
   markAnnouncementsIntroDismissed
 } from '../../lib/announcements-intro';
+import {
+  loadPlaceholderDismissals,
+  markPlaceholderDismissed,
+  type HomePlaceholderSection
+} from '../../lib/home-placeholders';
 import { isDemoMode } from '../../lib/demo';
 import { loadPeople } from '../../lib/people-cache';
 import {
@@ -70,10 +74,16 @@ import {
   subscribeWelcomeCelebration
 } from '../../lib/welcome-celebration';
 import { DevPreviewBar } from '../../components/home/DevPreviewBar';
+import {
+  EventExampleCard,
+  NotificationExampleCard
+} from '../../components/home/HomeExamplePlaceholders';
 import { useEventsFeed } from '../../hooks/useEventsFeed';
 import { useHomeFeed } from '../../hooks/useHomeFeed';
 import { useTabAttention } from '../../hooks/useTabAttention';
 import { useTouchGrass } from '../../hooks/useTouchGrass';
+import { QUIZ } from '../../data/fixtures/catalog';
+import { HOME_COVER_FACES } from '../../quizzes/what-j-name/images';
 
 type WidgetKey = 'event' | 'alerts' | 'ask' | 'comingup' | 'activity' | 'quiz' | 'coop';
 type WidgetState = { key: WidgetKey; size: WidgetSize };
@@ -134,6 +144,20 @@ const INFO: Record<WidgetKey, { section: string; infoAnalyticsId: string }> = {
   coop: { section: 'coop', infoAnalyticsId: HOME.coop.info }
 };
 
+/**
+ * Standing J-name quiz card when the live feed has no quiz yet. Always
+ * takeable so Home never shows an empty Quiz shell.
+ */
+const STANDING_JNAME_QUIZ = {
+  id: QUIZ.id,
+  title: QUIZ.title,
+  description: 'Find out which J name you are. Share it with friends.',
+  comparable: QUIZ.comparable,
+  cover: QUIZ.cover,
+  coverImages: HOME_COVER_FACES,
+  results: QUIZ.results.map((r) => ({ ...r, friendIds: [] as string[] }))
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const feed = useHomeFeed();
@@ -155,6 +179,11 @@ export default function HomeScreen() {
   const [showQuickCheck, setShowQuickCheck] = useState(() => isDemoMode());
   // One-time "what Announcements are" card until the person dismisses it.
   const [showIntro, setShowIntro] = useState(false);
+  // THIS SECTION DOES: remember which Example placeholders were already tapped
+  // so empty This week / Notifications hide until real content arrives.
+  const [placeholderGone, setPlaceholderGone] = useState<
+    Record<HomePlaceholderSection, boolean>
+  >({ event: false, alerts: false });
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
@@ -196,11 +225,16 @@ export default function HomeScreen() {
   }, []);
 
   // THIS SECTION DOES: re-check Assistant opt-in whenever Home is focused.
+  // Also reload Example-dismiss flags so returning from Events/Notifications
+  // can hide those sections once the placeholder was tapped.
   useFocusEffect(
     React.useCallback(() => {
       let cancelled = false;
       void fetchAssistantSettings().then((s) => {
         if (!cancelled) setAssistantOn(Boolean(s.assistantEnabled));
+      });
+      void loadPlaceholderDismissals().then((flags) => {
+        if (!cancelled) setPlaceholderGone(flags);
       });
       // Refresh your face URL so the header never sticks on a demo/stale photo.
       if (!isDemoMode()) void loadPeople();
@@ -237,7 +271,20 @@ export default function HomeScreen() {
     };
   }, [empty]);
 
-  const visibleLayout = member ? layout : layout.filter((w) => w.key !== 'ask');
+  const visibleLayout = (member ? layout : layout.filter((w) => w.key !== 'ask')).filter(
+    (w) => {
+      // THIS SECTION DOES: hide empty Example sections after the person tapped
+      // them, until real content fills the slot again.
+      if (w.key === 'event') {
+        return Boolean(nextEvent) || !placeholderGone.event;
+      }
+      if (w.key === 'alerts') {
+        const hasUnread = feed.notifications.some((n) => n.unread !== false);
+        return hasUnread || !placeholderGone.alerts;
+      }
+      return true;
+    }
+  );
 
   const announcements: Announcement[] = [];
   if (signal) {
@@ -359,44 +406,61 @@ export default function HomeScreen() {
   function renderBody(widget: WidgetState) {
     switch (widget.key) {
       case 'event':
-        // THIS SECTION DOES: show the next event, or a tap that opens Events.
-        return nextEvent ? (
-          <NextEventWidget
-            event={nextEvent}
-            size={widget.size}
-            onOpen={() =>
-              router.push({ pathname: '/event/[id]', params: { id: nextEvent.id } })
-            }
-          />
-        ) : (
-          <Pressable
-            onPress={withAnalyticsPress(HOME.this_week.open_events, () =>
-              router.push('/(tabs)/events')
-            )}
-            accessibilityRole="button"
-            accessibilityLabel="Nothing this week yet. Open Events."
-            className="min-h-[44px] justify-center active:opacity-90"
-          >
-            <Text className="font-sans-sb text-[13px] text-ink-mute">
-              Nothing this week yet.
-            </Text>
-          </Pressable>
-        );
-      case 'alerts':
+        // THIS SECTION DOES: show the next event, or a seeded Event Example
+        // until they tap it (then the section hides until a real event exists).
+        if (nextEvent) {
+          return (
+            <NextEventWidget
+              event={nextEvent}
+              size={widget.size}
+              onOpen={() =>
+                router.push({ pathname: '/event/[id]', params: { id: nextEvent.id } })
+              }
+            />
+          );
+        }
         return (
-          <AlertsWidget
+          <EventExampleCard
             size={widget.size}
-            rows={feed.notifications}
-            onOpen={(n) => {
-              trackProduct('notification_opened', { kind: n.kind, source: 'preview' });
-              router.push(pathForNotification(n) as Href);
+            onPress={() => {
+              setPlaceholderGone((p) => ({ ...p, event: true }));
+              void markPlaceholderDismissed('event');
+              router.push('/(tabs)/events');
             }}
-            onSeeAll={() => {
+          />
+        );
+      case 'alerts': {
+        // THIS SECTION DOES: real unread rows, or a Notification Example that
+        // self-hides after they open Notifications.
+        const hasUnread = feed.notifications.some((n) => n.unread !== false);
+        if (hasUnread) {
+          return (
+            <AlertsWidget
+              size={widget.size}
+              rows={feed.notifications}
+              onOpen={(n) => {
+                trackProduct('notification_opened', { kind: n.kind, source: 'preview' });
+                router.push(pathForNotification(n) as Href);
+              }}
+              onSeeAll={() => {
+                trackProduct('notification_see_all');
+                router.push('/notifications' as Href);
+              }}
+            />
+          );
+        }
+        return (
+          <NotificationExampleCard
+            size={widget.size}
+            onPress={() => {
+              setPlaceholderGone((p) => ({ ...p, alerts: true }));
+              void markPlaceholderDismissed('alerts');
               trackProduct('notification_see_all');
               router.push('/notifications' as Href);
             }}
           />
         );
+      }
       case 'comingup':
         return (
           <ComingUpWidget
@@ -423,16 +487,22 @@ export default function HomeScreen() {
             onOpen={() => router.push('/activity' as Href)}
           />
         ) : null;
-      case 'quiz':
-        return feed.quiz ? (
+      case 'quiz': {
+        // THIS SECTION DOES: always show Which J name are you (live quiz or
+        // standing prompt). Never leave an empty Quiz shell.
+        const quiz = feed.quiz ?? STANDING_JNAME_QUIZ;
+        const standing = !feed.quiz;
+        return (
           <QuizWidget
             size={widget.size}
-            quiz={feed.quiz}
-            resultId={quizResultId}
-            onTake={() => router.push(`/quiz/${feed.quiz!.id}` as Href)}
-            onOpenResult={() => router.push(`/quiz/${feed.quiz!.id}` as Href)}
+            quiz={quiz}
+            resultId={standing ? null : quizResultId}
+            takeAnalyticsId={standing ? HOME.quiz.take_prompt : undefined}
+            onTake={() => router.push(`/quiz/${quiz.id}` as Href)}
+            onOpenResult={() => router.push(`/quiz/${quiz.id}` as Href)}
           />
-        ) : null;
+        );
+      }
       case 'coop':
         return (
           <CoopWidget
@@ -543,7 +613,7 @@ export default function HomeScreen() {
           </ScrollView>
           {empty ? (
             <Text className="mt-2.5 font-sans-sb text-[13px] text-ink-mute">
-              Post the first one. Your friends see it when they join.
+              Post a story! Your friends see it when they join.
             </Text>
           ) : (
             <StoryRepliesRow

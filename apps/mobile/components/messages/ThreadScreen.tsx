@@ -11,7 +11,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -131,7 +133,12 @@ export function ThreadScreen({
   };
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingBottom: Math.max(insets.bottom, 8) }}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas"
+      style={{ flex: 1, paddingBottom: Math.max(insets.bottom, 8) }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
       <View
         style={{ paddingTop: Math.max(insets.top, 8) }}
         className="flex-row items-center gap-3 border-b border-ink-line bg-surface px-4 py-3"
@@ -284,7 +291,7 @@ export function ThreadScreen({
         )}
       </View>
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

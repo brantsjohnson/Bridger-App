@@ -290,7 +290,10 @@ export function ProfilePageShell({
       case 'mutuals':
         return wrap(undefined, <MutualsRow mutuals={mutuals} onPress={onOpenMutuals} />);
       case 'top5':
-        return wrap(onOpenTop5, <Top5Section items={top5} editable={editable} onAdd={onOpenTop5} />);
+        return wrap(
+          onOpenTop5,
+          <Top5Section items={top5} editable={editable} own={own} onAdd={onOpenTop5} />
+        );
       case 'aboutMe':
         return wrap(
           onOpenAbout,
@@ -302,6 +305,7 @@ export function ProfilePageShell({
             emoji={personEmoji}
             fields={about}
             editable={editable}
+            own={own}
             onAdd={onOpenAbout}
             onEditField={onEditAboutField}
             onEditBio={onEditBio}
@@ -318,6 +322,7 @@ export function ProfilePageShell({
           <CurrentObsessionSection
             items={obsession}
             editable={editable}
+            own={own}
             onAdd={onOpenObsession}
           />
         );
@@ -357,7 +362,7 @@ export function ProfilePageShell({
                 analyticsId={hobbiesId}
                 followUps={hobbyFollowUps}
               />
-            ) : editable ? (
+            ) : editable || own ? (
               <Pressable
                 onPress={withAnalyticsPress(PROFILE.card.add_hobbies, () => onOpenHobbies?.())}
                 accessibilityRole="button"
@@ -383,7 +388,7 @@ export function ProfilePageShell({
             </Text>
             <AnalyticsRegion analyticsId={placesId} interactive={false}>
               {places.length === 0 ? (
-                editable ? (
+                editable || own ? (
                   <Pressable
                     onPress={withAnalyticsPress(PROFILE.card.add_places, () => onOpenPlaces?.())}
                     accessibilityRole="button"

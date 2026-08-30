@@ -8,7 +8,7 @@ import { Pressable, Text, View } from 'react-native';
 import type { Person } from '@bridger/shared';
 import { PROFILE } from '@bridger/shared';
 import { Avatar, withAnalyticsPress } from '@bridger/ui';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { PROFILE_SECTION_TITLE_SIZE } from './profileSpacing';
 
 export function MutualsRow({
@@ -36,7 +36,8 @@ export function MutualsRow({
               name={p.name}
               emoji={p.emoji}
               accent={p.accent}
-              photo={getProfilePhoto(p.id)}
+              personId={p.id}
+              photo={avatarPhotoFor(p.id, p.avatarUrl)}
               size="sm"
             />
           </View>

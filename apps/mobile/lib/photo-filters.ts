@@ -14,8 +14,8 @@
 import { apiFetch } from './api';
 import { uploadMedia } from './media-upload';
 
-/** Looks that are rendered on the server (on-device looks like Pop art are not here). */
-export type ServerPhotoFilter = 'comic' | 'x_ray' | 'sepia';
+/** Looks that are rendered on the server (all four profile-photo looks). */
+export type ServerPhotoFilter = 'pop_art' | 'comic' | 'x_ray' | 'sepia';
 
 /** What the phone gets back: the finished picture's id and a link to show it. */
 export type BakedPhoto = {

@@ -31,14 +31,20 @@ function isListening(item: ObsessionSquare): boolean {
 export function CurrentObsessionSection({
   items,
   editable,
+  own,
   onAdd,
   onPressSquare
 }: {
   items: ObsessionSquare[];
   editable?: boolean;
+  /** Own profile can always add/fill, even when not in rearrange (Edit) mode. */
+  own?: boolean;
   onAdd?: () => void;
   onPressSquare?: (item: ObsessionSquare) => void;
 }) {
+  // THIS SECTION DOES: reveal the "Who are you today?" add card whenever it's
+  // your own profile, not only while the layout Edit toggle is on.
+  const canAdd = editable || own;
   // Canvas color for the play glyph on bg-ink (ink flips cream in dark mode).
   const theme = useThemeColors();
   const [expanded, setExpanded] = useState(false);
@@ -66,7 +72,7 @@ export function CurrentObsessionSection({
         style={{ marginTop: PROFILE_TITLE_TO_BODY, gap: PROFILE_GRID_GAP }}
       >
         {visible.length === 0 ? (
-          editable ? (
+          canAdd ? (
             <Pressable
               onPress={withAnalyticsPress(PROFILE.card.add_module, () => onAdd?.())}
               accessibilityRole="button"
