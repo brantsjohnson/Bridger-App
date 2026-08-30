@@ -185,8 +185,19 @@ module.exports = ({ config }) => ({
     // Nest API address baked at EAS config time (fallback if Metro env is empty).
     apiUrl: process.env.EXPO_PUBLIC_API_URL ?? '',
     // RevenueCat public SDK keys (safe to ship). Prefer platform keys when set.
-    revenueCatApiKey: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '',
-    revenueCatIosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
-    revenueCatAndroidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? ''
+    // PAYMENT: never bake Test Store `test_…` keys into a binary. Those make
+    // RevenueCat show "Wrong API Key" and force-quit the app on open.
+    revenueCatApiKey: (() => {
+      const k = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY ?? '';
+      return k.startsWith('test_') ? '' : k;
+    })(),
+    revenueCatIosKey: (() => {
+      const k = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
+      return k.startsWith('test_') ? '' : k;
+    })(),
+    revenueCatAndroidKey: (() => {
+      const k = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '';
+      return k.startsWith('test_') ? '' : k;
+    })()
   }
 });
