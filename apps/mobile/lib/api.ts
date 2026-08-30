@@ -3,17 +3,14 @@
 // Tiny helper for calling the NestJS API from the mobile app. It puts the
 // signed-in Supabase session token on each request so the API knows who you
 // are. Demo mode never needs this (fixtures stay local).
+//
+// SECURITY: never hard-crash the app when the API address is missing. A missing
+// EXPO_PUBLIC_API_URL used to throw a red error before any screen painted on
+// TestFlight. We warn, mark the build as unconfigured, and throw a soft
+// ApiHttpError that callers can catch (same idea as supabase.ts).
 // ============================================
+import Constants from 'expo-constants';
 import { supabase } from './supabase';
-
-/** Base URL for the Nest API (e.g. http://localhost:3000). */
-function apiBase(): string {
-  const base = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
-  if (!base) {
-    throw new Error('Missing EXPO_PUBLIC_API_URL. Check apps/mobile/.env');
-  }
-  return base;
-}
 
 /** Nest error with a stable `code` (e.g. billy_allowance_exhausted). */
 export class ApiHttpError extends Error {
@@ -37,6 +34,39 @@ export class ApiHttpError extends Error {
     this.code = typeof body?.code === 'string' ? body.code : undefined;
     this.body = body;
   }
+}
+
+/**
+ * Read the Nest API base URL. Prefer the Metro-inlined env var; fall back to
+ * Expo `extra.apiUrl` baked at EAS config time (same pattern as RevenueCat).
+ */
+function readApiUrl(): string {
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim() ?? '';
+  const extra = Constants.expoConfig?.extra as Record<string, unknown> | undefined;
+  const fromExtra = typeof extra?.apiUrl === 'string' ? extra.apiUrl.trim() : '';
+  return (fromEnv || fromExtra).replace(/\/$/, '');
+}
+
+/** True when this build was shipped with a Nest API address. */
+export const isApiConfigured = Boolean(readApiUrl());
+
+if (!isApiConfigured) {
+  console.warn(
+    '[bridger] EXPO_PUBLIC_API_URL missing in this build. Live API calls will fail softly until EAS env is set. Demo unlock still works.'
+  );
+}
+
+/** Base URL for the Nest API (e.g. http://localhost:3000). */
+function apiBase(): string {
+  const base = readApiUrl();
+  if (!base) {
+    // Soft failure: never use a "Missing … .env" Error that kills cold start.
+    throw new ApiHttpError(503, '(api-base)', {
+      code: 'api_not_configured',
+      message: 'API URL not configured in this build'
+    });
+  }
+  return base;
 }
 
 /**

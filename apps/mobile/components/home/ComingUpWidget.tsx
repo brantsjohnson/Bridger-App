@@ -54,12 +54,12 @@ export function ComingUpWidget({
         style={{ backgroundColor: EMPTY_TONE.deep }}
         className="relative w-full flex-row items-start gap-3 rounded-card px-4 py-3"
       >
-        {/* THIS SECTION DOES: calendar icon so it reads like the other rows. */}
+        {/* THIS SECTION DOES: calendar icon so it reads like the other rows.
+            No accessible prop on lucide icons — on web that leaks to the SVG DOM. */}
         <CalendarDaysIcon
           size={20}
           color={EMPTY_TONE.onDeep}
           strokeWidth={2.4}
-          accessible={false}
           style={{ marginTop: 2 }}
         />
 

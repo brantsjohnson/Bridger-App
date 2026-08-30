@@ -45,8 +45,9 @@ export async function fetchAssistantSettings(): Promise<SettingsAssistantFlags> 
       assistantVisible: true
     };
   }
-  // THIS SECTION DOES: stay quiet when nobody is signed in (Welcome / Sign in).
-  // Hitting /me/settings without a token would crash the whole app.
+  // THIS SECTION DOES: stay quiet when nobody is signed in (Welcome / Sign in),
+  // or when the API address is missing / the server is down. Home calls this on
+  // every focus; a throw here used to crash cold start before any screen painted.
   try {
     const s = await apiFetch<SettingsAssistantFlags>('/me/settings');
     return {
@@ -55,14 +56,19 @@ export async function fetchAssistantSettings(): Promise<SettingsAssistantFlags> 
       assistantVisible: Boolean(s.assistantVisible)
     };
   } catch (err) {
-    if (err instanceof ApiHttpError && (err.status === 401 || err.status === 403)) {
+    if (err instanceof ApiHttpError) {
       return {
         assistantEnabled: false,
         assistantEligible: false,
         assistantVisible: false
       };
     }
-    throw err;
+    console.warn('[bridger] fetchAssistantSettings failed softly', err);
+    return {
+      assistantEnabled: false,
+      assistantEligible: false,
+      assistantVisible: false
+    };
   }
 }
 
