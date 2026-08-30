@@ -242,9 +242,14 @@ export default function HomeScreen() {
   useFocusEffect(
     React.useCallback(() => {
       let cancelled = false;
-      void fetchAssistantSettings().then((s) => {
-        if (!cancelled) setAssistantOn(Boolean(s.assistantEnabled));
-      });
+      // Soft-fail: never let a missing API URL / network blip crash Home on open.
+      void fetchAssistantSettings()
+        .then((s) => {
+          if (!cancelled) setAssistantOn(Boolean(s.assistantEnabled));
+        })
+        .catch(() => {
+          if (!cancelled) setAssistantOn(false);
+        });
       void loadPlaceholderDismissals().then((flags) => {
         if (!cancelled) setPlaceholderGone(flags);
       });
