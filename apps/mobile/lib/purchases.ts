@@ -58,11 +58,10 @@ function extraString(key: string): string {
 }
 
 /**
- * Public SDK key from env (inlined at Metro bundle time) or from Expo extra
- * (app.config.js). Prefer the platform App Store / Play key when set; fall
- * back to the shared Test Store key for local / early builds.
+ * Raw public SDK key from env (Metro-inlined) or Expo extra (EAS config time).
+ * Prefer the platform App Store / Play key when set.
  */
-function publicApiKey(): string | null {
+function rawPublicApiKey(): string | null {
   if (Platform.OS === 'ios') {
     const ios =
       process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY?.trim() ||
@@ -79,6 +78,28 @@ function publicApiKey(): string | null {
     process.env.EXPO_PUBLIC_REVENUECAT_API_KEY?.trim() ||
     extraString('revenueCatApiKey');
   return shared || null;
+}
+
+/**
+ * Keys we are allowed to hand to Purchases.configure.
+ * PAYMENT: RevenueCat Test Store keys (`test_…`) force-quit App Store /
+ * TestFlight builds with a "Wrong API Key" alert. Skip them until a real
+ * `appl_` / `goog_` key is wired. In __DEV__ only, `test_` is still ok.
+ */
+function publicApiKey(): string | null {
+  const key = rawPublicApiKey();
+  if (!key) return null;
+  if (key.startsWith('appl_') || key.startsWith('goog_')) return key;
+  if (key.startsWith('test_')) {
+    if (__DEV__) return key;
+    console.warn(
+      'RevenueCat: ignoring test_ key in this store build so the app does not force-quit. Soft join stays available until an appl_/goog_ key ships.'
+    );
+    return null;
+  }
+  // Unknown prefix: do not configure (safer than a native quit).
+  console.warn('RevenueCat: unrecognized public SDK key prefix; purchases disabled.');
+  return null;
 }
 
 /** Why purchases cannot run right now (plain English for alerts). */
@@ -101,7 +122,7 @@ export function purchasesUnavailableMessage(): string {
   return 'Membership purchases are not available right now. Try again in a moment.';
 }
 
-/** True when this build can talk to the store (native + key present). */
+/** True when this build can talk to the store (native + usable key present). */
 export function purchasesAvailable(): boolean {
   if (isDemoMode()) return false;
   if (isExpoGo()) return false;
@@ -113,6 +134,9 @@ export function purchasesAvailable(): boolean {
  * Configure RevenueCat once per app launch, then log in as this Bridger user.
  * Call again when the signed-in user changes (login / logout). Safe to call
  * right before a purchase if configure had not finished yet.
+ *
+ * PAYMENT: never call Purchases.configure with a test_ key in TestFlight /
+ * App Store binaries. That path shows "Wrong API Key" and kills the process.
  */
 export async function configurePurchases(appUserId: string | null): Promise<void> {
   lastAppUserId = appUserId;
@@ -122,9 +146,7 @@ export async function configurePurchases(appUserId: string | null): Promise<void
 
   const apiKey = publicApiKey();
   if (!apiKey) {
-    console.warn(
-      'RevenueCat: missing public SDK key (EXPO_PUBLIC_REVENUECAT_*). Purchases disabled.'
-    );
+    // Quiet on purpose: preview builds often ship without store keys yet.
     return;
   }
 
