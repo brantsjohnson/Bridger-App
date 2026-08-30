@@ -40,6 +40,7 @@ export function AboutMeSection({
   emoji,
   fields,
   editable,
+  own,
   onAdd,
   onEditField,
   onEditBio,
@@ -53,6 +54,8 @@ export function AboutMeSection({
   emoji?: string;
   fields: AboutFieldView[];
   editable?: boolean;
+  /** Own profile can always edit/add/change photo, not only in Edit mode. */
+  own?: boolean;
   onAdd?: () => void;
   /** Open the fill flow / editor for one about-me field. */
   onEditField?: (field: AboutFieldView) => void;
@@ -64,6 +67,9 @@ export function AboutMeSection({
   onReorderFields?: (next: AboutFieldView[]) => void;
 }) {
   const c = useThemeColors();
+  // THIS SECTION DOES: on your own profile you can always edit/add and change
+  // your photo. The layout Edit toggle only controls rearranging sections.
+  const canEditContent = editable || own;
   // Keep the details open by default (matches the About card design).
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [bioExpanded, setBioExpanded] = useState(false);
@@ -95,8 +101,8 @@ export function AboutMeSection({
   };
 
   const emptyBody = !bio && ordered.length === 0 && !photo;
-  // Own profile in Edit mode: tapping the picture opens Take / Upload.
-  const canChangePhoto = Boolean(editable && onChangePhoto);
+  // Own profile: tapping the picture opens Take / Upload (no Edit toggle needed).
+  const canChangePhoto = Boolean(canEditContent && onChangePhoto);
 
   return (
     <View>
@@ -108,7 +114,7 @@ export function AboutMeSection({
         >
           About me{count > 0 ? ` · ${count}` : ''}
         </Text>
-        {editable ? (
+        {canEditContent ? (
           <Pressable
             onPress={withAnalyticsPress(PROFILE.card.about_me_edit, () => {
               setEditing((e) => {
@@ -252,7 +258,7 @@ export function AboutMeSection({
                 </Pressable>
               ) : null}
             </View>
-          ) : emptyBody && editable ? (
+          ) : emptyBody && canEditContent ? (
             <Pressable
               onPress={withAnalyticsPress(PROFILE.card.add_details, () => onAdd?.())}
               accessibilityRole="button"
@@ -275,7 +281,7 @@ export function AboutMeSection({
           style={{ marginTop: PROFILE_TITLE_TO_BODY }}
         >
           {ordered.length === 0 ? (
-            editable ? (
+            canEditContent ? (
               <Pressable
                 onPress={withAnalyticsPress(PROFILE.card.add_details, () => onAdd?.())}
                 accessibilityRole="button"

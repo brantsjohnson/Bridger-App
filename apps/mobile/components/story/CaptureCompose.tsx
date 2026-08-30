@@ -16,6 +16,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   Text,
@@ -637,12 +638,14 @@ function ComposeInner({
   const { markActed } = useSurfaceAct();
 
   return (
-    <View
+    <KeyboardAvoidingView
       style={{
+        flex: 1,
         paddingTop: Math.max(insetsTop, 12),
         paddingBottom: Math.max(insetsBottom, 16),
         backgroundColor: CAPTURE_BG
       }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="relative flex-1 bg-canvas-dark"
     >
       <View className="flex-row items-center justify-between px-4">
@@ -738,6 +741,6 @@ function ComposeInner({
           Post
         </ButtonPrimary>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeftIcon, XIcon } from 'lucide-react-native';
 import {
   CREATE_EVENT,
+  FREE_BENEFITS,
   trackFlowAbandoned,
   trackFlowCompleted,
   trackFlowStarted,
@@ -31,6 +32,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { createEvent, type CreateEventInput } from '../../data/events';
+import { getMembership } from '../../data/coop';
 import { DetailsStep } from '../../components/event/create/DetailsStep';
 import { InviteStep } from '../../components/event/create/InviteStep';
 import { ExtrasStep } from '../../components/event/create/ExtrasStep';
@@ -57,6 +59,9 @@ export default function CreateEventScreen() {
   });
   const [step, setStep] = useState(0);
   const [creating, setCreating] = useState(false);
+  // THIS SECTION DOES: load how many guests this plan allows (35 free / 100 co-op)
+  // so the Details guest-cap field never offers a number the server would reject.
+  const [maxGuestCap, setMaxGuestCap] = useState(FREE_BENEFITS.eventGuestCap);
 
   const stepName = STEPS[step];
   const isLast = step === STEPS.length - 1;
@@ -79,6 +84,27 @@ export default function CreateEventScreen() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // THIS SECTION DOES: ask the server what guest ceiling this host has, then
+  // trim the draft if a prefill / earlier edit sat above that ceiling.
+  useEffect(() => {
+    let cancelled = false;
+    void getMembership()
+      .then((m) => {
+        if (cancelled) return;
+        const max = m.eventCap ?? (m.member ? 100 : FREE_BENEFITS.eventGuestCap);
+        setMaxGuestCap(max);
+        setDraft((prev) =>
+          prev.guestCap > max ? { ...prev, guestCap: max } : prev
+        );
+      })
+      .catch(() => {
+        // Stay on Free Lite 35 if membership cannot load.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Merge a small change into the draft (used by every step).
@@ -118,7 +144,9 @@ export default function CreateEventScreen() {
         invitedIds: draft.invitedIds,
         coHostIds: draft.coHostIds,
         allowFriendsToInvite: draft.allowFriendsToInvite,
-        cap: draft.allowFriendsToInvite ? draft.guestCap : 35,
+        cap: draft.allowFriendsToInvite
+          ? Math.min(draft.guestCap, maxGuestCap)
+          : Math.min(FREE_BENEFITS.eventGuestCap, maxGuestCap),
         chipInAmount: draft.chipInEnabled ? draft.chipInAmount || undefined : undefined,
         chipInMethod: draft.chipInEnabled
           ? ((draft.chipInMethod || undefined) as CreateEventInput['chipInMethod'])
@@ -207,7 +235,9 @@ export default function CreateEventScreen() {
 
         {/* --- STEP BODY --- */}
         <View className="flex-1 px-4 pt-4">
-          {stepName === 'details' ? <DetailsStep draft={draft} onChange={patch} /> : null}
+          {stepName === 'details' ? (
+            <DetailsStep draft={draft} onChange={patch} maxGuestCap={maxGuestCap} />
+          ) : null}
           {stepName === 'invite' ? <InviteStep draft={draft} onChange={patch} /> : null}
           {stepName === 'extras' ? <ExtrasStep draft={draft} onChange={patch} /> : null}
           {stepName === 'preview' ? (

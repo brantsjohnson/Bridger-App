@@ -24,6 +24,12 @@ import {
   type MatchModule
 } from '../data/discover';
 
+/** Fallback when settings cannot load: matching off so the splash can show. */
+const GATE_FALLBACK: DiscoverSettings = {
+  discoverable: false,
+  sources: { aboutMe: true, onboardingQuiz: true, discoverMe: false }
+};
+
 export function useDiscover() {
   const [settings, setSettings] = useState<DiscoverSettings | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -34,19 +40,32 @@ export function useDiscover() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    // Settings first so the splash/gate can paint even if matching lists fail.
+    let nextSettings: DiscoverSettings | null = null;
     try {
-      const [s, sug, req, mods, done] = await Promise.all([
-        getDiscoverSettings(),
+      nextSettings = await getDiscoverSettings();
+      setSettings(nextSettings);
+    } catch {
+      // Last-resort fallback: matching off → DiscoverGate splash still renders.
+      nextSettings = GATE_FALLBACK;
+      setSettings(nextSettings);
+    }
+
+    try {
+      const [sug, req, mods, done] = await Promise.all([
         listSuggestions(),
         listRequests(),
         listMatchModules(),
         listCompletedModules()
       ]);
-      setSettings(s);
       setSuggestions(sug);
       setRequests(req);
       setModules(mods);
       setCompletedModuleIds(done);
+    } catch {
+      // Lists are optional for first paint; keep whatever we already have.
+      setSuggestions([]);
+      setRequests([]);
     } finally {
       setLoading(false);
     }

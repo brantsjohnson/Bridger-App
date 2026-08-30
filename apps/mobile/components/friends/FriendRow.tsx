@@ -14,7 +14,7 @@ import { CakeIcon, ChevronRightIcon } from 'lucide-react-native';
 import type { Person, Tier } from '@bridger/shared';
 import { FRIENDS, personVibeLine } from '@bridger/shared';
 import { Avatar, Sparkles, cn, withAnalyticsPress, type WashStoryRing } from '@bridger/ui';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 
 /** Near-black — always readable on the vibrant tier washes (even in dark mode). */
 const ON_WASH = '#1C1B16';
@@ -148,11 +148,7 @@ export function FriendRow({
         emoji={person.emoji}
         accent={person.accent}
         personId={person.id}
-        photo={
-          person.avatarUrl?.trim()
-            ? { uri: person.avatarUrl.trim() }
-            : getProfilePhoto(person.id)
-        }
+        photo={avatarPhotoFor(person.id, person.avatarUrl)}
         story={person.story}
         ringWash={ringWash}
         onStory={!editing && person.story ? onStory : undefined}

@@ -91,8 +91,22 @@ function filterSuggestions(list: Suggestion[]): Suggestion[] {
 
 export async function getDiscoverSettings(): Promise<DiscoverSettings> {
   if (isDemoMode()) return cloneSettings();
-  // TODO: GET /discovery/settings
-  return cloneSettings();
+  // Live: read the master switch from user_settings. On any failure, fall back
+  // to matching OFF so the Discover splash (gate) can still render.
+  try {
+    const s = await apiFetch<{
+      discoverable?: boolean;
+    }>('/me/settings');
+    return {
+      discoverable: s?.discoverable === true,
+      sources: { ...DEFAULT_DISCOVER_SETTINGS.sources }
+    };
+  } catch {
+    return {
+      discoverable: false,
+      sources: { ...DEFAULT_DISCOVER_SETTINGS.sources }
+    };
+  }
 }
 
 export async function setDiscoverable(on: boolean): Promise<DiscoverSettings> {
@@ -100,8 +114,11 @@ export async function setDiscoverable(on: boolean): Promise<DiscoverSettings> {
     demoSettings = { ...demoSettings, discoverable: on };
     return cloneSettings();
   }
-  // TODO: PATCH /discovery/settings
-  return cloneSettings();
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ discoverable: on })
+  });
+  return getDiscoverSettings();
 }
 
 export async function setSources(
@@ -117,8 +134,15 @@ export async function setSources(
     };
     return cloneSettings();
   }
-  // TODO: PATCH /discovery/settings
-  return cloneSettings();
+  // TODO: persist source toggles when the discovery settings API lands.
+  // For now keep the master switch and return a local sources merge.
+  const current = await getDiscoverSettings();
+  const sources = { ...current.sources, ...patch };
+  const anyQuiz = sources.onboardingQuiz || sources.discoverMe || sources.aboutMe;
+  if (!anyQuiz && current.discoverable) {
+    return setDiscoverable(false);
+  }
+  return { discoverable: current.discoverable, sources };
 }
 
 export async function listSuggestions(): Promise<Suggestion[]> {
@@ -129,25 +153,30 @@ export async function listSuggestions(): Promise<Suggestion[]> {
       signals: [...s.signals]
     }));
   }
-  const rows = await apiFetch<
-    Array<{
-      id: string;
-      personId: string;
-      viaFriendId?: string;
-      sharedThread: string;
-      signals: string[];
-      bothOptedIn: true;
-    }>
-  >('/matching/suggestions');
-  return (rows ?? []).map((s) => ({
-    id: s.id,
-    personId: s.personId,
-    viaFriendId: s.viaFriendId ?? '',
-    sharedThread: s.sharedThread,
-    signals: [...(s.signals ?? [])],
-    accent: 'teal' as const,
-    bothOptedIn: true as const
-  }));
+  try {
+    const rows = await apiFetch<
+      Array<{
+        id: string;
+        personId: string;
+        viaFriendId?: string;
+        sharedThread: string;
+        signals: string[];
+        bothOptedIn: true;
+      }>
+    >('/matching/suggestions');
+    return (rows ?? []).map((s) => ({
+      id: s.id,
+      personId: s.personId,
+      viaFriendId: s.viaFriendId ?? '',
+      sharedThread: s.sharedThread,
+      signals: [...(s.signals ?? [])],
+      accent: 'teal' as const,
+      bothOptedIn: true as const
+    }));
+  } catch {
+    // Matching may be unreachable; Discover still needs to open (gate or main).
+    return [];
+  }
 }
 
 export async function listRequests(): Promise<ApprovalRequest[]> {
@@ -156,7 +185,11 @@ export async function listRequests(): Promise<ApprovalRequest[]> {
       .filter((r) => !demoBlockedIds.has(r.personId))
       .map((r) => ({ ...r }));
   }
-  return apiFetch<ApprovalRequest[]>('/connections/requests');
+  try {
+    return (await apiFetch<ApprovalRequest[]>('/connections/requests')) ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Lighter than block: drop one person from your suggestions. */

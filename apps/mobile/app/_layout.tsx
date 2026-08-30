@@ -35,7 +35,6 @@ import { registerAvatarPhotoResolver, GridColorProvider, useGridColor } from '@b
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { WELCOME_SEEN_KEY } from '../content/welcome';
-import { getProfilePhoto } from '../data/fixtures/demo-media';
 import {
   getOnboardingComplete,
   hydrateOnboardingComplete,
@@ -45,13 +44,13 @@ import { getInviteAccess, hydrateDemoAccess } from '../data/access';
 import { DelightHost } from '../delight/_host/DelightHost';
 import { bootstrapAnalytics } from '../lib/analytics-bootstrap';
 import { syncAnalyticsSession } from '../lib/analytics-consent';
+import { avatarPhotoFor } from '../lib/avatar-photo';
 import {
   disableDemoMode,
   getDevPreview,
   hydrateDemoMode,
   isDemoMode
 } from '../lib/demo';
-import { getCachedPerson } from '../lib/people-cache';
 import { resolveJnameReferral } from '../lib/jname-api';
 import { takePendingReferral } from '../lib/jname-referral';
 import { recordRoutePath } from '../lib/route-trail';
@@ -69,12 +68,7 @@ bootstrapAnalytics();
 
 // Photos: prefer a live signed avatar URL from the people cache. Demo mode
 // may fall back to dropped-in assets; live mode never shows a stranger's face.
-registerAvatarPhotoResolver((personId) => {
-  const liveUri = getCachedPerson(personId)?.avatarUrl?.trim();
-  if (liveUri) return { uri: liveUri };
-  if (isDemoMode()) return getProfilePhoto(personId);
-  return undefined;
-});
+registerAvatarPhotoResolver((personId) => avatarPhotoFor(personId));
 
 // Crashes show the Magic Patterns Windows 404 ("Error 404 / You're invited to suffer"), not Expo's
 // black "Something went wrong" page. Missing routes still use +not-found.tsx.

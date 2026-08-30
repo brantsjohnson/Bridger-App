@@ -8,7 +8,7 @@
 // Analytics: surface=discover; cards and settings gear use DISCOVER.* IDs.
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SettingsIcon } from 'lucide-react-native';
 import { DISCOVER, openSurface } from '@bridger/shared';
@@ -108,11 +108,19 @@ export default function DiscoverScreen() {
   };
 
   if (!settings) {
+    // While settings load, paint the splash (not a blank "Loading…") so Discover
+    // never looks stuck. Get started waits until settings exist, then opts in.
     return (
-      <Screen tone="synth">
+      <Screen tone="intro">
         <ScreenHeader title="Discover" analyticsSurface="discover" />
-        <ScreenBody>
-          <Text className="font-sans-sb text-[14px] text-ink-mute">Loading…</Text>
+        <ScreenBody padded={false} scrollEnabled={false} tabBarInset={false}>
+          <DiscoverGate
+            onStart={() => {
+              setSettingsOpen(false);
+              setView('main');
+              void onSetDiscoverable(true);
+            }}
+          />
         </ScreenBody>
       </Screen>
     );

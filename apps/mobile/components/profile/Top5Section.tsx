@@ -18,15 +18,21 @@ import {
 export function Top5Section({
   items,
   editable,
+  own,
   onAdd,
   onPressRow
 }: {
   items: Top5Item[];
   editable?: boolean;
+  /** Own profile can always add/fill, even when not in rearrange (Edit) mode. */
+  own?: boolean;
   onAdd?: () => void;
   onPressRow?: (item: Top5Item) => void;
 }) {
   const ordered = [...items].sort((a, b) => a.order - b.order).slice(0, 5);
+  // THIS SECTION DOES: show the "Add" button whenever it's your own profile,
+  // not only while the layout Edit toggle is on.
+  const canAdd = editable || own;
 
   return (
     <View>
@@ -44,7 +50,7 @@ export function Top5Section({
 
       <View style={{ marginTop: PROFILE_TITLE_TO_BODY, gap: PROFILE_ROW_GAP }}>
         {ordered.length === 0 ? (
-          editable ? (
+          canAdd ? (
             <Pressable
               onPress={withAnalyticsPress(PROFILE.card.add_details, () => onAdd?.())}
               accessibilityRole="button"

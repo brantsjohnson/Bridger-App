@@ -6,7 +6,7 @@
 // PRIVACY: never log the prompt or option text in analytics.
 // ============================================
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PlusIcon, XIcon } from 'lucide-react-native';
 import { ASK_SHEET, trackClick, trackProduct } from '@bridger/shared';
@@ -94,6 +94,11 @@ export function AskSheet({
         </ButtonPrimary>
       }
     >
+      <ScrollView
+        className="max-h-[70vh]"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View className="gap-3">
         <TextField
           label={kind === 'poll' ? 'Poll' : 'Question'}
@@ -146,6 +151,7 @@ export function AskSheet({
           </View>
         ) : null}
       </View>
+      </ScrollView>
     </Sheet>
   );
 }

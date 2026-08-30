@@ -300,8 +300,9 @@ export class IntegrationsHealthService {
     };
   }
 
-  // THIS SECTION DOES: confirm ImageMagick (the comic photo filter engine) is
-  // installed in this container. It is a local tool, not an outbound API.
+  // THIS SECTION DOES: confirm ImageMagick (the photo-filter engine) is
+  // installed so Pop art / Comic / X-ray / Sepia can bake. It is a local
+  // tool, not an outbound API.
   private async imageMagickCheck(checkedAt: string): Promise<IntegrationCheck> {
     try {
       const ok = await this.photoFilters.isAvailable();
@@ -311,7 +312,7 @@ export class IntegrationsHealthService {
         status: ok ? 'ok' : 'error',
         detail: ok
           ? 'ImageMagick binary is available for server-side photo looks.'
-          : 'ImageMagick is not installed; the Comic photo filter will fail.',
+          : 'ImageMagick is not installed; profile-photo looks will fail.',
         kind: 'self',
         checkedAt
       };

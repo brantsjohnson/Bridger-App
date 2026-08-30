@@ -288,7 +288,10 @@ export const CHROME = {
     tab_messages: aid('chrome', 'tab_bar', 'tab_messages'),
     tab_events: aid('chrome', 'tab_bar', 'tab_events'),
     tab_discover: aid('chrome', 'tab_bar', 'tab_discover'),
-    tab_news: aid('chrome', 'tab_bar', 'tab_news')
+    tab_news: aid('chrome', 'tab_bar', 'tab_news'),
+    // Your face on the far-right of the pill — opens your Profile page.
+    // Replaces the old header avatar (`*.top_nav.profile_icon`, retired).
+    profile_icon: aid('chrome', 'tab_bar', 'profile_icon')
   }
 } as const;
 
@@ -362,7 +365,9 @@ export const HOME = {
     tier_filter: aid('home', 'stories_row', 'tier_filter'),
     add_after_post: aid('home', 'stories_row', 'add_after_post'),
     stories_header: aid('home', 'stories_row', 'stories_header'),
-    info: aid('home', 'stories_row', 'info')
+    info: aid('home', 'stories_row', 'info'),
+    /** Empty Stories CTA: "Post a story!" */
+    post_prompt: aid('home', 'stories_row', 'post_prompt')
   },
   responses: {
     response: aid('home', 'responses', 'response'),
@@ -378,7 +383,11 @@ export const HOME = {
     section_header: aid('home', 'notifications_preview', 'section_header'),
     info: aid('home', 'notifications_preview', 'info'),
     /** Dead-click target for the "All caught up!" null state. */
-    empty_body: aid('home', 'notifications_preview', 'empty_body')
+    empty_body: aid('home', 'notifications_preview', 'empty_body'),
+    /** Seeded Notification Example when the preview is empty (self-hides after tap). */
+    example_row: aid('home', 'notifications_preview', 'example_row'),
+    /** Dead-click: the "Example" pill on the notification placeholder. */
+    example_badge: aid('home', 'notifications_preview', 'example_badge')
   },
   inside_jokes_strip: {
     note: aid('home', 'inside_jokes_strip', 'note'),
@@ -399,6 +408,10 @@ export const HOME = {
     next_event: aid('home', 'this_week', 'next_event'),
     /** Empty This week tap → Events tab. */
     open_events: aid('home', 'this_week', 'open_events'),
+    /** Seeded Event Example when there is no next event (self-hides after tap). */
+    example_card: aid('home', 'this_week', 'example_card'),
+    /** Dead-click: the "Example" pill on the event placeholder. */
+    example_badge: aid('home', 'this_week', 'example_badge'),
     section_header: aid('home', 'this_week', 'section_header'),
     info: aid('home', 'this_week', 'info')
   },
@@ -420,7 +433,9 @@ export const HOME = {
     info: aid('home', 'quiz', 'info'),
     take: aid('home', 'quiz', 'take'),
     open_result: aid('home', 'quiz', 'open_result'),
-    share: aid('home', 'quiz', 'share')
+    share: aid('home', 'quiz', 'share'),
+    /** Standing "Which J name are you?" prompt when no live quiz payload yet. */
+    take_prompt: aid('home', 'quiz', 'take_prompt')
   },
   coop: {
     section_header: aid('home', 'coop', 'section_header'),

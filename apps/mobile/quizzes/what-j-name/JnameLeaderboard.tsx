@@ -10,7 +10,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import type { Accent } from '@bridger/shared';
 import { AvatarStack, cn } from '@bridger/ui';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { personById } from '../../data/people';
 
 export type LeaderboardBucket = {
@@ -89,7 +89,7 @@ export function JnameLeaderboard({
                     emoji: p.emoji,
                     accent: (p.accent as Accent) ?? accent,
                     personId: id,
-                    photo: getProfilePhoto(id)
+                    photo: avatarPhotoFor(id, p.avatarUrl)
                   };
                 })}
               />

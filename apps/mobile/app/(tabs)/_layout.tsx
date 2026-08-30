@@ -10,10 +10,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { FloatingTabBar, ProfileLinkProvider, type TabKey } from '@bridger/ui';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
 import { getMe } from '../../data/people';
 import { acknowledgeTab } from '../../data/tab-badges';
 import { useTabAttention } from '../../hooks/useTabAttention';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { isDemoMode } from '../../lib/demo';
 import { getCachedMe, loadPeople, subscribePeople } from '../../lib/people-cache';
 import { useAuth } from '../../providers/auth-provider';
@@ -66,18 +66,12 @@ export default function TabsLayout() {
 
   const profile = useMemo(() => {
     const live = getCachedMe();
-    const liveUri = live?.avatarUrl?.trim();
     return {
       name: live?.name || me.name,
       emoji: me.emoji,
       accent: me.accent,
-      // Live: only your real signed photo (emoji circle if none yet).
-      // Demo: fall back to the dropped-in fixture face for "me".
-      photo: liveUri
-        ? { uri: liveUri }
-        : demoMode
-          ? getProfilePhoto('me')
-          : undefined
+      // Live signed photo, or demo fixture for "me". Emoji circle if none yet.
+      photo: avatarPhotoFor('me', live?.avatarUrl)
     };
   }, [me.name, me.emoji, me.accent, me.avatarUrl, peopleTick, demoMode]);
 
@@ -92,13 +86,16 @@ export default function TabsLayout() {
         //     back into real navigation. ---
         tabBar={({ state, navigation }) => {
           const current = state.routes[state.index]?.name as string;
-          // Profile and Messages open from the header, not the pill — hide the
-          // bar so nothing looks "half selected" while you're on those pages.
-          if (current === 'profile' || current === 'messages') return null;
+          // Messages opens from the header, not the pill — hide the bar there so
+          // nothing looks "half selected". Profile now lives ON the pill (your
+          // face on the far-right), so the bar STAYS on Profile.
+          if (current === 'messages') return null;
           return (
             <TabBarWithAcknowledge
               current={current}
               badges={badges}
+              profile={profile}
+              onProfilePress={openProfile}
               onNavigate={(key: TabKey) => {
                 const route = state.routes.find((r) => r.name === key);
                 if (!route) return;
@@ -136,10 +133,14 @@ export default function TabsLayout() {
 function TabBarWithAcknowledge({
   current,
   badges,
+  profile,
+  onProfilePress,
   onNavigate
 }: {
   current: string;
   badges: Partial<Record<TabKey, boolean>>;
+  profile: React.ComponentProps<typeof FloatingTabBar>['profile'];
+  onProfilePress: () => void;
   onNavigate: (key: TabKey) => void;
 }) {
   // THIS SECTION DOES: clear the nav-bar dot the moment this tab is showing.
@@ -151,6 +152,8 @@ function TabBarWithAcknowledge({
     <FloatingTabBar
       value={current}
       badges={badges}
+      profile={profile}
+      onProfilePress={onProfilePress}
       onChange={(key: TabKey) => {
         acknowledgeTab(key);
         onNavigate(key);

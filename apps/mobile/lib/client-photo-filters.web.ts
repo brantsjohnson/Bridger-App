@@ -1,9 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Paints Comic, X-ray, and Sepia looks in the browser for demo onboarding
-// (localhost:8090). Demo mode has no signed-in account, so it cannot call the
-// server filter API. This uses an off-screen canvas with the same recipes as
-// the NestJS ImageMagick pipeline so founders can preview every look locally.
+// Paints Pop art, Comic, X-ray, and Sepia looks in the browser for demo
+// onboarding (localhost:8090). Demo mode has no signed-in account, so it
+// cannot call the server filter API. This uses an off-screen canvas with the
+// same recipes as the NestJS ImageMagick pipeline so founders can preview
+// every look locally.
 //
 // PRIVACY: everything stays on the device tab; no upload, no API call.
 // ============================================
@@ -69,6 +70,23 @@ function applyXRay(data: Uint8ClampedArray): void {
     data[i + 1] = Math.min(255, g * 0.95 + 15);
     data[i + 2] = Math.min(255, g * 1.05 + 35);
   }
+}
+
+/**
+ * Single-tile pop art for demo web: punch saturation then posterize into flat
+ * bands (matches the server pop_art recipe used for round avatars).
+ */
+function applyPopArt(data: Uint8ClampedArray): void {
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]!;
+    const g = data[i + 1]!;
+    const b = data[i + 2]!;
+    const avg = (r + g + b) / 3;
+    data[i] = Math.max(0, Math.min(255, avg + (r - avg) * 1.8));
+    data[i + 1] = Math.max(0, Math.min(255, avg + (g - avg) * 1.8));
+    data[i + 2] = Math.max(0, Math.min(255, avg + (b - avg) * 1.8));
+  }
+  posterize(data, 5);
 }
 
 /** Posterize each channel to a small number of flat steps. */
@@ -217,6 +235,8 @@ export async function bakeClientPhotoFilter(
     applyVintageSepia(data);
   } else if (filter === 'x_ray') {
     applyXRay(data);
+  } else if (filter === 'pop_art') {
+    applyPopArt(data);
   } else {
     applyComic(data, w, h);
   }

@@ -10,7 +10,7 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { CheckIcon } from 'lucide-react-native';
-import { CREATE_EVENT } from '@bridger/shared';
+import { CREATE_EVENT, FREE_BENEFITS } from '@bridger/shared';
 import { Avatar, Chip, SearchField, TextField, Toggle, cn, withAnalyticsPress } from '@bridger/ui';
 import { listPeople } from '../../../data/people';
 import { AddressField } from './AddressField';
@@ -20,9 +20,14 @@ import type { CreateEventDraft } from './types';
 
 const CHIP_METHODS = ['Venmo', 'Cash App', 'PayPal', 'Zelle', 'Cash in person'] as const;
 
-function clampCap(n: number): number {
-  if (!Number.isFinite(n)) return 35;
-  return Math.min(100, Math.max(2, Math.round(n)));
+/** Free Lite default; create screen passes the real membership max (35 or 100). */
+const DEFAULT_GUEST_MAX = FREE_BENEFITS.eventGuestCap;
+
+// THIS SECTION DOES: keep the typed guest cap inside what this plan allows
+// (free 35 / co-op 100), so free hosts never send 36+ and never hit a server error.
+function clampCap(n: number, max: number): number {
+  if (!Number.isFinite(n)) return Math.min(DEFAULT_GUEST_MAX, max);
+  return Math.min(max, Math.max(2, Math.round(n)));
 }
 
 /** Keep one leading $ on the amount — never $$ if they already typed it. */
@@ -42,12 +47,17 @@ function formatChipHandle(raw: string, method: string): string {
 
 export function DetailsStep({
   draft,
-  onChange
+  onChange,
+  maxGuestCap = DEFAULT_GUEST_MAX
 }: {
   draft: CreateEventDraft;
   onChange: (patch: Partial<CreateEventDraft>) => void;
+  /** Membership guest ceiling: Free Lite 35, co-op 100. */
+  maxGuestCap?: number;
 }) {
   const [coHostQuery, setCoHostQuery] = useState('');
+  // Hard ceiling for this host's plan (never let free type past 35).
+  const guestMax = Math.max(2, Math.min(100, Math.round(maxGuestCap)));
 
   // Only friends / close friends can be a co-host (not acquaintances).
   const coHostOptions = useMemo(() => {
@@ -286,15 +296,19 @@ export function DetailsStep({
                 onChange={(v) => {
                   const digits = v.replace(/[^0-9]/g, '');
                   if (!digits) {
-                    onChange({ guestCap: 35 });
+                    onChange({ guestCap: Math.min(DEFAULT_GUEST_MAX, guestMax) });
                     return;
                   }
-                  onChange({ guestCap: clampCap(Number(digits)) });
+                  onChange({ guestCap: clampCap(Number(digits), guestMax) });
                 }}
-                placeholder="35"
+                placeholder={String(Math.min(DEFAULT_GUEST_MAX, guestMax))}
                 analyticsId={CREATE_EVENT.details.guest_cap}
               />
-              <Text className="font-sans-md text-[11px] text-ink-mute">Between 2 and 100 people.</Text>
+              <Text className="font-sans-md text-[11px] text-ink-mute">
+                {guestMax >= 100
+                  ? 'Between 2 and 100 people.'
+                  : `Between 2 and ${guestMax} people on Free Lite. Co-op hosts up to 100.`}
+              </Text>
             </View>
           ) : null}
         </View>

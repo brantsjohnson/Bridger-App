@@ -19,7 +19,8 @@ import {
   withAnalyticsPress,
   type RingTone
 } from '@bridger/ui';
-import { getProfilePhoto, getStoryMedia } from '../data/fixtures/demo-media';
+import { getStoryMedia } from '../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../lib/avatar-photo';
 import { personById } from '../data/people';
 
 export function StoryTile({
@@ -38,9 +39,10 @@ export function StoryTile({
   const tileId = mine ? HOME.stories_row.your_story : HOME.stories_row.story_tile;
   // First dropped story photo (if any) fills the tile; profile photo for the face.
   const cover = getStoryMedia(story.authorId)[0];
-  const face = getProfilePhoto(story.authorId);
+  const author = personById(story.authorId);
+  const face = avatarPhotoFor(story.authorId, author.avatarUrl);
   // Ring color = your relationship to them. Yours is always the yellow one.
-  const ringTone: RingTone = mine ? 'me' : ringToneForTier(personById(story.authorId).tier);
+  const ringTone: RingTone = mine ? 'me' : ringToneForTier(author.tier);
 
   const tile = (
     <Pressable
@@ -130,16 +132,16 @@ export function StoryTile({
 export function AddStoryTile({ onPress }: { onPress?: () => void }) {
   return (
     <Pressable
-      onPress={withAnalyticsPress(HOME.stories_row.your_story, onPress)}
+      onPress={withAnalyticsPress(HOME.stories_row.post_prompt, onPress)}
       accessibilityRole="button"
-      accessibilityLabel="Check in"
+      accessibilityLabel="Post a story"
       className="h-[132px] w-[104px] shrink-0 items-center justify-center gap-2 rounded-card border border-dashed border-ink-line bg-surface active:opacity-90"
     >
       <Text accessible={false} className="text-[22px] text-ink-soft">
         ＋
       </Text>
       <Text className="px-2 text-center font-sans-b text-[12px] leading-tight text-ink-soft">
-        Check in
+        Post a story!
       </Text>
     </Pressable>
   );

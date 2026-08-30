@@ -69,7 +69,7 @@ Create is a **full-screen, four-step wizard** (its own analytics surface, `creat
 | Address | **live address lookup** via Photon (Komoot / OpenStreetMap) for fuzzy autocomplete; Nominatim fallback. Tap a match to fill address + short place name. No separate Place field. PRIVACY: typed text goes only to geocode the host's own venue, with no name/account attached; falls back to manual entry if offline. Address is visible only to people going or invited. |
 | Add co-hosts? | toggle; when on, search and multi-select friends (close + friend). Co-hosts can edit; their acquaintances may appear in invite suggestions |
 | Chip in | **toggle**; when on: amount (auto `$`, no `$$`), method, and **username/handle** (auto `@` or Cash App `$`) — stored link only; we never process payment and there is no wallet OAuth |
-| Let friends invite friends | toggle — when on, show helper "Guests can bring someone you don't know yet" and a **guest cap** (default 35, clamp 2–100) |
+| Let friends invite friends | toggle — when on, show helper "Guests can bring someone you don't know yet" and a **guest cap** (default 35; clamp **2–35** on Free Lite, **2–100** on co-op — free hosts cannot type past 35) |
 
 There is **no** global "Bring" field — use Assignments on step 3 instead.
 
@@ -109,7 +109,7 @@ People the host already invited always get full invitee RSVP (Going / Can't) and
 
 Hosting is **never gated** — anyone can host. Scale and extra host features are co-op benefits (`COOP.md`):
 
-- **Guest cap:** default **35 guests** on Free Lite; **co-op members can host up to 100**. The larger cap has real cost, because introduction-matching runs across every attendee.
+- **Guest cap:** default **35 guests** on Free Lite; **co-op members can host up to 100**. The create UI caps the guest-cap field at the plan max (free cannot enter 36+), and the API silently clamps. The larger cap has real cost, because introduction-matching runs across every attendee.
 - **Premium host tools (co-op only):** co-hosts, collect allergies, and assignments. Free Lite hosts still run the event; they do not get those extras.
 
 This supersedes the old standalone per-event expansion fee; scale and host tools ride on membership, not a separate SKU.
@@ -233,7 +233,7 @@ interface RsvpInput {
 - [ ] Create Details can mark an event as repeating (weekly / monthly day or Nth weekday / yearly + ends); Preview and detail show the human label; `event_created` includes `has_recurrence` (and optional `recurrence_freq` enum only).
 - [ ] Create supports inviting all connections plus FoF suggestions with mutual names (no tier labels), plus a "let friends invite friends" toggle with a guest cap.
 - [ ] Create surfaces friend-of-friend suggested invites from `matching`.
-- [ ] Hosting is free (never gated); the guest cap is 35 for Free Lite and 100 for co-op members. Co-hosts, allergy collection, and assignments are co-op host tools (see `COOP.md`).
+- [ ] Hosting is free (never gated); the guest cap is 35 for Free Lite and 100 for co-op members. Free Lite cannot enter a guest cap above 35 in create (no "Guest cap max" error). Co-hosts, allergy collection, and assignments are co-op host tools (see `COOP.md`).
 - [ ] The chip-in handle is a stored link only — never processed by the app (no Venmo/Cash App OAuth).
 - [ ] Assignments are public; assign ≠ done; the assignee or host/co-host can check off (hosts can check anyone's); open items use an assign dropdown (no "Snag" label); leave-open / reassign notifies the host.
 - [ ] Invitee view offers Going / Can't, add-to-calendar (Google/Apple, prefilled), and who-you-should-meet cards that route to Discover.

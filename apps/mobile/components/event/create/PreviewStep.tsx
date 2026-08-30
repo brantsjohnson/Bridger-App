@@ -5,7 +5,7 @@
 // button. Layout matches the event detail screen so nothing surprises you after
 // you tap Create. No invited totals or guest caps here — vanity numbers stay out.
 // ============================================
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { ClockIcon, HandCoinsIcon, MapPinIcon } from 'lucide-react-native';
 import type { Cover } from '@bridger/shared';
@@ -20,6 +20,8 @@ import {
   useThemeColors
 } from '@bridger/ui';
 import { getMe, personById } from '../../../data/people';
+import { avatarPhotoFor } from '../../../lib/avatar-photo';
+import { subscribePeople } from '../../../lib/people-cache';
 import type { CreateEventDraft } from './types';
 
 export function PreviewStep({
@@ -32,6 +34,10 @@ export function PreviewStep({
   onCreate: () => void;
 }) {
   const c = useThemeColors();
+  // Re-render when /me photo lands in the people cache (first open can race).
+  const [, setPeopleTick] = useState(0);
+  useEffect(() => subscribePeople(() => setPeopleTick((n) => n + 1)), []);
+
   // Mirror what createEvent does: no cover picked = a friendly emoji stand-in.
   const cover: Cover = draft.cover ?? { kind: 'emoji', value: '🎉', bg: '#9B5DE5' };
   const me = getMe();
@@ -40,18 +46,25 @@ export function PreviewStep({
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
       <AnalyticsRegion analyticsId={CREATE_EVENT.preview.summary} interactive={false}>
-        <View className="gap-6 pb-6">
+        <View className="gap-5 pb-6">
           {/* Same hero card shape as the live event page */}
           <Card className="overflow-hidden p-0">
             <View className="h-28">
               <CoverArt cover={cover} />
             </View>
-            <View className="gap-3 p-4">
+            <View className="gap-2 px-4 pb-3.5 pt-3">
               <Text className="font-sans-b text-[22px] leading-tight tracking-tight text-ink">
                 {draft.title || 'Untitled'}
               </Text>
               <View className="flex-row items-center gap-2">
-                <Avatar name={me.name} emoji={me.emoji} accent={me.accent} size="sm" />
+                <Avatar
+                  name={me.name}
+                  emoji={me.emoji}
+                  accent={me.accent}
+                  personId={me.id}
+                  photo={avatarPhotoFor(me.id, me.avatarUrl)}
+                  size="sm"
+                />
                 <Text className="min-w-0 flex-1 font-sans-sb text-[13px] text-ink">
                   Hosted by {me.name}
                   {coHosts.length > 0 ? (

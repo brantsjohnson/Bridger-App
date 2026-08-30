@@ -78,7 +78,13 @@ export function PollResultsSheet({
                             key={p.id}
                             className="flex-row items-center gap-1.5 rounded-full border border-ink-line bg-surface py-1 pl-1 pr-2.5"
                           >
-                            <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                            <Avatar
+                              name={p.name}
+                              emoji={p.emoji}
+                              accent={p.accent}
+                              personId={p.id}
+                              size="xs"
+                            />
                             <Text className="font-sans-b text-[12px] text-ink">
                               {p.id === 'me' ? 'You' : p.name.split(' ')[0]}
                             </Text>
@@ -105,7 +111,13 @@ export function PollResultsSheet({
                           key={id}
                           className="flex-row items-center gap-1.5 rounded-full border border-dashed border-ink-line py-1 pl-1 pr-2.5 opacity-70"
                         >
-                          <Avatar name={p.name} emoji={p.emoji} accent={p.accent} size="xs" />
+                          <Avatar
+                            name={p.name}
+                            emoji={p.emoji}
+                            accent={p.accent}
+                            personId={p.id}
+                            size="xs"
+                          />
                           <Text className="font-sans-b text-[12px] text-ink-soft">
                             {p.id === 'me' ? 'You' : p.name.split(' ')[0]}
                           </Text>

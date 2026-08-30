@@ -64,6 +64,9 @@ module.exports = ({ config }) => ({
   },
   android: {
     package: 'social.bridger.app',
+    // Resize the window when the keyboard opens so text fields on full
+    // screens (and Android Modals that follow the window) stay visible.
+    softwareKeyboardLayoutMode: 'resize',
     adaptiveIcon: {
       backgroundColor: '#F4F1E7',
       foregroundImage: './assets/images/android-icon-foreground.png',

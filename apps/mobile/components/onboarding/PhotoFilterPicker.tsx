@@ -1,9 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The row of four photo looks under the profile photo on Confirm your details.
-// Pop art (instant, on-device) leads; Comic / Sepia / X-ray run on Bridger
-// servers. Tap one and the pink pill highlight moves to that label. Under the
-// row a badge says whether that look is local or server-side (never AI).
+// Pop art leads with an instant on-device Warhol preview; all four looks
+// (Pop art, Comic, Sepia, X-ray) bake on Bridger servers so the filtered face
+// is the saved avatar everywhere. Tap one and the pink pill highlight moves.
+// Under the row a badge says preview vs server save (never AI).
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -54,8 +55,9 @@ export function PhotoFilterPicker({
   value: PhotoFilterKey;
   onChange: (filter: PhotoFilterKey) => void;
 }) {
-  // Pop art is painted on the phone; the other three run on our servers (not AI).
-  const isLocal = value === 'pop_art';
+  // Pop art previews on the phone; every look (including Pop art) saves via
+  // Bridger servers so the filtered face is what friends see as your avatar.
+  const isPopArtPreview = value === 'pop_art';
 
   return (
     <View style={{ gap: 8 }}>
@@ -116,8 +118,8 @@ export function PhotoFilterPicker({
         analyticsId={ONBOARDING.confirm_profile.local_processing_badge}
         interactive={false}
         accessibilityLabel={
-          isLocal
-            ? 'Done 100% local. Never sent to an AI model.'
+          isPopArtPreview
+            ? 'Preview on device. Saved on Bridger servers. Never sent to an AI model.'
             : 'Processed on Bridger servers. Never sent to an AI model.'
         }
       >
@@ -154,7 +156,9 @@ export function PhotoFilterPicker({
             className="font-sans-m"
             style={{ fontSize: 13, letterSpacing: -0.2, color: LOCAL_BADGE_INK }}
           >
-            {isLocal ? 'Done 100% Local' : 'On Bridger servers · never AI'}
+            {isPopArtPreview
+              ? 'Preview local · saved on Bridger · never AI'
+              : 'On Bridger servers · never AI'}
           </Text>
         </View>
       </AnalyticsRegion>

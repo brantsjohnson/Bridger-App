@@ -48,7 +48,7 @@ import {
   TIER_RANK
 } from '../../data/profile';
 import { savePhoto } from '../../data/onboarding';
-import { getProfilePhoto } from '../../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { searchPlaces } from '../../lib/geocode';
 import {
   pickProfilePhoto,
@@ -249,11 +249,10 @@ export function ProfileCard({
 
   // THIS SECTION DOES: About Me photo = their real profile pic (live URL), not
   // the stock demo fixture. Demo still falls back to the dropped-in face file.
-  const liveAvatar =
-    header?.avatarUrl?.trim() || person.avatarUrl?.trim() || '';
-  const aboutPhoto = liveAvatar
-    ? { uri: liveAvatar }
-    : getProfilePhoto(person.id);
+  const aboutPhoto = avatarPhotoFor(
+    person.id,
+    header?.avatarUrl?.trim() || person.avatarUrl?.trim() || ''
+  );
 
   // THIS SECTION DOES: let them swap the About Me (and header) photo while
   // editing. Same one-upload exception as onboarding: camera or library.
@@ -357,7 +356,7 @@ export function ProfileCard({
         onOpenEvent={onOpenEvent}
       />
 
-      {editable && own ? (
+      {own ? (
         <View className="mt-4 px-4">
           <Pressable
             onPress={withAnalyticsPress(PROFILE.card.add_module, () => setMenuOpen(true))}

@@ -11,7 +11,7 @@ import { Pressable, Text, View } from 'react-native';
 import { ClockIcon, XIcon } from 'lucide-react-native';
 import { HOME, trackProduct, type GrassSignal } from '@bridger/shared';
 import { Avatar, ButtonSecondary, withAnalyticsPress } from '@bridger/ui';
-import { getProfilePhoto } from '../data/fixtures/demo-media';
+import { avatarPhotoFor } from '../lib/avatar-photo';
 import { personById } from '../data/people';
 import { GrassBurst } from './GrassBurst';
 
@@ -88,7 +88,8 @@ export function FreeSignalCard({
           name={person.name}
           emoji={person.emoji}
           accent={person.accent}
-          photo={getProfilePhoto(person.id)}
+          personId={person.id}
+          photo={avatarPhotoFor(person.id, person.avatarUrl)}
           size="sm"
         />
         <View className="min-w-0 flex-1">

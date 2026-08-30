@@ -272,7 +272,8 @@ export function StatScreen({
 
         {/* THIS SECTION DOES: the animated picture, then the big counting number
             under it. Feed centers the square post in the middle band. Screen time
-            fills the leftover height so its 80 year lines can shrink to fit.
+            sizes to its year lines (fixed tick height) so mid-story captions are
+            not stranded over a huge empty blue stretch.
             overflow stays visible here so big display digits (240, 18%) are not
             chopped by the band; graphics that need a clip wrap themselves. */}
         <View
@@ -334,7 +335,7 @@ export function StatScreen({
           {variant === "screentime" && graphicIn ? (
             <View
               importantForAccessibility="yes"
-              style={{ flex: 1, minHeight: 0, width: "100%" }}
+              style={{ width: "100%", flexShrink: 1 }}
             >
               <ScreenTimeVisual
                 reduceMotion={reduce}
@@ -1155,6 +1156,31 @@ const ISOLATION_NONE_PCT = 0.12;
 /** Share of adults with only 1–4 close friends (pie + "1 in 2"). */
 const ISOLATION_FEW_PCT = 0.48;
 
+/**
+ * Draw a ring slice as a real arc path. 0° = 12 o'clock, degrees run clockwise.
+ * (We avoid strokeDashoffset on Circle — it left a blue hole on native.)
+ */
+function ringArcPath(
+  cx: number,
+  cy: number,
+  r: number,
+  startDeg: number,
+  endDeg: number,
+): string {
+  const sweep = Math.max(0, endDeg - startDeg);
+  if (sweep <= 0.05) return "";
+  // Cap just under a full circle so SVG still draws an arc (360° collapses).
+  const end = startDeg + Math.min(sweep, 359.9);
+  const toXY = (deg: number) => {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  const s = toXY(startDeg);
+  const e = toXY(end);
+  const large = end - startDeg > 180 ? 1 : 0;
+  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
+}
+
 function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const { height: windowHeight } = useWindowDimensions();
   // THIS SECTION DOES: shrink the ring and type on short phones so nothing clips.
@@ -1170,16 +1196,13 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
-  const circ = 2 * Math.PI * r;
-  // Overlap pink and purple by ~1/3 of the stroke so butt caps never flash a seam.
-  const seamOverlap = Math.max(10, stroke * 0.35);
+  // Overlap neighboring slices a few degrees so butt caps never flash a seam.
+  const seamDeg = 2.5;
 
-  const noneLen = circ * ISOLATION_NONE_PCT;
-  const fewLen = circ * ISOLATION_FEW_PCT;
-  const restLen = circ * (1 - ISOLATION_NONE_PCT - ISOLATION_FEW_PCT);
-  const filledLen = noneLen + fewLen;
-  // Start slices at 12 o'clock (quarter turn from SVG's default 3 o'clock).
-  const startOffset = circ * 0.25;
+  // Degrees clockwise from 12 o'clock.
+  const noneDeg = 360 * ISOLATION_NONE_PCT;
+  const fewDeg = 360 * ISOLATION_FEW_PCT;
+  const filledDeg = noneDeg + fewDeg;
 
   // Top number lands first; pie fills next; bottom number waits for the pie.
   const topDelay = 900;
@@ -1192,12 +1215,12 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const topDenom = useCountUp("12", topDelay, reduceMotion);
   const bottomDenom = useCountUp("2", bottomDelay, reduceMotion);
 
-  const [arcLen, setArcLen] = useState(reduceMotion ? filledLen : 0);
+  const [arcDeg, setArcDeg] = useState(reduceMotion ? filledDeg : 0);
   const pieOpacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
 
   useEffect(() => {
     if (reduceMotion) {
-      setArcLen(filledLen);
+      setArcDeg(filledDeg);
       pieOpacity.setValue(1);
       return;
     }
@@ -1216,7 +1239,7 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
         if (!startAt) startAt = now;
         const t = Math.min(1, (now - startAt) / pieFillMs);
         const eased = 1 - Math.pow(1 - t, 3);
-        setArcLen(filledLen * eased);
+        setArcDeg(filledDeg * eased);
         if (t < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
@@ -1226,22 +1249,33 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
       clearTimeout(timer);
       cancelAnimationFrame(raf);
     };
-  }, [reduceMotion, pieOpacity, filledLen]);
+  }, [reduceMotion, pieOpacity, filledDeg]);
 
-  // Split the growing arc into the 12% slice, then the 48% slice.
-  const shownNone = Math.min(arcLen, noneLen);
-  const shownFew = Math.max(0, arcLen - noneLen);
-  // Purple starts early under pink so the join is solid color, no gap.
-  const fewOffset = startOffset - noneLen + seamOverlap;
-  const fewDash = shownFew > 0 ? shownFew + seamOverlap : 0;
-  // Quiet "everyone else" arc only (not a full ring under the colors).
-  const restOffset = startOffset - noneLen - fewLen;
+  // Split the growing arc: pink first (from 12 o'clock), then purple.
+  const shownNoneDeg = Math.min(arcDeg, noneDeg);
+  const shownFewDeg = Math.max(0, arcDeg - noneDeg);
+  // Quiet rest always fills the leftover so the ring is never an open C.
+  const pinkStart = 0;
+  const pinkEnd = shownNoneDeg + (shownNoneDeg > 0 ? seamDeg : 0);
+  const purpleStart = noneDeg - seamDeg;
+  const purpleEnd = noneDeg + shownFewDeg + (shownFewDeg > 0 ? seamDeg : 0);
+  const restStart = noneDeg + fewDeg - seamDeg;
+  const restEnd = 360 + seamDeg;
 
-  // Midpoints of each filled slice (degrees: 0 = 3 o'clock, −90 = 12 o'clock).
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const pinkMidDeg = -90 + 360 * ISOLATION_NONE_PCT * 0.5;
-  const fewMidDeg =
-    -90 + 360 * ISOLATION_NONE_PCT + 360 * ISOLATION_FEW_PCT * 0.5;
+  const pinkPath = ringArcPath(cx, cy, r, pinkStart, pinkEnd);
+  const purplePath = ringArcPath(
+    cx,
+    cy,
+    r,
+    purpleStart,
+    Math.max(purpleStart, purpleEnd),
+  );
+  const restPath = ringArcPath(cx, cy, r, restStart, restEnd);
+
+  // Midpoints of each filled slice for the leader stubs.
+  const toRad = (deg: number) => ((deg - 90) * Math.PI) / 180;
+  const pinkMidDeg = noneDeg * 0.5;
+  const fewMidDeg = noneDeg + fewDeg * 0.5;
   const outerR = r + stroke / 2;
   const pinkAx = cx + outerR * Math.cos(toRad(pinkMidDeg));
   const pinkAy = cy + outerR * Math.sin(toRad(pinkMidDeg));
@@ -1249,13 +1283,12 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const fewAy = cy + outerR * Math.sin(toRad(fewMidDeg));
 
   // Show each stub once its slice is far enough along to land on real color.
-  const showPinkStub = shownNone > noneLen * 0.55;
-  const showFewStub = shownFew > fewLen * 0.35;
+  const showPinkStub = shownNoneDeg > noneDeg * 0.55;
+  const showFewStub = shownFewDeg > fewDeg * 0.35;
 
   // Extra vertical room above/below the ring so the stubs are not clipped.
   const stubPad = stubLen + 6;
   const svgH = size + stubPad * 2;
-  const ringCy = stubPad + cy;
   // Re-map attach points into the taller SVG (ring is shifted down by stubPad).
   const pinkAySvg = pinkAy + stubPad;
   const fewAySvg = fewAy + stubPad;
@@ -1264,6 +1297,9 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const pinkTipYSvg = 8;
   const fewTipX = cx;
   const fewTipYSvg = svgH - 8;
+
+  // Shift every ring path down by stubPad (paths were built around cy, not ringCy).
+  const ringTransform = `translate(0, ${stubPad})`;
 
   return (
     <View
@@ -1310,7 +1346,7 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
         </Text>
       </Animated.View>
 
-      {/* THE PIE + STUBS: stubs first (under the ring), then the colored arcs flush. */}
+      {/* THE PIE + STUBS: three solid arcs (pink / purple / quiet rest), no gap. */}
       <Animated.View
         style={{ opacity: pieOpacity, flexShrink: 1, zIndex: 0 }}
       >
@@ -1319,15 +1355,8 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {/*
-            WEB NOTE: do not use transform={`rotate(-90 cx cy)`} on Circle.
-            NativeWind's JSX runtime treats `transform` like CSS and emits a
-            kebab-case `transform-origin` DOM prop, which React rejects.
-            strokeDashoffset shifts the dash start the same way (12 o'clock
-            is one quarter of the ring).
-          */}
           <Svg width={size} height={svgH}>
-            {/* THIS SECTION DOES: draw stub paths first so the ring paints over them. */}
+            {/* THIS SECTION DOES: draw stubs first so the ring paints over them. */}
             {showPinkStub ? (
               <>
                 <Path
@@ -1371,43 +1400,39 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
               </>
             ) : null}
 
-            {/* Quiet rest (~40%) only in the empty arc — not a full ring under color. */}
-            <Circle
-              cx={cx}
-              cy={ringCy}
-              r={r}
-              stroke="rgba(255,255,255,0.28)"
-              strokeWidth={stroke}
-              fill="none"
-              strokeDasharray={`${restLen + seamOverlap} ${circ}`}
-              strokeDashoffset={restOffset + seamOverlap * 0.5}
-              strokeLinecap="butt"
-            />
-            {/* 48% first (under pink) so the join seam is covered by the pink tip. */}
-            <Circle
-              cx={cx}
-              cy={ringCy}
-              r={r}
-              stroke={OB.purple}
-              strokeWidth={stroke}
-              fill="none"
-              strokeDasharray={`${fewDash} ${circ}`}
-              strokeDashoffset={fewOffset}
-              strokeLinecap="butt"
-            />
-            {/* 12% — no close friends (matches the top "1 in 12"). Extends a hair
-                into purple so butt caps never leave a blue or white seam. */}
-            <Circle
-              cx={cx}
-              cy={ringCy}
-              r={r}
-              stroke={ON_BLUE_ACCENT}
-              strokeWidth={stroke}
-              fill="none"
-              strokeDasharray={`${shownNone > 0 ? shownNone + seamOverlap * 0.5 : 0} ${circ}`}
-              strokeDashoffset={startOffset}
-              strokeLinecap="butt"
-            />
+            {/* Quiet rest (~40%) — third color, always fills the leftover. */}
+            {restPath ? (
+              <Path
+                d={restPath}
+                transform={ringTransform}
+                stroke="rgba(255,255,255,0.38)"
+                strokeWidth={stroke}
+                fill="none"
+                strokeLinecap="butt"
+              />
+            ) : null}
+            {/* 48% purple (under pink at the join). */}
+            {shownFewDeg > 0 && purplePath ? (
+              <Path
+                d={purplePath}
+                transform={ringTransform}
+                stroke={OB.purple}
+                strokeWidth={stroke}
+                fill="none"
+                strokeLinecap="butt"
+              />
+            ) : null}
+            {/* 12% pink — no close friends (matches the top "1 in 12"). */}
+            {shownNoneDeg > 0 && pinkPath ? (
+              <Path
+                d={pinkPath}
+                transform={ringTransform}
+                stroke={ON_BLUE_ACCENT}
+                strokeWidth={stroke}
+                fill="none"
+                strokeLinecap="butt"
+              />
+            ) : null}
 
             {/* Attach dots last so they sit on the outer rim of the ring. */}
             {showPinkStub ? (

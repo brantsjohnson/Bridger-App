@@ -1,15 +1,17 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Turns a profile photo into a stylized "look" on the server. Today that is
-// **Comic** (cartoon outlines + flat colors), **X-ray** (inverted ghostly
-// scan), and **Sepia** (warm vintage tone with punchy contrast). The phone
-// uploads the normal photo first; this service reads it, runs ImageMagick,
-// saves the finished picture back to storage, and hands back the new picture's
-// id plus a short-lived preview link.
+// **Pop art** (bold saturated poster tones for a round avatar), **Comic**
+// (cartoon outlines + flat colors), **X-ray** (inverted ghostly scan), and
+// **Sepia** (warm vintage tone with punchy contrast). The phone uploads the
+// normal photo first; this service reads it, runs ImageMagick, saves the
+// finished picture back to storage, and hands back the new picture's id plus a
+// short-lived preview link. The original media row stays on file.
 //
 // WHY ON THE SERVER: these looks need image operations our phone library cannot
 // do on-device (edge detection, posterizing, invert + tone remap), so we do
-// them here with ImageMagick inside our own container.
+// them here with ImageMagick inside our own container. Pop art also bakes here
+// so the filtered face is one JPEG every Avatar can show fast (no live recolor).
 //
 // PRIVACY: we only ever touch a photo the signed-in person already owns (we check
 // ownership on the `media` row). The picture is never sent to any AI model. The
@@ -33,10 +35,15 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 const execFileAsync = promisify(execFile);
 
-/** Looks rendered on the server (on-device looks like Pop art are not here). */
-export type ServerPhotoFilter = 'comic' | 'x_ray' | 'sepia';
+/** Looks rendered on the server (all four profile-photo looks). */
+export type ServerPhotoFilter = 'pop_art' | 'comic' | 'x_ray' | 'sepia';
 
-const SERVER_FILTERS = new Set<ServerPhotoFilter>(['comic', 'x_ray', 'sepia']);
+const SERVER_FILTERS = new Set<ServerPhotoFilter>([
+  'pop_art',
+  'comic',
+  'x_ray',
+  'sepia'
+]);
 
 /** Bold posterized bands (reference tuner: Color Levels 4). */
 const COMIC_COLOR_LEVELS = 4;
@@ -112,7 +119,9 @@ export class PhotoFiltersService {
     const outputPath = join(workDir, `${randomUUID()}.jpg`);
     try {
       await writeFile(inputPath, inputBytes);
-      if (filter === 'comic') {
+      if (filter === 'pop_art') {
+        await this.runPopArt(inputPath, outputPath);
+      } else if (filter === 'comic') {
         await this.runComic(inputPath, outputPath);
       } else if (filter === 'x_ray') {
         await this.runXRay(inputPath, outputPath);
@@ -157,6 +166,31 @@ export class PhotoFiltersService {
       .createSignedUrl(storagePath, this.signedUrlTtl);
 
     return { mediaId: newMedia.id, url: signed?.signedUrl ?? '' };
+  }
+
+  /**
+   * The pop-art recipe (plain English): punch the saturation and contrast, then
+   * squash colors into flat poster bands so a round avatar reads as bold pop.
+   * This is one tile (not the on-device 4-tile Warhol grid), because a circle
+   * cannot show a grid cleanly.
+   */
+  private async runPopArt(inputPath: string, outputPath: string): Promise<void> {
+    const args = [
+      inputPath,
+      '-resize',
+      '1000x1000>',
+      '-modulate',
+      '105,180,100',
+      '-contrast-stretch',
+      '2%x2%',
+      '+dither',
+      '-posterize',
+      '5',
+      '-quality',
+      '90',
+      outputPath
+    ];
+    await this.runMagick(args);
   }
 
   /**

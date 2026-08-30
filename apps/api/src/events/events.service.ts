@@ -15,6 +15,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -149,6 +150,24 @@ export class EventsService {
   }
 
   // --- helpers ---
+
+  /**
+   * Turn a Postgrest / Postgres error into an HTTP error with the real message,
+   * so the phone never shows a blank "Internal server error" for a missing
+   * column or constraint (schema drift).
+   */
+  private throwDb(error: {
+    message?: string;
+    code?: string;
+    details?: string;
+    hint?: string;
+  }): never {
+    const parts = [error.message, error.details, error.hint].filter(Boolean);
+    const msg = parts.join(' — ') || 'Database error';
+    // Missing column / undefined object → treat as server misconfig (500) but
+    // keep the Postgres text so TestFlight / logs show what to migrate.
+    throw new InternalServerErrorException(msg);
+  }
 
   private async maxCap(userId: string): Promise<number> {
     return (await this.coop.isActiveMember(userId)) ? 100 : 35;
@@ -579,12 +598,9 @@ export class EventsService {
     const max = await this.maxCap(userId);
     let cap = body.cap ?? 35;
     if (!Number.isFinite(cap)) cap = 35;
+    // PRIVACY / PRODUCT: silently clamp to this host's plan (free 35 / co-op 100).
+    // The create UI already caps the field; we never need a "Guest cap max" alert.
     cap = Math.max(2, Math.min(Math.floor(cap), max));
-    if ((body.cap ?? 35) > max) {
-      throw new BadRequestException(
-        `Guest cap max is ${max} for your membership`
-      );
-    }
 
     const startsAt = this.parseDayTime(body.day, body.time);
     const coHostIds = Array.from(
@@ -654,7 +670,7 @@ export class EventsService {
         'id, host_id, co_host_ids, title, bio, starts_at, address, place, chip_in, allow_friends_invite, cap, cover, recurrence, created_at'
       )
       .single();
-    if (error) throw error;
+    if (error) this.throwDb(error);
 
     // Host as going so list queries are uniform. invited_by null = host invite.
     const inviteRows: Array<{
@@ -684,7 +700,7 @@ export class EventsService {
     const { error: invErr } = await this.supabase.admin
       .from('event_invites')
       .insert(inviteRows);
-    if (invErr) throw invErr;
+    if (invErr) this.throwDb(invErr);
 
     const labels = (body.assignments ?? [])
       .map((a) => ('label' in a ? a.label : '').trim())
@@ -699,7 +715,7 @@ export class EventsService {
             sort_order: i
           }))
         );
-      if (aErr) throw aErr;
+      if (aErr) this.throwDb(aErr);
     }
 
     // Notify invitees (opaque ids only — never title in analytics).
@@ -766,9 +782,7 @@ export class EventsService {
       patch.recurrence = this.parseRecurrence(body.recurrence);
     }
     if (typeof body.cap === 'number') {
-      if (body.cap > max) {
-        throw new BadRequestException(`Guest cap max is ${max}`);
-      }
+      // Silently clamp to membership max (same as create). No error alert.
       patch.cap = Math.max(2, Math.min(Math.floor(body.cap), max));
     }
     if (body.coHostIds) {

@@ -150,7 +150,7 @@
 - You may delete any field; deletion removes it from Bridger's store.
 - Co-op profile customization is a **skin** only: it cannot invent, hide, or delete your facts. Theme and Layout are no-code. Custom CSS/HTML (Code tier) is admin-gated and not generally available yet; when it ships it must not include scripts, tracking pixels, or off-Bridger assets. Customized profiles are UGC and may be reverted to the native layout after a report.
 - Co-op **Greatest hits** photos are UGC you upload to Bridger-hosted storage (up to 3). Same report / revert expectations as other profile media; they are not off-platform hotlinks.
-- **Profile photo "looks"** (Pop art, Comic, X-ray, Sepia) are cosmetic filters you apply to your own photo. Pop art is drawn on your device; Comic, X-ray, and Sepia are rendered on Bridger's own servers with a standard image tool (no AI, no third party). A filtered photo is still your content and the same acceptable-use, who-sees, report, and deletion rules apply.
+- **Profile photo "looks"** (Pop art, Comic, X-ray, Sepia) are cosmetic filters you apply to your own photo. All four are baked on Bridger's own servers with a standard image tool (no AI, no third party); Pop art also shows an instant on-device preview. A filtered photo is still your content and the same acceptable-use, who-sees, report, and deletion rules apply.
 - Viewers may always choose "View original" or a standing "always show plain pages" preference.
 - **Storage meter:** co-op members see used vs included media storage. Going over shows an overage price before any charge (current wave: display stub only; no silent charges). Free accounts use the rolling story window.
 
