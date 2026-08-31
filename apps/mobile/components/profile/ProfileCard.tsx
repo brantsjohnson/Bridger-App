@@ -6,7 +6,7 @@
 // Analytics: PROFILE.card.* / PROFILE.module.*; product events on module done.
 // ============================================
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, View } from 'react-native';
 import type {
   AboutFieldView,
   FavoriteModule,
@@ -20,7 +20,6 @@ import type {
 import { PROFILE, trackProduct } from '@bridger/shared';
 import {
   ModuleFlow,
-  withAnalyticsPress,
   type ModuleAnswer,
   type ModuleMatchable,
   type ModuleVisibility
@@ -55,7 +54,6 @@ import {
   type PhotoSource
 } from '../../lib/pick-image';
 import { FavoriteAnswersSheet } from './FavoriteAnswersSheet';
-import { ModuleMenuSheet } from './ModuleMenuSheet';
 import { ProfileHeaderBlock } from './ProfileHeaderBlock';
 import { ProfilePageShell } from './ProfilePageShell';
 import type { UpcomingEventRow } from './UpcomingEventsSection';
@@ -166,7 +164,6 @@ export function ProfileCard({
   }, [favorites, favs, empty]);
 
   const [module, setModule] = useState<ProfileModuleId | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   /** Friend view: which Favorites album answers sheet is open. */
   const [viewFavoriteId, setViewFavoriteId] = useState<string | null>(null);
   const activeModule = PROFILE_MODULES.find((m) => m.id === module);
@@ -360,24 +357,9 @@ export function ProfileCard({
         onOpenEvent={onOpenEvent}
       />
 
-      {own ? (
-        <View className="mt-4 px-4">
-          <Pressable
-            onPress={withAnalyticsPress(PROFILE.card.add_module, () => setMenuOpen(true))}
-            accessibilityRole="button"
-            accessibilityLabel="Open all profile modules"
-            className="min-h-[48px] items-center justify-center rounded-card border border-ink-line bg-surface px-4"
-          >
-            <Text className="font-sans-b text-[14px] text-ink">Add to your profile</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      <ModuleMenuSheet
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        onOpenModule={(id) => openModule(id)}
-      />
+      {/* Empty Favorites / About / Obsession / Top 5 already have their own
+          "add" cards in each section, so we do not show a separate
+          "Add to your profile" block at the bottom. */}
 
       <FavoriteAnswersSheet
         open={Boolean(viewFavoriteId)}

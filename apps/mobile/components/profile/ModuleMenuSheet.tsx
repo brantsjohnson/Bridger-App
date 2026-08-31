@@ -1,8 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The menu of all 14 profile fill modules: description, time estimate,
-// Continue / Edit. Own profile opens this from "Add to your profile" or
-// Favorites "to start". Cancel saves nothing (ModuleFlow owns that).
+// Full-screen menu of all 14 profile fill modules (description, time
+// estimate, Continue / Edit). Kept for reuse if we need a complete module
+// list again; the live profile opens each module from Favorites "To start"
+// tiles and the per-section add cards instead of a bottom "Add to your
+// profile" block.
 // ============================================
 import React from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';

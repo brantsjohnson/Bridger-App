@@ -383,33 +383,6 @@ export function ProfileCard({
         }
       </CollapsibleSection>
 
-      {editable &&
-      <section className="rounded-card border border-ink-line bg-white p-4">
-          <p className="font-pixel text-[15px] text-ink">Add to your profile</p>
-          <div className="mt-3 space-y-2">
-            {MODULES.map((m) =>
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setModule(m.id)}
-            className="flex w-full items-center gap-3 rounded-card border border-ink-line bg-white px-3.5 py-3 text-left transition-colors hover:border-purple/40 hover:bg-[#F1ECFF]">
-            
-                <span aria-hidden="true" className="text-[20px]">
-                  {m.emoji}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14px] font-bold text-ink">{m.label}</span>
-                  <span className="block truncate text-[12px] font-semibold text-ink-mute">
-                    {m.line}
-                  </span>
-                </span>
-                <PlusIcon className="h-4 w-4 shrink-0 text-purple" strokeWidth={3} />
-              </button>
-          )}
-          </div>
-        </section>
-      }
-
       <ModuleFlow
         open={Boolean(activeModule)}
         title={activeModule?.label ?? ''}
