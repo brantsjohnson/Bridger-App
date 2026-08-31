@@ -39,6 +39,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { clearStoryReplyNotifications, markStorySeen } from '../../data/feed';
+import { getMembership } from '../../data/coop';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { useStoryViewer } from '../../hooks/useStoryViewer';
 import { CatchUpPanel } from './CatchUpPanel';
@@ -52,6 +53,20 @@ import { StickerTray } from './StickerTray';
 const POST_MS = 6000;
 /** Always-dark icon / label on white chrome (does not flip in dark mode). */
 const CHROME_INK = '#1C1B16';
+
+/** Plain alert when a story reply fails (API or offline). */
+function alertReplyFailed(error: unknown) {
+  const raw = error instanceof Error ? error.message : '';
+  const message =
+    raw === 'Not allowed'
+      ? 'You cannot post on this update right now. You may need to connect with them first.'
+      : raw === 'Story is no longer available'
+        ? 'This update is no longer live. You can still message them directly.'
+        : raw === 'Video reactions require co-op membership'
+          ? 'Video replies are a co-op perk. Stickers and comments are free.'
+          : raw || 'Try again in a moment.';
+  Alert.alert('Could not reply', message);
+}
 
 type Props = {
   authorId: string;
@@ -105,6 +120,8 @@ export function StoryViewer({
   const [recorderOpen, setRecorderOpen] = useState(false);
   // Bumped when a new sticker is saved so the strip picks it up.
   const [stickerRefresh, setStickerRefresh] = useState(0);
+  /** PAYMENT: video replies are co-op — gate before opening the round recorder. */
+  const [isCoopMember, setIsCoopMember] = useState(false);
   // User tapped the center to pause (separate from sheets holding playback).
   const [userPaused, setUserPaused] = useState(false);
   const overlayPaused =
@@ -134,14 +151,21 @@ export function StoryViewer({
     stickerUri?: string;
     method?: 'sticker' | 'custom_sticker';
   }) => {
-    await onAddReply({
-      kind: 'sticker',
-      stickerId: input.stickerId,
-      stickerUri: input.stickerUri
-    });
-    trackProduct('response_posted', { method: input.method ?? 'sticker' });
-    // Answering on your own update clears the Home replies inbox.
-    if (authorId === 'me') clearStoryReplyNotifications();
+    try {
+      const created = await onAddReply({
+        kind: 'sticker',
+        stickerId: input.stickerId,
+        stickerUri: input.stickerUri
+      });
+      if (!created) {
+        Alert.alert('Could not reply', 'This update is not ready yet. Try again in a moment.');
+        return;
+      }
+      trackProduct('response_posted', { method: input.method ?? 'sticker' });
+      if (authorId === 'me') clearStoryReplyNotifications();
+    } catch (e) {
+      alertReplyFailed(e);
+    }
   };
 
   // --- VIDEO: is the current slide a video we have real media for? ---
@@ -161,6 +185,33 @@ export function StoryViewer({
     openSurface('story');
     return () => dismissSurface('story');
   }, []);
+
+  // THIS SECTION DOES: learn co-op status so we can gate video replies only.
+  useEffect(() => {
+    let alive = true;
+    void getMembership()
+      .then((m) => {
+        if (alive) setIsCoopMember(!!m.member);
+      })
+      .catch(() => {
+        if (alive) setIsCoopMember(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const openVideoRecorder = useCallback(() => {
+    if (!isCoopMember) {
+      Alert.alert(
+        'Co-op unlock',
+        'Video replies are a co-op perk. Stickers and comments are free for everyone.'
+      );
+      return;
+    }
+    setTrayOpen(false);
+    setRecorderOpen(true);
+  }, [isCoopMember]);
 
   // --- END OF THIS AUTHOR: next in tray sequence, or "all caught up" ---
   // Catch-Up open = stay put (do not dismiss under the sheet).
@@ -506,10 +557,7 @@ export function StoryViewer({
           <Pressable
             onPress={withAnalyticsPress(
               STORY.reaction_rail.record,
-              () => {
-                setTrayOpen(false);
-                setRecorderOpen(true);
-              },
+              openVideoRecorder,
               { analyticsProps: { method: 'video' } }
             )}
             accessibilityRole="button"
@@ -555,8 +603,21 @@ export function StoryViewer({
         open={recorderOpen}
         onClose={() => setRecorderOpen(false)}
         onSend={async (uri, seconds) => {
-          await onAddReply({ kind: 'circleVideo', videoUri: uri, videoSeconds: seconds });
-          if (authorId === 'me') clearStoryReplyNotifications();
+          try {
+            const created = await onAddReply({
+              kind: 'circleVideo',
+              videoUri: uri,
+              videoSeconds: seconds
+            });
+            if (!created) {
+              Alert.alert('Could not reply', 'This update is not ready yet. Try again in a moment.');
+              return;
+            }
+            if (authorId === 'me') clearStoryReplyNotifications();
+          } catch (e) {
+            alertReplyFailed(e);
+            throw e;
+          }
         }}
       />
 
@@ -578,12 +639,21 @@ export function StoryViewer({
         onClose={() => setCommentsOpen(false)}
         replies={replies}
         onAddReply={async (input) => {
-          const created = await onAddReply(input);
-          if (authorId === 'me') clearStoryReplyNotifications();
-          return created;
+          try {
+            const created = await onAddReply(input);
+            if (!created) {
+              Alert.alert('Could not reply', 'This update is not ready yet. Try again in a moment.');
+              return null;
+            }
+            if (authorId === 'me') clearStoryReplyNotifications();
+            return created;
+          } catch (e) {
+            alertReplyFailed(e);
+            return null;
+          }
         }}
         onOpenStickers={() => setTrayOpen(true)}
-        onRecordVideo={() => setRecorderOpen(true)}
+        onRecordVideo={openVideoRecorder}
       />
     </View>
   );

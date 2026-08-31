@@ -42,7 +42,7 @@ type Props = {
     text?: string;
     stickerId?: string;
     parentReactionId?: string;
-  }) => Promise<unknown>;
+  }) => Promise<unknown | null>;
   /** hand off to the emoji strip on the story behind this sheet */
   onOpenStickers?: () => void;
   /** hand off to the 10-second round recorder */
@@ -73,11 +73,12 @@ export function CommentSheet({
     setSending(true);
     try {
       trackClick(CATCH_UP.bottom.reply, { method: 'comment' });
-      await onAddReply({
+      const created = await onAddReply({
         kind: 'text',
         text,
         parentReactionId: replyTo?.id
       });
+      if (!created) return;
       trackProduct('response_posted', { method: 'comment' });
       setDraft('');
       setReplyTo(null);

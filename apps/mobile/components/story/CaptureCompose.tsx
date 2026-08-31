@@ -60,7 +60,9 @@ import { useStoryCapture } from '../../hooks/useStoryCapture';
 /** Max video length for an update (STORIES.md). */
 const MAX_VIDEO_SECONDS = 20;
 /** How long to hold before we treat it as video, not a photo tap. */
-const HOLD_MS = 600;
+const HOLD_MS = 1000;
+/** Poll while the camera mounts so we do not count setup time as a hold. */
+const HOLD_ARM_POLL_MS = 50;
 
 // Fixed near-black canvas for the camera sheet (does not follow theme ink).
 const CAPTURE_BG = '#0E0E0E';
@@ -119,6 +121,10 @@ export function CaptureCompose({
   );
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordingRef = useRef(false);
+  /** True from press-in until press-out — blocks video if they lifted early. */
+  const fingerDownRef = useRef(false);
+  /** Set when the hold threshold crossed; cleared when video ends or co-op blocks. */
+  const videoIntentRef = useRef(false);
   const cameraReadyRef = useRef(false);
   const cameraReadyWaiters = useRef<Array<() => void>>([]);
   const flowStartedAt = useRef(Date.now());
@@ -262,6 +268,9 @@ export function CaptureCompose({
       Alert.alert('Daily limit', 'You can post 3 updates a day. Come back tomorrow.');
       return;
     }
+    // A slow tap must never become video — cancel any hold timer first.
+    clearVideoHoldTimer();
+    videoIntentRef.current = false;
     if (!(await ensureCamera())) return;
     try {
       const photo = await cameraRef.current?.takePictureAsync({ quality: 0.85 });
@@ -276,9 +285,39 @@ export function CaptureCompose({
     }
   };
 
+  // THIS SECTION DOES: cancel any pending hold-for-video timer.
+  const clearVideoHoldTimer = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+
+  // THIS SECTION DOES: start the hold clock only once the camera can capture.
+  const armVideoHoldIfReady = () => {
+    clearVideoHoldTimer();
+    if (!fingerDownRef.current || recordingRef.current || videoIntentRef.current) return;
+    if (!showLiveCamera || !cameraReadyRef.current) {
+      holdTimer.current = setTimeout(armVideoHoldIfReady, HOLD_ARM_POLL_MS);
+      return;
+    }
+    holdTimer.current = setTimeout(() => {
+      holdTimer.current = null;
+      if (!fingerDownRef.current || recordingRef.current) return;
+      videoIntentRef.current = true;
+      void startVideo();
+    }, HOLD_MS);
+  };
+
   // THIS SECTION DOES: start a ≤20s video when they hold the shutter.
   const startVideo = async () => {
+    if (!fingerDownRef.current) {
+      videoIntentRef.current = false;
+      setHolding(false);
+      return;
+    }
     if (!isCoopMember) {
+      videoIntentRef.current = false;
       setHolding(false);
       Alert.alert(
         'Co-op unlock',
@@ -288,10 +327,22 @@ export function CaptureCompose({
       return;
     }
     if (!(await ensureCamera())) {
+      videoIntentRef.current = false;
+      setHolding(false);
+      return;
+    }
+    if (!fingerDownRef.current) {
+      videoIntentRef.current = false;
       setHolding(false);
       return;
     }
     if (!(await ensureMic())) {
+      videoIntentRef.current = false;
+      setHolding(false);
+      return;
+    }
+    if (!fingerDownRef.current) {
+      videoIntentRef.current = false;
       setHolding(false);
       return;
     }
@@ -315,6 +366,7 @@ export function CaptureCompose({
       // Stop / cancel is normal when they lift early; ignore empty results.
     } finally {
       recordingRef.current = false;
+      videoIntentRef.current = false;
       setRecording(false);
       setHolding(false);
       setCameraMode('picture');
@@ -326,18 +378,18 @@ export function CaptureCompose({
       Alert.alert('Daily limit', 'You can post 3 updates a day. Come back tomorrow.');
       return;
     }
+    fingerDownRef.current = true;
+    videoIntentRef.current = false;
     setHolding(true);
-    holdTimer.current = setTimeout(() => {
-      holdTimer.current = null;
-      void startVideo();
-    }, HOLD_MS);
+    armVideoHoldIfReady();
   };
 
   const endHold = () => {
-    // Still inside the tap window → photo.
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current);
-      holdTimer.current = null;
+    fingerDownRef.current = false;
+    const stillWaitingForHold = !!holdTimer.current;
+    clearVideoHoldTimer();
+    // Lifted before the hold threshold → always a photo tap.
+    if (stillWaitingForHold && !videoIntentRef.current && !recordingRef.current) {
       setHolding(false);
       void takePhoto();
       return;
@@ -345,6 +397,9 @@ export function CaptureCompose({
     // Already recording → stop; recordAsync resolves with the clip.
     if (recordingRef.current) {
       cameraRef.current?.stopRecording();
+    } else if (videoIntentRef.current) {
+      videoIntentRef.current = false;
+      setHolding(false);
     } else {
       setHolding(false);
     }
