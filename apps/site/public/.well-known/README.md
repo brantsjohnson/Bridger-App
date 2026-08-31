@@ -20,10 +20,11 @@ The matching app-side config lives in `apps/mobile/app.config.js`
 Both files ship with clearly marked placeholders because the real values are
 account secrets that cannot live in source control blindly.
 
-1. **`apple-app-site-association` → `REPLACE_WITH_APPLE_TEAM_ID`**
-   Your 10-character Apple Developer Team ID (App Store Connect → Membership,
-   or `eas credentials -p ios`). The `appIDs` value must read
-   `<TEAMID>.social.bridger.app`.
+1. **`apple-app-site-association` → Apple Team ID**
+   Filled as `DG6NU23FXX.social.bridger.app` (from EAS / Apple team
+   "Brant Johnson"). Re-enable `ios.associatedDomains` in
+   `apps/mobile/app.config.js` only after Associated Domains is enabled on the
+   App ID in Apple Developer and the EAS provisioning profile is regenerated.
 
 2. **`assetlinks.json` → `REPLACE_WITH_ANDROID_SHA256_CERT_FINGERPRINT`**
    The SHA-256 fingerprint of the app-signing certificate. Run

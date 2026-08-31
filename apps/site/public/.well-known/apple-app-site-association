@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.social.bridger.app"],
+        "appIDs": ["DG6NU23FXX.social.bridger.app"],
         "components": [
           { "/": "/invite/*", "comment": "Friend add-me invite links" },
           { "/": "/q/*", "comment": "Shared quiz result links" },
@@ -13,6 +13,6 @@
     ]
   },
   "webcredentials": {
-    "apps": ["REPLACE_WITH_APPLE_TEAM_ID.social.bridger.app"]
+    "apps": ["DG6NU23FXX.social.bridger.app"]
   }
 }
