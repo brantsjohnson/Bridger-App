@@ -22,12 +22,12 @@ module.exports = ({ config }) => ({
     supportsTablet: true,
     bundleIdentifier: 'social.bridger.app',
     usesAppleSignIn: true,
-    // UNIVERSAL LINKS: lets a tapped https://bridger.app/... link open the app
-    // instead of Safari (e.g. a friend's "add me" invite link). The matching
-    // apple-app-site-association file must be served at
-    // https://bridger.app/.well-known/apple-app-site-association (see
-    // apps/site/public/.well-known). EAS Build registers the entitlement.
-    associatedDomains: ['applinks:bridger.app'],
+    // UNIVERSAL LINKS (paused for TestFlight): re-enable after the Apple App ID
+    // has Associated Domains turned on and the EAS provisioning profile is
+    // regenerated. Until then, invite/QR deep links use the bridger:// scheme,
+    // which already opens the app. Hosted AASA lives at
+    // apps/site/public/.well-known/apple-app-site-association (Team ID DG6NU23FXX).
+    // associatedDomains: ['applinks:bridger.app'],
     // App Store Connect: we do not use non-exempt encryption (standard HTTPS only).
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false
