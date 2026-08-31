@@ -57,7 +57,7 @@ export function HomeActivityPreview({
             This week · {closesIn || (endsOn ? `ends ${formatShort(endsOn)}` : 'ends Sunday')}
           </p>
           <p className="mt-1 font-pixel text-lg leading-tight">
-            {title.trim() || 'Activity title'}
+            {title.trim() || 'Side Quest title'}
           </p>
           <p className="mt-1 text-sm text-muted">
             {prompt.trim() || 'Your little description shows up here'}

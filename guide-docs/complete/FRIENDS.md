@@ -156,7 +156,7 @@ Net effect: the quiz is both a fun artifact and the on-ramp, and the payoff surf
 - [ ] Empty tiers are hidden; no zero-count headers.
 - [ ] A row can be moved to another tier via drag handle or long-press menu, writing through `tiers`.
 - [ ] Tapping a row opens that person's profile.
-- [ ] The `Add` sheet shows a real scannable QR (deep link encoded) the moment it opens, plus share-link and scan/paste redeem as instant paths (demo uses the same URL shape; live uses `invite_links` / `qr_tokens`).
+- [ ] The `Add` sheet shows a real scannable QR (deep link encoded) the moment it opens. **Scan a code** opens the live camera (`expo-camera` `CameraView`, `barcodeTypes: ['qr']`); reading a friend's Bridger QR redeems it instantly (no code to type or paste). Camera permission is asked in context and denial degrades gracefully (turn-on / Open Settings prompt). Tapping a friend's invite link routes through `app/invite/[token].tsx`, which redeems when signed in (or stashes it and redeems right after sign-in). All paths land in the connection reveal (`reveal/[id]`). Demo uses the same URL shape (with a "Try sample invite" button because one phone cannot scan its own screen); live uses `invite_links` / `qr_tokens`.
 - [ ] Roster rows show song of the week (or book they're reading), never mutual counts; mutuals live on the friend profile → In common.
 - [ ] The search backend/route is stubbed and ready so the flag is the only switch needed to enable it.
 - [ ] No follower counts or "friends since" rankings appear anywhere.

@@ -1,15 +1,16 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The weekly Home activity (e.g. "Band Tee Week"): load the current challenge,
-// post into the collage, and heart / un-heart someone else's post. Demo mode
-// uses the fixture plus session memory for new posts and hearts so the collage
-// feels real. Live mode talks to /activities.
-//
-// TODO: activity_posts has no caption / emoji / audience columns yet
-// (migration 0008). Demo keeps those in memory; live API may drop them until
-// a follow-up migration lands.
+// The Home Side Quest (e.g. "Notes App Discovery"): load the current
+// challenge, post into the collage, and heart / un-heart someone else's
+// post. Demo mode uses the fixture plus session memory. Live mode talks
+// to /activities.
 // ============================================
-import type { ActivityPost, Cover, WeeklyActivity } from '@bridger/shared';
+import type {
+  ActivityPost,
+  ActivityPostMode,
+  Cover,
+  WeeklyActivity
+} from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import { WEEKLY_ACTIVITY } from './fixtures/catalog';
@@ -24,7 +25,7 @@ export type ActivityCollagePost = {
   audience?: string;
 };
 
-/** Shape Home's Activity widget + collage screen expect. */
+/** Shape Home's Side Quest widget + collage screen expect. */
 export type HomeWeeklyActivity = {
   id: string;
   title: string;
@@ -33,6 +34,8 @@ export type HomeWeeklyActivity = {
   accent: 'amber' | 'teal' | 'coral' | 'purple' | 'pink' | 'blue' | 'green';
   emoji?: string;
   cover?: Cover;
+  /** photo = polaroid wall; text = notes-style blurbs. */
+  postMode: ActivityPostMode;
   posts: ActivityCollagePost[];
 };
 
@@ -50,6 +53,7 @@ function demoActivity(): HomeWeeklyActivity {
   // Your new posts sit first in the collage after the "mine" slot logic.
   return {
     ...WEEKLY_ACTIVITY,
+    postMode: WEEKLY_ACTIVITY.postMode ?? 'text',
     posts: [...demoExtraPosts, ...base]
   };
 }
@@ -81,10 +85,11 @@ export async function getCurrentActivity(): Promise<HomeWeeklyActivity | null> {
       accent: (res.activity.accent as HomeWeeklyActivity['accent']) ?? 'amber',
       emoji: res.activity.emoji,
       cover: res.activity.cover,
+      postMode: res.activity.postMode ?? 'photo',
       posts: res.posts.map((p) => ({
         id: p.id,
         personId: p.personId ?? p.authorId,
-        emoji: p.emoji ?? '✨',
+        emoji: p.emoji ?? res.activity?.emoji ?? '✏️',
         caption: p.caption ?? ''
       }))
     };
@@ -104,8 +109,7 @@ export function listHeartedPostIds(): string[] {
 }
 
 /**
- * Add your contribution to the weekly collage.
- * TODO: persist caption / emoji / audience when activity_posts has columns.
+ * Add your contribution to the Side Quest wall.
  */
 export async function createPost(
   activityId: string,
@@ -122,7 +126,7 @@ export async function createPost(
       {
         id,
         personId: 'me',
-        emoji: body.emoji ?? '🧢',
+        emoji: body.emoji ?? '✏️',
         caption: body.caption ?? '',
         audience: body.audience
       },
@@ -141,7 +145,6 @@ export async function createPost(
     };
   }
 
-  // Live API may ignore emoji/caption until schema catches up.
   return apiFetch(`/activities/${encodeURIComponent(activityId)}/posts`, {
     method: 'POST',
     body: JSON.stringify({

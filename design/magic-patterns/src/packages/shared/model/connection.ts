@@ -145,6 +145,7 @@ export interface DiscoverSettings {
   discoverable: boolean;
   sources: {
     aboutMe: boolean;
+    aboutMeCategories?: Partial<Record<string, boolean>>;
     onboardingQuiz: boolean;
     discoverMe: boolean;
   };

@@ -188,16 +188,15 @@ function Credit({
 /**
  * Blank sticky note with a +. Shows on an empty Inside Jokes wall so the
  * page still feels like something you can fill in (not a dead void).
+ * Square + half-column width (same pattern as Favorites / Current Obsession).
  */
 export function AddNoteTile({
   label = 'Add an Inside Joke',
   onPress,
-  tall = false,
   analyticsId
 }: {
   label?: string;
   onPress?: () => void;
-  tall?: boolean;
   analyticsId?: string;
 }) {
   return (
@@ -206,11 +205,10 @@ export function AddNoteTile({
       accessibilityRole="button"
       accessibilityLabel={label}
       className={cn(
-        // Empty post-it: warm paper fill + dashed edge so it reads as "add me".
         'w-full items-center justify-center gap-1.5 border-2 border-dashed border-ink/25 bg-[#FFF6C8] p-4 active:bg-[#FFEFA8]',
-        tall ? 'min-h-[132px]' : 'min-h-[104px]',
         '-rotate-1'
       )}
+      style={{ aspectRatio: 1 }}
     >
       <View className="h-9 w-9 items-center justify-center rounded-full bg-purple">
         {/* Icon + (not a Text "+") so font metrics cannot shove it off-center. */}

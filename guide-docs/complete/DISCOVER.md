@@ -30,7 +30,7 @@ In `ProfileAttribute` terms: about-me items are `visibleToTier: 'acquaintance'+`
 ### The reassurance UX (settings)
 
 Discover settings shows the user **what** they're matched on without exposing **how** it's scored:
-- **About me · everyone can see** — the public categories, each with a check.
+- **About me · everyone can see** — the public categories, each with an on/off toggle (include in matching).
 - **Quizzes · results shared, scoring private** — the onboarding quiz and Discover Me questionnaire as toggles.
 - A locked note: personality signals help matching but never appear on the profile.
 

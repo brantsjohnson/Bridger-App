@@ -59,7 +59,10 @@ export function InsideJokesWall({
         )}
         </div> :
 
-      <AddNoteTile tall onClick={() => setAdding(true)} />
+      // Empty default: half-column square (same grid as when notes exist).
+      <div className="grid grid-cols-2 gap-3.5">
+          <AddNoteTile onClick={() => setAdding(true)} />
+        </div>
       }
 
       <AddInsideJokeSheet open={adding} onClose={() => setAdding(false)} onAdd={add} />
@@ -73,7 +76,6 @@ function FilterRow({
   onChange,
   counts,
   who
-
 
 
 
@@ -120,30 +122,30 @@ function FilterRow({
 
 const NOTE_ACCENTS = ['amber', 'pink', 'teal', 'green', 'blue'] as const;
 
-/** Write the quote, tag who was in it, tag where it happened. */
+/** Write the quote, tag who said it, and where it happened. */
 export function AddInsideJokeSheet({
   open,
   onClose,
   onAdd
-
-
-
-
 }: {open: boolean;onClose: () => void;onAdd: (joke: InsideJoke) => void;}) {
   const [text, setText] = React.useState('');
   const [tagged, setTagged] = React.useState<string[]>([]);
-  const [eventName, setEventName] = React.useState<string | null>(null);
+  const [whereText, setWhereText] = React.useState('');
+  const [eventChip, setEventChip] = React.useState<string | null>(null);
 
   const reset = () => {
     setText('');
     setTagged([]);
-    setEventName(null);
+    setWhereText('');
+    setEventChip(null);
   };
 
   const close = () => {
     reset();
     onClose();
   };
+
+  const resolvedWhere = whereText.trim() || eventChip || undefined;
 
   const save = () => {
     if (!text.trim()) return;
@@ -153,37 +155,27 @@ export function AddInsideJokeSheet({
       fromName: 'You',
       accent: NOTE_ACCENTS[Math.floor(Math.random() * NOTE_ACCENTS.length)],
       taggedIds: tagged,
-      eventName: eventName ?? undefined
+      eventName: resolvedWhere
     });
     close();
   };
 
-  const shareLine = () => {
-    const bits: string[] = [];
-    if (tagged.length > 0) bits.push(`${tagged.length} tagged`);
-    if (eventName) bits.push(`everyone at ${eventName}`);
-    return bits.length > 0 ?
-    `Goes to ${bits.join(' and ')}. It lands on their walls too.` :
-    'Just yours until you tag someone.';
-  };
-
   return (
     <Sheet open={open} onClose={close} title="Add an Inside Joke">
-      <div className="space-y-4">
+      <div className="min-h-[420px] space-y-5">
         <TextField
           label="The quote"
           multiline
           value={text}
           onChange={setText}
           placeholder="Bread is just a warm friend." />
-        
 
         <section>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-mute">
-            Who was in it
+            Who said it
           </p>
           <ul className="flex flex-wrap gap-1.5">
-            {PEOPLE.slice(0, 6).map((p) => {
+            {PEOPLE.slice(0, 8).map((p) => {
               const on = tagged.includes(p.id);
               return (
                 <li key={p.id}>
@@ -194,7 +186,7 @@ export function AddInsideJokeSheet({
                     }
                     aria-pressed={on}
                     className={cn(
-                      'flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 transition-colors',
+                      'flex min-h-[44px] items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 transition-colors',
                       on ?
                       'border-purple bg-purple text-onaccent' :
                       'border-ink-line bg-white text-ink hover:bg-[#F1ECFF]'
@@ -209,18 +201,27 @@ export function AddInsideJokeSheet({
           </ul>
         </section>
 
-        <section>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-mute">
-            Where it happened
-          </p>
+        <section className="space-y-2">
+          <TextField
+            label="Where it happened"
+            value={whereText}
+            onChange={(v) => {
+              setWhereText(v);
+              if (v.trim()) setEventChip(null);
+            }}
+            placeholder="Kitchen table, Sketch night…" />
+          
           <ul className="flex flex-wrap gap-1.5">
             {EVENTS.slice(0, 3).map((e) => {
-              const on = eventName === e.title;
+              const on = eventChip === e.title && !whereText.trim();
               return (
                 <li key={e.id}>
                   <button
                     type="button"
-                    onClick={() => setEventName(on ? null : e.title)}
+                    onClick={() => {
+                      setEventChip(on ? null : e.title);
+                      setWhereText('');
+                    }}
                     aria-pressed={on}
                     className={cn(
                       'rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors',
@@ -236,8 +237,6 @@ export function AddInsideJokeSheet({
             })}
           </ul>
         </section>
-
-        <p className="text-[12px] font-semibold leading-snug text-ink-mute">{shareLine()}</p>
 
         <div className="space-y-2">
           <ButtonPrimary full size="lg" onClick={save}>

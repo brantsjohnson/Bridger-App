@@ -13,7 +13,7 @@ import { Button } from './ui/Button';
 const NAV = [
   { to: '/quiz-live', label: "This week's quiz" },
   { to: '/quizzes', label: 'All quizzes' },
-  { to: '/activity', label: 'Weekly activity' },
+  { to: '/activity', label: 'Side Quest' },
   { to: '/recap', label: 'Weekly recap' },
   { to: '/coop', label: 'Co-op announcements' },
   { to: '/portal', label: 'Co-op portal', badgeKey: 'portal' as const },

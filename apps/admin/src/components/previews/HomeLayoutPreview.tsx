@@ -10,7 +10,7 @@ const LABELS: Record<HomeWidgetKey, string> = {
   alerts: 'Notifications',
   ask: 'Ask the group',
   comingup: 'Coming up',
-  activity: 'Activity',
+  activity: 'Side Quest',
   quiz: 'Quiz',
   coop: 'Co-op'
 };

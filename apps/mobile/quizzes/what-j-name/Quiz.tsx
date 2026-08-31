@@ -44,6 +44,8 @@ import { scoreRun, topJNames, type QuizRun } from './engine';
 import { ResultCardStage } from './ResultCardStage';
 import { JnameLeaderboard } from './JnameLeaderboard';
 import { QUIZ_OPTION_IMAGES } from './images';
+import { StrokeText } from './StrokeText';
+import { POSTER, POSTER_FONT } from './result-theme';
 import { buildResultLink, captureCard, saveImageToPhotos, shareImage, shareLink } from './share';
 import { fetchJnameLeaderboard, fetchJnameMyResult, getJnameShareLink, saveJnameResult } from '../../lib/jname-api';
 import { QUIZ as DEMO_QUIZ } from '../../data/fixtures/catalog';
@@ -590,12 +592,25 @@ export default function WhatJNameQuiz() {
               {result.percent}%
             </Text>
           ) : step?.display === 'j_name' ? (
-            <Text
-              className="mt-6 text-center font-sans-b text-[48px] leading-none"
-              style={{ color: BRUTAL_NAVY }}
-            >
-              {result.jName.toUpperCase()}
-            </Text>
+            // THIS SECTION DOES: shout the J-name in big block poster letters
+            <View className="mt-8 items-center px-2">
+              <StrokeText
+                stroke={6}
+                strokeColor={POSTER.cream}
+                center
+                style={{
+                  fontFamily: POSTER_FONT.display,
+                  fontSize: result.jName.length <= 4 ? 96 : result.jName.length === 5 ? 84 : 72,
+                  lineHeight: result.jName.length <= 4 ? 88 : result.jName.length === 5 ? 78 : 68,
+                  letterSpacing: 2,
+                  color: BRUTAL_NAVY,
+                  textAlign: 'center',
+                  textTransform: 'uppercase'
+                }}
+              >
+                {result.jName.toUpperCase()}
+              </StrokeText>
+            </View>
           ) : null
         }
       />

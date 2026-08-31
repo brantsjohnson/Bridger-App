@@ -72,6 +72,8 @@ type WeeklyActivity = {
   emoji?: string;
   /** Same cover model as events: photo fills the frame. */
   cover?: Cover;
+  /** photo = polaroid wall; text = notes-style blurbs. */
+  postMode?: 'photo' | 'text';
   posts: Array<{ id: string; personId: string; emoji: string; caption: string }>;
 };
 type QuizData = {
@@ -348,7 +350,7 @@ export function ActivityWidget({
     activity.cover ??
     ({
       kind: 'emoji',
-      value: activity.emoji || '👕',
+      value: activity.emoji || '✏️',
       bg: '#FFB515'
     } as Cover);
 
@@ -471,7 +473,14 @@ export function QuizWidget({
             <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
               Quiz
             </Text>
-            <Text className="mt-1 font-pixel text-[19px] leading-tight text-ink">
+            {/* THIS SECTION DOES: the quiz name. The pixel font is wide, so
+                allow up to two lines and shrink to fit — otherwise a long name
+                like "Which J name are you?" overflows and gets clipped. */}
+            <Text
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              className="mt-1 font-pixel text-[19px] leading-[23px] text-ink"
+            >
               {quiz.title}
             </Text>
             {quiz.description ? (

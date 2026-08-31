@@ -81,7 +81,7 @@ export function ResultCard({ jName, percent }: { jName: string; percent: number 
           resizeMode="stretch"
         />
 
-        {/* THE GIANT NAME: the whole point of the poster. */}
+        {/* THE GIANT NAME: big block letters on the pink banner. */}
         <View
           style={{
             position: 'absolute',
@@ -93,21 +93,22 @@ export function ResultCard({ jName, percent }: { jName: string; percent: number 
             justifyContent: 'center'
           }}
         >
-          <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            adjustsFontSizeToFit
+          <StrokeText
+            stroke={5}
+            strokeColor={POSTER.navy}
+            center
             style={{
               fontFamily: POSTER_FONT.display,
               fontSize: nameSize(jName),
               lineHeight: nameSize(jName) * 0.82,
-              letterSpacing: 1,
-              color: POSTER.paper,
-              textAlign: 'center'
+              letterSpacing: 2,
+              color: POSTER.cream,
+              textAlign: 'center',
+              textTransform: 'uppercase'
             }}
           >
             {jName.toUpperCase()}
-          </Text>
+          </StrokeText>
         </View>
 
         {/* THE HEADLINE: three outlined words that sit on top of the banner.
@@ -514,20 +515,36 @@ function ChatWindow({
         style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 8, gap: 5 }}
       >
         {lines.map((line, i) => {
+          // THIS SECTION DOES: narration like "sends nudes" sits in a cream
+          // chip so it stays readable on the busy chat wallpaper.
           if (line.action) {
             return (
-              <Text
+              <View
                 key={i}
-                numberOfLines={2}
                 style={{
-                  fontFamily: POSTER_FONT.pixel,
-                  fontSize: 9,
-                  textAlign: 'center',
-                  color: POSTER.white
+                  alignSelf: 'center',
+                  maxWidth: '100%',
+                  borderRadius: 4,
+                  borderWidth: 2,
+                  borderColor: POSTER.ink,
+                  backgroundColor: POSTER.cream,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4
                 }}
               >
-                {`*${line.text}*`}
-              </Text>
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    fontFamily: POSTER_FONT.pixel,
+                    fontSize: 9,
+                    lineHeight: 11,
+                    textAlign: 'center',
+                    color: POSTER.ink
+                  }}
+                >
+                  {`*${line.text}*`}
+                </Text>
+              </View>
             );
           }
           const mine = line.from === 'me';

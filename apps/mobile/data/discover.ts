@@ -102,7 +102,12 @@ let demoHumor: HumorScoreResult | null = null;
 function cloneSettings(): DiscoverSettings {
   return {
     discoverable: demoSettings.discoverable,
-    sources: { ...demoSettings.sources }
+    sources: {
+      ...demoSettings.sources,
+      aboutMeCategories: demoSettings.sources.aboutMeCategories
+        ? { ...demoSettings.sources.aboutMeCategories }
+        : undefined
+    }
   };
 }
 
@@ -152,9 +157,18 @@ export async function setSources(
   patch: Partial<DiscoverSettings['sources']>
 ): Promise<DiscoverSettings> {
   if (isDemoMode()) {
-    const sources = { ...demoSettings.sources, ...patch };
-    // Turning off all quiz sources stops matching (same as master off).
-    const anyQuiz = sources.onboardingQuiz || sources.discoverMe || sources.aboutMe;
+    const sources: DiscoverSettings['sources'] = {
+      ...demoSettings.sources,
+      ...patch,
+      aboutMeCategories: patch.aboutMeCategories
+        ? { ...patch.aboutMeCategories }
+        : demoSettings.sources.aboutMeCategories
+          ? { ...demoSettings.sources.aboutMeCategories }
+          : undefined
+    };
+    // Turning off all quiz / about-me sources stops matching (same as master off).
+    const anyQuiz =
+      sources.onboardingQuiz || sources.discoverMe || sources.aboutMe;
     demoSettings = {
       discoverable: anyQuiz ? demoSettings.discoverable : false,
       sources
@@ -164,8 +178,17 @@ export async function setSources(
   // TODO: persist source toggles when the discovery settings API lands.
   // For now keep the master switch and return a local sources merge.
   const current = await getDiscoverSettings();
-  const sources = { ...current.sources, ...patch };
-  const anyQuiz = sources.onboardingQuiz || sources.discoverMe || sources.aboutMe;
+  const sources: DiscoverSettings['sources'] = {
+    ...current.sources,
+    ...patch,
+    aboutMeCategories: patch.aboutMeCategories
+      ? { ...patch.aboutMeCategories }
+      : current.sources.aboutMeCategories
+        ? { ...current.sources.aboutMeCategories }
+        : undefined
+  };
+  const anyQuiz =
+    sources.onboardingQuiz || sources.discoverMe || sources.aboutMe;
   if (!anyQuiz && current.discoverable) {
     return setDiscoverable(false);
   }

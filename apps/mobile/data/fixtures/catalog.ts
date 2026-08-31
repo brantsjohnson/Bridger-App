@@ -383,20 +383,22 @@ export const COOP_ANNOUNCEMENTS = [
 ];
 
 export const WEEKLY_ACTIVITY = {
-  id: 'act-band-tee',
-  title: 'Band Tee Week',
-  prompt: 'Your favorite band tee',
+  id: 'act-notes-app',
+  title: 'Notes App Discovery',
+  prompt: 'Share a blurb from your notes app archives.',
   closesIn: 'ends Sunday',
   accent: 'amber' as const,
-  emoji: '👕',
+  emoji: '✏️',
+  /** text = notes-style blurb wall (not polaroid photos). */
+  postMode: 'text' as const,
   // Cover fills the Home card the same way event covers do.
-  cover: { kind: 'emoji' as const, value: '👕', bg: '#FFB515' },
+  cover: { kind: 'emoji' as const, value: '✏️', bg: '#FFB515' },
   posts: [
-    { id: 'ap1', personId: 'maya', emoji: '👕', caption: 'Thrifted in 2016' },
-    { id: 'ap2', personId: 'kit', emoji: '🎸', caption: 'Still fits' },
-    { id: 'ap3', personId: 'devon', emoji: '🥁', caption: 'Tour merch' },
-    { id: 'ap4', personId: 'ines', emoji: '🎤', caption: 'Front row' },
-    { id: 'ap5', personId: 'theo', emoji: '🎹', caption: "Dad's old one" }
+    { id: 'ap1', personId: 'maya', emoji: '✏️', caption: 'buy oat milk. also: start the book' },
+    { id: 'ap2', personId: 'kit', emoji: '✏️', caption: 'idea: picnic with no phones' },
+    { id: 'ap3', personId: 'devon', emoji: '✏️', caption: 'password is not password123' },
+    { id: 'ap4', personId: 'ines', emoji: '✏️', caption: 'call mom. then call mom again' },
+    { id: 'ap5', personId: 'theo', emoji: '✏️', caption: 'half a poem about rain' }
   ]
 };
 

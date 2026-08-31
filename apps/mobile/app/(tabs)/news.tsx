@@ -2,8 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // The News tab — dark "coming soon" page with the spinning pixel newspaper.
 // Header (profile, title, messages) and the floating tab bar stay the app's
-// normal chrome. The body is the infographic + COMING SOON copy until the
-// real local updates feed ships.
+// normal chrome. The body is the infographic + COMING SOON copy, centered
+// between the header and the tab bar, until the real local updates feed ships.
 // ============================================
 import React, { useEffect } from 'react';
 import { Text, View } from 'react-native';
@@ -29,7 +29,8 @@ export default function NewsScreen() {
   return (
     <Screen tone="intro">
       <ScreenHeader title="News" analyticsSurface="news" />
-      <ScreenBody>
+      {/* Center the coming-soon block between the header and the tab bar. */}
+      <ScreenBody centerContent>
         {/* Coming-soon body — non-interactive, so a tap here logs a dead_click. */}
         <AnalyticsRegion
           analyticsId={NEWS.feed.empty_body}
@@ -37,12 +38,8 @@ export default function NewsScreen() {
           accessibilityRole="text"
           accessibilityLabel="Local updates"
         >
-          {/*
-            THIS SECTION DOES: park paper + copy at the top of the body (same
-            spot the real feed will start). Do not vertical-center — when the
-            paper spins away the headline must stay put under the paper slot.
-          */}
-          <View className="items-center pt-2">
+          {/* THIS SECTION DOES: newspaper + copy, vertically centered in the body. */}
+          <View className="items-center">
             <View
               accessible={false}
               style={{
@@ -54,7 +51,7 @@ export default function NewsScreen() {
               <NewsPaperGraphic />
             </View>
 
-            {/* THIS SECTION DOES: the headline under the paper (fixed resting spot). */}
+            {/* THIS SECTION DOES: the headline under the paper. */}
             <View className="mt-10 items-center px-2">
               <Text
                 className="font-pixel text-[18px] tracking-[0.22em] text-purple"

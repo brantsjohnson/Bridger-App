@@ -22,6 +22,12 @@ module.exports = ({ config }) => ({
     supportsTablet: true,
     bundleIdentifier: 'social.bridger.app',
     usesAppleSignIn: true,
+    // UNIVERSAL LINKS: lets a tapped https://bridger.app/... link open the app
+    // instead of Safari (e.g. a friend's "add me" invite link). The matching
+    // apple-app-site-association file must be served at
+    // https://bridger.app/.well-known/apple-app-site-association (see
+    // apps/site/public/.well-known). EAS Build registers the entitlement.
+    associatedDomains: ['applinks:bridger.app'],
     // App Store Connect: we do not use non-exempt encryption (standard HTTPS only).
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false
@@ -64,6 +70,23 @@ module.exports = ({ config }) => ({
   },
   android: {
     package: 'social.bridger.app',
+    // APP LINKS: same idea as iOS associatedDomains. A tapped
+    // https://bridger.app/invite/... (or /q, /e) link opens the app directly.
+    // autoVerify:true tells Android to check the hosted
+    // https://bridger.app/.well-known/assetlinks.json for our signing cert.
+    // The bridger:// scheme still works as a plain deep link on its own.
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          { scheme: 'https', host: 'bridger.app', pathPrefix: '/invite' },
+          { scheme: 'https', host: 'bridger.app', pathPrefix: '/q' },
+          { scheme: 'https', host: 'bridger.app', pathPrefix: '/e' }
+        ],
+        category: ['BROWSABLE', 'DEFAULT']
+      }
+    ],
     // Resize the window when the keyboard opens so text fields on full
     // screens (and Android Modals that follow the window) stay visible.
     softwareKeyboardLayoutMode: 'resize',
@@ -99,7 +122,7 @@ module.exports = ({ config }) => ({
       'expo-camera',
       {
         cameraPermission:
-          'Bridger uses your camera so you can post an update and send a 10 second video reply to a friend.',
+          "Bridger uses your camera so you can post an update, send a 10 second video reply to a friend, and scan a friend's QR code to add each other.",
         microphonePermission:
           'Bridger uses your microphone so your video replies have sound, and so you can ask the Assistant by voice.',
         recordAudioAndroid: true

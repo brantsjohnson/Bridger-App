@@ -120,7 +120,7 @@ const TITLES: Record<WidgetKey, string> = {
   alerts: 'Notifications',
   comingup: 'Coming up',
   ask: 'Ask the group',
-  activity: 'Activity',
+  activity: 'Side Quest',
   quiz: 'Quiz',
   coop: 'Co-op'
 };
@@ -132,7 +132,8 @@ const DESCRIPTIONS: Record<WidgetKey, string> = {
     'New activity meant for you, like replies, invites, and requests. Tap the card (or See all) to view everything. Tap one row to open that item.',
   comingup: 'A look ahead at events and plans on the horizon so nothing sneaks up on you.',
   ask: 'Start a quick poll or question for your group and see what everyone thinks.',
-  activity: "This week's group prompt. Join in and see what everyone else posted.",
+  activity:
+    "This week's group Side Quest. Join in and see what everyone else posted.",
   quiz: 'A short weekly quiz that helps your friends get to know you better.',
   coop: 'The member side of Bridger. Vote, give feedback, and help shape what gets built.'
 };

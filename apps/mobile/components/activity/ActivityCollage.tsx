@@ -1,15 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The body of the weekly activity collage — prompt card, one "Post yours"
-// button (metallic, so it stays visible in dark mode), and the 2-column
-// polaroid wall. Spec: HOME.md § Weekly activity.
+// The body of the Side Quest wall — prompt card, one "Post yours" button
+// (metallic, so it stays visible in dark mode), and either a polaroid wall
+// or a text-note wall depending on the quest. Spec: HOME.md § Weekly activity.
 //
 // PRIVACY/DESIGN: prompt card stays a light accent tint, so labels use hard
 // dark ink — theme text-ink flips cream in dark mode and would vanish.
 // ============================================
 import React, { useMemo } from 'react';
 import { Text, View } from 'react-native';
-import { CameraIcon } from 'lucide-react-native';
+import { CameraIcon, PencilIcon } from 'lucide-react-native';
 import { ACTIVITY, HOME } from '@bridger/shared';
 import {
   ACCENTS,
@@ -20,6 +20,7 @@ import {
 } from '@bridger/ui';
 import type { HomeWeeklyActivity } from '../../data/activity';
 import { ActivityPolaroid } from './ActivityPolaroid';
+import { ActivityTextNote } from './ActivityTextNote';
 
 // Hard dark ink on the light prompt tint (same reason as polaroid faces)
 const PROMPT_INK = '#1C1B16';
@@ -39,6 +40,7 @@ export function ActivityCollage({
   onToggleHeart
 }: Props) {
   const token = ACCENTS[activity.accent] ?? ACCENTS.amber;
+  const isText = activity.postMode === 'text';
 
   const mine = useMemo(
     () => activity.posts.find((p) => p.personId === 'me') ?? null,
@@ -89,7 +91,11 @@ export function ActivityCollage({
             full
             size="lg"
             icon={
-              <CameraIcon size={16} color="#1C1B16" strokeWidth={2.6} />
+              isText ? (
+                <PencilIcon size={16} color="#1C1B16" strokeWidth={2.6} />
+              ) : (
+                <CameraIcon size={16} color="#1C1B16" strokeWidth={2.6} />
+              )
             }
             analyticsId={HOME.activity.post}
             onPress={onRequestCapture}
@@ -102,30 +108,56 @@ export function ActivityCollage({
 
       <View className="mt-5 flex-row flex-wrap justify-between">
         {mine ? (
-          <ActivityPolaroid
-            postId={mine.id}
-            personId="me"
-            emoji={mine.emoji}
-            caption={mine.caption}
-            audience={mine.audience}
-            index={0}
-            hearted={false}
-          />
+          isText ? (
+            <ActivityTextNote
+              postId={mine.id}
+              personId="me"
+              emoji={mine.emoji}
+              caption={mine.caption}
+              audience={mine.audience}
+              index={0}
+              hearted={false}
+            />
+          ) : (
+            <ActivityPolaroid
+              postId={mine.id}
+              personId="me"
+              emoji={mine.emoji}
+              caption={mine.caption}
+              audience={mine.audience}
+              index={0}
+              hearted={false}
+            />
+          )
         ) : null}
 
-        {others.map((post, i) => (
-          <ActivityPolaroid
-            key={post.id}
-            postId={post.id}
-            personId={post.personId}
-            emoji={post.emoji}
-            caption={post.caption}
-            audience={post.audience}
-            index={mine ? i + 1 : i}
-            hearted={heartedIds.has(post.id)}
-            onToggleHeart={() => onToggleHeart(post.id)}
-          />
-        ))}
+        {others.map((post, i) =>
+          isText ? (
+            <ActivityTextNote
+              key={post.id}
+              postId={post.id}
+              personId={post.personId}
+              emoji={post.emoji}
+              caption={post.caption}
+              audience={post.audience}
+              index={mine ? i + 1 : i}
+              hearted={heartedIds.has(post.id)}
+              onToggleHeart={() => onToggleHeart(post.id)}
+            />
+          ) : (
+            <ActivityPolaroid
+              key={post.id}
+              postId={post.id}
+              personId={post.personId}
+              emoji={post.emoji}
+              caption={post.caption}
+              audience={post.audience}
+              index={mine ? i + 1 : i}
+              hearted={heartedIds.has(post.id)}
+              onToggleHeart={() => onToggleHeart(post.id)}
+            />
+          )
+        )}
       </View>
 
       {postCount === 0 && !mine ? (

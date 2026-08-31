@@ -62,7 +62,7 @@ const TITLES: Record<WidgetKey, string> = {
   alerts: 'Notifications',
   comingup: 'Coming up',
   ask: 'Ask the group',
-  activity: 'Activity',
+  activity: 'Side Quest',
   quiz: 'Quiz',
   coop: 'Co-op'
 };

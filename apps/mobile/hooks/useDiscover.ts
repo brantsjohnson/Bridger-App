@@ -28,7 +28,18 @@ import {
 /** Fallback when settings cannot load: matching off so the splash can show. */
 const GATE_FALLBACK: DiscoverSettings = {
   discoverable: false,
-  sources: { aboutMe: true, onboardingQuiz: true, discoverMe: false }
+  sources: {
+    aboutMe: true,
+    aboutMeCategories: {
+      foods: true,
+      hobbies: true,
+      hometown: true,
+      places_traveled: true,
+      morning_or_night: true
+    },
+    onboardingQuiz: true,
+    discoverMe: false
+  }
 };
 
 export function useDiscover() {

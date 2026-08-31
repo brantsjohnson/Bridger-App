@@ -228,7 +228,10 @@ export interface BucketItem {
 export interface DiscoverSettings {
   discoverable: boolean;
   sources: {
+    /** True when any About-me category is used for matching. */
     aboutMe: boolean;
+    /** Per About-me category (Foods, Hobbies, …). Missing keys default on. */
+    aboutMeCategories?: Partial<Record<string, boolean>>;
     onboardingQuiz: boolean;
     discoverMe: boolean;
   };

@@ -84,6 +84,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 ### 3.3 Content the user creates (UGC)
 
 - **Updates** (photo / text / video per product rules; capture-only except profile photo).
+- **Side Quest posts** (weekly Home challenge): either a **photo polaroid** (capture-only) or a **text blurb** (e.g. Notes App Discovery). Stored as `activity_posts` with optional `caption` + `emoji`; audience picker matches Updates. Hard-deleted with the account or the quest. Analytics never logs blurb or caption text.
 - **Inside Jokes**, poll questions/votes, Touch Grass signals (audience + when + why), event details, recap voice answers, co-op portal ideas/comments (shown as "A member," no person names on the member portal).
 - Reactions, replies, and RSVP / attendance related records as needed to run those features.
 - **Message hearts:** double-tap a friend's bubble stores only that you hearted that message id (and that they can see it). Never the message text. A heart is not a sent message and does not use the daily cap. Hard-deleted with the account or the thread.
@@ -97,6 +98,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - Connections, tiers, blocks, how-you-met context (optional; place is coarse and opt-in when used).
 - Blocks cut the graph locally for the blocker (suggestions and mutual bridges).
 - **Invite links and QR codes:** opaque tokens only (UUID). Share links live in `invite_links`; QR codes use short-lived `qr_tokens` (about 15 minutes), deleted when redeemed. The QR encodes a Bridger deep link (`bridger://invite/…` or your configured `APP_LINK_BASE`), not a name or photo. Redeeming creates a connection; you cannot redeem your own invite. Tokens are not used for matching or ads.
+- **Universal / App Links (`bridger.app`):** tapping an `https://bridger.app/invite/…` (or `/q`, `/e`) link opens the installed app directly to that action (verified via `apps/site/public/.well-known/apple-app-site-association` and `assetlinks.json`). Only the opaque token in the path is used; no personal data is read from the link. If the app is not installed the link is just a normal web page. Custom-scheme `bridger://` links behave the same way without any hosted file.
 - **Optional surprises (delights):** if you send a gift delighter (e.g. emoji bomb), we store opaque sender/recipient ids + which surprise (`delight_triggers`) until it plays once on their next open (or the account is deleted). Opt-in companions store chosen plugin slugs on `user_settings.delight_opt_ins`. Surprises are optional fun; the app works with them all off. Analytics may record `delight_slug` only, never names.
 
 ### 3.5 Co-op / membership
@@ -114,7 +116,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 
 | Permission | Why we ask | If denied |
 |---|---|---|
-| Camera | Post Updates (asked when you tap the shutter on capture), video replies, profile photo | Feature degrades; app still works |
+| Camera | Post Updates (asked when you tap the shutter on capture), video replies, profile photo, and scanning a friend's invite QR to add each other (asked when you open Scan a code). The scan reads only the QR's Bridger deep link; no image is kept. | Feature degrades; app still works. Scan a code shows a "turn on camera" / Open Settings prompt and you can still add friends by tapping their invite link |
 | Microphone | Video Updates, video replies, recap voice answers (Friend Pod), Assistant voice questions (opt-in) | Same |
 | Photo library (read) | Profile photo only (upload exception) | User can skip / use capture |
 | Photo library (add only) | Save a quiz result card you made to your camera roll so you can post it to a story. Requested only when you tap "Save image"; add-only, we never read your existing photos for this. | Skip; you can still share the card straight to another app |
@@ -251,6 +253,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-30 | Side Quest (weekly Home challenge): Notes App Discovery live as a text-blurb quest; `activity_posts` stores caption + emoji; analytics never logs blurb text. |
 | 2026-08-30 | Discover Connect Over: phone always shows the five module cards; `GET /discover/quizzes/completed` returns finished quiz slugs only (never scores) so Done tags survive relaunch. Scores still only land via the existing complete POST. |
 | 2026-08-30 | Discoverable defaults off for new accounts until Get started on the Discover splash; Discover tab no longer hangs on Loading when matching lists fail (settings load first; splash paints while waiting). |
 | 2026-08-30 | Profile-photo "looks": all four (Pop art, Comic, X-ray, Sepia) bake server-side via `POST /photo-filters/apply` + ImageMagick; original kept (`avatar_original_media_id`); look key on `avatar_filter`; avatar points at filtered copy. Edit → Photo look can switch looks later. Pop art still previews on-device as a Warhol grid. |

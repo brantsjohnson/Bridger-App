@@ -148,9 +148,9 @@ export function ActivityWidget({ size, onOpen }: {size: WidgetSize;onOpen?: () =
       className="flex h-full w-full flex-col justify-between rounded-[28px_10px_28px_10px] bg-[#FFDE99] p-4 text-left transition-transform active:scale-[0.99]">
       
       <span aria-hidden="true" className="text-[26px]">
-        👕
+        ✏️
       </span>
-      <span className="mt-1.5 block truncate font-pixel text-[15px] text-ink">Band Tee Week</span>
+      <span className="mt-1.5 block truncate font-pixel text-[15px] text-ink">Notes App Discovery</span>
       <span className="mt-1 block text-[12px] font-semibold text-ink-soft">5 posted</span>
     </button>);
 

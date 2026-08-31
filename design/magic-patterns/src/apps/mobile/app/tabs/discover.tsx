@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckIcon, LockIcon, SettingsIcon, UsersIcon } from 'lucide-react';
+import { LockIcon, SettingsIcon, UsersIcon } from 'lucide-react';
 import {
   ACCENTS,
   Avatar,
@@ -26,7 +26,13 @@ import { COMMONALITIES, REQUESTS, SUGGESTIONS, personById } from '../../state/mo
 
 type DiscoverView = 'gate' | 'main' | 'detail';
 
-const ABOUT_ME = ['Foods', 'Hobbies', 'Hometown', 'Places traveled', 'Morning or night'];
+const ABOUT_ME = [
+  { id: 'foods', label: 'Foods' },
+  { id: 'hobbies', label: 'Hobbies' },
+  { id: 'hometown', label: 'Hometown' },
+  { id: 'places_traveled', label: 'Places traveled' },
+  { id: 'morning_or_night', label: 'Morning or night' }
+];
 
 
 export function DiscoverScreen({
@@ -45,7 +51,18 @@ export function DiscoverScreen({
   );
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [discoverable, setDiscoverable] = React.useState(true);
-  const [sources, setSources] = React.useState({ aboutMe: true, onboardingQuiz: true, discoverMe: false });
+  const [sources, setSources] = React.useState({
+    aboutMe: true,
+    aboutMeCategories: {
+      foods: true,
+      hobbies: true,
+      hometown: true,
+      places_traveled: true,
+      morning_or_night: true
+    },
+    onboardingQuiz: true,
+    discoverMe: false
+  });
 
   if (view === 'gate') {
     return (
@@ -249,19 +266,34 @@ export function DiscoverScreen({
             action={<Toggle checked={discoverable} onChange={setDiscoverable} label="Discoverable" />} />
           
 
-              <Card>
-                <p className="text-[12px] font-bold uppercase tracking-wide text-ink-mute">
+              <div className="space-y-1.5">
+                <p className="px-1 text-[12px] font-bold uppercase tracking-wide text-ink-mute">
                   About me · everyone can see
                 </p>
-                <ul className="mt-2.5 space-y-1.5">
-                  {ABOUT_ME.map((a) =>
-              <li key={a} className="flex items-center gap-2 text-[14px] font-semibold text-ink">
-                      <CheckIcon className="h-4 w-4 text-teal" strokeWidth={3} />
-                      {a}
-                    </li>
-              )}
-                </ul>
-              </Card>
+                {ABOUT_ME.map((a) => {
+                  const on = sources.aboutMeCategories?.[a.id] !== false;
+                  return (
+                    <ListRow
+                      key={a.id}
+                      label={a.label}
+                      action={
+                        <Toggle
+                          checked={on}
+                          onChange={(v) =>
+                            setSources((s) => {
+                              const aboutMeCategories = {
+                                ...(s.aboutMeCategories ?? {}),
+                                [a.id]: v
+                              };
+                              const anyOn = Object.values(aboutMeCategories).some(Boolean);
+                              return { ...s, aboutMeCategories, aboutMe: anyOn };
+                            })
+                          }
+                          label={a.label} />
+                      } />
+                  );
+                })}
+              </div>
 
               <ListRow
             label="Onboarding quiz"

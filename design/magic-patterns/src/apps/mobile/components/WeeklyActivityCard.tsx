@@ -21,7 +21,7 @@ export function WeeklyActivityBanner({ onOpen }: {onOpen?: () => void;}) {
       )}>
       
       <span aria-hidden="true" className="absolute -right-3 -top-4 text-[74px] opacity-25">
-        👕
+        ✏️
       </span>
 
       <span className="relative min-w-0 flex-1">
