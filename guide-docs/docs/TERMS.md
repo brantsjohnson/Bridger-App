@@ -85,7 +85,9 @@
 
 ## 7 · Features with special rules
 
-### 7.1 Updates (stories)
+### 7.1 Updates (stories) and Side Quest posts
+
+Updates follow capture-only media rules (except the profile photo). **Side Quest** posts are also UGC: photo quests use in-app capture; text quests (e.g. Notes App Discovery) store a short blurb you type. Same report / block expectations as other user content.
 
 - Capture-only media except profile photo.
 - Audience is chosen per post (concentric tiers + optional exclusions).
@@ -238,6 +240,7 @@
 
 | Date | What was added / changed |
 |---|---|
+| 2026-08-30 | Side Quest posts (photo or text blurb, e.g. Notes App Discovery) are UGC under the same report / block rules as Updates. |
 | 2026-08-30 | Reveal Screen 3 may suggest friends of friends (Discover on) or nudge to turn Discover on; connect requests from that screen still need the other person to accept. Quiz compatibility on reveal uses in-app titles. |
 | 2026-08-28 | Co-op paywall: custom in-app join sheet (pick method by device, then monthly $6 / yearly $60 with 2 months free); Apple Pay / Google Pay marks not used (IAP methods). Yearly price set to $60. Server webhooks emit coop_renewed / coop_expired (opaque user id only). |
 | 2026-08-28 | Co-op payments: RevenueCat (Apple/Google) + Stripe Checkout for card on web; card not offered inside iOS for digital membership |

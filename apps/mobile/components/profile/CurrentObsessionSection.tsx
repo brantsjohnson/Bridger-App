@@ -10,6 +10,7 @@ import type { MusicPlayable, ObsessionSquare } from '@bridger/shared';
 import { PROFILE } from '@bridger/shared';
 import { AnalyticsRegion, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import { MusicTrackActions } from '../music/MusicTrackActions';
+import { ProfileAddCard } from './ProfileAddCard';
 import {
   getPlayingPreviewUrl,
   subscribeMusicPreview,
@@ -73,15 +74,16 @@ export function CurrentObsessionSection({
       >
         {visible.length === 0 ? (
           canAdd ? (
-            <Pressable
-              onPress={withAnalyticsPress(PROFILE.card.add_module, () => onAdd?.())}
-              accessibilityRole="button"
+            <ProfileAddCard
+              label="Who are you today?"
+              helper="Share what you are into right now."
+              emoji="✨"
+              accent="purple"
+              minHeight={96}
+              analyticsId={PROFILE.card.add_module}
               accessibilityLabel="Add Current Obsession"
-              className="min-h-[120px] w-full items-center justify-center rounded-card border border-dashed border-ink-line"
-              style={{ width: '100%' }}
-            >
-              <Text className="font-sans-b text-[14px] text-ink">Who are you today?</Text>
-            </Pressable>
+              onPress={() => onAdd?.()}
+            />
           ) : (
             <Text className="font-sans-sb text-[14px] text-ink-mute">Nothing right now.</Text>
           )

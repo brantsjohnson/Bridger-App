@@ -9,7 +9,7 @@ import { Pressable, Text, View } from 'react-native';
 import { PlusIcon } from 'lucide-react-native';
 import type { FavoriteModule } from '@bridger/shared';
 import { PROFILE } from '@bridger/shared';
-import { AnalyticsRegion, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { ACCENTS, AnalyticsRegion, cn, withAnalyticsPress, type Accent } from '@bridger/ui';
 import {
   PROFILE_GRID_GAP,
   PROFILE_META_GAP,
@@ -17,6 +17,10 @@ import {
   PROFILE_SEE_ALL_SIZE,
   PROFILE_TITLE_TO_BODY
 } from './profileSpacing';
+
+// THIS SECTION DOES: the color order for empty "To start" tiles so each one
+// gets a distinct, lively accent as we lay them out left to right, top to bottom.
+const TO_START_ACCENTS: Accent[] = ['purple', 'coral', 'teal', 'amber', 'pink', 'blue', 'green'];
 
 export function FavoritesSection({
   modules,
@@ -27,7 +31,6 @@ export function FavoritesSection({
   own: boolean;
   onOpenModule?: (id: string) => void;
 }) {
-  const c = useThemeColors();
   const [expanded, setExpanded] = useState(false);
   const toStart = own ? modules.filter((m) => m.empty) : [];
   const filled = modules.filter((m) => !m.empty);
@@ -53,28 +56,42 @@ export function FavoritesSection({
             To start
           </Text>
           <View className="flex-row flex-wrap" style={{ gap: PROFILE_GRID_GAP }}>
-            {toStart.map((m) => (
-              <Pressable
-                key={m.id}
-                onPress={withAnalyticsPress(PROFILE.card.favorites_to_start, () =>
-                  onOpenModule?.(m.id)
-                )}
-                accessibilityRole="button"
-                accessibilityLabel={`Start ${m.label}`}
-                className="items-center justify-center rounded-card border border-dashed border-ink-line bg-canvas px-2 py-4"
-                style={{ width: '47.5%', aspectRatio: 1 }}
-              >
-                <Text className="text-[28px]">{m.emoji}</Text>
-                <Text
-                  numberOfLines={2}
-                  className="mt-2 text-center font-sans-b text-[13px] text-ink"
-                  style={{ marginTop: PROFILE_META_GAP + 4 }}
+            {toStart.map((m, i) => {
+              // THIS SECTION DOES: rotate through the accent palette so each
+              // empty tile is colorful and clearly tappable (not a gray box).
+              const token = ACCENTS[TO_START_ACCENTS[i % TO_START_ACCENTS.length]];
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={withAnalyticsPress(PROFILE.card.favorites_to_start, () =>
+                    onOpenModule?.(m.id)
+                  )}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Start ${m.label}`}
+                  className={cn(
+                    'items-center justify-center rounded-card px-2 py-4 active:opacity-90',
+                    token.tint
+                  )}
+                  style={{ width: '47.5%', aspectRatio: 1 }}
                 >
-                  {m.label}
-                </Text>
-                <PlusIcon size={16} color={c.inkMute} strokeWidth={2.8} style={{ marginTop: 8 }} />
-              </Pressable>
-            ))}
+                  <Text className="text-[28px]">{m.emoji}</Text>
+                  <Text
+                    numberOfLines={2}
+                    className="mt-2 text-center font-sans-b text-[13px] text-ink"
+                    style={{ marginTop: PROFILE_META_GAP + 4 }}
+                  >
+                    {m.label}
+                  </Text>
+                  {/* THE BADGE: a bright round "+" so it clearly means "add this". */}
+                  <View
+                    className="mt-2 h-7 w-7 items-center justify-center rounded-full"
+                    style={{ backgroundColor: token.hex, marginTop: 8 }}
+                  >
+                    <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       ) : null}

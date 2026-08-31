@@ -462,19 +462,21 @@ export const MY_ATTRIBUTES: ProfileAttribute[] = [
 { id: 'a4', ownerId: 'me', key: 'currently_reading', value: 'Piranesi', layer: 'profile', visibleToTier: 'close', matchable: false, updatedAt: '2026-07-28' }];
 
 
-/** The hosted weekly activity — everyone posts to one shared collage. */
+/** The hosted weekly Side Quest — everyone posts to one shared wall. */
 export const WEEKLY_ACTIVITY = {
-  id: 'act-band-tee',
-  title: 'Band Tee Week',
-  prompt: 'Your favorite band tee',
+  id: 'act-notes-app',
+  title: 'Notes App Discovery',
+  prompt: 'Share a blurb from your notes app archives.',
   closesIn: 'ends Sunday',
   accent: 'amber' as const,
+  emoji: '✏️',
+  postMode: 'text' as const,
   posts: [
-  { id: 'ap1', personId: 'maya', emoji: '👕', caption: 'Thrifted in 2016' },
-  { id: 'ap2', personId: 'kit', emoji: '🎸', caption: 'Still fits' },
-  { id: 'ap3', personId: 'devon', emoji: '🥁', caption: 'Tour merch' },
-  { id: 'ap4', personId: 'ines', emoji: '🎤', caption: 'Front row' },
-  { id: 'ap5', personId: 'theo', emoji: '🎹', caption: 'Dad\u2019s old one' }]
+  { id: 'ap1', personId: 'maya', emoji: '✏️', caption: 'buy oat milk. also: start the book' },
+  { id: 'ap2', personId: 'kit', emoji: '✏️', caption: 'idea: picnic with no phones' },
+  { id: 'ap3', personId: 'devon', emoji: '✏️', caption: 'password is not password123' },
+  { id: 'ap4', personId: 'ines', emoji: '✏️', caption: 'call mom. then call mom again' },
+  { id: 'ap5', personId: 'theo', emoji: '✏️', caption: 'half a poem about rain' }]
 
 };
 

@@ -20,7 +20,6 @@ import type {
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import {
-  PEOPLE,
   RECAP_ANSWERS,
   RECAP_WEEK,
   SUBMITTED_QUESTIONS,
@@ -218,19 +217,19 @@ export async function uploadRecapClip(
 export type RecapClip = RecapAnswer;
 
 /** People available to tag when writing an Inside Joke (confirmed friends). */
-export function taggablePeople(): Person[] {
-  if (isDemoMode()) {
-    return [...PEOPLE];
-  }
-  return [];
+export async function taggablePeople(): Promise<Person[]> {
+  const { listFriends } = await import('./friends');
+  return listFriends();
 }
 
 /** Event title chips for "where it happened" on an Inside Joke. */
-export function recentEventNames(): string[] {
-  if (isDemoMode()) {
-    return ['Sketch night', 'Sunrise ride', 'Vinyl swap'];
-  }
-  return [];
+export async function recentEventNames(): Promise<string[]> {
+  const { listEvents } = await import('./events');
+  const events = await listEvents().catch(() => []);
+  return events
+    .map((e) => e.title?.trim())
+    .filter((t): t is string => Boolean(t))
+    .slice(0, 6);
 }
 
 /** Tier type re-export for callers that need it next to pod types. */

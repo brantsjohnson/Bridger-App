@@ -1,11 +1,15 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Shapes for the weekly Home activity (e.g. "Band Tee Week") and the posts
-// people add to it. Admin turns one on; everyone can post and heart. Cover
-// art works the same way as events (photo fills the card).
+// Shapes for the Home Side Quest (weekly activity) and the posts people add
+// to it. Admin turns one on; everyone can post and heart. Cover art works
+// the same way as events (photo fills the card). Some quests ask for a
+// photo polaroid; others ask for a text blurb (like Notes App Discovery).
 // ============================================
 
 import type { Cover } from './cover';
+
+/** How people contribute: a photo polaroid wall, or a text-note wall. */
+export type ActivityPostMode = 'photo' | 'text';
 
 /** The themed weekly challenge shown on Home while active. */
 export interface WeeklyActivity {
@@ -23,6 +27,8 @@ export interface WeeklyActivity {
   /** Same cover art model as events: photo fills the frame. */
   cover?: Cover;
   accent?: string;
+  /** photo = polaroid capture; text = notes-style blurb input. */
+  postMode?: ActivityPostMode;
 }
 
 /** One person's contribution to the weekly activity collage. */
@@ -33,7 +39,7 @@ export interface ActivityPost {
   mediaId?: string;
   heartsCount: number;
   createdAt: string;
-  /** Demo / display helpers (emoji + caption). */
+  /** Display helpers (emoji + caption / blurb). */
   emoji?: string;
   caption?: string;
   personId?: string;

@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.social.bridger.app"],
+        "components": [
+          { "/": "/invite/*", "comment": "Friend add-me invite links" },
+          { "/": "/q/*", "comment": "Shared quiz result links" },
+          { "/": "/e/*", "comment": "Event invite links" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["REPLACE_WITH_APPLE_TEAM_ID.social.bridger.app"]
+  }
+}

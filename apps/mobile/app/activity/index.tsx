@@ -1,9 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The weekly activity collage screen — opened from the Home activity card
-// (or an activity_live notification). Shows the prompt, everyone's polaroids,
-// and a capture sheet to post yours. Spec: HOME.md § Weekly activity.
-// Design: Magic Patterns ActivityScreen.
+// The Side Quest screen — opened from the Home Side Quest card (or an
+// activity_live notification). Shows the prompt, everyone's posts
+// (polaroids or text notes), and a capture sheet to post yours.
+// Spec: HOME.md § Weekly activity. Design: Magic Patterns ActivityScreen.
 // ============================================
 import React, { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -68,7 +68,7 @@ export default function ActivityScreen() {
     return (
       <Screen>
         <ScreenHeader
-          title="Activity"
+          title="Side Quest"
           onBack={() => router.back()}
           hideProfile
           backAnalyticsId={ACTIVITY.top_nav.back}
@@ -86,7 +86,7 @@ export default function ActivityScreen() {
     return (
       <Screen>
         <ScreenHeader
-          title="Activity"
+          title="Side Quest"
           onBack={() => router.back()}
           hideProfile
           backAnalyticsId={ACTIVITY.top_nav.back}
@@ -95,7 +95,7 @@ export default function ActivityScreen() {
         />
         <ScreenBody tabBarInset={false}>
           <Text className="mt-4 font-sans-sb text-[14px] text-ink-mute">
-            No activity is live right now.
+            No Side Quest is live right now.
           </Text>
         </ScreenBody>
       </Screen>
@@ -126,6 +126,8 @@ export default function ActivityScreen() {
         open={captureOpen}
         prompt={activity.prompt}
         activityId={activity.id}
+        postMode={activity.postMode}
+        emoji={activity.emoji ?? '✏️'}
         onClose={() => setCaptureOpen(false)}
         onPosted={() => void refresh()}
       />

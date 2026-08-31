@@ -50,6 +50,7 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `end_quiz_sheet` | `quiz` | Back mid-take: do they confirm End quiz or Keep going? (`dwell_ms`) |
 | `post_composer` | `home` (your story) | do they use the suggested buttons? finish? |
 | `add_friend_sheet` | `friends` | QR vs link vs scan (method) |
+| `add_inside_joke_sheet` | `friends` or `profile` | Who said it tags; where free-text vs event chip |
 | `invite_access` | post-onboarding gate (demo week) | must invite a friend to unlock app — do they bail? |
 | `invite_contacts_sheet` | `invite_access` | pick one contact to text invite link (on-device only) |
 | `onboarding_invite_contacts_sheet` | `onboarding` | pick a contact for invite slot #1 / #2 / #3 during onboarding |
@@ -323,6 +324,13 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | `audience` | `close`, `friends`, `everyone`, `group` |
 | `actions` | `post`, `add_another`, `discard` |
 
+### `add_inside_joke_sheet` *(surface — Add an Inside Joke)*
+| section | elements |
+|---|---|
+| `form` | `quote_input`, `who_chip`, **`who_empty` (dead)**, `where_input`, `where_event_chip` |
+| `actions` | `post` (product `inside_joke_posted`), `never_mind` |
+| `chrome` | `close` |
+
 ### `ask_sheet` *(surface)*
 | section | elements |
 |---|---|
@@ -341,7 +349,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) — connection detail overlaps before Accept/Add |
 | `maps` | `node`, `map_toggle` (swipe/dropdown) |
 | `gate` | **`body` (dead)**, `get_started` |
-| `settings_sheet` | `discoverable_toggle`, `source_toggle`, `dismiss` (surface=`discover_settings_sheet`) |
+| `settings_sheet` | `discoverable_toggle`, `source_toggle`, `about_me_toggle` (per category), `dismiss` (surface=`discover_settings_sheet`) |
 
 ### `connect_over` (full list of private modules)
 | section | elements |
@@ -402,7 +410,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 |---|---|
 | `top_nav` | `settings_icon`, `search`, `messages_icon`, **`page_title` (dead)**, `profile_icon`, `add`, `edit` |
 | `roster` | `row`, `drag_handle`, **`tier_header` (dead)**, `birthday_row`, `info` (opens `section_info_tooltip`, method=hover\|tap; `tier` prop) |
-| `add_sheet` | `invite_link` (method=link), `qr` (method=qr), `scan` (method=scan) |
+| `add_sheet` | `invite_link` (method=link), `qr` (method=qr), `scan` (method=scan, camera viewfinder / demo sample), `scan_enable` (turn-on-camera / Open Settings when permission is off) |
 | `inside_jokes` | `note` (tap → meta), `add`, **`note_body` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `pod` | `play` (opens `recap_player`), `record` (opens `recap_recorder`), `submit_question`, `vote_question`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 
@@ -553,18 +561,18 @@ Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_se
 | `top_nav` | **`page_title` (dead)**, `back` |
 | `list` | `row` (opens destination by `kind`; never opens nested list), **`empty_body` (dead)**, `filter` (All\|Home\|Friends\|Events\|Discover), `mark_all_read` (product `notifications_marked_read`) |
 
-### `activity` *(Weekly activity collage — opened from Home activity card)*
+### `activity` *(Side Quest wall — opened from Home Side Quest card)*
 | section | elements |
 |---|---|
 | `top_nav` | **`page_title` (dead)**, `back` |
 | `prompt` | **`prompt_card` (dead)** |
 | `chrome` | `post` ("Post yours" button) |
-| `grid` | **`polaroid` (dead)** (single-tap), `heart` (double-tap; product `activity_hearted`), `dash_post`, **`empty_body` (dead)** |
+| `grid` | **`polaroid` (dead)** (single-tap, photo quests), **`text_note` (dead)** (single-tap, text quests), `heart` (double-tap; product `activity_hearted`), `dash_post`, **`empty_body` (dead)** |
 
-### `activity_capture` *(surface — capture sheet over the collage)*
+### `activity_capture` *(surface — capture / blurb sheet over the wall)*
 | section | elements |
 |---|---|
-| `chrome` | `shutter`, `caption_input`, `audience_picker`, `post` (product `activity_posted`), `close` |
+| `chrome` | `shutter` (photo quests), `caption_input` (photo caption), `blurb_input` (text quests; never logs text), `audience_picker`, `post` (product `activity_posted`), `close` |
 
 ### `notification_prefs` *(Profile → Settings → Notifications)*
 | section | elements |
@@ -724,6 +732,8 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Date | Old ID | New ID | Reason |
 |---|---|---|---|
+| 2026-08-30 | — | `add_inside_joke_sheet.*` | Inside Joke composer: Who said it + where text field |
+| 2026-08-30 | — | `activity.grid.text_note`, `activity_capture.chrome.blurb_input` | Text Side Quests (Notes App Discovery) |
 | 2026-08-30 | `*.top_nav.profile_icon` (header avatar, all tabs) | `chrome.tab_bar.profile_icon` (pill far-right) | Global nav update: profile face moved from the top-left header to the far-right of the bottom nav pill; titles now sit flush left. Old `top_nav.profile_icon` ids kept, retired |
 | 2026-08-05 | `home.responses.responses_header` (dead) | `home.responses.responses_header` (interactive) | Header row opens story replies; matched Magic Patterns + HOME.md |
 | 2026-08-05 | — | `notifications.*` surface + `notification_opened` / `notification_see_all` | Notifications page + destination map (`NOTIFICATIONS.md`) |

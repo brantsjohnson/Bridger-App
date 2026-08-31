@@ -27,13 +27,21 @@ export type StrokeTextProps = {
   strokeColor: string;
   /** Everything else about the type: family, size, color, spacing. */
   style: TextStyle;
+  /** Optional: center the word in its parent (reveal screen). */
+  center?: boolean;
 };
 
-export function StrokeText({ children, stroke, strokeColor, style }: StrokeTextProps) {
+export function StrokeText({
+  children,
+  stroke,
+  strokeColor,
+  style,
+  center
+}: StrokeTextProps) {
   return (
     // The wrapper shrinks to the word, and the outline copies are stacked
     // behind it absolutely so they take up no extra space.
-    <View style={{ alignSelf: 'flex-start' }}>
+    <View style={{ alignSelf: center ? 'center' : 'flex-start' }}>
       {/* ACCESSIBILITY: only the top (real) copy is read out; the outline
           copies are hidden from screen readers so the word is not repeated. */}
       {RING.map((d, i) => (
@@ -54,7 +62,9 @@ export function StrokeText({ children, stroke, strokeColor, style }: StrokeTextP
           {children}
         </Text>
       ))}
-      <Text style={style}>{children}</Text>
+      <Text accessibilityRole="header" style={style}>
+        {children}
+      </Text>
     </View>
   );
 }

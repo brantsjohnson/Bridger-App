@@ -42,7 +42,7 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 │  + Add your recap · 45s     │
 │  Quiz · take → see results  │
 ├─────────────────────────────┤
-│  🖼 Band Tee Week · post →  │  8c · Weekly activity (conditional, admin-hosted)
+│  ✏️ Notes App Discovery · post →  │  8c · Side Quest (conditional, admin-hosted)
 ├─────────────────────────────┤
 │  Join the co-op             │  9 · Co-op footer (opens co-op portal)
 ├─────────────────────────────┤
@@ -64,7 +64,7 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 | 6 | Action row | Two side-by-side tiles: **Create a poll** \| **Ask a question** — **co-op members only**. For non-members the **whole "Ask the group" widget is absent**, not locked: no teaser card for a feature they didn't ask about. The co-op sells itself in the co-op, where "Ask the group" is listed under Members get | (split row) | members only |
 | 7 | Your live poll | Your active poll + running results, visible on your own Home. Beneath it, **See previous polls** → your poll archive | — | hidden when no live poll |
 | 8 | This week | Friends' recap **podcast** (play), **add your recap** prompt, and the **quiz** (CTA → results) | — | hidden when nothing active |
-| 8c | Weekly activity | Entry card into the hosted collage (e.g. "Band Tee Week · post yours") | — | **hidden unless an activity is live in admin** |
+| 8c | Side Quest | Entry card into the hosted wall (e.g. "Notes App Discovery · post yours") | — | **hidden unless a Side Quest is live in admin** |
 | 9 | Co-op footer | "Join the co-op" — opens the co-op portal (also reachable from Profile settings) | — | always shown (non-member) |
 
 ### Notifications (header bell)
@@ -107,11 +107,11 @@ Home carries **one** signal — the newest — so it stays a glance, not a queue
 
 New sticky-note **inside jokes** from the week surface here — a few recent ones from the Inside Jokes wall (see `PROFILE.md`) so people catch the funny things being said. When there are no new ones, the zone **falls back to "moments"**: older jokes resurfaced, so it's never empty and always a little joy. Tapping one opens it on the relevant profile.
 
-### Weekly activity (hosted collage)
+### Side Quest (hosted wall)
 
-When the organizer has a weekly activity **live** (turned on in admin), a card appears here that opens the **activity collage** — a themed, communal feed. The activity is a prompt like "your favorite band t-shirt this week"; anyone can **post into it** (in-app capture only, per the app-wide rule). The collage reads like a light, normal scrolling feed but themed: **Polaroid-style photos** of people doing the activity, each **double-tap to heart**. It's celebratory, not competitive — hearts, no rankings or view counts.
+When the organizer has a Side Quest **live** (turned on in admin), a card appears here that opens the **quest wall** — a themed, communal feed. The quest is a prompt like "Notes App Discovery"; anyone can **post into it**. Photo quests use in-app capture and a polaroid wall; text quests use a notes-style blurb input and text-note cards. Double-tap to heart. Celebratory, not competitive.
 
-The zone is **absent entirely** until an activity is switched on in admin, and disappears when the activity ends — so Home only carries it when there's genuinely something running. See `ADMIN.md` (hosting) and the `activities` module.
+The zone is **absent entirely** until a Side Quest is switched on in admin, and disappears when it ends. See `ADMIN.md` (hosting) and the `activities` module.
 
 ### Notifications (feed preview → page)
 

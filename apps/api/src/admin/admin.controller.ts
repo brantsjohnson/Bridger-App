@@ -162,6 +162,7 @@ export class AdminController {
       closesIn?: string;
       emoji?: string;
       cover?: Cover;
+      postMode?: 'photo' | 'text';
     }
   ) {
     return this.admin.createActivity(body);
@@ -180,6 +181,7 @@ export class AdminController {
       closesIn?: string | null;
       emoji?: string | null;
       cover?: Cover | null;
+      postMode?: 'photo' | 'text';
     }
   ) {
     return this.admin.patchActivity(id, body);

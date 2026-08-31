@@ -157,8 +157,8 @@ event_intros     event_id⟶events · a⟶users · b⟶users · why
 polls            id · author_id⟶users · question · closes_at(≤7d)   [CREATE = co-op; answering free]
 poll_options     poll_id⟶polls · label      /   poll_votes  poll_id · option_id · user_id
 touch_grass      id · author_id⟶users · audience_tier · when · why · created_at   [send on Events only; answer cards shown on Home]
-weekly_activities id · title · prompt · active · starts_at · ends_at
-activity_posts   activity_id⟶weekly_activities · author_id⟶users · media_id⟶media
+weekly_activities id · title · prompt · active · starts_at · ends_at · closes_in · emoji · cover · post_mode(photo|text)
+activity_posts   activity_id⟶weekly_activities · author_id⟶users · media_id⟶media · caption · emoji
 activity_hearts  post_id⟶activity_posts · user_id⟶users
 ```
 

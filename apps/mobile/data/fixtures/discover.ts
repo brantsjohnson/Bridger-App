@@ -11,6 +11,13 @@ export const DEFAULT_DISCOVER_SETTINGS: DiscoverSettings = {
   discoverable: true,
   sources: {
     aboutMe: true,
+    aboutMeCategories: {
+      foods: true,
+      hobbies: true,
+      hometown: true,
+      places_traveled: true,
+      morning_or_night: true
+    },
     onboardingQuiz: true,
     discoverMe: false
   }
@@ -190,10 +197,10 @@ export const MATCH_MODULES: MatchModule[] = [
 ];
 
 /** Categories shown in Discover settings (visible about-me signals). */
-export const ABOUT_ME_CATEGORIES = [
-  'Foods',
-  'Hobbies',
-  'Hometown',
-  'Places traveled',
-  'Morning or night'
+export const ABOUT_ME_CATEGORIES: Array<{ id: string; label: string }> = [
+  { id: 'foods', label: 'Foods' },
+  { id: 'hobbies', label: 'Hobbies' },
+  { id: 'hometown', label: 'Hometown' },
+  { id: 'places_traveled', label: 'Places traveled' },
+  { id: 'morning_or_night', label: 'Morning or night' }
 ];

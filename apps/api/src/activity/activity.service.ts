@@ -1,7 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Weekly activity helpers for the app: fetch the active challenge + posts,
-// let someone contribute a post, and heart / un-heart a post.
+// Side Quest helpers for the app: fetch the active challenge + posts,
+// let someone contribute a post (photo or text blurb), and heart / un-heart.
 // ============================================
 import {
   BadRequestException,
@@ -80,7 +80,11 @@ export class ActivityService {
       endsAt: activity.ends_at ?? undefined,
       closesIn: activity.closes_in ?? undefined,
       emoji: activity.emoji ?? undefined,
-      cover: asCover(activity.cover)
+      cover: asCover(activity.cover),
+      postMode:
+        activity.post_mode === 'text' || activity.post_mode === 'photo'
+          ? activity.post_mode
+          : 'photo'
     };
 
     const mappedPosts: ActivityPost[] = (posts ?? []).map((p) => ({
@@ -89,7 +93,9 @@ export class ActivityService {
       authorId: p.author_id,
       mediaId: p.media_id ?? undefined,
       heartsCount: heartsByPost.get(p.id) ?? 0,
-      createdAt: p.created_at
+      createdAt: p.created_at,
+      emoji: p.emoji ?? undefined,
+      caption: p.caption ?? undefined
     }));
 
     return { activity: mappedActivity, posts: mappedPosts };
@@ -104,7 +110,7 @@ export class ActivityService {
   ): Promise<ActivityPost> {
     const { data: activity, error: aErr } = await this.supabase.admin
       .from('weekly_activities')
-      .select('id, active')
+      .select('id, active, post_mode')
       .eq('id', activityId)
       .maybeSingle();
     if (aErr) throw aErr;
@@ -113,15 +119,21 @@ export class ActivityService {
       throw new BadRequestException('This activity is not active');
     }
 
-    // TODO: activity_posts needs caption / emoji / visible_to_tier columns
-    // (HOME.md audience + collage captions). Until then we only persist
-    // author + optional media; clients keep caption/emoji in demo session memory.
+    const isText = activity.post_mode === 'text';
+    const blurb = body.caption?.trim() ?? '';
+    if (isText && !blurb) {
+      throw new BadRequestException('A blurb is required for this Side Quest');
+    }
+
+    // Persist caption / emoji for text Side Quests (and photo captions).
     const { data: post, error } = await this.supabase.admin
       .from('activity_posts')
       .insert({
         activity_id: activityId,
         author_id: userId,
-        media_id: body.mediaId ?? null
+        media_id: body.mediaId ?? null,
+        caption: blurb || null,
+        emoji: body.emoji ?? null
       })
       .select('*')
       .single();
@@ -134,9 +146,8 @@ export class ActivityService {
       mediaId: post.media_id ?? undefined,
       heartsCount: 0,
       createdAt: post.created_at,
-      // Echo back for display; not stored until columns exist.
-      emoji: body.emoji,
-      caption: body.caption
+      emoji: post.emoji ?? body.emoji,
+      caption: post.caption ?? body.caption
     };
   }
 

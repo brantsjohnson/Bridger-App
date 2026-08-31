@@ -38,6 +38,7 @@ import { CurrentObsessionSection } from './CurrentObsessionSection';
 import { FavoritesSection } from './FavoritesSection';
 import { HobbiesWidget } from './HobbiesWidget';
 import { MutualsRow } from './MutualsRow';
+import { ProfileAddCard } from './ProfileAddCard';
 import { TravelModule } from './TravelModule';
 import { Top5Section } from './Top5Section';
 import {
@@ -363,14 +364,15 @@ export function ProfilePageShell({
                 followUps={hobbyFollowUps}
               />
             ) : editable || own ? (
-              <Pressable
-                onPress={withAnalyticsPress(PROFILE.card.add_hobbies, () => onOpenHobbies?.())}
-                accessibilityRole="button"
+              <ProfileAddCard
+                label="Add hobbies"
+                helper="Pick a few things you like."
+                emoji="🎛️"
+                accent="teal"
+                analyticsId={PROFILE.card.add_hobbies}
                 accessibilityLabel="Add hobbies"
-                className="min-h-[44px] items-center justify-center rounded-card border border-dashed border-ink-line px-4 py-4"
-              >
-                <Text className="font-sans-b text-[14px] text-ink">Add hobbies</Text>
-              </Pressable>
+                onPress={() => onOpenHobbies?.()}
+              />
             ) : (
               <Text className="font-sans-sb text-[14px] text-ink-mute">No hobbies yet.</Text>
             )}
@@ -389,14 +391,15 @@ export function ProfilePageShell({
             <AnalyticsRegion analyticsId={placesId} interactive={false}>
               {places.length === 0 ? (
                 editable || own ? (
-                  <Pressable
-                    onPress={withAnalyticsPress(PROFILE.card.add_places, () => onOpenPlaces?.())}
-                    accessibilityRole="button"
+                  <ProfileAddCard
+                    label="Add places"
+                    helper="Pin the places you have been."
+                    emoji="🗺️"
+                    accent="coral"
+                    analyticsId={PROFILE.card.add_places}
                     accessibilityLabel="Add places"
-                    className="min-h-[44px] items-center justify-center rounded-card border border-dashed border-ink-line px-4 py-4"
-                  >
-                    <Text className="font-sans-b text-[14px] text-ink">Add places</Text>
-                  </Pressable>
+                    onPress={() => onOpenPlaces?.()}
+                  />
                 ) : (
                   <Text className="font-sans-sb text-[14px] text-ink-mute">No places yet.</Text>
                 )

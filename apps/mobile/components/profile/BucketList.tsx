@@ -160,9 +160,21 @@ export function BucketList({
       </View>
 
       {open.length === 0 && completed.length === 0 && editable ? (
-        <Text className="font-sans-sb text-[13px] text-ink-mute">
-          Nothing yet. Tap + to add something you want to do.
-        </Text>
+        // Empty default: half-column square, same pattern as Favorites / Inside jokes.
+        <Pressable
+          onPress={withAnalyticsPress(PROFILE.bucket_list.add, () => setAdding(true))}
+          accessibilityRole="button"
+          accessibilityLabel="Add to your bucket list"
+          className="items-center justify-center gap-1.5 rounded-card border-2 border-dashed border-ink/25 bg-surface p-4 active:opacity-90"
+          style={{ width: '47%', aspectRatio: 1 }}
+        >
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-purple">
+            <PlusIcon size={18} color="#FFFFFF" strokeWidth={3} />
+          </View>
+          <Text className="text-center font-sans-b text-[13px] text-ink-soft">
+            Add to bucket list
+          </Text>
+        </Pressable>
       ) : null}
 
       {editing && open.length + completed.length > 0 ? (

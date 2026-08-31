@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Manage the weekly "This week" challenge on Home. Set title, little
-// description, "ends Sunday" label, emoji, and a cover (photo / color /
-// emoji / text) that fills the card like events. Right side: phone demo.
+// Manage the Home Side Quest (weekly challenge). Set title, little
+// description, "ends Sunday" label, emoji, photo-or-text mode, and a cover
+// that fills the card like events. Right side: phone demo.
 // ============================================
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { Cover } from '@bridger/shared';
@@ -27,9 +27,22 @@ type Activity = {
   closesIn?: string;
   emoji?: string;
   cover?: Cover;
+  postMode?: 'photo' | 'text';
 };
 
-const EMOJI_CHOICES = ['👕', '🎸', '🎉', '🌅', '☕', '🎲', '🪴', '✨', '🍕', '🚲'];
+const EMOJI_CHOICES = [
+  '✏️',
+  '👕',
+  '🎸',
+  '🎉',
+  '🌅',
+  '☕',
+  '🎲',
+  '🪴',
+  '✨',
+  '🍕',
+  '🚲'
+];
 
 export function WeeklyActivity() {
   const [items, setItems] = useState<Activity[]>([]);
@@ -39,11 +52,12 @@ export function WeeklyActivity() {
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [closesIn, setClosesIn] = useState('ends Sunday');
-  const [emoji, setEmoji] = useState('👕');
+  const [emoji, setEmoji] = useState('✏️');
+  const [postMode, setPostMode] = useState<'photo' | 'text'>('text');
   const [cover, setCover] = useState<Cover | undefined>({
     kind: 'emoji',
-    value: '👕',
-    bg: '#FFDE99'
+    value: '✏️',
+    bg: '#FFB515'
   });
   const [goLiveDate, setGoLiveDate] = useState('');
   const [endsOn, setEndsOn] = useState('');
@@ -87,7 +101,8 @@ export function WeeklyActivity() {
           prompt: prompt.trim(),
           closesIn: closesIn.trim() || 'ends Sunday',
           emoji,
-          cover
+          cover,
+          postMode
         }
       });
       // Apply go-live dates right after create if the user set them.
@@ -103,8 +118,9 @@ export function WeeklyActivity() {
       setTitle('');
       setPrompt('');
       setClosesIn('ends Sunday');
-      setEmoji('👕');
-      setCover({ kind: 'emoji', value: '👕', bg: '#FFDE99' });
+      setEmoji('✏️');
+      setPostMode('text');
+      setCover({ kind: 'emoji', value: '✏️', bg: '#FFB515' });
       setGoLiveDate('');
       setEndsOn('');
       setSaved(true);
@@ -130,6 +146,7 @@ export function WeeklyActivity() {
       closesIn?: string | null;
       emoji?: string | null;
       cover?: Cover | null;
+      postMode?: 'photo' | 'text';
     }
   ) => {
     setSaved(false);
@@ -158,8 +175,8 @@ export function WeeklyActivity() {
 
   return (
     <DemoSplit
-      title="Weekly activity"
-      description="The Home collage challenge (like Band Tee Week). Cover fills the card like events. Set title, a little description, an emoji, and when it ends."
+      title="Side Quest"
+      description="The Home Side Quest (like Notes App Discovery). Cover fills the card like events. Set title, a little description, emoji, photo or text mode, and when it ends."
       preview={
         <HomeActivityPreview
           title={demoTitle}
@@ -172,23 +189,23 @@ export function WeeklyActivity() {
           endsOn={demoEnds}
         />
       }
-      previewCaption="Home · This week widget"
+      previewCaption="Home · Side Quest widget"
     >
       <PageState
         loading={loading}
         error={error}
         empty={!loading && items.length === 0}
-        emptyMessage="No activities yet. Make one below."
+        emptyMessage="No Side Quests yet. Make one below."
         saved={saved}
-        savedMessage="Activity saved."
+        savedMessage="Side Quest saved."
       />
 
-      <Card title="New activity" className="mb-6">
+      <Card title="New Side Quest" className="mb-6">
         <form onSubmit={(e) => void onCreate(e)} className="space-y-4">
           <Field
             id="activity-title"
             label="Title"
-            hint="Big words on the widget, e.g. Band Tee Week"
+            hint="Big words on the widget, e.g. Notes App Discovery"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -197,7 +214,7 @@ export function WeeklyActivity() {
             id="activity-prompt"
             as="textarea"
             label="Little description"
-            hint="Shown under the title, e.g. Your favorite band tee"
+            hint="Shown under the title, e.g. Share a blurb from your notes app archives."
             required
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -210,6 +227,37 @@ export function WeeklyActivity() {
             onChange={(e) => setClosesIn(e.target.value)}
             placeholder="ends Sunday"
           />
+
+          {/* THIS SECTION DOES: photo polaroid wall vs text-note wall */}
+          <div>
+            <p className="mb-2 text-sm font-medium text-ink">Post style</p>
+            <p className="mb-2 text-xs text-muted">
+              Text = notes-style blurb input. Photo = camera polaroid.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { id: 'text', label: 'Text blurb' },
+                  { id: 'photo', label: 'Photo polaroid' }
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  aria-pressed={postMode === opt.id}
+                  className={[
+                    'rounded-xl border px-3 py-2 text-sm font-medium',
+                    postMode === opt.id
+                      ? 'border-ink bg-ink text-canvas'
+                      : 'border-line bg-surface'
+                  ].join(' ')}
+                  onClick={() => setPostMode(opt.id)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* --- Emoji picker --- */}
           <div>
@@ -232,15 +280,14 @@ export function WeeklyActivity() {
                   ].join(' ')}
                   onClick={() => {
                     setEmoji(glyph);
-                    // Keep cover emoji in sync when cover is emoji mode.
                     if (!cover || cover.kind === 'emoji') {
                       setCover({
                         kind: 'emoji',
                         value: glyph,
                         bg:
                           cover?.kind === 'emoji'
-                            ? cover.bg ?? '#FFDE99'
-                            : '#FFDE99'
+                            ? cover.bg ?? '#FFB515'
+                            : '#FFB515'
                       });
                     }
                   }}
@@ -263,8 +310,8 @@ export function WeeklyActivity() {
                       value: next,
                       bg:
                         cover?.kind === 'emoji'
-                          ? cover.bg ?? '#FFDE99'
-                          : '#FFDE99'
+                          ? cover.bg ?? '#FFB515'
+                          : '#FFB515'
                     });
                   }
                 }}
@@ -317,7 +364,8 @@ export function WeeklyActivity() {
                       {a.title}
                     </h2>
                     <p className="text-xs text-muted">
-                      Tap title to preview on the phone
+                      Tap title to preview on the phone ·{' '}
+                      {a.postMode === 'text' ? 'text blurb' : 'photo polaroid'}
                     </p>
                   </button>
                   <Badge tone={a.active ? 'live' : 'draft'}>
@@ -338,6 +386,33 @@ export function WeeklyActivity() {
                       void patch(a.id, { closesIn: e.target.value || null })
                     }
                   />
+                </div>
+
+                <div className="mb-4">
+                  <p className="mb-2 text-sm font-medium text-ink">Post style</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      [
+                        { id: 'text', label: 'Text blurb' },
+                        { id: 'photo', label: 'Photo polaroid' }
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        aria-pressed={(a.postMode ?? 'photo') === opt.id}
+                        className={[
+                          'rounded-xl border px-3 py-2 text-sm font-medium',
+                          (a.postMode ?? 'photo') === opt.id
+                            ? 'border-ink bg-ink text-canvas'
+                            : 'border-line bg-surface'
+                        ].join(' ')}
+                        onClick={() => void patch(a.id, { postMode: opt.id })}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="mb-4">

@@ -552,6 +552,8 @@ export const DISCOVER = {
   settings_sheet: {
     discoverable_toggle: aid('discover', 'settings_sheet', 'discoverable_toggle'),
     source_toggle: aid('discover', 'settings_sheet', 'source_toggle'),
+    /** One About-me category row (Foods, Hobbies, …) */
+    about_me_toggle: aid('discover', 'settings_sheet', 'about_me_toggle'),
     dismiss: aid('discover', 'settings_sheet', 'dismiss')
   }
 } as const;
@@ -724,7 +726,8 @@ export const FRIENDS = {
   add_sheet: {
     invite_link: aid('friends', 'add_sheet', 'invite_link'),
     qr: aid('friends', 'add_sheet', 'qr'),
-    scan: aid('friends', 'add_sheet', 'scan')
+    scan: aid('friends', 'add_sheet', 'scan'),
+    scan_enable: aid('friends', 'add_sheet', 'scan_enable')
   },
   inside_jokes: {
     note: aid('friends', 'inside_jokes', 'note'),
@@ -1535,6 +1538,8 @@ export const ACTIVITY = {
   },
   grid: {
     polaroid: aid('activity', 'grid', 'polaroid'),
+    /** Text-note card on a text Side Quest (dead single-tap) */
+    text_note: aid('activity', 'grid', 'text_note'),
     heart: aid('activity', 'grid', 'heart'),
     empty_body: aid('activity', 'grid', 'empty_body'),
     dash_post: aid('activity', 'grid', 'dash_post')
@@ -1545,9 +1550,23 @@ export const ACTIVITY = {
 export const ACTIVITY_CAPTURE = {
   shutter: aid('activity_capture', 'chrome', 'shutter'),
   caption_input: aid('activity_capture', 'chrome', 'caption_input'),
+  /** Main blurb field on a text Side Quest (Notes App Discovery) */
+  blurb_input: aid('activity_capture', 'chrome', 'blurb_input'),
   audience_picker: aid('activity_capture', 'chrome', 'audience_picker'),
   post: aid('activity_capture', 'chrome', 'post'),
   close: aid('activity_capture', 'chrome', 'close')
+} as const;
+
+/** Add an Inside Joke sheet — own surface with parent_screen=friends|profile */
+export const ADD_INSIDE_JOKE_SHEET = {
+  quote_input: aid('add_inside_joke_sheet', 'form', 'quote_input'),
+  who_chip: aid('add_inside_joke_sheet', 'form', 'who_chip'),
+  who_empty: aid('add_inside_joke_sheet', 'form', 'who_empty'),
+  where_input: aid('add_inside_joke_sheet', 'form', 'where_input'),
+  where_event_chip: aid('add_inside_joke_sheet', 'form', 'where_event_chip'),
+  post: aid('add_inside_joke_sheet', 'actions', 'post'),
+  never_mind: aid('add_inside_joke_sheet', 'actions', 'never_mind'),
+  close: aid('add_inside_joke_sheet', 'chrome', 'close')
 } as const;
 
 // --- Notifications page (Alerts — opened from Home "See all") ---

@@ -43,7 +43,7 @@ Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboard
 │  This week                  │  8 · Weekly section (conditional)
 │  Quiz · take → who got who  │  (recap podcast lives on Friends, not here)
 ├─────────────────────────────┤
-│  🖼 Band Tee Week · post →  │  8c · Weekly activity (conditional, admin-hosted)
+│  ✏️ Notes App Discovery · post →  │  8c · Side Quest (conditional, admin-hosted)
 ├─────────────────────────────┤
 │  $6 a month                 │  9 · Co-op footer (opens co-op portal)
 ├─────────────────────────────┤
@@ -64,7 +64,7 @@ Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboard
 | 6 | Ask the group | **Create a poll** \| **Ask a question** — **co-op only** (creating; answering is free) — plus a **"See previous polls"** link into past/other polls | (split row) | shown; create gated to co-op |
 | 7 | Your live poll | Your active poll + running results, visible on your own Home | — | hidden when no live poll |
 | 8 | This week | The **quiz**: take → your result + **Share quiz** + **"who got who"** dashboard (see `TOUCHGRASS-AND-QUIZ.md`). The recap **podcast** and **add-your-recap** prompt (the Friend Pod) are **not on Home**; they live on the **Friends** tab (see `RECAP-PODCAST.md`) | — | hidden when nothing active |
-| 8c | Weekly activity | Entry card into the hosted collage (e.g. "Band Tee Week · post yours") | — | **hidden unless an activity is live in admin** |
+| 8c | Side Quest | Entry card into the hosted wall (e.g. "Notes App Discovery · post yours"). Photo quests use polaroids; text quests use a notes-style blurb input. | — | **hidden unless a Side Quest is live in admin** |
 | 9 | Co-op footer | Hero **"$6 a month"** · "Join the co-op · you are not the product" — opens the co-op portal (also reachable from Profile settings) | — | always shown (non-member) |
 
 ### Notifications (header bell)
@@ -81,11 +81,17 @@ Moving notifications to the header (and touch-grass into the feed) makes "you ha
 
 New sticky-note **inside jokes** from the week surface here — a few recent ones from the Inside Jokes wall (see `PROFILE.md`) so people catch the funny things being said. When there are none new, the zone **falls back to "moments"**: older ones resurfaced, so it's never empty and always a little joy. Tapping one opens it on the relevant profile.
 
-### Weekly activity (hosted collage)
+### Side Quest (hosted wall)
 
-When the organizer has a weekly activity **live** (turned on in admin), a card appears here that opens the **activity collage** — a themed, communal feed. The activity is a prompt like "your favorite band t-shirt this week"; anyone can **post into it** (in-app capture only, per the app-wide rule). **Posting asks who you want to share it with** — the **same audience picker as a story/update** (Close / Friends / Everyone, or a group) — so contributing to the activity respects tiers exactly like every other post. The collage reads like a light, normal scrolling feed but themed: **Polaroid-style photos** of people doing the activity, each **double-tap to heart**. It's celebratory, not competitive — hearts, no rankings or view counts. Each viewer only sees contributions shared with their tier.
+When the organizer has a Side Quest **live** (turned on in admin), a card appears here that opens the **quest wall** — a themed, communal feed. The quest is a prompt like "Notes App Discovery" ("Share a blurb from your notes app archives."); anyone can **post into it**. **Posting asks who you want to share it with** — the **same audience picker as a story/update** (Close / Friends / Everyone, or a group) — so contributing respects tiers exactly like every other post.
 
-The zone is **absent entirely** until an activity is switched on in admin, and disappears when the activity ends — so Home only carries it when there's genuinely something running. See `ADMIN.md` (hosting) and the `activities` module.
+Quests have a **post style**:
+- **Photo** — in-app capture only (app-wide rule); the wall is **Polaroid-style photos**, each **double-tap to heart**.
+- **Text** (e.g. Notes App Discovery) — a **notes-style blurb input** on the same yellow-card vibe; the wall is **tilted text-note cards**, still double-tap to heart.
+
+It's celebratory, not competitive — hearts, no rankings or view counts. Each viewer only sees contributions shared with their tier.
+
+The zone is **absent entirely** until a Side Quest is switched on in admin, and disappears when it ends — so Home only carries it when there's genuinely something running. See `ADMIN.md` (hosting) and the `activities` module.
 
 ### Notifications (feed preview → page)
 
@@ -109,7 +115,7 @@ The top of Home is a single **swipeable carousel** that consolidates what used t
 
 ### Editable widgets (containers stay)
 
-Home keeps its widget shells for a new user. Quiz, Activity, Stories, Co-op, and Notifications each show their own null copy inside the box. Announcements show the one-time intro until dismissed; after that they stay out until something is live.
+Home keeps its widget shells for a new user. Quiz, Side Quest, Stories, Co-op, and Notifications each show their own null copy inside the box. Announcements show the one-time intro until dismissed; after that they stay out until something is live.
 
 - **This week** (next-event widget) — when empty, one quiet line; tap opens the **Events** tab.
 - **Coming up** — when empty (new account / nothing due), a **blue** teach row (calendar icon + copy + **X**): **"Anything important about your friends, like birthdays or custom dates you've saved, will show up here when it's coming up!"** X dismisses forever on-device; the section hides until a real item appears. When filled, rows open that friend's profile.

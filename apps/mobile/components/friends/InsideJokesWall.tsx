@@ -51,8 +51,11 @@ export function InsideJokesWidget({
           />
         </Peel>
       ))}
+      {/* Empty default: half-column square, same as the grid add tile. */}
       {onAdd && notes.length === 0 ? (
-        <AddNoteTile tall onPress={onAdd} analyticsId={analyticsIds?.add} />
+        <View className="w-[47%]">
+          <AddNoteTile onPress={onAdd} analyticsId={analyticsIds?.add} />
+        </View>
       ) : null}
     </View>
   );
@@ -101,7 +104,12 @@ export function InsideJokesWall({
           ))}
         </View>
       ) : (
-        <AddNoteTile tall onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
+        // Empty default: same half-column square as when notes exist (Favorites pattern).
+        <View className="flex-row flex-wrap gap-3.5">
+          <View className="w-[47%]">
+            <AddNoteTile onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
+          </View>
+        </View>
       )}
 
       <AddInsideJokeSheet

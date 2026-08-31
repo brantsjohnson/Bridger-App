@@ -144,21 +144,27 @@ export type Database = {
         Row: {
           activity_id: string
           author_id: string
+          caption: string | null
           created_at: string
+          emoji: string | null
           id: string
           media_id: string | null
         }
         Insert: {
           activity_id: string
           author_id: string
+          caption?: string | null
           created_at?: string
+          emoji?: string | null
           id?: string
           media_id?: string | null
         }
         Update: {
           activity_id?: string
           author_id?: string
+          caption?: string | null
           created_at?: string
+          emoji?: string | null
           id?: string
           media_id?: string | null
         }
@@ -3760,6 +3766,7 @@ export type Database = {
           emoji: string | null
           ends_at: string | null
           id: string
+          post_mode: string
           prompt: string | null
           starts_at: string | null
           title: string
@@ -3772,6 +3779,7 @@ export type Database = {
           emoji?: string | null
           ends_at?: string | null
           id?: string
+          post_mode?: string
           prompt?: string | null
           starts_at?: string | null
           title: string
@@ -3784,6 +3792,7 @@ export type Database = {
           emoji?: string | null
           ends_at?: string | null
           id?: string
+          post_mode?: string
           prompt?: string | null
           starts_at?: string | null
           title?: string

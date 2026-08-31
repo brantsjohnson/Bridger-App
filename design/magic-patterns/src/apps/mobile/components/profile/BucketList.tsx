@@ -5,7 +5,7 @@
  * Native app (gesture); here Edit mode trash covers delete for the web prototype.
  */
 import React from 'react';
-import { CheckIcon, LockIcon, TrashIcon } from 'lucide-react';
+import { CheckIcon, LockIcon, PlusIcon, TrashIcon } from 'lucide-react';
 import { BucketItem } from '../../../../packages/shared';
 import {
   Avatar,
@@ -89,9 +89,19 @@ export function BucketList({
       ))}
 
       {editable && shown.length === 0 ? (
-        <p className="text-[13px] font-semibold text-ink-mute">
-          Nothing yet. Tap + to add something you want to do.
-        </p>
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="flex aspect-square w-[47%] flex-col items-center justify-center gap-1.5 rounded-card border-2 border-dashed border-ink/25 bg-white p-4 text-center transition-colors hover:border-purple/50"
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-purple"
+          >
+            <PlusIcon className="h-4 w-4 text-white" strokeWidth={3} />
+          </span>
+          <span className="text-[13px] font-bold text-ink-soft">Add to bucket list</span>
+        </button>
       ) : null}
 
       <BucketItemSheet

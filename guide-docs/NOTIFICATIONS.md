@@ -83,7 +83,7 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 
 Ops (not user push): new portal ideas email `COOP_IDEA_REVIEW_EMAIL` + admin **Co-op portal** queue.
 Ops (not user push): Anthropic/OpenAI hard-limit or 429 → admin **Billy / AI economics** `ai_ops_alerts` banner (optional founder email later; users see soft "Billy unavailable", not a top-up CTA).
-| `activity_live` | "Band Tee Week is live" | Weekly activity collage | Activity route from `HOME.md` / `ADMIN.md` |
+| `activity_live` | "Notes App Discovery is live" | Side Quest wall | Activity route from `HOME.md` / `ADMIN.md` |
 | `delight_gift` | "{Name} emoji-bombed you" | Home (DelightHost plays the gift overlay) | `/(tabs)/home` |
 
 **Fallback:** unknown `kind`, missing ids, or expired target → Notifications page (`/notifications`).

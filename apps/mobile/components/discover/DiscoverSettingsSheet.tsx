@@ -1,13 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Discover settings: master Discoverable switch, what you're matched on
-// (about-me categories + quiz toggles), and a locked note that personality
-// signals never appear on your profile. "Turn matching off" returns to the gate.
+// (About-me category toggles + quiz toggles), and a locked note that
+// personality signals never appear on your profile. "Turn matching off"
+// returns to the gate.
 // Analytics: own surface discover_settings_sheet; toggles use DISCOVER.settings_sheet.*.
 // ============================================
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { CheckIcon, LockIcon } from 'lucide-react-native';
+import { LockIcon } from 'lucide-react-native';
 import type { DiscoverSettings } from '@bridger/shared';
 import { DISCOVER } from '@bridger/shared';
 import {
@@ -19,6 +20,17 @@ import {
   useThemeColors
 } from '@bridger/ui';
 import { ABOUT_ME_CATEGORIES } from '../../data/discover';
+
+/** True when this About-me category is on for matching (defaults on). */
+function categoryOn(
+  settings: DiscoverSettings,
+  id: string
+): boolean {
+  const map = settings.sources.aboutMeCategories;
+  if (map && id in map) return map[id] !== false;
+  // No per-category map yet: follow the About-me master.
+  return settings.sources.aboutMe !== false;
+}
 
 export function DiscoverSettingsSheet({
   open,
@@ -37,6 +49,19 @@ export function DiscoverSettingsSheet({
 }) {
   const c = useThemeColors();
 
+  function toggleCategory(id: string, on: boolean) {
+    // Build a full map so every category has an explicit yes/no.
+    const next: Record<string, boolean> = {};
+    for (const cat of ABOUT_ME_CATEGORIES) {
+      next[cat.id] = cat.id === id ? on : categoryOn(settings, cat.id);
+    }
+    const anyOn = Object.values(next).some(Boolean);
+    onSetSources({
+      aboutMeCategories: next,
+      aboutMe: anyOn
+    });
+  }
+
   return (
     <Sheet
       open={open}
@@ -46,11 +71,13 @@ export function DiscoverSettingsSheet({
       parentScreen="discover"
       dismissAnalyticsId={DISCOVER.settings_sheet.dismiss}
     >
-      <ScrollView className="max-h-[440px]" showsVerticalScrollIndicator={false}>
+      <ScrollView className="max-h-[520px]" showsVerticalScrollIndicator={false}>
         <View className="gap-2.5">
           <ListRow
             label="Discoverable"
-            sublabel={settings.discoverable ? 'Matching is on' : 'Nobody can find you'}
+            sublabel={
+              settings.discoverable ? 'Matching is on' : 'Nobody can find you'
+            }
             action={
               <Toggle
                 checked={settings.discoverable}
@@ -61,19 +88,30 @@ export function DiscoverSettingsSheet({
             }
           />
 
-          <Card className="p-4">
-            <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
+          {/* THIS SECTION DOES: turn each About-me signal on or off for matching */}
+          <View className="gap-1.5">
+            <Text className="px-1 font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
               About me · everyone can see
             </Text>
-            <View className="mt-2.5 gap-1.5">
-              {ABOUT_ME_CATEGORIES.map((a) => (
-                <View key={a} className="flex-row items-center gap-2">
-                  <CheckIcon size={16} color="#00A676" strokeWidth={3} />
-                  <Text className="font-sans-sb text-[14px] text-ink">{a}</Text>
-                </View>
-              ))}
-            </View>
-          </Card>
+            {ABOUT_ME_CATEGORIES.map((a) => {
+              const on = categoryOn(settings, a.id);
+              return (
+                <ListRow
+                  key={a.id}
+                  label={a.label}
+                  action={
+                    <Toggle
+                      checked={on}
+                      onChange={(v) => toggleCategory(a.id, v)}
+                      label={a.label}
+                      analyticsId={DISCOVER.settings_sheet.about_me_toggle}
+                      analyticsProps={{ category: a.id }}
+                    />
+                  }
+                />
+              );
+            })}
+          </View>
 
           <ListRow
             label="Onboarding quiz"
@@ -102,9 +140,15 @@ export function DiscoverSettingsSheet({
           />
 
           <Card className="flex-row items-start gap-2.5 p-4">
-            <LockIcon size={16} color={c.inkMute} strokeWidth={2.5} style={{ marginTop: 2 }} />
+            <LockIcon
+              size={16}
+              color={c.inkMute}
+              strokeWidth={2.5}
+              style={{ marginTop: 2 }}
+            />
             <Text className="flex-1 font-sans-sb text-[13px] leading-snug text-ink-soft">
-              Personality signals help matching. They never appear on your profile.
+              Personality signals help matching. They never appear on your
+              profile.
             </Text>
           </Card>
 

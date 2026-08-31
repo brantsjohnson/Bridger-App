@@ -127,6 +127,26 @@ Repo pieces live under `apps/mobile`: `eas.json` (build profiles), `app.config.t
 
 ---
 
+## Deep links / Universal Links (tappable `https://bridger.app/…`)
+
+Tapping a friend's "add me" invite link, a shared quiz result, or an event link should open the app directly. Two layers make that work; the app side is wired, the hosting side needs two account values.
+
+**Already wired (app side):**
+- Custom scheme `bridger://` (works immediately once installed; e.g. `bridger://invite/<token>`). This is the default the QR/link currently uses, so scanning a QR and tapping a `bridger://` link already open the app.
+- `apps/mobile/app.config.js`: `ios.associatedDomains: ['applinks:bridger.app']` and `android.intentFilters` (`autoVerify: true`) for `https://bridger.app/invite|/q|/e`.
+- Routes exist for the paths: `app/invite/[token].tsx`, `app/q/[token].tsx` (event handled elsewhere). Expo Router matches the incoming link path to these automatically.
+
+**Remaining steps to make `https://` links open the app (do once):**
+1. Fill `apps/site/public/.well-known/apple-app-site-association` → replace `REPLACE_WITH_APPLE_TEAM_ID` with the Apple Team ID (`eas credentials -p ios`). Result: `<TEAMID>.social.bridger.app`.
+2. Fill `apps/site/public/.well-known/assetlinks.json` → replace `REPLACE_WITH_ANDROID_SHA256_CERT_FINGERPRINT` with the app-signing SHA-256 (`eas credentials -p android`).
+3. Serve both files over HTTPS from **`bridger.app`** at `/.well-known/…` (`assetlinks.json` with `Content-Type: application/json`, AASA as JSON, no redirects). See `apps/site/public/.well-known/README.md`.
+4. Switch invite links to https so they are tappable in messages: set `EXPO_PUBLIC_APP_LINK_BASE=https://bridger.app` (mobile) and `APP_LINK_BASE=https://bridger.app` (API). Leave unset to keep the `bridger://` scheme.
+5. Rebuild native apps with EAS so iOS/Android re-fetch the association files.
+
+Note: the invite link domain (`bridger.app`) must be the same domain that serves the `.well-known` files. If the marketing site is on a different host, that host must still serve `bridger.app`'s `.well-known` files.
+
+---
+
 ## Play Console / EAS (Android ship checklist)
 
 You do **not** need an Android phone to open Play Console, create the app, or upload the first build. EAS builds the Android App Bundle (`.aab`) in the cloud. Play Console is the Google equivalent of App Store Connect. Internal testing is the Google equivalent of TestFlight internal.

@@ -390,6 +390,7 @@ export class AdminService {
     closes_in?: string | null;
     emoji?: string | null;
     cover?: unknown;
+    post_mode?: string | null;
   }) {
     return {
       id: a.id,
@@ -400,7 +401,11 @@ export class AdminService {
       endsAt: a.ends_at ?? undefined,
       closesIn: a.closes_in ?? undefined,
       emoji: a.emoji ?? undefined,
-      cover: asCover(a.cover)
+      cover: asCover(a.cover),
+      postMode:
+        a.post_mode === 'text' || a.post_mode === 'photo'
+          ? a.post_mode
+          : ('photo' as const)
     };
   }
 
@@ -410,6 +415,7 @@ export class AdminService {
     closesIn?: string;
     emoji?: string;
     cover?: Cover;
+    postMode?: 'photo' | 'text';
   }) {
     const { data, error } = await this.supabase.admin
       .from('weekly_activities')
@@ -419,7 +425,8 @@ export class AdminService {
         active: false,
         closes_in: body.closesIn ?? 'ends Sunday',
         emoji: body.emoji ?? null,
-        cover: (body.cover ?? null) as never
+        cover: (body.cover ?? null) as never,
+        post_mode: body.postMode === 'text' ? 'text' : 'photo'
       })
       .select('*')
       .single();
@@ -438,6 +445,7 @@ export class AdminService {
       closesIn?: string | null;
       emoji?: string | null;
       cover?: Cover | null;
+      postMode?: 'photo' | 'text';
     }
   ) {
     // Only one activity may be active at a time.
@@ -457,6 +465,9 @@ export class AdminService {
     if (patch.closesIn !== undefined) update.closes_in = patch.closesIn;
     if (patch.emoji !== undefined) update.emoji = patch.emoji;
     if (patch.cover !== undefined) update.cover = patch.cover;
+    if (patch.postMode !== undefined) {
+      update.post_mode = patch.postMode === 'text' ? 'text' : 'photo';
+    }
 
     const { data, error } = await this.supabase.admin
       .from('weekly_activities')

@@ -14,6 +14,7 @@ import {
   PROFILE_SECTION_TITLE_SIZE,
   PROFILE_TITLE_TO_BODY
 } from './profileSpacing';
+import { ProfileAddCard } from './ProfileAddCard';
 
 export function Top5Section({
   items,
@@ -51,14 +52,15 @@ export function Top5Section({
       <View style={{ marginTop: PROFILE_TITLE_TO_BODY, gap: PROFILE_ROW_GAP }}>
         {ordered.length === 0 ? (
           canAdd ? (
-            <Pressable
-              onPress={withAnalyticsPress(PROFILE.card.add_details, () => onAdd?.())}
-              accessibilityRole="button"
+            <ProfileAddCard
+              label="Add your Top 5"
+              helper="5 things anyone who knows you should know."
+              emoji="⭐"
+              accent="amber"
+              analyticsId={PROFILE.card.add_details}
               accessibilityLabel="Add your Top 5"
-              className="min-h-[44px] items-center justify-center rounded-card border border-dashed border-ink-line px-4 py-4"
-            >
-              <Text className="font-sans-b text-[14px] text-ink">Add your Top 5</Text>
-            </Pressable>
+              onPress={() => onAdd?.()}
+            />
           ) : (
             <Text className="font-sans-sb text-[14px] text-ink-mute">Nothing shared yet.</Text>
           )

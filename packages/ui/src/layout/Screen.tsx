@@ -384,6 +384,11 @@ export function ScreenBody({
   adjustKeyboardInsets = false,
   /** Set false while dragging roster rows so the page doesn't fight the finger. */
   scrollEnabled = true,
+  /**
+   * Park children in the vertical middle of the space under the header
+   * (News coming-soon, empty gates). Header stays pinned at the top.
+   */
+  centerContent = false,
   className
 }: {
   children: React.ReactNode;
@@ -391,6 +396,7 @@ export function ScreenBody({
   tabBarInset?: boolean;
   adjustKeyboardInsets?: boolean;
   scrollEnabled?: boolean;
+  centerContent?: boolean;
   className?: string;
 }) {
   const { headerProps, headerChrome, hasHeader } = React.useContext(ScreenContext);
@@ -410,6 +416,8 @@ export function ScreenBody({
         adjustKeyboardInsets && Platform.OS === 'ios'
       }
       contentContainerStyle={{
+        // Grow so centerContent can middle the body under the header.
+        flexGrow: 1,
         // Header is full-bleed (own horizontal pad). Body content is padded below.
         paddingTop: hasHeader ? 0 : 8,
         // Tab pill clearance only (not keyboard height). Sheets / opt-in
@@ -427,7 +435,16 @@ export function ScreenBody({
           {headerChrome}
         </View>
       ) : null}
-      <View style={{ paddingHorizontal: padded ? 20 : 0 }}>{children}</View>
+      <View
+        style={{
+          paddingHorizontal: padded ? 20 : 0,
+          ...(centerContent
+            ? { flexGrow: 1, justifyContent: 'center' as const }
+            : null)
+        }}
+      >
+        {children}
+      </View>
     </ScrollView>
   );
 }

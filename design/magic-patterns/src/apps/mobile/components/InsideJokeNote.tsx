@@ -136,32 +136,31 @@ export function PolaroidCard({
 /**
  * The "+" that sits among the notes. An empty wall still reads as something to
  * fill in rather than a void, so this doubles as the null state.
+ * Square tile (Favorites pattern) — parent sets the half-column width.
  */
 export function AddNoteTile({
   label = 'Add an Inside Joke',
-  onClick,
-  tall = false
-
-
-
-
-}: {label?: string;onClick?: () => void;tall?: boolean;}) {
+  onClick
+}: {
+  label?: string;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex w-full flex-col items-center justify-center gap-1.5 rounded-none border-2 border-dashed border-ink-line bg-white/60 p-4 text-center transition-colors hover:border-purple/50 hover:bg-[#F1ECFF]',
-        tall ? 'min-h-[132px]' : 'min-h-[104px]'
-      )}>
-      
+        'flex w-full flex-col items-center justify-center gap-1.5 rounded-none border-2 border-dashed border-ink-line bg-[#FFF6C8] p-4 text-center transition-colors hover:border-purple/50 hover:bg-[#FFEFA8]',
+        'aspect-square'
+      )}
+    >
       <span
         aria-hidden="true"
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-purple">
-        
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-purple"
+      >
         <PlusIcon className="h-4 w-4 text-white" strokeWidth={3} />
       </span>
       <span className="text-[13px] font-bold text-ink-soft">{label}</span>
-    </button>);
-
+    </button>
+  );
 }

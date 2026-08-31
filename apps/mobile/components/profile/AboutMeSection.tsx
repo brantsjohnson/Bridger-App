@@ -28,6 +28,7 @@ import {
   PROFILE_SECTION_TITLE_SIZE,
   PROFILE_TITLE_TO_BODY
 } from './profileSpacing';
+import { ProfileAddCard } from './ProfileAddCard';
 
 /** Bios longer than this get a short preview + "Rest of bio". */
 const BIO_PREVIEW_CHARS = 110;
@@ -282,14 +283,15 @@ export function AboutMeSection({
         >
           {ordered.length === 0 ? (
             canEditContent ? (
-              <Pressable
-                onPress={withAnalyticsPress(PROFILE.card.add_details, () => onAdd?.())}
-                accessibilityRole="button"
+              <ProfileAddCard
+                label="Add details"
+                helper="Hometown, work, birthday."
+                emoji="🪪"
+                accent="blue"
+                analyticsId={PROFILE.card.add_details}
                 accessibilityLabel="Add About me details"
-                className="min-h-[44px] items-center justify-center rounded-card border border-dashed border-ink-line px-4 py-4"
-              >
-                <Text className="font-sans-b text-[14px] text-ink">Add details</Text>
-              </Pressable>
+                onPress={() => onAdd?.()}
+              />
             ) : (
               <Text className="font-sans-sb text-[14px] text-ink-mute">
                 Nothing shared at this level.

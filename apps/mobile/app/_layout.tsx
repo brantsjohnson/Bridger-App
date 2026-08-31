@@ -53,6 +53,10 @@ import {
 } from '../lib/demo';
 import { resolveJnameReferral } from '../lib/jname-api';
 import { takePendingReferral } from '../lib/jname-referral';
+import { takePendingInvite } from '../lib/invite-pending';
+import { redeemInvite } from '../data/invites';
+import { loadPeople } from '../lib/people-cache';
+import { trackProduct } from '@bridger/shared';
 import { recordRoutePath } from '../lib/route-trail';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
 import { BridgeLiveProvider, useBridgeLive } from '../providers/bridge-live-provider';
@@ -247,6 +251,9 @@ function useProtectedRoute() {
     const inOnboarding = segments[0] === 'onboarding';
     const inInviteAccess = segments[0] === 'invite-access';
     if (segments[0] === 'q') return;
+    // Let the invite link screen mount so it can either redeem now (signed in)
+    // or stash the invite and route to sign-in itself (signed out).
+    if (segments[0] === 'invite') return;
     const done = isOnboardingCompleteCached() || onbComplete;
 
     if (isDemoMode()) {
@@ -370,6 +377,33 @@ function JnameReferralSync() {
   return null;
 }
 
+// THIS SECTION DOES: once someone is signed in, if they opened a friend's
+// "add me" invite link before making an account, redeem it now so the two of
+// them become friends, then open the reveal. Waits until onboarding is done so
+// we never interrupt setup. No-op when there is nothing pending.
+function InviteRedeemSync() {
+  const { user } = useAuth();
+  const router = useRouter();
+  useEffect(() => {
+    if (!user?.id) return;
+    void (async () => {
+      const done = await getOnboardingComplete();
+      if (!done) return;
+      const raw = await takePendingInvite();
+      if (!raw) return;
+      try {
+        const res = await redeemInvite(raw);
+        trackProduct('friend_added', { method: res.method });
+        if (!isDemoMode()) await loadPeople();
+        router.push(`/reveal/${res.personId}`);
+      } catch {
+        // Expired or already connected — just drop it, no error to the user.
+      }
+    })();
+  }, [user?.id, router]);
+  return null;
+}
+
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   useProtectedRoute();
@@ -381,6 +415,8 @@ function RootLayoutNav() {
       <AnalyticsSessionSync />
       {/* Connect a fresh signup to the friend whose shared link brought them. */}
       <JnameReferralSync />
+      {/* Finish a friend invite link that was opened before signing in. */}
+      <InviteRedeemSync />
       {/* Load personal grid tint after auth so SynthGrid matches ColorStep. */}
       <GridColorSync />
       {/* Mid-party capture nudges when BeReal-like reminders are on. */}
@@ -423,6 +459,8 @@ function RootLayoutNav() {
           />
           {/* Public shared J-name result (opens in app if installed, else web). */}
           <Stack.Screen name="q/[token]" options={{ headerShown: false }} />
+          {/* Friend invite link: redeem + reveal (opens in app when installed). */}
+          <Stack.Screen name="invite/[token]" options={{ headerShown: false }} />
           <Stack.Screen name="recap/index" options={{ headerShown: false }} />
           <Stack.Screen name="activity/index" options={{ headerShown: false }} />
           <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
