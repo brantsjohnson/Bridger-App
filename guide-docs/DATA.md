@@ -75,11 +75,16 @@ Organized by domain so it's easy to navigate. Key columns shown (not exhaustive)
 ```
 users            id · auth_provider · status · created_at
 user_identity    user_id⟶users · display_name · avatar_media_id⟶media · avatar_original_media_id⟶media · avatar_filter · profile_song    [PII]
-user_contacts    user_id⟶users · email · phone (via Supabase Auth)                        [PII]
+user_contacts    user_id⟶users · email · phone (E.164 via Auth SMS OTP; merge key for pending_people) [PII]
 user_settings    user_id⟶users · discoverable · notif_prefs(jsonb {kinds,circles}) · home_city(coarse) · onboarding_complete · profile_intro_seen
                  · meet_scope(nearby|anywhere) · theme · locale · profile_color(#RRGGBB|null)
                  · social_battery(0..7|null) · connection_style(jsonb opaque FoF keys)
+                 · membership_interests(text[] opaque) · help_interests(text[] opaque)
+                 · page_authoring(auto|manual|assist|null)
                  [home_city = city only, never street address; profile_color tints SynthGrid for this user]
+pending_people   id · author_id⟶users · phone_e164 · display_name · merged_user_id⟶users · created_at
+                 [author-only private card for someone not on Bridger yet; unique open (author, phone);
+                  never a full address book; merge on signup with matching Auth phone]
 music_connections user_id⟶users · provider(spotify|apple_music) · refresh_token_enc · access_token_enc
                   · scopes · provider_user_id · connected_at
                   [PII / secrets: encrypted by Nest; NOT Supabase Auth login; owner-only; cascade delete]
@@ -124,9 +129,11 @@ product analytics  stored in PostHog (not Postgres), so matching cannot join tap
 tiers            user_id⟶users · other_id⟶users · tier(close|friend|acquaintance)   [per-viewer]
 invite_links     token · owner_id⟶users · expires_at
 qr_tokens        token · owner_id⟶users · expires_at
-friend_notes     id · author_id⟶users · person_id⟶users · kind(text|date|check_in)
+friend_notes     id · author_id⟶users · person_id⟶users (nullable) · pending_person_id⟶pending_people (nullable)
+                 · kind(text|date|check_in)
                  · text · date · remind(1wk+dayOf for dates)
-                 · cadence(week|biweek|month) · next_remind_at        [private, author-only; never matching/AI]
+                 · cadence(week|biweek|month) · next_remind_at
+                 [private, author-only; exactly one of person_id / pending_person_id; never matching/AI]
 ```
 
 ### Content
@@ -244,7 +251,7 @@ Deleting a `users` row cascades to **every** table above keyed by that user — 
 ## Acceptance criteria
 
 - [ ] One Expo codebase builds iOS, Android, and web (Expo Router web output).
-- [ ] Postgres + pgvector back the app (Supabase), with Auth (Google/Apple/email), Storage (media + retention), and RLS enabling the tier model at the row level.
+- [ ] Postgres + pgvector back the app (Supabase), with Auth (phone OTP by default; Google/Apple/email in legacy mode), Storage (media + retention), and RLS enabling the tier model at the row level.
 - [ ] Data is separated into Identity/PII (Zone A), de-identified facts (Zone B), and derived AI (Zone C).
 - [ ] Matching/RAG reads only Zones B and C and outputs opaque IDs + reasons; names/photos are joined only on-device at display.
 - [ ] No model is trained/fine-tuned on PII; embeddings are retrieval-only; summaries are de-identified and user-owned.

@@ -41,7 +41,13 @@ export function ConfirmProfileStep({
   onChangeLast,
   onPickPhoto,
   onNext,
-  onBack
+  onBack,
+  layout = 'full',
+  ask,
+  blurb,
+  cta,
+  skipLabel,
+  onSkip
 }: {
   step: number;
   total: number;
@@ -67,6 +73,13 @@ export function ConfirmProfileStep({
   onPickPhoto: (s: PhotoSource) => void;
   onNext: () => void;
   onBack: () => void;
+  /** full = Old confirm screen. photo = New photo-only screen. */
+  layout?: 'full' | 'photo';
+  ask?: string;
+  blurb?: string;
+  cta?: string;
+  skipLabel?: string;
+  onSkip?: () => void;
 }) {
   // THIS SECTION DOES: slide name fields up when the keyboard covers them.
   const { ensureVisible } = useOnboardingBodyScroll();
@@ -89,7 +102,9 @@ export function ConfirmProfileStep({
   // slow filter never traps anyone (we finish the bake on Continue if needed).
   const hasPhoto = Boolean(photoUri || photoEmoji);
   const ready =
-    first.trim().length > 0 && last.trim().length > 0 && hasPhoto;
+    layout === 'photo'
+      ? true
+      : first.trim().length > 0 && last.trim().length > 0 && hasPhoto;
   const cameraLabel = photoSource === 'camera' && hasPhoto ? 'Retake' : 'Take a photo';
 
   // THIS SECTION DOES: when a server look is picked, bake it. Live users hit the
@@ -148,31 +163,62 @@ export function ConfirmProfileStep({
       setBakedLoading(false);
     };
 
+    // THIS SECTION DOES: never leave Comic / X-ray spinning forever. A hung
+    // upload or slow ImageMagick used to trap the preview on a spinner.
+    const BAKE_TIMEOUT_MS = 20000;
+    const timeoutId = setTimeout(() => {
+      if (__DEV__) {
+        console.warn('[photo-filter] bake timed out', serverFilter);
+      }
+      finish(null, null, null);
+    }, BAKE_TIMEOUT_MS);
+
+    const finishOnce = (
+      url: string | null,
+      mediaId: string | null,
+      originalMediaId: string | null
+    ) => {
+      clearTimeout(timeoutId);
+      finish(url, mediaId, originalMediaId);
+    };
+
     if (isDemoMode()) {
       if (Platform.OS !== 'web') {
-        finish(null, null, null);
-        return;
+        // Native demo: try the live API when signed in; otherwise clear spinner.
+        bakeServerPhotoFilter(photoUri, serverFilter)
+          .then((res) => finishOnce(res.url, res.mediaId, res.originalMediaId))
+          .catch(() => {
+            bakeClientPhotoFilter(photoUri, serverFilter)
+              .then((url) => finishOnce(url, null, null))
+              .catch(() => finishOnce(null, null, null));
+          });
+        return () => {
+          cancelled = true;
+          clearTimeout(timeoutId);
+        };
       }
       bakeClientPhotoFilter(photoUri, serverFilter)
-        .then((url) => finish(url, null, null))
-        .catch(() => finish(null, null, null));
+        .then((url) => finishOnce(url, null, null))
+        .catch(() => finishOnce(null, null, null));
       return () => {
         cancelled = true;
+        clearTimeout(timeoutId);
       };
     }
 
     bakeServerPhotoFilter(photoUri, serverFilter)
-      .then((res) => finish(res.url, res.mediaId, res.originalMediaId))
+      .then((res) => finishOnce(res.url, res.mediaId, res.originalMediaId))
       .catch((err) => {
         // Surface a quiet failure so a missing API never looks like a broken filter.
         if (__DEV__) {
           console.warn('[photo-filter] bake failed', serverFilter, err);
         }
-        finish(null, null, null);
+        finishOnce(null, null, null);
       });
 
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [photoFilter, photoUri]);
 
@@ -228,21 +274,49 @@ export function ConfirmProfileStep({
     <OnboardingStep
       step={step}
       total={total}
-      ask="Confirm your details"
+      ask={ask ?? 'Confirm your details'}
+      blurb={blurb}
+      cta={cta ?? 'Continue'}
       ctaDisabled={!ready}
       scrollBody
-      onContinue={onNext}
+      continueAnalyticsId={
+        layout === 'photo' ? ONBOARDING.confirm_profile.photo_square : undefined
+      }
+      onContinue={() => {
+        if (layout === 'photo' && !hasPhoto) {
+          openPhotoSheet();
+          return;
+        }
+        onNext();
+      }}
+      skipLabel={skipLabel}
+      skipAnalyticsId={
+        layout === 'photo' ? ONBOARDING.confirm_profile.photo_skip : undefined
+      }
+      onSkip={onSkip}
       onBack={onBack}
     >
       <View style={{ gap: 28 }}>
-        {/* THIS SECTION DOES: photo square plus the filter picker tucked right under it. */}
+        {/* THIS SECTION DOES: photo square (with a required * in New) plus looks. */}
         <View style={{ gap: 12, alignSelf: 'stretch' }}>
+          {layout === 'photo' ? (
+            <Text
+              className="font-sans-sb text-[13px]"
+              style={{ color: OB.navy }}
+              accessibilityLabel="Profile photo, required"
+            >
+              Profile photo *
+            </Text>
+          ) : null}
           <Pressable
             onPress={withAnalyticsPress(ONBOARDING.confirm_profile.photo_square, openPhotoSheet)}
             accessibilityRole="button"
             accessibilityLabel={
-              hasPhoto ? 'Change profile photo' : 'Add a profile photo'
+              hasPhoto
+                ? 'Change profile photo, required'
+                : 'Add a profile photo, required'
             }
+            accessibilityHint="Required. You can add one later with the skip link."
             style={{
               alignSelf: 'stretch',
               aspectRatio: 1,
@@ -279,27 +353,30 @@ export function ConfirmProfileStep({
           <PhotoFilterPicker value={photoFilter} onChange={onChangePhotoFilter} />
         </View>
 
-        {/* THE NAME: first + last, the only required answers. */}
-        <View style={{ gap: 18 }}>
-          <OBField
-            label="First name"
-            value={first}
-            onChange={onChangeFirst}
-            placeholder="Yo"
-            autoCapitalize="words"
-            analyticsId={ONBOARDING.confirm_profile.first_input}
-            onFocusExtra={(anchor) => ensureVisible(anchor)}
-          />
-          <OBField
-            label="Last name"
-            value={last}
-            onChange={onChangeLast}
-            placeholder="Mamma"
-            autoCapitalize="words"
-            analyticsId={ONBOARDING.confirm_profile.last_input}
-            onFocusExtra={(anchor) => ensureVisible(anchor)}
-          />
-        </View>
+        {layout === 'photo' ? null : (
+          <View style={{ gap: 18 }}>
+            <OBField
+              label="First name"
+              required
+              value={first}
+              onChange={onChangeFirst}
+              placeholder="Yo"
+              autoCapitalize="words"
+              analyticsId={ONBOARDING.confirm_profile.first_input}
+              onFocusExtra={(anchor) => ensureVisible(anchor)}
+            />
+            <OBField
+              label="Last name"
+              required
+              value={last}
+              onChange={onChangeLast}
+              placeholder="Mamma"
+              autoCapitalize="words"
+              analyticsId={ONBOARDING.confirm_profile.last_input}
+              onFocusExtra={(anchor) => ensureVisible(anchor)}
+            />
+          </View>
+        )}
       </View>
     </OnboardingStep>
   );

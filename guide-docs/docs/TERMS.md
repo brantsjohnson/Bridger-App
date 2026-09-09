@@ -46,8 +46,8 @@
 ## 4 · What Bridger is (and is not)
 
 - Bridger helps you stay close to people you choose (Friends tiers, Updates, Events, Touch Grass, quizzes, recap Friend Pod, Discover).
-- Account creation is through **Continue with Google** or **Continue with Apple** on Sign in (first use creates the account; next time signs you in). Email sign-in remains for existing password accounts. Completing onboarding after first sign-in is required before using the app.
-- The **co-op** is optional membership for richer creation, named groups, and storage. Signup offers **Join the co-op** or **Free Lite**. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
+- Account creation is through **phone number + SMS one-time code** on Sign in (first use creates the account; next time signs you in). Google / Apple / email stay available when we turn on legacy auth. Completing onboarding after first sign-in is required before using the app. If you invite a contact who later joins with the same phone number, your private notes stay private to you and their real profile replaces your pending card.
+- The **co-op** is optional membership for richer creation, named groups, and storage. New onboarding teaches membership, then lets you join, invite friends, or continue for free (Free Lite). **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
 - During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (workout, go out, creative, industry, travel, nearby, someone who gets me). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
 - Onboarding also asks a few optional, skippable "taste" questions (job, dream job, a song, your towns, a favorite trip that may be placed on your map, a weekly highlight, a grid color, social-events pacing). You choose the audience for each on the Privacy & Control screen, and nothing is required except your name.
@@ -241,6 +241,7 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 
 | Date | What was added / changed |
 |---|---|
+| 2026-09-08 | Phone OTP sign-in; pending-people merge; New onboarding (profile then education; co-op optional). Groups, not circles, in New copy. |
 | 2026-08-30 | Side Quest posts (photo or text blurb, e.g. Notes App Discovery) are UGC under the same report / block rules as Updates. |
 | 2026-08-30 | Reveal Screen 3 may suggest friends of friends (Discover on) or nudge to turn Discover on; connect requests from that screen still need the other person to accept. Quiz compatibility on reveal uses in-app titles. |
 | 2026-08-28 | Co-op paywall: custom in-app join sheet (pick method by device, then monthly $6 / yearly $60 with 2 months free); Apple Pay / Google Pay marks not used (IAP methods). Yearly price set to $60. Server webhooks emit coop_renewed / coop_expired (opaque user id only). |

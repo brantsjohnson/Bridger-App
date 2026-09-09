@@ -1,18 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The onboarding "room" — one container that walks a new person through the new
-// flow in order, holding all their answers in one place. The root gate sends
-// new accounts here and won't let them into the app until Co-op (the last step)
-// marks onboarding done.
-//
-// Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat]
-// → friends of friends → [retention stat] → notifications → taste intro → right
-// now → obsession → social battery → color → places → privacy circles →
-// privacy & control → [screentime stat] → co-op. Each screen saves its own
-// slice; finishing Co-op flips the "complete" flag, flags the welcome party, and
-// drops you on Home where the fireworks play (the old "You're in" screen was
-// removed 2026-08-28).
-// (Recap voice step archived; Friend Pod still records weekly recaps.)
+// The onboarding room. Live / TestFlight accounts walk the Old 19-step flow.
+// Demo password "onboard" walks the New story flow (profile, then education,
+// then optional feature tours). Password "onboardold" is Old. Finishing
+// lands on Home.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, View } from 'react-native';
@@ -20,6 +11,8 @@ import { useRouter } from 'expo-router';
 import { openSurface, trackFlowStarted, trackProduct } from '@bridger/shared';
 import { useGridColor } from '@bridger/ui';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import { getOnboardingFlowVariant } from '../../lib/demo';
+import { NewOnboardingDispatcher } from '../../components/onboarding/NewOnboardingDispatcher';
 import { ConfirmProfileStep } from '../../components/onboarding/ConfirmProfileStep';
 import { BirthdayStep } from '../../components/onboarding/BirthdayStep';
 import { StatScreen } from '../../components/onboarding/StatScreen';
@@ -60,7 +53,7 @@ export default function OnboardingScreen() {
     markWelcomeCelebration();
     void loadPeople();
     router.replace('/home');
-  });
+  }, getOnboardingFlowVariant());
   const { setGridColorHex } = useGridColor();
   // Which music connect browser sheet is open (null = idle).
   const [musicBusy, setMusicBusy] = useState<'spotify' | 'apple' | null>(null);
@@ -76,6 +69,12 @@ export default function OnboardingScreen() {
   const { step, index, draft, hydrated, patch, goNext, goSkip, goBack, formStep, formTotal, dir } = flow;
   // The very first screen has nothing to go back to.
   const back = index > 0 ? goBack : undefined;
+
+  // THIS SECTION DOES: close the song sheet when leaving Obsession so it cannot
+  // flash over Right Now / other steps after Back.
+  useEffect(() => {
+    if (step !== 'obsession') setSongSheetOpen(false);
+  }, [step]);
 
   // THIS SECTION DOES: when you land on the song step, ask Nest which music
   // accounts are already linked so the buttons match the real server state.
@@ -201,6 +200,40 @@ export default function OnboardingScreen() {
 
   // THIS SECTION DOES: pick which step component to show for the current key.
   const renderStep = () => {
+    const onJoinPaid = async (
+      method: 'apple' | 'google' | 'card',
+      plan: 'monthly' | 'yearly'
+    ) => {
+      try {
+        await joinCoop(true, method, plan);
+        void flow.complete();
+      } catch (err) {
+        const { PurchaseCancelledError } = await import('../../data/coop');
+        if (err instanceof PurchaseCancelledError) throw err;
+        Alert.alert(
+          'Could not join',
+          err instanceof Error ? err.message : 'Try again in a moment.'
+        );
+        throw err;
+      }
+    };
+
+    const onRedeemCode = async (redeemCode: string) => {
+      await redeemPromoCode(redeemCode);
+      void flow.complete();
+    };
+
+    if (flow.variant === 'new') {
+      return (
+        <NewOnboardingDispatcher
+          flow={flow}
+          onPickPhoto={onPickPhoto}
+          onJoin={onJoinPaid}
+          onRedeem={onRedeemCode}
+        />
+      );
+    }
+
     switch (step) {
       case 'confirm-profile':
         return (
@@ -454,34 +487,13 @@ export default function OnboardingScreen() {
                 void flow.complete();
               }
             }}
-            onJoin={async (method, plan) => {
-              // Buys the chosen plan via the store / card (or soft join in
-              // demo). Only finish onboarding after a confirmed purchase.
-              // Rethrow so CoopStep keeps the join sheet open on cancel / error.
-              try {
-                await joinCoop(true, method, plan);
-                void flow.complete();
-              } catch (err) {
-                const { PurchaseCancelledError } = await import('../../data/coop');
-                if (err instanceof PurchaseCancelledError) throw err;
-                Alert.alert(
-                  'Could not join',
-                  err instanceof Error ? err.message : 'Try again in a moment.'
-                );
-                throw err;
-              }
-            }}
+            onJoin={onJoinPaid}
             onInvitesComplete={() => {
               // Already had 3 invites (e.g. from Contacts): Continue finishes.
               void joinCoop(false);
               void flow.complete();
             }}
-            onRedeem={async (redeemCode) => {
-              // Throws on a bad code so CoopStep can show the error. On success we
-              // finish onboarding. redeemPromoCode records who used it.
-              await redeemPromoCode(redeemCode);
-              void flow.complete();
-            }}
+            onRedeem={onRedeemCode}
             onBack={back ?? (() => {})}
           />
         );

@@ -361,17 +361,20 @@ export async function savePhoto(input: {
 
 /**
  * Birthday — About Me row + legacy essential key for privacy review.
- * PRIVACY: visibility is chosen in the review step; the value is never logged
- * as analytics content.
+ * PRIVACY: visibility is chosen in the review step (Old) or the birthday group
+ * picker (New). The value is never logged as analytics content.
  */
-export async function saveBirthday(value: string): Promise<void> {
+export async function saveBirthday(
+  value: string,
+  visibleToTier: Tier = 'friend'
+): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.birthday = value;
+    demoDraftSaved.birthdayTier = visibleToTier;
     return;
   }
   const trimmed = value.trim();
   if (!trimmed) return;
-  // Canonical About Me field the profile card reads (kind=about).
   await apiFetch('/me/attributes', {
     method: 'POST',
     body: JSON.stringify({
@@ -383,13 +386,69 @@ export async function saveBirthday(value: string): Promise<void> {
             id: 'about-birthday',
             key: 'Birthday',
             value: trimmed,
-            tier: 'friend'
+            tier: visibleToTier
           },
           layer: 'profile',
-          visibleToTier: 'friend'
+          visibleToTier
         }
       ]
     })
+  });
+}
+
+/** PRIVACY: write who can see the birthday (Close / Friends / Acquaintances). */
+export async function saveBirthdayAudience(
+  birthday: string,
+  tier: Tier
+): Promise<void> {
+  if (!birthday.trim()) {
+    if (isDemoMode()) demoDraftSaved.birthdayTier = tier;
+    return;
+  }
+  await saveBirthday(birthday, tier);
+}
+
+/** Opaque membership-interest keys from New onboarding Co-op 6. */
+export async function saveMembershipInterests(ids: string[]): Promise<void> {
+  const clean = ids.filter((s) => typeof s === 'string' && s.trim()).slice(0, 20);
+  if (isDemoMode()) {
+    demoDraftSaved.membershipInterests = clean;
+    trackProduct('membership_interests_selected', { count: clean.length });
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ membershipInterests: clean })
+  });
+  trackProduct('membership_interests_selected', { count: clean.length });
+}
+
+/** Opaque "what would help" keys from New onboarding Product 2. */
+export async function saveHelpInterests(ids: string[]): Promise<void> {
+  const clean = ids.filter((s) => typeof s === 'string' && s.trim()).slice(0, 20);
+  if (isDemoMode()) {
+    demoDraftSaved.helpInterests = clean;
+    trackProduct('help_interests_selected', { count: clean.length });
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ helpInterests: clean })
+  });
+  trackProduct('help_interests_selected', { count: clean.length });
+}
+
+/** How they like scrapbook pages made (auto / manual / assist). */
+export async function savePageAuthoring(
+  pref: 'auto' | 'manual' | 'assist' | null
+): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.pageAuthoring = pref;
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ pageAuthoring: pref })
   });
 }
 
@@ -1017,6 +1076,10 @@ export async function flushOnboardingDraft(draft: {
     countryCode: string;
   } | null;
   visibility: VisibilityRow[];
+  birthdayTier?: Tier | null;
+  membershipInterests?: string[];
+  helpInterests?: string[];
+  pageAuthoring?: 'auto' | 'manual' | 'assist' | null;
 }): Promise<void> {
   if (isDemoMode()) return;
 
@@ -1046,7 +1109,7 @@ export async function flushOnboardingDraft(draft: {
 
   if (draft.birthday.trim()) {
     try {
-      await saveBirthday(draft.birthday);
+      await saveBirthday(draft.birthday, draft.birthdayTier ?? 'friend');
     } catch (err) {
       console.warn('flushOnboardingDraft: birthday failed', err);
     }
@@ -1126,6 +1189,30 @@ export async function flushOnboardingDraft(draft: {
       await saveVisibility(draft.visibility);
     } catch (err) {
       console.warn('flushOnboardingDraft: visibility failed', err);
+    }
+  }
+
+  if (draft.membershipInterests?.length) {
+    try {
+      await saveMembershipInterests(draft.membershipInterests);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: membershipInterests failed', err);
+    }
+  }
+
+  if (draft.helpInterests?.length) {
+    try {
+      await saveHelpInterests(draft.helpInterests);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: helpInterests failed', err);
+    }
+  }
+
+  if (draft.pageAuthoring) {
+    try {
+      await savePageAuthoring(draft.pageAuthoring);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: pageAuthoring failed', err);
     }
   }
 }

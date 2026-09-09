@@ -4,16 +4,52 @@ Build doc for the very first run. Maps to `apps/mobile/app/(auth)/welcome.tsx` a
 
 ---
 
-## CURRENT FLOW (2026 rebuild) — this is what ships
+## CURRENT FLOW (TestFlight / live) — Old 19-step
 
-The run was rebuilt to feel full, visual, and animated, with four "the internet promised X, instead Y" stat interstitials woven between the questions. This section is the source of truth; the older detailed sections below are kept for history and are superseded where they disagree.
+Live and TestFlight accounts still walk the **Old 19-step onboarding** below. They never see New until we flip `getOnboardingFlowVariant()` (and ship a build). Sign-in on TestFlight stays Google / Apple / email (`EXPO_PUBLIC_AUTH_MODE=legacy` on the preview and production EAS profiles).
 
-**Order** (single container `apps/mobile/app/onboarding/index.tsx`, driven by `hooks/useOnboarding.ts`):
+---
+
+## NEW ONBOARDING (preview only, demo password `onboard`) — not shipped yet
+
+Sign-in is **phone + SMS OTP** (iOS one-time-code autofill). Google / Apple / email stay compiled behind `EXPO_PUBLIC_AUTH_MODE=legacy`. Phone is stored in E.164 on `user_contacts`. If someone already made a private card for that number (`pending_people`), signup merges notes and a friend connection into the new account.
+
+The onboarding container starts at **first name**. Copy lives in `apps/mobile/components/onboarding/onboarding-new-copy.ts`. Screens use four archetypes (explainer, story, choice, privacy-picker) plus the existing name / photo / birthday / contacts / co-op components.
+
+**Order** (driven by `hooks/useOnboarding.ts` with `flowVariant='new'`):
+
+1. **First name** (required *)
+2. **Last name** (required *)
+3. **Photo** (required * with an explicit "Add one later" skip)
+4. **Birthday** (required *; audience chosen later)
+5. **Why Bridger** (2 explainers)
+6. **Privacy, taught with birthday** (explainers + one Groups picker that saves `visibleToTier`; user-facing word is Groups, never circles)
+7. **Groups** (3 screens: Close Friends / Friends / Acquaintances)
+8. **Custom groups bridge** (membership teaser)
+9. **Co-op story** (6 screens) + interest chips, then optional routing to join or invite-3
+10. **What would help** (multi-select) then **only the tours they picked**: see friends (Touch Grass), keep up (notes), memories (pages), meet people (friends of friends)
+11. **Home** as Free Lite. Co-op is optional. There is no paywall.
+
+**Progress bar:** only the four profile fields (name, photo, birthday). Everything else is education.
+
+**Demo:** password `onboard` runs this New flow. Password `onboardold` (and live / TestFlight) run the Old 19-step flow. New is preview-only until we flip the switch.
+
+**Reduce Motion:** story cards never auto-advance; the Continue button stays visible.
+
+Graphics are placeholders (`VisualSlot`) until a Magic Patterns pass.
+
+---
+
+## OLD ONBOARDING (demo / reference) — password `onboardold`
+
+The run was rebuilt to feel full, visual, and animated, with four "the internet promised X, instead Y" stat interstitials woven between the questions. This section is kept so the Old demo still has a spec.
+
+**Order** (single container `apps/mobile/app/onboarding/index.tsx`, driven by `hooks/useOnboarding.ts` with `flowVariant='old'`):
 
 1. **Confirm profile** — first name, last name, profile photo (take or upload). Name required.
 2. **Birthday** — the drill-down picker (year → month → day), then a white "Is this right?" panel with the date and two stacked full-width answers ("Yes, that is my birthday" / "No, pick again"). The panel is anchored at the top of the body, the same place the year, month and day cells start, so it does not jump between stages. Required; no skip.
 3. **Stat 1 · Feed reality** — "supposed to connect us, instead it's all about ads." Animated feed of 10 cards, 9 ads / 1 friend. Bridge: "Let's try again."
-4. **Contacts** — "Bridger's a group chat on steroids." Connect contacts (Apple / Android permission, on-device only). After a successful load the row turns **green with a check**, we spray a short celebration, and show **AWESOME! We'll notify you when friends join.** Then **Invite 3 friends** as three separate slots labelled "Invite friends #1 / #2 / #3". Each slot opens the contact picker or the system share sheet; a sent slot turns green with a checkmark too. On web / demo, Connect contacts loads stand-in names so the picker still works (no real address book). A share that cannot happen shows a sentence on the screen, never an error page. Skippable.
+4. **Contacts** — "Bridger is a group chat on steroids." Connect contacts (Apple / Android permission, on-device only). Before the phone's share sheet we show Not now / Continue so people can back out. After a successful load the row turns **green with a check**, we spray a short celebration, and show **AWESOME! We'll notify you when friends join.** Then **Invite 3 friends** as three separate slots labelled "Invite friends #1 / #2 / #3". Each slot opens the contact picker or the system share sheet; a sent slot turns green with a checkmark too. On web / demo, Connect contacts loads stand-in names so the picker still works (no real address book). A share that cannot happen shows a sentence on the screen, never an error page. Skippable.
 5. **Stat 2 · Isolation** — "supposed to help us make friends, instead it isolated us." Top: **1 in 12** Americans have no close friends. Middle: pie chart (12% + 48%, rest faint). Bottom: **1 in 2** have only 1–4 close friends. Source: Survey Center on American Life (2021).
 6. **Friends of friends** — "Friends of your friends, never strangers." / "Stop swiping to make friends." Multi-select what kind of friend you could use right now: workout, go out, creative, industry, travel, nearby, someone who gets me, plus "All of the above" (ticks every row and sprays every option emoji). Quiet note: all answers are private. Skippable.
 7. **Stat 3 · Retention** — "supposed to keep us in touch, instead it kept us scrolling." 240 thumbnails, all but 5 dissolve.

@@ -58,13 +58,13 @@ module.exports = ({ config }) => ({
         },
         // Co-op membership purchases via RevenueCat / StoreKit.
         {
-          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePurchaseHistory',
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhoneNumber',
           NSPrivacyCollectedDataTypeLinked: true,
           NSPrivacyCollectedDataTypeTracking: false,
           NSPrivacyCollectedDataTypePurposes: [
             'NSPrivacyCollectedDataTypePurposeAppFunctionality'
           ]
-        }
+        },
       ],
       NSPrivacyAccessedAPITypes: [
         {

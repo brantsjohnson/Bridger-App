@@ -23,6 +23,7 @@ import { MatchingModule } from './matching/matching.module';
 import { MeModule } from './me/me.module';
 import { MusicModule } from './music/music.module';
 import { NotesModule } from './notes/notes.module';
+import { PendingPeopleModule } from './pending-people/pending-people.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PhotoFiltersModule } from './photo-filters/photo-filters.module';
 import { PollsModule } from './polls/polls.module';
@@ -52,6 +53,7 @@ import { DemoWeekModule } from './demo-week/demo-week.module';
     DemoWeekModule,
     MeModule,
     NotesModule,
+    PendingPeopleModule,
     MusicModule,
     MatchingModule,
     ProfilesModule,

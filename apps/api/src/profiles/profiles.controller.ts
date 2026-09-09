@@ -216,7 +216,7 @@ export class ProfilesController {
     const { data } = await this.supabase.admin
       .from('user_settings')
       .select(
-        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_intro_seen, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins, profile_color, social_battery, connection_style'
+        'discoverable, meet_scope, home_city, notif_prefs, onboarding_complete, profile_intro_seen, profile_presentation, assistant_enabled, always_view_original, delight_opt_ins, profile_color, social_battery, connection_style, membership_interests, help_interests, page_authoring'
       )
       .eq('user_id', user.id)
       .maybeSingle();
@@ -256,7 +256,19 @@ export class ProfilesController {
       // FoF matching style keys from FriendsOfFriendsStep.
       connectionStyle: Array.isArray(data?.connection_style)
         ? data.connection_style
-        : []
+        : [],
+      membershipInterests: Array.isArray(data?.membership_interests)
+        ? data.membership_interests
+        : [],
+      helpInterests: Array.isArray(data?.help_interests)
+        ? data.help_interests
+        : [],
+      pageAuthoring:
+        data?.page_authoring === 'auto' ||
+        data?.page_authoring === 'manual' ||
+        data?.page_authoring === 'assist'
+          ? data.page_authoring
+          : null
     };
   }
 
@@ -280,6 +292,12 @@ export class ProfilesController {
       socialBattery?: number | null;
       /** Opaque FoF matching style keys from FriendsOfFriendsStep. */
       connectionStyle?: string[];
+      /** Opaque membership interest keys from New onboarding. */
+      membershipInterests?: string[];
+      /** Opaque "what would help" keys from New onboarding. */
+      helpInterests?: string[];
+      /** How they like scrapbook pages made. */
+      pageAuthoring?: 'auto' | 'manual' | 'assist' | null;
       /** True after the one-time Profile welcome intro was dismissed. */
       profileIntroSeen?: boolean;
     }
@@ -349,6 +367,32 @@ export class ProfilesController {
         .filter((s) => typeof s === 'string' && s.trim().length > 0)
         .map((s) => s.trim())
         .slice(0, 20);
+    }
+    // THIS SECTION DOES: save New-onboarding membership interest keys (opaque).
+    if (Array.isArray(body?.membershipInterests)) {
+      patch.membership_interests = body.membershipInterests
+        .filter((s) => typeof s === 'string' && s.trim().length > 0)
+        .map((s) => s.trim())
+        .slice(0, 20);
+    }
+    // THIS SECTION DOES: save New-onboarding "what would help" keys (opaque).
+    if (Array.isArray(body?.helpInterests)) {
+      patch.help_interests = body.helpInterests
+        .filter((s) => typeof s === 'string' && s.trim().length > 0)
+        .map((s) => s.trim())
+        .slice(0, 20);
+    }
+    // THIS SECTION DOES: save how they like scrapbook pages made.
+    if ('pageAuthoring' in (body ?? {})) {
+      if (body.pageAuthoring === null) {
+        patch.page_authoring = null;
+      } else if (
+        body.pageAuthoring === 'auto' ||
+        body.pageAuthoring === 'manual' ||
+        body.pageAuthoring === 'assist'
+      ) {
+        patch.page_authoring = body.pageAuthoring;
+      }
     }
 
     const { error } = await this.supabase.admin

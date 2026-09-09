@@ -396,13 +396,14 @@ export function OnboardingStep({
                   flexGrow: 1,
                   paddingHorizontal: PAGE_X,
                   paddingTop: 8,
-                  // Extra air so the last field can scroll above the keyboard.
-                  paddingBottom: 120
+                  // Extra air so the last field clears the Scroll fade + keyboard.
+                  paddingBottom: 160
                 }}
               >
                 {children}
               </ScrollView>
-              {/* Soft fade + chevron: only while there is still content below. */}
+              {/* Soft fade + hint: only while there is still content below.
+                  Kept short so it does not paint over the last typing box. */}
               {moreBelow ? (
                 <View
                   pointerEvents="none"
@@ -412,10 +413,10 @@ export function OnboardingStep({
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    height: 56,
+                    height: 36,
                     alignItems: 'center',
                     justifyContent: 'flex-end',
-                    paddingBottom: 4
+                    paddingBottom: 2
                   }}
                 >
                   <LinearGradient
@@ -423,12 +424,12 @@ export function OnboardingStep({
                     style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
                   />
                   <Text
-                    className="font-sans-sb text-[11px]"
+                    className="font-sans-sb text-[10px]"
                     style={{
                       letterSpacing: 1,
                       textTransform: 'uppercase',
                       // Theme ink: dark navy disappears on a dark canvas.
-                      color: theme.ink
+                      color: theme.inkMute
                     }}
                   >
                     Scroll

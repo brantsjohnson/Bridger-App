@@ -72,6 +72,7 @@ import {
   type HomePlaceholderSection
 } from '../../lib/home-placeholders';
 import { isDemoMode } from '../../lib/demo';
+import { consumePendingDeepLink } from '../../lib/pending-deep-link';
 import { loadPeople } from '../../lib/people-cache';
 import {
   consumeWelcomeCelebration,
@@ -215,6 +216,19 @@ export default function HomeScreen() {
     tryShow();
     return subscribeWelcomeCelebration(tryShow);
   }, []);
+
+  // THIS SECTION DOES: open a one-shot route stashed at the end of New
+  // onboarding (Events, Friends, Discover, or capture). Used once, then wiped.
+  useEffect(() => {
+    let cancelled = false;
+    void consumePendingDeepLink().then((route) => {
+      if (cancelled || !route) return;
+      router.push(route as Href);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // THIS SECTION DOES: decide whether to show the one-time Announcements intro
   // and whether the empty Coming up teach card was already closed (live only).

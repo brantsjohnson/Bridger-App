@@ -15,6 +15,8 @@ export type NotificationKind =
   | 'story_prompt'
   | 'connect_request'
   | 'mutual_connection'
+  /** Someone you already kept a private card for just joined Bridger. */
+  | 'friend_joined'
   | 'touch_grass_signal'
   | 'touch_grass_im_in'
   | 'birthday'
@@ -336,6 +338,16 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     defaultOn: true
   },
   {
+    kind: 'friend_joined',
+    label: 'Someone you know joined',
+    description: 'A person you already saved a private card for signed up',
+    section: 'Also available',
+    onboardingGroup: 'meet',
+    circleGated: false,
+    homePreview: true,
+    defaultOn: true
+  },
+  {
     kind: 'message',
     label: 'Messages',
     description: 'New chats in Bridger Messages',
@@ -534,6 +546,7 @@ const KIND_TO_PAGE: Record<NotificationKind, NotificationPageFilter | null> = {
   coop_announcement: 'home',
   connect_request: 'friends',
   mutual_connection: 'friends',
+  friend_joined: 'friends',
   inside_joke: 'friends',
   touch_grass_signal: 'events',
   touch_grass_im_in: 'events',

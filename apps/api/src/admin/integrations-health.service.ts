@@ -75,6 +75,7 @@ export class IntegrationsHealthService {
       )
     );
     checks.push(this.stripeCheck(checkedAt));
+    checks.push(this.twilioCheck(checkedAt));
 
     const overall = rollup(checks);
     return { checkedAt, overall, checks };
@@ -409,6 +410,46 @@ export class IntegrationsHealthService {
       label: 'Stripe (card membership)',
       status: 'ok',
       detail: 'STRIPE_SECRET_KEY, price id(s), and STRIPE_WEBHOOK_SECRET are set.',
+      kind: 'config',
+      checkedAt
+    };
+  }
+
+  // THIS SECTION DOES: confirm Twilio is configured for phone OTP (never echo tokens).
+  private twilioCheck(checkedAt: string): IntegrationCheck {
+    const sid = this.config.get<string>('TWILIO_ACCOUNT_SID');
+    const token =
+      this.config.get<string>('TWILIO_AUTH_TOKEN') ||
+      this.config.get<string>('SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN');
+    const from =
+      this.config.get<string>('TWILIO_MESSAGE_SERVICE_SID') ||
+      this.config.get<string>('TWILIO_FROM_NUMBER');
+    if (!sid || !token) {
+      return {
+        id: 'twilio_sms',
+        label: 'Twilio SMS (phone sign-in)',
+        status: 'warn',
+        detail:
+          'TWILIO_ACCOUNT_SID or auth token is missing. Phone OTP will fail until Twilio is configured in Supabase Auth.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!from) {
+      return {
+        id: 'twilio_sms',
+        label: 'Twilio SMS (phone sign-in)',
+        status: 'warn',
+        detail: 'Account is set; add TWILIO_MESSAGE_SERVICE_SID or TWILIO_FROM_NUMBER.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    return {
+      id: 'twilio_sms',
+      label: 'Twilio SMS (phone sign-in)',
+      status: 'ok',
+      detail: 'Twilio account + sender are set. Auth token is not shown.',
       kind: 'config',
       checkedAt
     };

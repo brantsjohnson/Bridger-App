@@ -40,7 +40,7 @@ import {
 } from '../../lib/invite-from-contacts';
 import { OnboardingStep } from './OnboardingStep';
 import { OB, OB_BORDER } from './onboarding-theme';
-import { OBCTA, OBField, OBHardShadow } from './onboarding-ui';
+import { OBCTA, OBField, OBHardShadow, OBSkipLink } from './onboarding-ui';
 
 const INVITE_GOAL = 3;
 /** Hold Join this long to reveal "Have an auth code?" (Easter egg, not a timer). */
@@ -357,7 +357,9 @@ export function CoopStep({
   onJoin,
   onInvitesComplete,
   onRedeem,
-  onBack
+  onBack,
+  inviteMode = 'required',
+  onContinueFree
 }: {
   step: number;
   total: number;
@@ -378,6 +380,10 @@ export function CoopStep({
   /** Redeem an auth code for a free year. Resolves on success, throws on bad code. */
   onRedeem: (code: string) => Promise<void>;
   onBack: () => void;
+  /** required = Old (invite 3). hidden = New join screen (pay / skip to product). */
+  inviteMode?: 'required' | 'hidden';
+  /** New: skip membership and keep walking the product tour. */
+  onContinueFree?: () => void;
 }) {
   // Auth-code panel: hidden until asked for. Join opens our own join sheet.
   const [showRedeem, setShowRedeem] = useState(false);
@@ -572,18 +578,27 @@ export function CoopStep({
         accessibilityLabel="Join the co-op. Opens payment options: monthly or yearly."
       />
 
-      {/* OR: sits between join and invite so the two paths read as a choice. */}
-      <Text
-        className="font-sans-sb text-[14px]"
-        style={{ color: theme.inkMute, textAlign: 'center', letterSpacing: 0.4 }}
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-      >
-        or
-      </Text>
+      {inviteMode === 'hidden' ? null : (
+        <Text
+          className="font-sans-sb text-[14px]"
+          style={{ color: theme.inkMute, textAlign: 'center', letterSpacing: 0.4 }}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
+          or
+        </Text>
+      )}
 
-      {/* OPTION A: invite path, or continue once invites unlock free access. */}
-      {!invitesComplete ? (
+      {/* OPTION A: invite path (Old), or a free skip (New). */}
+      {inviteMode === 'hidden' ? (
+        onContinueFree ? (
+          <OBSkipLink
+            label="Use Bridger free"
+            analyticsId={ONBOARDING.coop.skip_to_product}
+            onPress={onContinueFree}
+          />
+        ) : null
+      ) : !invitesComplete ? (
         <View style={{ gap: 6 }}>
           <View style={{ flexDirection: 'row' }}>
             <CoopBox
@@ -696,8 +711,10 @@ export function CoopStep({
                 className="font-sans-sb text-[13.5px]"
                 style={{ flex: 1, lineHeight: 20, color: OB.onColor, minWidth: 0 }}
               >
-                Members get perks and share the profits. Free access unlocks when you
-                invite {INVITE_GOAL} friends.
+                Members get perks and share the profits.
+                {inviteMode === 'hidden'
+                  ? ' You can also keep using Bridger for free.'
+                  : ` Free access unlocks when you invite ${INVITE_GOAL} friends.`}
               </Text>
             </View>
             {clamped > 0 ? (

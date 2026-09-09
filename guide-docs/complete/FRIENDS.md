@@ -113,6 +113,10 @@ interface FriendRow {
 
 Moving a person = a single `tiers` write updating their tier for the current user.
 
+### Pending people (not on Bridger yet)
+
+When you invite a specific contact (or save a private note about them), Bridger can keep an **author-only** `pending_people` row keyed to their E.164 phone. We never upload the whole address book. When that number later signs up, `merge_pending_people_for_user` attaches your notes and a friend connection to their real account and notifies you (`friend_joined`). The pending card is then marked merged.
+
 ---
 
 ## States

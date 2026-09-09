@@ -241,6 +241,8 @@ export function OBField({
   autoCapitalize = 'sentences',
   multiline = false,
   accessibilityLabel,
+  accessibilityHint,
+  required = false,
   onFocusExtra,
   returnKeyType,
   onSubmitEditing,
@@ -257,6 +259,10 @@ export function OBField({
   multiline?: boolean;
   /** Spoken name when the visible label is omitted (e.g. the heading above). */
   accessibilityLabel?: string;
+  /** ACCESSIBILITY: extra spoken hint, e.g. "required". */
+  accessibilityHint?: string;
+  /** Shows a * next to the label and marks the field required for screen readers. */
+  required?: boolean;
   /**
    * Extra focus hook (e.g. scroll this field above the keyboard). Receives the
    * field's outer View so the page can measure and scroll to it. Never receives
@@ -292,7 +298,7 @@ export function OBField({
           className="font-sans-sb text-[13px]"
           style={{ letterSpacing: 0.4, color: theme.ink }}
         >
-          {label}
+          {required ? `${label} *` : label}
         </Text>
       ) : null}
       <TextInput
@@ -317,7 +323,8 @@ export function OBField({
         blurOnSubmit={enterAdvances ? true : undefined}
         submitBehavior={enterAdvances ? 'blurAndSubmit' : multiline ? 'newline' : undefined}
         onSubmitEditing={onSubmitEditing}
-        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityLabel={accessibilityLabel ?? (required && label ? `${label}, required` : label)}
+        accessibilityHint={accessibilityHint ?? (required ? 'Required' : undefined)}
         onContentSizeChange={
           multiline
             ? (e) => {
@@ -357,7 +364,9 @@ export function OBField({
           // Keep the box content-sized; do not stretch to fill the scroll body.
           alignSelf: 'stretch',
           ...(multiline ? { height: growHeight } : null),
-          textAlignVertical: multiline ? 'top' : 'center'
+          // Single-line answers stay vertically centered; multi-line starts at top.
+          textAlignVertical:
+            multiline && growHeight > OB_FIELD_LINE_MIN + 2 ? 'top' : 'center'
         }}
       />
     </View>
@@ -374,6 +383,7 @@ export function OBField({
 // ============================================
 export function OBTile({
   label,
+  sublabel,
   selected = false,
   variant = 'plain',
   mark,
@@ -394,6 +404,8 @@ export function OBTile({
   compact = false
 }: {
   label: string;
+  /** Smaller line under the label (group size, extra context). */
+  sublabel?: string;
   selected?: boolean;
   variant?: 'plain' | 'checkbox' | 'switch';
   /** Small text on the right of a plain tile (e.g. a check or count). */
@@ -451,13 +463,24 @@ export function OBTile({
         }}
       >
         {variant === 'checkbox' ? <OBCheckBox checked={selected} size={compact ? 18 : 22} /> : null}
-        <Text
-          className={compact ? 'font-sans-sb text-[14px]' : 'font-sans-sb text-[16px]'}
-          style={{ color: OB.navy, flexShrink: 1 }}
-          numberOfLines={2}
-        >
-          {label}
-        </Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            className={compact ? 'font-sans-sb text-[14px]' : 'font-sans-sb text-[16px]'}
+            style={{ color: OB.navy, flexShrink: 1 }}
+            numberOfLines={2}
+          >
+            {label}
+          </Text>
+          {sublabel ? (
+            <Text
+              className="font-sans-sb text-[12px]"
+              style={{ color: OB.navy, opacity: 0.7, marginTop: 2 }}
+              numberOfLines={2}
+            >
+              {sublabel}
+            </Text>
+          ) : null}
+        </View>
       </View>
       {variant === 'switch' ? <OBSwitchMark on={selected} /> : null}
       {right}
@@ -782,8 +805,14 @@ export function OBProgress({
         <Text
           className="font-sans-b text-[13px]"
           style={{ letterSpacing: 0.4, color: theme.ink }}
+          accessibilityLabel={`Step ${done} of ${total}`}
         >
-          {done}/{total}
+          {/* Early steps: skip "1/14" so the total does not overwhelm people. */}
+          {done <= 2
+            ? 'Getting started'
+            : done >= total - 1
+              ? 'Almost done'
+              : `${done}/${total}`}
         </Text>
       </View>
     </AnalyticsRegion>

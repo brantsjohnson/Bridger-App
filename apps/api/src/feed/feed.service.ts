@@ -191,6 +191,8 @@ export class FeedService {
     today.setHours(0, 0, 0, 0);
 
     for (const n of notes ?? []) {
+      // Pending-person notes are about someone not on Bridger yet.
+      if (!n.person_id) continue;
       if (n.kind === 'date' && n.remind && n.date) {
         const target = new Date(`${n.date}T00:00:00`);
         if (Number.isNaN(target.getTime())) continue;
@@ -247,7 +249,7 @@ export class FeedService {
 
     return (data ?? []).map((n) => {
       const payload = (n.payload ?? {}) as Record<string, string>;
-      const from = payload.from ?? payload.person_id;
+      const from = payload.from ?? payload.person_id ?? payload.personId;
       return {
         id: n.id,
         kind: mapNotificationKind(n.kind),
@@ -307,6 +309,7 @@ function mapNotificationKind(kind: string): AppNotification['kind'] {
     case 'coop_announcement':
     case 'activity_live':
     case 'delight_gift':
+    case 'friend_joined':
       return kind;
     default:
       return 'story_reply';
@@ -363,6 +366,8 @@ function labelForKind(kind: string, payload: Record<string, string>): string {
       return payload.emoji
         ? `reacted ${payload.emoji} to your recap`
         : 'Reacted to your recap';
+    case 'friend_joined':
+      return 'Someone you know joined Bridger';
     default:
       return payload.text || 'New notification';
   }

@@ -55,7 +55,8 @@ export type AnalyticsMethod =
   | 'a11y'
   | 'google'
   | 'apple'
-  | 'email';
+  | 'email'
+  | 'phone';
 
 /** Named product outcomes from ANALYTICS-TAXONOMY.md §3b. */
 export type AnalyticsProductEvent =
@@ -191,6 +192,12 @@ export type AnalyticsProductEvent =
   | 'coop_cancel_scheduled'
   | 'auth_signed_in'
   | 'auth_signed_up'
+  /** Confirmed membership interest chips saved during New onboarding. Opaque ids only. */
+  | 'membership_interests_selected'
+  /** Confirmed "what would help" chips saved during New onboarding. Opaque ids only. */
+  | 'help_interests_selected'
+  /** Server matched a pending contact card to a new phone account. */
+  | 'pending_person_merged'
   /** Confirmed Log out from Profile Settings (not a mere tap on the button). */
   | 'auth_signed_out'
   /** Runtime demo unlocked (logo long-press confirmed). */

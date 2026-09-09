@@ -68,6 +68,8 @@ export type FriendNoteCadence = 'week' | 'biweek' | 'month';
 export interface FriendNote {
   id: string;
   personId: string;
+  /** Present when this note is about someone not on Bridger yet. */
+  pendingPersonId?: string;
   kind: 'text' | 'date' | 'check_in';
   body: string;
   /** date notes only — display or ISO date */

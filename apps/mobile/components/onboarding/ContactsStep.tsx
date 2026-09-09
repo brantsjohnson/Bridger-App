@@ -18,7 +18,7 @@
 // book.
 // ============================================
 import React, { useRef, useState } from 'react';
-import { Modal, Platform, Text, View } from 'react-native';
+import { Alert, Modal, Platform, Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
 import { AnalyticsRegion, HobbyEmojiBurst, useReduceMotion, useThemeColors } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
@@ -211,7 +211,10 @@ export function ContactsStep({
   onFillSlot,
   onNext,
   onSkip,
-  onBack
+  onBack,
+  ask,
+  purpose,
+  blurb
 }: {
   step: number;
   total: number;
@@ -222,6 +225,9 @@ export function ContactsStep({
   onNext: () => void;
   onSkip: () => void;
   onBack: () => void;
+  ask?: string;
+  purpose?: string;
+  blurb?: string;
 }) {
   const reduce = useReduceMotion();
   const syncRef = useRef<View>(null);
@@ -267,35 +273,63 @@ export function ContactsStep({
   // THIS SECTION DOES: ask for contacts permission and keep the list on-device.
   // Demo and web use stand-in names so the picker still opens. A timeout stops
   // the row from sitting on "Connecting contacts" forever.
+  // Before the phone's own sheet (Select Contacts / Allow Full Access), we ask
+  // Not now / Continue so people who decide to do nothing are never stuck.
   const handleSync = () => {
     if (syncing || contactsReady) return;
-    void (async () => {
-      setSyncing(true);
-      setSyncNote(null);
-      try {
-        // Demo / web: no real address book. Load stand-ins so invite slots work.
-        if (isDemoMode() || Platform.OS === 'web') {
-          finishLoaded(DEMO_CONTACTS);
-          return;
-        }
 
-        const { contacts: list, permission } = await withTimeout(
-          loadInviteContacts('onboarding'),
-          SYNC_TIMEOUT_MS
-        );
-        if (permission === 'granted') {
-          finishLoaded(list);
-        } else {
-          setSyncNote(
-            'Contacts were not allowed. You can still send the three invites below. We will notify you if a friend joins from your invite.'
+    const runSync = () => {
+      void (async () => {
+        setSyncing(true);
+        setSyncNote(null);
+        try {
+          // Demo / web: no real address book. Load stand-ins so invite slots work.
+          if (isDemoMode() || Platform.OS === 'web') {
+            finishLoaded(DEMO_CONTACTS);
+            return;
+          }
+
+          const { contacts: list, permission } = await withTimeout(
+            loadInviteContacts('onboarding'),
+            SYNC_TIMEOUT_MS
           );
+          if (permission === 'granted') {
+            finishLoaded(list);
+          } else {
+            setSyncNote(
+              'Contacts were not allowed. You can still send the three invites below. We will notify you if a friend joins from your invite.'
+            );
+          }
+        } catch (err) {
+          setSyncNote(friendlyContactsError(err));
+        } finally {
+          setSyncing(false);
         }
-      } catch (err) {
-        setSyncNote(friendlyContactsError(err));
-      } finally {
-        setSyncing(false);
-      }
-    })();
+      })();
+    };
+
+    // Web / demo: no OS sheet, so skip the Not now prompt.
+    if (isDemoMode() || Platform.OS === 'web') {
+      runSync();
+      return;
+    }
+
+    Alert.alert(
+      'Connect contacts?',
+      'Bridger reads names and phone numbers only on your phone to help you invite friends. Nothing is uploaded. You can skip and still send invite links below.',
+      [
+        {
+          text: 'Not now',
+          style: 'cancel',
+          onPress: () => {
+            setSyncNote(
+              'No problem. You can still send the three invites below anytime.'
+            );
+          }
+        },
+        { text: 'Continue', onPress: runSync }
+      ]
+    );
   };
 
   // THIS SECTION DOES: open the contact picker, or fall back to share sheet. If
@@ -403,8 +437,9 @@ export function ContactsStep({
       <OnboardingStep
         step={step}
         total={total}
-        purpose="Bridger only works with a friend on it."
-        ask="Bridger's a group chat on steroids"
+        purpose={purpose ?? 'Bridger only works with a friend on it.'}
+        ask={ask ?? 'Bridger is a group chat on steroids'}
+        blurb={blurb}
         scrollBody
         onContinue={onNext}
         onSkip={onSkip}

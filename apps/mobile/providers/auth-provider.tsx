@@ -3,7 +3,7 @@
 // This is the app's "who is logged in?" memory. It wraps the whole app and keeps
 // track of the current login session. Any screen can call useAuth() to know if
 // someone is signed in, get their user id, or sign in / sign up / sign out —
-// with email, Google, or Apple.
+// with a phone code, email, Google, or Apple.
 //
 // It listens to Supabase for login changes, so if the token refreshes or the
 // user logs out on another screen, everything updates automatically.
@@ -30,6 +30,13 @@ type AuthContextValue = {
   signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: () => Promise<{ error: string | null; cancelled?: boolean }>;
   signInWithApple: () => Promise<{ error: string | null; cancelled?: boolean }>;
+  /** Send a one-time SMS code to this E.164 number. */
+  sendPhoneCode: (phoneE164: string) => Promise<{ error: string | null }>;
+  /** Confirm the SMS code and create / restore the session. */
+  verifyPhoneCode: (
+    phoneE164: string,
+    token: string
+  ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
 
@@ -84,6 +91,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // --- Google / Apple: real OAuth (see lib/oauth.ts) ---
       signInWithGoogle: () => oauthGoogle(),
       signInWithApple: () => oauthApple(),
+      // --- Phone: send a one-time SMS code (Supabase Auth). ---
+      sendPhoneCode: async (phoneE164) => {
+        if (!isSupabaseConfigured) {
+          return {
+            error:
+              'This build is missing Supabase settings. Use demo (long-press the logo) or rebuild with EAS env.'
+          };
+        }
+        const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
+        return { error: error?.message ?? null };
+      },
+      // --- Phone: check the SMS code and start the session. ---
+      verifyPhoneCode: async (phoneE164, token) => {
+        if (!isSupabaseConfigured) {
+          return {
+            error:
+              'This build is missing Supabase settings. Use demo (long-press the logo) or rebuild with EAS env.'
+          };
+        }
+        const { error } = await supabase.auth.verifyOtp({
+          phone: phoneE164,
+          token,
+          type: 'sms'
+        });
+        return { error: error?.message ?? null };
+      },
       // --- Log out and clear the saved session ---
       signOut: async () => {
         await supabase.auth.signOut();

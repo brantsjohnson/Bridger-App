@@ -35,6 +35,10 @@ export function pathForNotification(n: AppNotification): NotificationHref {
       const person = t.personId ?? n.personId;
       return person ? `/person/${person}` : '/(tabs)/discover';
     }
+    case 'friend_joined': {
+      const person = t.personId ?? n.personId;
+      return person ? `/person/${person}` : '/(tabs)/friends';
+    }
     case 'touch_grass_signal':
     case 'touch_grass_im_in':
       return '/(tabs)/events';

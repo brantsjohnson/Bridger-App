@@ -20,6 +20,7 @@ import { Linking, Platform, Share } from 'react-native';
 import { trackProduct } from '@bridger/shared';
 import { createShareInvite } from '../data/invites';
 import { markDemoInviteSent } from '../data/access';
+import { upsertPendingPerson } from '../data/pending-people';
 import type { ContactPick } from '../components/invite/ContactInviteSheet';
 
 export type InviteFromContactsResult =
@@ -197,12 +198,23 @@ export async function sendInviteToContact(
       if (can) {
         await Linking.openURL(smsUrl);
         await afterInviteSent(context, 'sms', opts);
+        // PRIVACY: one private card for this picked contact only (never the whole book).
+        void upsertPendingPerson({
+          phone: contact.phone,
+          displayName: contact.name
+        });
         return { ok: true, method: 'sms', url: invite.url };
       }
     }
 
     const result = await shareOrCopy(body, invite.url);
-    if (result.ok) await afterInviteSent(context, result.method, opts);
+    if (result.ok) {
+      await afterInviteSent(context, result.method, opts);
+      void upsertPendingPerson({
+        phone: contact.phone,
+        displayName: contact.name
+      });
+    }
     return result;
   } catch (err) {
     return {

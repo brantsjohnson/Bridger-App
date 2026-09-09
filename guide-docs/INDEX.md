@@ -141,7 +141,7 @@ guide-docs/
 
 | Doc | Status | Feature |
 |---|---|---|
-| `complete/ONBOARDING.md` | [COMPLETE] | Welcome "trying again" beats → desire step (Home seed) → essentials → co-op / Free Lite join. |
+| `complete/ONBOARDING.md` | [COMPLETE] | TestFlight stays on Old 19-step. New story onboarding is preview-only (`onboard`). Design pass: `design-briefs/NEW-ONBOARDING-UX-DESIGN-BRIEF.md`. |
 | `complete/HOME.md` | [COMPLETE] | Announcements carousel, stories row, responses, always-visible Touch Grass send, ask-the-group. |
 | `complete/STORIES.md` | [COMPLETE] | Story player, the Catch-Up swipe-up (week-hero), responses, AI week summary (words-only). |
 | `complete/SCRAPBOOKS.md` | [BUILDING] | Posting an Update as an 8.5 x 11 Scrapbook page: two screens, layouts, camera roll, 1 to 4 pages a day, Only me, drafts, revisions. Supersedes the posting half of STORIES.md. Plan: `design-briefs/SCRAPBOOKS-PHASE-PLAN.md`. |
@@ -182,6 +182,12 @@ guide-docs/
 |---|---|---|
 | `docs/PRIVACY.md` | [LEGAL] | Living privacy-policy draft; must track what's actually collected (zones, deletion, no-tracking, consented analytics). |
 | `docs/TERMS.md` | [LEGAL] | Living terms/EULA draft; includes the UGC no-tolerance clause (App Store 1.2). |
+
+### 4.7 · Designer briefs (`design-briefs/` — hand to a design agent)
+
+| Doc | Status | Role |
+|---|---|---|
+| `design-briefs/NEW-ONBOARDING-UX-DESIGN-BRIEF.md` | [ACTIVE] | Visual / motion pass for New Onboarding only. TestFlight stays on Old. Copy-paste prompt is at the top of the file. |
 
 ### 4.6 · Cursor rules (`.cursor/rules/` — outside guide-docs, auto-applied)
 

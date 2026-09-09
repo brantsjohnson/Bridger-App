@@ -49,6 +49,7 @@ import {
   disableDemoMode,
   getDevPreview,
   hydrateDemoMode,
+  hydrateOnboardingFlowVariant,
   isDemoMode
 } from '../lib/demo';
 import { resolveJnameReferral } from '../lib/jname-api';
@@ -121,6 +122,7 @@ export default function RootLayout() {
   useEffect(() => {
     void (async () => {
       await hydrateDemoMode();
+      await hydrateOnboardingFlowVariant();
       // LOCAL PREVIEW: leave any leftover long-press demo so Welcome can play.
       if (process.env.EXPO_PUBLIC_FORCE_WELCOME === '1') {
         await disableDemoMode();

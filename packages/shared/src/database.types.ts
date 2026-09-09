@@ -2116,7 +2116,8 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["friend_note_kind"]
           next_remind_at: string | null
-          person_id: string
+          person_id: string | null
+          pending_person_id: string | null
           remind: boolean
           text: string | null
           updated_at: string
@@ -2129,7 +2130,8 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["friend_note_kind"]
           next_remind_at?: string | null
-          person_id: string
+          person_id?: string | null
+          pending_person_id?: string | null
           remind?: boolean
           text?: string | null
           updated_at?: string
@@ -2142,7 +2144,8 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["friend_note_kind"]
           next_remind_at?: string | null
-          person_id?: string
+          person_id?: string | null
+          pending_person_id?: string | null
           remind?: boolean
           text?: string | null
           updated_at?: string
@@ -2160,6 +2163,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_notes_pending_person_id_fkey"
+            columns: ["pending_person_id"]
+            isOneToOne: false
+            referencedRelation: "pending_people"
             referencedColumns: ["id"]
           },
         ]
@@ -2483,6 +2493,48 @@ export type Database = {
           {
             foreignKeyName: "payments_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_people: {
+        Row: {
+          id: string
+          author_id: string
+          phone_e164: string
+          display_name: string | null
+          merged_user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          author_id: string
+          phone_e164: string
+          display_name?: string | null
+          merged_user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          author_id?: string
+          phone_e164?: string
+          display_name?: string | null
+          merged_user_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_people_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_people_merged_user_id_fkey"
+            columns: ["merged_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3770,6 +3822,9 @@ export type Database = {
           profile_color: string | null
           social_battery: number | null
           connection_style: Json | null
+          membership_interests: string[]
+          help_interests: string[]
+          page_authoring: string | null
           theme: string | null
           updated_at: string
           user_id: string
@@ -3798,6 +3853,9 @@ export type Database = {
           profile_color?: string | null
           social_battery?: number | null
           connection_style?: Json | null
+          membership_interests?: string[]
+          help_interests?: string[]
+          page_authoring?: string | null
           theme?: string | null
           updated_at?: string
           user_id: string
@@ -3826,6 +3884,9 @@ export type Database = {
           profile_color?: string | null
           social_battery?: number | null
           connection_style?: Json | null
+          membership_interests?: string[]
+          help_interests?: string[]
+          page_authoring?: string | null
           theme?: string | null
           updated_at?: string
           user_id?: string
@@ -3946,6 +4007,13 @@ export type Database = {
           p_required: Database["public"]["Enums"]["tier"]
         }
         Returns: boolean
+      }
+      merge_pending_people_for_user: {
+        Args: {
+          p_user: string
+          p_phone: string
+        }
+        Returns: number
       }
     }
     Enums: {

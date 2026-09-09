@@ -150,7 +150,7 @@ Admin console page **API / integrations** (`/integrations-health` in `apps/admin
 - **`GET /admin/integrations/health`** (AdminGuard) → `{ overall, checkedAt, checks[] }`
 - Each check: `id`, `label`, `status` (`ok` | `warn` | `error` | `skip`), `detail` (plain English, **never secrets**), `kind` (`config` | `live` | `self`)
 
-**Current checks:** Nest self, Supabase (live query), Spotify (config + client-credentials probe), Apple Music / MusicKit (config + developer JWT mint), Anthropic key, OpenAI key, Resend key, music token encryption key, PostHog (person-purge credentials + live project probe).
+**Current checks:** Nest self, Supabase (live query), Spotify (config + client-credentials probe), Apple Music / MusicKit (config + developer JWT mint), Anthropic key, OpenAI key, Resend key, music token encryption key, PostHog (person-purge credentials + live project probe), Twilio SMS (config for phone OTP: account SID, auth token, and messaging service or from-number; never echoes secrets).
 
 Public **`GET /health`** stays a shallow App Runner liveness probe. Do **not** hang dependency checks on it.
 

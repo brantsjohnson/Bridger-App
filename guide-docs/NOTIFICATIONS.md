@@ -62,6 +62,7 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 | `story_prompt` | "Time to post an update" or "📸 Don't forget to capture the mems" (mid-party) | Capture / Your story composer | `/story/capture` or `/story/capture?eventId={eventId}` |
 | `connect_request` | "{Name} wants to connect" | Discover → Wants to connect | `/(tabs)/discover` (focus request when `requestId` present). Same destination whether the request came from Discover Add or from reveal Screen 3 FoF Add. |
 | `mutual_connection` | "{A} and {B} connected — through you" · or "Joined from your invite" when someone redeems your invite link/QR | Discover (FoF payoff) · their profile when it was an invite join | `/(tabs)/discover` · `/person/{personId}` |
+| `friend_joined` | "Someone you know joined Bridger" | Their profile (the person whose phone matched your private card) | `/person/{personId}` · `/(tabs)/friends` if id missing |
 | `touch_grass_signal` | "{Name} is free tonight" | Their live signal (Events / Home strip) | `/(tabs)/events` (signal focused when `signalId` present) |
 | `touch_grass_im_in` | "{Name}'s in" | Your signal / plan | `/(tabs)/events` (own signal / plan) |
 | `birthday` | "{Name}'s birthday is Friday" | Their profile | `/person/{personId}` |
@@ -101,6 +102,7 @@ type NotificationKind =
   | 'story_prompt'
   | 'connect_request'
   | 'mutual_connection'
+  | 'friend_joined'
   | 'touch_grass_signal'
   | 'touch_grass_im_in'
   | 'birthday'
@@ -263,6 +265,7 @@ Settings shows one row per `kind` (not a bucket like "Events"). Section headers 
 | `custom_date` | Saved dates | birthdays | yes | yes | on |
 | `friend_check_in` | Check-in nudges | birthdays | yes | yes | on |
 | `mutual_connection` | Friends connecting through you | moments | no | yes | off |
+| `friend_joined` | Someone you know joined | meet | no | yes | on |
 | `inside_joke` | Inside jokes | moments | yes | yes | off |
 | `activity_live` | Weekly activities | moments | no | yes | off |
 | `delight_gift` | Surprises from friends | moments | yes | yes | on |

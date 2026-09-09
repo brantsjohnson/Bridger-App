@@ -40,7 +40,17 @@ export const AUTH = {
     email: aid('auth', 'sign_in', 'email'),
     password: aid('auth', 'sign_in', 'password'),
     submit: aid('auth', 'sign_in', 'submit'),
-    switch_to_sign_up: aid('auth', 'sign_in', 'switch_to_sign_up')
+    switch_to_sign_up: aid('auth', 'sign_in', 'switch_to_sign_up'),
+    /** Phone number field (E.164). Never logs the digits. */
+    phone: aid('auth', 'sign_in', 'phone'),
+    /** Send the SMS one-time code. */
+    send_code: aid('auth', 'sign_in', 'send_code'),
+    /** One-time code field (iOS autofill). Never logs the code. */
+    otp_code: aid('auth', 'sign_in', 'otp_code'),
+    /** Confirm the SMS code. */
+    verify: aid('auth', 'sign_in', 'verify'),
+    /** Resend the SMS code after the cooldown. */
+    resend_otp: aid('auth', 'sign_in', 'resend_otp')
   },
   sign_up: {
     page_title: aid('auth', 'sign_up', 'page_title'),
@@ -66,7 +76,16 @@ export const ONBOARDING = {
     step_title: aid('onboarding', 'chrome', 'step_title')
   },
   privacy: {
-    acknowledge: aid('onboarding', 'privacy', 'acknowledge')
+    acknowledge: aid('onboarding', 'privacy', 'acknowledge'),
+    next_1: aid('onboarding', 'privacy', 'next_1'),
+    next_2: aid('onboarding', 'privacy', 'next_2'),
+    save_audience: aid('onboarding', 'privacy', 'save_audience'),
+    group_option: aid('onboarding', 'privacy', 'group_option'),
+    next_4: aid('onboarding', 'privacy', 'next_4'),
+    next_5: aid('onboarding', 'privacy', 'next_5'),
+    next_7: aid('onboarding', 'privacy', 'next_7'),
+    /** dead — birthday / groups visual on the privacy story screens */
+    visual: aid('onboarding', 'privacy', 'visual')
   },
   notifications: {
     pref: aid('onboarding', 'notifications', 'pref'),
@@ -75,7 +94,10 @@ export const ONBOARDING = {
   },
   name: {
     first_input: aid('onboarding', 'name', 'first_input'),
-    last_input: aid('onboarding', 'name', 'last_input')
+    last_input: aid('onboarding', 'name', 'last_input'),
+    first_next: aid('onboarding', 'name', 'first_next'),
+    last_next: aid('onboarding', 'name', 'last_next'),
+    birthday_next: aid('onboarding', 'name', 'birthday_next')
   },
   // Step 2 — confirm profile (name + photo on one screen).
   confirm_profile: {
@@ -91,12 +113,19 @@ export const ONBOARDING = {
     filter_comic: aid('onboarding', 'confirm_profile', 'filter_comic'),
     filter_sepia: aid('onboarding', 'confirm_profile', 'filter_sepia'),
     /** dead — reassurance row under the filter pills when preview is on-device */
-    local_processing_badge: aid('onboarding', 'confirm_profile', 'local_processing_badge')
+    local_processing_badge: aid('onboarding', 'confirm_profile', 'local_processing_badge'),
+    /** Skip photo in New onboarding ("Add one later"). */
+    photo_skip: aid('onboarding', 'confirm_profile', 'photo_skip')
   },
   groups: {
     invite: aid('onboarding', 'groups', 'invite'),
     /** dead — the three tier cards are explanatory, not tappable */
-    tier_card: aid('onboarding', 'groups', 'tier_card')
+    tier_card: aid('onboarding', 'groups', 'tier_card'),
+    next_1: aid('onboarding', 'groups', 'next_1'),
+    next_2: aid('onboarding', 'groups', 'next_2'),
+    next_3: aid('onboarding', 'groups', 'next_3'),
+    /** dead — nested groups visual */
+    visual: aid('onboarding', 'groups', 'visual')
   },
   // Before Privacy & Control: teach Close / Friends / Acquaintances + caps.
   circles: {
@@ -245,7 +274,17 @@ export const ONBOARDING = {
     /** dead — the Free vs Co-op comparison table body is not tappable */
     plan_compare: aid('onboarding', 'coop', 'plan_compare'),
     /** dead — member perk bullet list (same as Co-op page) is not tappable */
-    perks_grid: aid('onboarding', 'coop', 'perks_grid')
+    perks_grid: aid('onboarding', 'coop', 'perks_grid'),
+    next_1: aid('onboarding', 'coop', 'next_1'),
+    next_2: aid('onboarding', 'coop', 'next_2'),
+    next_3: aid('onboarding', 'coop', 'next_3'),
+    next_4: aid('onboarding', 'coop', 'next_4'),
+    next_5: aid('onboarding', 'coop', 'next_5'),
+    save_interests: aid('onboarding', 'coop', 'save_interests'),
+    interest_option: aid('onboarding', 'coop', 'interest_option'),
+    skip_to_product: aid('onboarding', 'coop', 'skip_to_product'),
+    /** dead — ads vs members visual */
+    visual: aid('onboarding', 'coop', 'visual')
   },
   /**
    * @deprecated The "You're in" screen was removed 2026-08-28. Finishing Co-op
@@ -256,6 +295,74 @@ export const ONBOARDING = {
     lets_go: aid('onboarding', 'welcome_in', 'lets_go'),
     /** dead — the three "what happens next" cards are not tappable */
     next_cards: aid('onboarding', 'welcome_in', 'next_cards')
+  },
+  // New onboarding (2026-09): story-driven education after name / photo / birthday.
+  why: {
+    next_1: aid('onboarding', 'why', 'next_1'),
+    next_2: aid('onboarding', 'why', 'next_2'),
+    /** dead — fragmented-life / swiss-knife visual */
+    visual: aid('onboarding', 'why', 'visual')
+  },
+  custom_groups: {
+    to_coop: aid('onboarding', 'custom_groups', 'to_coop'),
+    member_interest: aid('onboarding', 'custom_groups', 'member_interest'),
+    /** dead — default groups + custom group teaser */
+    visual: aid('onboarding', 'custom_groups', 'visual')
+  },
+  route: {
+    custom_groups_join: aid('onboarding', 'route', 'custom_groups_join'),
+    custom_groups_free: aid('onboarding', 'route', 'custom_groups_free'),
+    vote_join: aid('onboarding', 'route', 'vote_join'),
+    vote_later: aid('onboarding', 'route', 'vote_later'),
+    no_ads_join: aid('onboarding', 'route', 'no_ads_join'),
+    no_ads_invite: aid('onboarding', 'route', 'no_ads_invite'),
+    /** dead — membership routing visual */
+    visual: aid('onboarding', 'route', 'visual')
+  },
+  free: {
+    choose_friends: aid('onboarding', 'free', 'choose_friends'),
+    continue: aid('onboarding', 'free', 'continue'),
+    skip: aid('onboarding', 'free', 'skip'),
+    /** dead — three empty friend slots */
+    visual: aid('onboarding', 'free', 'visual')
+  },
+  product: {
+    next_1: aid('onboarding', 'product', 'next_1'),
+    save_help: aid('onboarding', 'product', 'save_help'),
+    option: aid('onboarding', 'product', 'option'),
+    /** dead — group-chat-expands visual */
+    visual: aid('onboarding', 'product', 'visual')
+  },
+  plans: {
+    next_1: aid('onboarding', 'plans', 'next_1'),
+    next_2: aid('onboarding', 'plans', 'next_2'),
+    branch_next: aid('onboarding', 'plans', 'branch_next'),
+    /** dead — Touch Grass / availability visual */
+    visual: aid('onboarding', 'plans', 'visual')
+  },
+  friendsb: {
+    next_1: aid('onboarding', 'friendsb', 'next_1'),
+    next_2: aid('onboarding', 'friendsb', 'next_2'),
+    branch_next: aid('onboarding', 'friendsb', 'branch_next'),
+    /** dead — friend notes visual */
+    visual: aid('onboarding', 'friendsb', 'visual')
+  },
+  memories: {
+    next_1: aid('onboarding', 'memories', 'next_1'),
+    next_2: aid('onboarding', 'memories', 'next_2'),
+    next_3: aid('onboarding', 'memories', 'next_3'),
+    branch_next: aid('onboarding', 'memories', 'branch_next'),
+    option: aid('onboarding', 'memories', 'option'),
+    /** dead — scrapbook page visual */
+    visual: aid('onboarding', 'memories', 'visual')
+  },
+  discover: {
+    next_1: aid('onboarding', 'discover', 'next_1'),
+    next_2: aid('onboarding', 'discover', 'next_2'),
+    branch_suggest: aid('onboarding', 'discover', 'branch_suggest'),
+    branch_browse: aid('onboarding', 'discover', 'branch_browse'),
+    /** dead — friends-of-friends visual */
+    visual: aid('onboarding', 'discover', 'visual')
   }
 } as const;
 

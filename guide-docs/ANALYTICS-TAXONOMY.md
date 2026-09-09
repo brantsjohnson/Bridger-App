@@ -91,7 +91,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 
 | Flow | Steps (order tracked) |
 |---|---|
-| `onboarding` | privacy → desire → notifications → name → photo → basics → meet → review → coop → welcome |
+| `onboarding` | New: first-name → last-name → photo → birthday → why → privacy → groups → coop story → product → selected branches. Old (demo): confirm profile → … → coop |
 | `post_story` | open composer → capture (method photo\|video\|roll) → layout_picked → caption (method text\|voice) → audience → post (server-confirmed) → (add another "+"?) |
 | `add_friend` | open sheet → choose method (qr/link/scan) → send/confirm |
 | `customize_profile` | open → each change → save (with total `dwell_ms`) |
@@ -183,10 +183,13 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `message_sent` | a chat message posts | `counts_against_cap` (bool) — NEVER include message text |
 | `message_hearted` | you hearted or unhearted a friend's bubble | `on` (bool), `counts_against_cap` (always false), `method` (`double_tap`\|`a11y`) — NEVER include message text |
 | `contact_shared` | contact card shared into a thread | `counts_against_cap` (always false) — NEVER include field values |
-| `auth_signed_in` | sign-in succeeds | `method` (google/apple/email) |
-| `auth_signed_up` | account create succeeds | `method` (google/apple/email) |
+| `auth_signed_in` | sign-in succeeds | `method` (phone/google/apple/email) |
+| `auth_signed_up` | account create succeeds | `method` (phone/google/apple/email) |
 | `auth_signed_out` | Log out confirmed in Profile Settings | `method` (`settings`) |
 | `demo_mode_entered` | person confirms logo long-press unlock into fake-data demo | `method` (`logo_long_press`) — no PII |
+| `membership_interests_selected` | New onboarding Co-op 6 saved | `count` (opaque ids only) |
+| `help_interests_selected` | New onboarding Product 2 saved | `count` (opaque ids only) |
+| `pending_person_merged` | server merged pending contact cards into a new phone account | `count` (never phones / names) |
 | `demo_mode_left` | person leaves runtime demo from Settings | `method` (`settings`) |
 | `screen_not_found` | unmatched route or broken connection path shows the 404 dialog | `missing_path`, `path_trail` (joined routes, no PII), `reason` (`unmatched_route`\|`connection_error`\|`runtime_error`) |
 | `assistant_enabled` / `assistant_disabled` | Settings toggle | `method` (`setting`) |
@@ -250,7 +253,7 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | section | elements |
 |---|---|
 | `welcome` | first-open CRT intro (surface `auth`, parent `welcome`): non-interactive, no skip (must be watched); emits `surface_opened` / `surface_dismissed` with `dwell_ms` only. Legacy text-beat ids kept so old events parse: **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead)** |
-| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` (**retired**: Create account merged into Sign in OAuth) |
+| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `phone`, `send_code`, `otp_code`, `verify`, `resend_otp`, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` (**retired**: Create account merged into Sign in OAuth) |
 | `sign_up` | **retired surface** (route redirects to `sign_in`); IDs kept for historical events only |
 | `sign_up` | **`page_title` (dead)**, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `confirm_password`, `submit`, `switch_to_sign_in` |
 
@@ -260,12 +263,26 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper), `profile_icon` (single-person line icon on the far-right of the pill — opens Profile; selected = ink pill like the other tabs; moved here from the header, replaces `*.top_nav.profile_icon`); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
 
 ### `onboarding`
-New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → privacy circles → privacy & control → [screentime stat] → [co-op intro] → co-op. The four stat interstitials and the co-op intro splash do not count in the progress bar. Finishing Co-op completes onboarding and lands on Home, which plays the one-time welcome fireworks (own surface `welcome_celebration`). The old "You're in" screen (`welcome_in`) was removed 2026-08-28. The onboarding Recap voice step is archived; weekly recaps stay on Friend Pod.
+**New flow (ships 2026-09):** first-name → last-name → photo → birthday → why (2) → privacy (birthday Groups example, one audience save) → groups (3) → custom-groups bridge → co-op story (6) → optional route/join/invite → product-2 → only selected branches → Home. Progress bar counts only the four profile fields. Co-op is optional. Copy: `onboarding-new-copy.ts`.
+
+**Old flow (demo `onboardold`):** confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → privacy circles → privacy & control → [screentime stat] → [co-op intro] → co-op. The four stat interstitials and the co-op intro splash do not count in the progress bar. Finishing Co-op completes onboarding and lands on Home, which plays the one-time welcome fireworks (own surface `welcome_celebration`). The old "You're in" screen (`welcome_in`) was removed 2026-08-28. The onboarding Recap voice step is archived; weekly recaps stay on Friend Pod.
 
 | section | elements |
 |---|---|
 | `chrome` | `continue`, `skip`, `back`, `progress_bar`, **`step_title` (dead)** |
-| `confirm_profile` | `first_input`, `last_input`, `photo_square` (opens system Take / Upload sheet), `take`, `upload`, `retake`, `filter_pop_art`, `filter_x_ray`, `filter_comic`, `filter_sepia`, `local_processing_badge` (dead — shown when filter preview runs on-device) |
+| `confirm_profile` | `first_input`, `last_input`, `photo_square` (opens system Take / Upload sheet), `take`, `upload`, `retake`, `filter_pop_art`, `filter_x_ray`, `filter_comic`, `filter_sepia`, `local_processing_badge` (dead — shown when filter preview runs on-device), `photo_skip` (New: "Add one later") |
+| `name` | `first_input`, `last_input`, `first_next`, `last_next`, `birthday_next` |
+| `why` | `next_1`, `next_2`, **`visual` (dead)** |
+| `privacy` | `acknowledge` (legacy), `next_1`, `next_2`, `save_audience`, `group_option`, `next_4`, `next_5`, `next_7`, **`visual` (dead)** |
+| `groups` | `invite` (legacy), **`tier_card` (dead)**, `next_1`, `next_2`, `next_3`, **`visual` (dead)** |
+| `custom_groups` | `to_coop`, `member_interest`, **`visual` (dead)** |
+| `route` | `custom_groups_join`, `custom_groups_free`, `vote_join`, `vote_later`, `no_ads_join`, `no_ads_invite`, **`visual` (dead)** |
+| `free` | `choose_friends`, `continue`, `skip`, **`visual` (dead)** |
+| `product` | `next_1`, `save_help`, `option`, **`visual` (dead)** |
+| `plans` | `next_1`, `next_2`, `branch_next`, **`visual` (dead)** |
+| `friendsb` | `next_1`, `next_2`, `branch_next`, **`visual` (dead)** |
+| `memories` | `next_1`, `next_2`, `next_3`, `branch_next`, `option`, **`visual` (dead)** |
+| `discover` | `next_1`, `next_2`, `branch_suggest`, `branch_browse`, **`visual` (dead)** |
 | `basics` | `answer` (birthday) |
 | `stat` | `info` (opens sources sheet from the "i" beside "A quick reality check", `variant`), `bridge` ("Let's try again", `variant`), `advance` (screentime only: tap to the next life-story beat, `page_index`), `band` (screentime only: tap a filled year-band to open/close its years accordion, `page_index`), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)**, **`caption` (dead — changing "you'll spend X years" line)** |
 | `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, **`awesome_banner` (dead — "AWESOME! We'll notify you when friends join.")**, `skip` |
@@ -275,10 +292,10 @@ New flow (2026 rebuild). Order: confirm profile → birthday → [feed stat] →
 | `circles` | **`lock` (dead — animated padlock)**, **`tier_card` (dead — Close / Friends / Acquaintances meaning + Free Lite caps)** |
 | `review` | `row_audience` (`field`, `tier`), `set_all` (`tier`), `row_edit` / `row_edit_save` / `row_edit_cancel` (`field`; never content), `terms`, `privacy_policy` |
 | `coop_intro` | `continue` (green "See what you get" → join page), **`body` (dead — the "what a co-op is" explainer paragraphs)** |
-| `coop` | `invite_free` (Option A; props `invites_sent` 0–2; 3rd invite finishes onboarding → Home), `join_paid` (Option B; opens the join sheet; long-press 10s reveals auth link), `apple_pay` / `google_pay` (In-App Purchase method in the join sheet; not the Apple Pay / Google Pay marks), `card` (Stripe Checkout method; web / Android only), `plan_monthly` / `plan_yearly` (pick billing period in the join sheet, then pay), `use_free` (when 3 invites already filled from Contacts: "Continue with free access"), `see_more` (expand/collapse the Free vs Co-op table; prop `expanded`), `redeem_open` (hidden until 10s hold on Join; redeem finishes → Home), `redeem_input`, `redeem_submit`, **`plan_compare` (dead — Free vs Co-op comparison table body)**, **`perks_grid` (dead — legacy member perk bullet list)** |
-| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `name.*`, `photo.*`, `groups.*`, `meet.*`, onboarding `recap` step (`taste.recap_*`), `welcome_in.*` (You're in screen — replaced by the Home `welcome_celebration` surface) |
+| `coop` | `invite_free` (Option A; props `invites_sent` 0–2; 3rd invite finishes Old onboarding → Home), `join_paid` (Option B; opens the join sheet; long-press 10s reveals auth link), `apple_pay` / `google_pay` (In-App Purchase method in the join sheet; not the Apple Pay / Google Pay marks), `card` (Stripe Checkout method; web / Android only), `plan_monthly` / `plan_yearly` (pick billing period in the join sheet, then pay), `use_free` (when 3 invites already filled from Contacts: "Continue with free access"), `see_more` (expand/collapse the Free vs Co-op table; prop `expanded`), `redeem_open` (hidden until 10s hold on Join; redeem finishes → Home), `redeem_input`, `redeem_submit`, **`plan_compare` (dead — Free vs Co-op comparison table body)**, **`perks_grid` (dead — legacy member perk bullet list)**, `next_1`…`next_5`, `save_interests`, `interest_option`, `skip_to_product`, **`visual` (dead)** |
+| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `photo.*`, `meet.*`, onboarding `recap` step (`taste.recap_*`), `welcome_in.*` (You're in screen — replaced by the Home `welcome_celebration` surface) |
 
-Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. The screentime stat also emits `flow_step` with `flow_step=stat-screentime` and `page_index` for each life-story beat (0 life, 1 sleep, 2 upkeep, 3 devices, 4 social, 5 cta). Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only.
+Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. The screentime stat also emits `flow_step` with `flow_step=stat-screentime` and `page_index` for each life-story beat (0 life, 1 sleep, 2 upkeep, 3 devices, 4 social, 5 cta). Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only. New onboarding confirmed chips emit `membership_interests_selected` / `help_interests_selected`.
 
 ### `home`
 | section | elements |
@@ -692,6 +709,7 @@ The high-value "what did they *expect*" signals. Tag every one so a tap logs `de
 - **This-or-That row bodies** (`profile.*.this_or_that_row` body).
 - **Card bodies / whitespace** (suggestion cards, event cover, profile header bg).
 - **Empty-state graphics & illustrations.**
+- **New onboarding VisualSlot pictures** (`onboarding.why.visual`, `privacy.visual`, `groups.visual`, `custom_groups.visual`, `route.visual`, `free.visual`, `coop.visual`, `product.visual`, `plans.visual`, `friendsb.visual`, `memories.visual`, `discover.visual`) — placeholders until Magic Patterns art ships.
 
 Keep to **semantic regions**, not every pixel — enough to learn intent without noise.
 
@@ -754,6 +772,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Date | Old ID | New ID | Reason |
 |---|---|---|---|
+| 2026-09-08 | — | `auth.sign_in.phone` / `send_code` / `otp_code` / `verify` / `resend_otp`; New onboarding `why.*` `privacy.*` `groups.next_*` `custom_groups.*` `route.*` `free.*` `product.*` `plans.*` `friendsb.*` `memories.*` `discover.*`; `membership_interests_selected` / `help_interests_selected` / `pending_person_merged` | Phone OTP + New onboarding education flow |
 | 2026-08-30 | — | `add_inside_joke_sheet.*` | Inside Joke composer: Who said it + where text field |
 | 2026-08-30 | — | `activity.grid.text_note`, `activity_capture.chrome.blurb_input` | Text Side Quests (Notes App Discovery) |
 | 2026-08-30 | `*.top_nav.profile_icon` (header avatar, all tabs) | `chrome.tab_bar.profile_icon` (pill far-right) | Global nav update: profile face moved from the top-left header to the far-right of the bottom nav pill; titles now sit flush left. Old `top_nav.profile_icon` ids kept, retired |
