@@ -50,7 +50,7 @@ export function StoryTile({
       accessibilityRole="button"
       accessibilityLabel={
         mine
-          ? 'Your story'
+          ? 'Your scrapbook'
           : `${story.authorName}'s story${story.seen ? ', watched' : ', new'}`
       }
       className={cn(
@@ -84,7 +84,7 @@ export function StoryTile({
       </View>
       <View className="absolute inset-x-0 bottom-0 px-2.5 pb-2 pt-6">
         <Text className="font-sans-b text-[12px] leading-tight text-white">
-          {mine ? 'Your story' : story.authorName}
+          {mine ? 'Your scrapbook' : story.authorName}
         </Text>
         <Text className="font-sans-md text-[11px] text-white/80">{story.postedAt}</Text>
       </View>
@@ -118,7 +118,7 @@ export function StoryTile({
         <Pressable
           onPress={withAnalyticsPress(HOME.stories_row.add_after_post, onAdd)}
           accessibilityRole="button"
-          accessibilityLabel="Add to your story"
+          accessibilityLabel="Add to your scrapbook"
           className="absolute -bottom-1 -right-1 h-8 w-8 items-center justify-center rounded-full border-[3px] border-canvas bg-coral active:opacity-90"
         >
           <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
@@ -134,14 +134,14 @@ export function AddStoryTile({ onPress }: { onPress?: () => void }) {
     <Pressable
       onPress={withAnalyticsPress(HOME.stories_row.post_prompt, onPress)}
       accessibilityRole="button"
-      accessibilityLabel="Post a story"
+      accessibilityLabel="Start your scrapbook"
       className="h-[132px] w-[104px] shrink-0 items-center justify-center gap-2 rounded-card border border-dashed border-ink-line bg-surface active:opacity-90"
     >
       <Text accessible={false} className="text-[22px] text-ink-soft">
         ＋
       </Text>
       <Text className="px-2 text-center font-sans-b text-[12px] leading-tight text-ink-soft">
-        Post a story!
+        Start your scrapbook!
       </Text>
     </Pressable>
   );

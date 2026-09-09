@@ -5,7 +5,7 @@
 // never import fixtures directly.
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
-import type { ThemedPrompt } from '@bridger/shared';
+import { DAILY_SCRAPBOOK_MEDIA_LIMIT, type ThemedPrompt } from '@bridger/shared';
 import {
   createPost,
   getPostQuota,
@@ -15,8 +15,9 @@ import {
 import { THEMED_PROMPTS } from '../data/fixtures/stories';
 
 export function useStoryCapture() {
-  const [left, setLeft] = useState(3);
-  const [cap, setCap] = useState(3);
+  // Daily limit is photos + videos across all of today's pages (packages/shared).
+  const [left, setLeft] = useState(DAILY_SCRAPBOOK_MEDIA_LIMIT);
+  const [cap, setCap] = useState(DAILY_SCRAPBOOK_MEDIA_LIMIT);
   // Seed the three squares right away so capture never sits empty for ~2s.
   const [prompts, setPrompts] = useState<ThemedPrompt[]>(THEMED_PROMPTS);
   const [loading, setLoading] = useState(true);

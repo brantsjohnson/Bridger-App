@@ -582,8 +582,8 @@ export default function HomeScreen() {
         <View>
           {/* Stories title: dashed underline + short "what is this?" bubble */}
           <SectionTitle
-            title="Stories"
-            description="Quick updates your friends post about their week. Tap one to watch, or add your own."
+            title="Scrapbooks"
+            description="Pages your friends make about their day. Tap one to look, or start your own."
             infoAnalyticsId={HOME.stories_row.info}
             parentScreen="home"
             section="stories_row"
@@ -643,7 +643,7 @@ export default function HomeScreen() {
           </ScrollView>
           {empty ? (
             <Text className="mt-2.5 font-sans-sb text-[13px] text-ink-mute">
-              Post a story! Your friends see it when they join.
+              Start your scrapbook! Your friends see it when they join.
             </Text>
           ) : (
             <StoryRepliesRow

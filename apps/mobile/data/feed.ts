@@ -77,19 +77,30 @@ function mapAnnouncement(raw: {
 // TODO: persist via API when story-view rows ship (feed.service still returns
 // seen: false for live).
 // ============================================
-const sessionSeenAuthorIds = new Set<string>();
+// Author id → the revision signature we watched. When the author adds to a
+// page later (revision goes up), the tile lights again.
+const sessionSeen = new Map<string, number | undefined>();
 
-/** Call when the viewer finishes that author's last post. */
-export function markStorySeen(authorId: string) {
+/** True when we watched this author at the tile's current revision. */
+function watched(authorId: string, revision: number | undefined): boolean {
+  if (!sessionSeen.has(authorId)) return false;
+  const seenRev = sessionSeen.get(authorId);
+  // No revision info on either side: fall back to "watched once = watched".
+  if (revision === undefined || seenRev === undefined) return true;
+  return seenRev >= revision;
+}
+
+/** Call when the viewer finishes that author's last post. Pass the revision they watched. */
+export function markStorySeen(authorId: string, revision?: number) {
   if (!authorId) return;
-  sessionSeenAuthorIds.add(authorId);
+  sessionSeen.set(authorId, revision);
 }
 
 /** Unseen first (tray order), then watched — so new updates stay up front. */
 function applySeenAndOrder(stories: Story[]): Story[] {
   const mapped = stories.map((s) => ({
     ...s,
-    seen: s.seen || sessionSeenAuthorIds.has(s.authorId)
+    seen: s.seen || watched(s.authorId, s.revision)
   }));
   return [...mapped.filter((s) => !s.seen), ...mapped.filter((s) => s.seen)];
 }
@@ -108,7 +119,7 @@ export async function listStories(): Promise<Story[]> {
 export async function getMyStory(): Promise<Story | null> {
   if (isDemoMode()) {
     const mine = { ...MY_STORY };
-    if (sessionSeenAuthorIds.has('me')) mine.seen = true;
+    if (watched('me', mine.revision)) mine.seen = true;
     return mine;
   }
   try {
@@ -116,7 +127,7 @@ export async function getMyStory(): Promise<Story | null> {
     if (!mine) return null;
     return {
       ...mine,
-      seen: mine.seen || sessionSeenAuthorIds.has(mine.authorId)
+      seen: mine.seen || watched(mine.authorId, mine.revision)
     };
   } catch {
     return null;

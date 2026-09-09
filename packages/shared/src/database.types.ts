@@ -3131,6 +3131,134 @@ export type Database = {
           },
         ]
       }
+      /** One editable 8.5 x 11 Scrapbook page behind a `stories` row (0054). */
+      scrapbook_pages: {
+        Row: {
+          aspect_ratio: number
+          author_id: string
+          background: Json
+          created_at: string
+          id: string
+          layout_family: string | null
+          layout_id: string | null
+          revision: number
+          story_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          aspect_ratio?: number
+          author_id: string
+          background?: Json
+          created_at?: string
+          id?: string
+          layout_family?: string | null
+          layout_id?: string | null
+          revision?: number
+          story_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aspect_ratio?: number
+          author_id?: string
+          background?: Json
+          created_at?: string
+          id?: string
+          layout_family?: string | null
+          layout_id?: string | null
+          revision?: number
+          story_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scrapbook_pages_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scrapbook_pages_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      /** Everything drawn on a page: photos, captions, stamps. Positions are 0..1 (0054). */
+      scrapbook_elements: {
+        Row: {
+          created_at: string
+          data: Json
+          height: number
+          id: string
+          locked: boolean
+          media_id: string | null
+          page_id: string
+          rotation: number
+          slot: number | null
+          source: string | null
+          type: string
+          user_modified: boolean
+          width: number
+          x: number
+          y: number
+          z_index: number
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          height: number
+          id?: string
+          locked?: boolean
+          media_id?: string | null
+          page_id: string
+          rotation?: number
+          slot?: number | null
+          source?: string | null
+          type: string
+          user_modified?: boolean
+          width: number
+          x: number
+          y: number
+          z_index?: number
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          height?: number
+          id?: string
+          locked?: boolean
+          media_id?: string | null
+          page_id?: string
+          rotation?: number
+          slot?: number | null
+          source?: string | null
+          type?: string
+          user_modified?: boolean
+          width?: number
+          x?: number
+          y?: number
+          z_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scrapbook_elements_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scrapbook_elements_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "scrapbook_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           author_id: string
@@ -3141,6 +3269,10 @@ export type Database = {
           /** generated: created_at + 24 hours — leaves Home tray → Profile archive */
           live_until: string
           media_id: string | null
+          /** the editable Scrapbook page behind this post; null = legacy one-photo post (0054) */
+          page_id: string | null
+          /** goes up every time the author changes the page after posting (0054) */
+          revision: number
           theme_slug: string | null
           transcript: string | null
           type: Database["public"]["Enums"]["story_type"]
@@ -3154,6 +3286,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           media_id?: string | null
+          page_id?: string | null
+          revision?: number
           theme_slug?: string | null
           transcript?: string | null
           type: Database["public"]["Enums"]["story_type"]
@@ -3167,6 +3301,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           media_id?: string | null
+          page_id?: string | null
+          revision?: number
           theme_slug?: string | null
           transcript?: string | null
           type?: Database["public"]["Enums"]["story_type"]

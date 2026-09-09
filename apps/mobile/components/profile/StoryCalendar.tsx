@@ -47,10 +47,10 @@ export function StoryCalendar({
     return (
       <EmptyState
         emoji="📸"
-        line="No stories yet. Your posts land here as a monthly archive."
+        line="No pages yet. Your scrapbook pages land here as a monthly archive."
         action={
           <ButtonSecondary size="sm" tone="solid">
-            Post a story
+            Start your scrapbook
           </ButtonSecondary>
         }
       />

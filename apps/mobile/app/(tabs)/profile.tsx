@@ -40,13 +40,14 @@ import {
   PROFILE_TABS_TO_CONTENT
 } from '../../components/profile/profileSpacing';
 
-const TABS = ['Profile', 'Stories', 'Inside jokes', 'Bucket list'];
+// User-facing label is Scrapbook; the analytics id stays `tabs.stories` (code name).
+const TABS = ['Profile', 'Scrapbook', 'Inside jokes', 'Bucket list'];
 
 function profileTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
     case 'Profile':
       return PROFILE.tabs.profile;
-    case 'Stories':
+    case 'Scrapbook':
       return PROFILE.tabs.stories;
     case 'Inside jokes':
       return PROFILE.tabs.inside_jokes;
@@ -316,7 +317,7 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {!settingsOpen && tab === 'Stories' ? (
+        {!settingsOpen && tab === 'Scrapbook' ? (
           <View className="mt-5 px-4">
             <StoryCalendar
               days={archive.days}

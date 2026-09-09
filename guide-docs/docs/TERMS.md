@@ -85,12 +85,13 @@
 
 ## 7 · Features with special rules
 
-### 7.1 Updates (stories) and Side Quest posts
+### 7.1 Updates (Scrapbook pages) and Side Quest posts
 
-Updates follow capture-only media rules (except the profile photo). **Side Quest** posts are also UGC: photo quests use in-app capture; text quests (e.g. Notes App Discovery) store a short blurb you type. Same report / block expectations as other user content.
+Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or short videos a day (across 1 to 4 pages), a caption, and a date stamp. Photos and videos may be **captured live in Bridger or chosen from your camera roll**; you are responsible for having the right to share anything you import (no one else's copyrighted work or private images without permission). **Side Quest** posts are also UGC: photo quests use in-app capture; text quests (e.g. Notes App Discovery) store a short blurb you type. Same report / block expectations as other user content.
 
-- Capture-only media except profile photo.
-- Audience is chosen per post (concentric tiers + optional exclusions).
+- Live capture or camera roll for scrapbook pages; circle video replies and stickers stay capture-only.
+- Audience is chosen per page: Only me, Close, Friends, Everyone, or a co-op group. Only me pages are visible to you alone.
+- You may edit or delete a page the same day; friends may see it light up again on their Home.
 - No view counts.
 - Optional **BeReal-like reminders** (1–3 notifications a day) are opt-in only. You can turn them off from the capture screen or Settings → Notifications.
 
@@ -276,6 +277,7 @@ Updates follow capture-only media rules (except the profile photo). **Side Quest
 | 2026-08-20 | Product analytics on while signed in; no Settings off-switch in this build; purge on account delete |
 | 2026-08-20 | Quiz result sharing: save card image or send image/result link to other apps; user owns/responsible once shared off Bridger; links are quiz invites, not for spam |
 | 2026-08-20 | J-name share links: stable per-person link; opening one may connect a later signup to the friend who invited them; free public web view, but seeing your friends' results needs an account |
+| 2026-09-08 | Scrapbooks: Updates shown as pages; camera-roll import allowed for pages (you must have rights to what you import); Only me audience; same-day edits; 4 photos/videos a day across 1 to 4 pages |
 | 2026-08-21 | J-name "your versions" board is friends-only (account required); alerts when someone opens your quiz link or a friend lands on one of your top J picks |
 | 2026-08-30 | J-name: after you and a friend both finish, you can see how compatible you are on that quiz (fun % only; not a clinical or dating score) |
 | 2026-08-21 | Hobby bank includes optional culture / advocacy / wellness labels plus add-your-own; same visibility and matchable rules; none required |

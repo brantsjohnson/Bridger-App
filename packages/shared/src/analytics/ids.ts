@@ -1359,11 +1359,44 @@ export const POST_COMPOSER = {
   capture: {
     photo: aid('post_composer', 'capture', 'photo'),
     hold_video: aid('post_composer', 'capture', 'hold_video'),
-    switch_camera: aid('post_composer', 'capture', 'switch_camera')
+    switch_camera: aid('post_composer', 'capture', 'switch_camera'),
+    /** Flash cycles off / on / auto (property flash_mode). */
+    flash: aid('post_composer', 'capture', 'flash'),
+    /** Camera-roll thumb bottom-left of the shutter (opens the OS picker). */
+    roll: aid('post_composer', 'capture', 'roll'),
+    /** Small thumbnail of a page you already made today; tap = edit that page. */
+    today_page_thumb: aid('post_composer', 'capture', 'today_page_thumb'),
+    /** Sparkle icon that opens the prompts + reminders tray. */
+    prompts_tray_open: aid('post_composer', 'capture', 'prompts_tray_open'),
+    /** "1/4" count pill (dead-click). */
+    count_pill: aid('post_composer', 'capture', 'count_pill')
   },
   caption: {
     type: aid('post_composer', 'caption', 'type'),
-    voice_to_text: aid('post_composer', 'caption', 'voice_to_text')
+    voice_to_text: aid('post_composer', 'caption', 'voice_to_text'),
+    /** Done in the caption sheet. */
+    done: aid('post_composer', 'caption', 'done')
+  },
+  /** The 8.5 x 11 page itself on the compose screen. */
+  page: {
+    /** Paper with nothing tappable under the finger (dead-click). */
+    canvas: aid('post_composer', 'page', 'canvas'),
+    photo_slot: aid('post_composer', 'page', 'photo_slot'),
+    caption_slot: aid('post_composer', 'page', 'caption_slot'),
+    stamp: aid('post_composer', 'page', 'stamp'),
+    /** Chip row above the page after a photo is selected. */
+    replace: aid('post_composer', 'page', 'replace'),
+    remove: aid('post_composer', 'page', 'remove'),
+    move_to_page: aid('post_composer', 'page', 'move_to_page')
+  },
+  layouts: {
+    /** One layout thumbnail (method tap|swipe, page_index, carousel_depth, layout_id). */
+    thumb: aid('post_composer', 'layouts', 'thumb')
+  },
+  /** Strip of today's pages (1 to 4). */
+  pages: {
+    page_thumb: aid('post_composer', 'pages', 'page_thumb'),
+    new_page: aid('post_composer', 'pages', 'new_page')
   },
   suggested: {
     suggested_prompt: aid('post_composer', 'suggested', 'suggested_prompt'),
@@ -1380,12 +1413,73 @@ export const POST_COMPOSER = {
     close: aid('post_composer', 'audience', 'close'),
     friends: aid('post_composer', 'audience', 'friends'),
     everyone: aid('post_composer', 'audience', 'everyone'),
-    group: aid('post_composer', 'audience', 'group')
+    group: aid('post_composer', 'audience', 'group'),
+    /** Owner-only page (DB tier `none`). */
+    only_me: aid('post_composer', 'audience', 'only_me'),
+    /** The "Friends" chip top-right of the page that opens the audience sheet. */
+    chip: aid('post_composer', 'audience', 'chip')
   },
   actions: {
     post: aid('post_composer', 'actions', 'post'),
     add_another: aid('post_composer', 'actions', 'add_another'),
-    discard: aid('post_composer', 'actions', 'discard')
+    discard: aid('post_composer', 'actions', 'discard'),
+    /** "+" in the composer bar: opens the add-media sheet. */
+    add: aid('post_composer', 'actions', 'add'),
+    /** Pencil in the composer bar: opens the customize tray. */
+    customize: aid('post_composer', 'actions', 'customize'),
+    /** Tiny "i" that explains the compose screen (opens section_info_tooltip). */
+    info: aid('post_composer', 'actions', 'info'),
+    info_dismiss: aid('post_composer', 'actions', 'info_dismiss'),
+    /** The tip bubble body (dead-click). */
+    info_body: aid('post_composer', 'actions', 'info_body'),
+    undo: aid('post_composer', 'actions', 'undo'),
+    /** Back chevron from the page to the camera (draft kept). */
+    back: aid('post_composer', 'actions', 'back'),
+    /** Add-media sheet choices. */
+    add_camera: aid('post_composer', 'actions', 'add_camera'),
+    add_roll: aid('post_composer', 'actions', 'add_roll'),
+    /** Customize tray: paper color swatch. */
+    background_swatch: aid('post_composer', 'actions', 'background_swatch')
+  }
+} as const;
+
+/** Tray of the three themed-prompt squares + BeReal reminders toggle (own surface). */
+export const PROMPTS_TRAY = {
+  tray: {
+    dismiss: aid('prompts_tray', 'tray', 'dismiss')
+  }
+} as const;
+
+/** Half-height caption sheet: Type or Record (own surface). */
+export const CAPTION_SHEET = {
+  tabs: {
+    type: aid('caption_sheet', 'tabs', 'type'),
+    record: aid('caption_sheet', 'tabs', 'record')
+  },
+  actions: {
+    done: aid('caption_sheet', 'actions', 'done'),
+    dismiss: aid('caption_sheet', 'actions', 'dismiss')
+  }
+} as const;
+
+/** Who-sees-this sheet wrapping AudiencePicker (own surface). */
+export const AUDIENCE_SHEET = {
+  actions: {
+    dismiss: aid('audience_sheet', 'actions', 'dismiss')
+  }
+} as const;
+
+/** "+" add-media sheet (own surface). */
+export const ADD_MEDIA_SHEET = {
+  actions: {
+    dismiss: aid('add_media_sheet', 'actions', 'dismiss')
+  }
+} as const;
+
+/** Pencil customize tray (own surface). */
+export const CUSTOMIZE_TRAY = {
+  actions: {
+    dismiss: aid('customize_tray', 'actions', 'dismiss')
   }
 } as const;
 

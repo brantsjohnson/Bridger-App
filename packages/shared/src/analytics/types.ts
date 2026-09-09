@@ -48,6 +48,10 @@ export type AnalyticsMethod =
   | 'hover'
   | 'tap'
   | 'double_tap'
+  /** Media came from the phone's camera roll (scrapbook pages only). */
+  | 'roll'
+  /** Camera-roll photo vs live capture mixed on one page. */
+  | 'camera'
   | 'a11y'
   | 'google'
   | 'apple'
@@ -103,6 +107,18 @@ export type AnalyticsProductEvent =
    */
   | 'invite_link_shared'
   | 'story_posted'
+  /**
+   * A page you posted earlier today changed (photo added, layout changed) and
+   * the server confirmed it. Props: revision, media_count, layout_family,
+   * added_via camera|roll. Never captions or images.
+   */
+  | 'scrapbook_page_updated'
+  /** Tapped a different layout thumbnail (from_layout_id, to_layout_id, method). */
+  | 'layout_changed'
+  /** Camera-roll import finished (not the picker open). Props: count, kinds. */
+  | 'media_imported'
+  /** A page was deleted by its author (only_me drafts included). */
+  | 'scrapbook_page_deleted'
   /** Mid-party capture nudge fired (story_prompt pref on, under daily cap). */
   | 'party_capture_prompt_sent'
   | 'response_posted'

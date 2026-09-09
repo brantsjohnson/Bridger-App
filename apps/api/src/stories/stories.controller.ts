@@ -1,14 +1,17 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// HTTP routes for Updates: quota, create, list posts, replies, Catch-Up,
-// and the author's Profile calendar archive (posts after the 24h live window).
-// Every route needs a valid login token.
+// HTTP routes for Updates (Scrapbook pages): daily limit, today's pages,
+// create a page, change or delete a page you posted, list posts, replies,
+// Catch-Up, and the author's Profile calendar archive (posts after the 24h
+// live window). Every route needs a valid login token.
 // ============================================
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards
@@ -16,16 +19,23 @@ import {
 import type { ReactionKind, Tier } from '@bridger/shared';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
-import { StoriesService } from './stories.service';
+import { StoriesService, type PageInputDto } from './stories.service';
 
 @Controller('stories')
 @UseGuards(SupabaseAuthGuard)
 export class StoriesController {
   constructor(private readonly stories: StoriesService) {}
 
+  /** How many photos + videos you can still add today (cap 4 across pages). */
   @Get('quota')
   quota(@CurrentUser() user: AuthUser) {
     return this.stories.getQuota(user.id);
+  }
+
+  /** Your own pages from today (for the page strip on the compose screen). */
+  @Get('today')
+  today(@CurrentUser() user: AuthUser) {
+    return this.stories.listToday(user.id);
   }
 
   /**
@@ -48,9 +58,36 @@ export class StoriesController {
       themeSlug?: string;
       visibleToTier?: Tier;
       eventId?: string;
+      /** Scrapbook page: elements with uploaded media ids. */
+      page?: PageInputDto;
     }
   ) {
     return this.stories.create(user.id, body);
+  }
+
+  /**
+   * Change a page you posted earlier today (added photo, new layout, caption,
+   * audience). Bumps the revision so friends see the ring light again.
+   */
+  @Patch('posts/:postId/page')
+  updatePage(
+    @CurrentUser() user: AuthUser,
+    @Param('postId') postId: string,
+    @Body()
+    body: {
+      page: PageInputDto;
+      mediaId?: string;
+      caption?: string;
+      visibleToTier?: Tier;
+    }
+  ) {
+    return this.stories.updatePage(user.id, postId, body);
+  }
+
+  /** Delete one of your pages (used when two pages are merged into one). */
+  @Delete('posts/:postId')
+  deletePost(@CurrentUser() user: AuthUser, @Param('postId') postId: string) {
+    return this.stories.deletePost(user.id, postId);
   }
 
   // Static-ish paths before :authorId so Nest does not swallow them.

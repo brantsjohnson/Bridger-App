@@ -7,6 +7,11 @@
 // right = next. When the last post ends, we either open the next friend in the
 // tray sequence or show "You're all caught up" with confetti. Catch-Up stays
 // parked at the peek while swapping friends. Respects reduce-motion.
+//
+// SCRAPBOOK PAGES: a post that carries a real page (photos laid out on an
+// 8.5 x 11 sheet) is drawn as that page, letterboxed on the dark canvas, so
+// the chrome never covers the photos. A video on the page plays in its slot.
+// Old one-photo posts still fill the screen like before.
 // ============================================
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -34,10 +39,12 @@ import {
   ACCENTS,
   AnalyticsRegion,
   Avatar,
+  ScrapbookPage,
   SegmentedProgress,
   cn,
   withAnalyticsPress
 } from '@bridger/ui';
+import { SCRAPBOOK_ASPECT_RATIO } from '@bridger/shared';
 import { clearStoryReplyNotifications, markStorySeen } from '../../data/feed';
 import { getMembership } from '../../data/coop';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
@@ -168,8 +175,22 @@ export function StoryViewer({
     }
   };
 
+  // --- PAGE: a real Scrapbook page (not the one-photo legacy shape)? ---
+  const isPage = !!post?.page && !post.page.id.startsWith('legacy-');
+  // The first video on the page is the one that plays (others show a poster).
+  const pageVideo = isPage
+    ? post?.page?.elements.find((e) => e.type === 'video' && !!e.uri)
+    : undefined;
   // --- VIDEO: is the current slide a video we have real media for? ---
-  const isVideo = post?.type === 'video' && !!post?.media;
+  const isVideo = isPage ? !!pageVideo : post?.type === 'video' && !!post?.media;
+  /** What the shared player should load for this slide. */
+  const videoSource: VideoSource | null = isPage
+    ? pageVideo?.uri
+      ? { uri: pageVideo.uri }
+      : null
+    : ((post?.media as VideoSource | undefined) ?? null);
+  // How wide the page can be drawn inside the media frame (measured below).
+  const [pageBox, setPageBox] = useState<{ w: number; h: number } | null>(null);
   // How long the progress bar should take. Photos use a fixed 6s; videos use
   // their real length once we learn it (falls back to 6s until then).
   const [videoDurationMs, setVideoDurationMs] = useState(POST_MS);
@@ -217,8 +238,12 @@ export function StoryViewer({
   // Catch-Up open = stay put (do not dismiss under the sheet).
   const handleExhausted = useCallback(() => {
     if (catchUpOpen) return;
-    // Finished every post for this person → ring off + move to back of tray
-    markStorySeen(authorId);
+    // Finished every post for this person → ring off + move to back of tray.
+    // Remember which revision we watched so a later add lights the ring again.
+    markStorySeen(
+      authorId,
+      posts.reduce((n, p) => n + (p.revision ?? 1), 0)
+    );
     if (fromProfile) {
       // One friend's profile: celebrate then close (Done on the end screen).
       setAllCaughtUp(true);
@@ -232,7 +257,7 @@ export function StoryViewer({
       return;
     }
     setAllCaughtUp(true);
-  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor]);
+  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor, posts]);
 
   const handleNext = useCallback(() => {
     const result = goNext();
@@ -245,10 +270,10 @@ export function StoryViewer({
 
   // --- VIDEO: point the player at the current slide (or clear it) ---
   useEffect(() => {
-    if (isVideo && post?.media) {
+    if (isVideo && videoSource) {
       // Story media is a bundled require()'d asset, which expo-video accepts
       // even though its type is written for image sources.
-      player.replace(post.media as VideoSource);
+      player.replace(videoSource);
       // Kick playback off immediately rather than waiting on another render,
       // so the clip doesn't sit on a frozen first frame before it starts.
       if (!paused) player.play();
@@ -259,7 +284,7 @@ export function StoryViewer({
     }
     // `paused` deliberately left out: the play/pause effect below owns that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVideo, post?.media, player]);
+  }, [isVideo, post?.media, pageVideo?.uri, player]);
 
   // --- VIDEO: play/pause with the rest of the viewer (sheets, menu, tabs) ---
   useEffect(() => {
@@ -332,8 +357,16 @@ export function StoryViewer({
   // Bottom controls + caption sit just above the Catch-Up peek.
   const controlsBottom = CATCH_UP_PEEK + 10;
 
+  // A page already shows its own caption; the bottom bubble would repeat it.
+  const pageShowsCaption =
+    isPage &&
+    !!post.page?.elements.some(
+      (e) => e.type === 'text' && e.data.role === 'caption' && String(e.data.text ?? '').trim()
+    );
+
   return (
-    <View className={cn('relative flex-1 overflow-hidden', token.bg)}>
+    // Pages sit on the near-black canvas (like the composer); legacy posts keep their accent.
+    <View className={cn('relative flex-1 overflow-hidden', isPage ? 'bg-[#0E0E0E]' : token.bg)}>
       {/*
         Tap zones over the media: left = previous, center = pause/play,
         right = next. Chrome (header, bottom controls, Catch-Up) sits above
@@ -369,7 +402,55 @@ export function StoryViewer({
         className="absolute inset-x-0 top-0 items-center justify-center overflow-hidden"
         style={{ bottom: mediaBottom }}
       >
-        {isVideo ? (
+        {isPage && post.page ? (
+          // SCRAPBOOK PAGE: letterboxed so the header + caption row never cover it.
+          <View
+            className="flex-1 items-center justify-center"
+            style={{
+              width: '100%',
+              paddingTop: Math.max(insets.top, 12) + 84,
+              paddingBottom: 84,
+              paddingHorizontal: 16
+            }}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              setPageBox({
+                w: width - 32,
+                h: height - (Math.max(insets.top, 12) + 84) - 84
+              });
+            }}
+          >
+            {pageBox ? (
+              <ScrapbookPage
+                page={post.page}
+                width={Math.max(120, Math.min(pageBox.w, pageBox.h * SCRAPBOOK_ASPECT_RATIO))}
+                mode="view"
+                radius={8}
+                accessibilityLabel={`${author.name}'s page`}
+                renderMedia={(el, box) =>
+                  el.type === 'video' ? (
+                    el.id === pageVideo?.id ? (
+                      <VideoView
+                        player={player}
+                        style={{ width: box.width, height: box.height }}
+                        contentFit="cover"
+                        nativeControls={false}
+                        accessibilityIgnoresInvertColors
+                      />
+                    ) : (
+                      <View
+                        style={{ width: box.width, height: box.height }}
+                        className="items-center justify-center bg-[#1C1B16]"
+                      >
+                        <Text className="text-[22px]">▶</Text>
+                      </View>
+                    )
+                  ) : null
+                }
+              />
+            ) : null}
+          </View>
+        ) : isVideo ? (
           <VideoView
             player={player}
             style={{ width: '100%', height: '100%' }}
@@ -510,7 +591,7 @@ export function StoryViewer({
           Caption uses a fixed dark scrim + white type. Theme ink flips light
           in dark mode, so bg-ink + text-white used to vanish on cream.
         */}
-        {post.caption ? (
+        {post.caption && !pageShowsCaption ? (
           <AnalyticsRegion
             analyticsId={STORY.viewer.caption_body}
             interactive={false}

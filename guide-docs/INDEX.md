@@ -43,6 +43,7 @@ guide-docs/
 │   ├── ONBOARDING.md
 │   ├── HOME.md
 │   ├── STORIES.md
+│   ├── SCRAPBOOKS.md
 │   ├── FRIENDS.md
 │   ├── DISCOVER.md
 │   ├── REVEAL.md
@@ -143,6 +144,7 @@ guide-docs/
 | `complete/ONBOARDING.md` | [COMPLETE] | Welcome "trying again" beats → desire step (Home seed) → essentials → co-op / Free Lite join. |
 | `complete/HOME.md` | [COMPLETE] | Announcements carousel, stories row, responses, always-visible Touch Grass send, ask-the-group. |
 | `complete/STORIES.md` | [COMPLETE] | Story player, the Catch-Up swipe-up (week-hero), responses, AI week summary (words-only). |
+| `complete/SCRAPBOOKS.md` | [BUILDING] | Posting an Update as an 8.5 x 11 Scrapbook page: two screens, layouts, camera roll, 1 to 4 pages a day, Only me, drafts, revisions. Supersedes the posting half of STORIES.md. Plan: `design-briefs/SCRAPBOOKS-PHASE-PLAN.md`. |
 | `complete/FRIENDS.md` | [COMPLETE] | Roster + tiers, add-friend, inside jokes, Friend Pod, private notes/reminders, report/block. |
 | `complete/DISCOVER.md` | [COMPLETE] | The intro gate, overlap-first suggestions, Discover-Me modules, In-common, friends-of-friends basis. |
 | `complete/REVEAL.md` | [COMPLETE] | The connection reveal: beat-0 (how-you-met + tier) gates overlap; orbs → also-got → profile. |

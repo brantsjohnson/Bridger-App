@@ -422,7 +422,7 @@ function MessageBubble({
               bubble.from === 'me' ? 'opacity-70' : 'text-ink-mute'
             )}
           >
-            On your story
+            On your scrapbook
           </Text>
         ) : null}
         <Text

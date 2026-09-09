@@ -59,7 +59,7 @@ export class FeedService {
     // picture is archived on the author's Profile calendar — not here.
     const { data: rows, error } = await this.supabase.admin
       .from('stories')
-      .select('id, update_text, theme_slug, created_at, visible_to_tier, live_until')
+      .select('id, update_text, theme_slug, created_at, visible_to_tier, live_until, revision')
       .eq('author_id', authorId)
       .in('type', ['photo', 'video'])
       .gt('live_until', nowIso)
@@ -94,7 +94,10 @@ export class FeedService {
       postedAt: latest.created_at,
       // PRIVACY: no vanity view tracking exposed; always unread until that ships.
       seen: false,
-      segments: visible.length
+      segments: visible.length,
+      // Sum of page revisions: when the author adds to a page, this changes and
+      // the phone lights the ring again (per-viewer, never a public count).
+      revision: visible.reduce((n, r) => n + ((r as { revision?: number }).revision ?? 1), 0)
     };
   }
 

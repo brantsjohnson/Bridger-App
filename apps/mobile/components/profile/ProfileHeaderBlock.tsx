@@ -183,7 +183,7 @@ export function ProfileHeaderBlock({
             ? 'Open current story, watched'
             : 'Open current story, new'
           : canAddStory
-            ? 'Post a story'
+            ? 'Start your scrapbook'
             : 'No current story'
       }
       className={cn(
@@ -210,7 +210,7 @@ export function ProfileHeaderBlock({
             ＋
           </Text>
           <Text className="text-center font-sans-b text-[11px] leading-tight text-ink-soft">
-            Post a story!
+            Start your scrapbook!
           </Text>
         </View>
       ) : (

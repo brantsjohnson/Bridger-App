@@ -66,7 +66,13 @@ One line each; keep them dumb and reusable.
 | `FloatingTabBar` | the 5-destination floating pill |
 | `StoryTile` | rectangular, pic-in-corner, image fills |
 | `StoryProgressBars` | 1–3 segments |
-| `UpdateComposer` | post-capture: photo/video + "what did you do today" caption, type or voice-to-text mic, audience, Post update |
+| `UpdateComposer` | superseded by the Scrapbook pieces below (kept for reference) |
+| `ScrapbookPage` | **TO DESIGN** the 8.5 x 11 page renderer: photos, caption slot, date stamp at 0..1 positions; compose + view modes (`SCRAPBOOKS.md`) |
+| `LayoutCarousel` / `LayoutThumb` | **TO DESIGN** row of page-shaped layout thumbnails, no labels, selected = blue outline |
+| `CountPill` | **TO DESIGN** the "1/4" pill (amber when the day is full) |
+| `CaptureRail` | **TO DESIGN** flash · flip · camera-roll thumb · today's-page thumb · prompts sparkle around the shutter |
+| `ComposerBar` | **TO DESIGN** `+` · pencil · metallic POST · tiny `i` |
+| `PromptsTray` / `CaptionSheet` / `AudienceSheet` / `AddMediaSheet` / `CustomizeTray` | **TO DESIGN** the five compose sheets (Sheet-based; page stays visible behind) |
 | `DaySummaryCard` | **hero** day card: bold day title + big ~square photo + caption underneath (see `STORIES.md`) |
 | `CatchUpEventCard` | compact event card with its **real cover image**; "Going" starts an on-card countdown |
 | `CatchUpPollCard` | **compact** poll: question + option chips + tiny "closes Xd" |
@@ -81,7 +87,7 @@ One line each; keep them dumb and reusable.
 | `InterestBlob` | colorful rounded blob, icon + label + check |
 | `HobbiesWidget` | two contained views: clean chips (tap = drop-down answer) + swipe page listing every hobby + answer, scroll inside (see `PROFILE.md`) |
 | `InCommonAnswers` | a shared hobby with both people's follow-up answers side by side |
-| `AudiencePicker` | Close/Friends/Everyone multi-select + per-person caret |
+| `AudiencePicker` | Only me (pages) / Close / Friends / Everyone multi-select + per-person caret |
 | `Toggle` | pill switch |
 | `Sheet` / `Modal` | rounded bottom sheet |
 | `CalendarCell` | day cell: dot or thumbnail; tap a posted day → opens story player |

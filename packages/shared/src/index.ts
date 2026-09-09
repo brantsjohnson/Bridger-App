@@ -6,6 +6,9 @@ export * from './model/profile-attribute';
 export * from './model/tier';
 export * from './model/person';
 export * from './model/story';
+// Scrapbook pages: the 8.5 x 11 page model + layout templates behind Updates.
+export * from './model/scrapbook';
+export * from './scrapbook/layouts';
 export * from './model/event';
 export * from './model/event-recurrence';
 export * from './model/connection';
@@ -69,6 +72,11 @@ export {
   CIRCLE_RECORDER,
   CATCH_UP,
   POST_COMPOSER,
+  PROMPTS_TRAY,
+  CAPTION_SHEET,
+  AUDIENCE_SHEET,
+  ADD_MEDIA_SHEET,
+  CUSTOMIZE_TRAY,
   MESSAGES,
   NEW_MESSAGE_SHEET,
   REVEAL,

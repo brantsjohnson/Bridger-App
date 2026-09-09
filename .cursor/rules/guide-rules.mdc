@@ -99,7 +99,7 @@ Deletion is real: hard-delete cascades; removing an account/field/connection era
 AI never sees PII or photos: summaries from user words only; embeddings from de-identified Zone B; matching returns opaque IDs, names rejoin on-device. Never send likeness to a model; never train on user content.
 The Assistant is single-user (personal_agent lane) and never acts without an explicit confirm; it must not bleed into Home/Discover for people who have not opted in.
 No vanity metrics, anywhere: no follower counts, view counts, invited totals, streaks, or leaderboards. If a feature needs a number, it must be a number that serves the user (host headcount vs cap is the canonical allowed example).
-Capture-only media except the profile photo (the one upload exception).
+Capture-only media for circle video replies and stickers. Two upload exceptions: the profile photo, and photos/short videos chosen from the camera roll for a Scrapbook page (approved 2026-09-08; permission asked in context, only picked items are read, source is stored per element).
 
 6 · Naming: user-facing vs internal
 User sees	Code/module says

@@ -37,6 +37,16 @@ module.exports = ({ config }) => ({
       NSPrivacyTracking: false,
       NSPrivacyTrackingDomains: [],
       NSPrivacyCollectedDataTypes: [
+        // Photos / videos the person puts in Bridger (profile picture, live
+        // captures, camera-roll picks for a Scrapbook page). Never for tracking.
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality'
+          ]
+        },
         {
           NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
           NSPrivacyCollectedDataTypeLinked: true,
@@ -122,7 +132,7 @@ module.exports = ({ config }) => ({
       'expo-camera',
       {
         cameraPermission:
-          "Bridger uses your camera so you can post an update, send a 10 second video reply to a friend, and scan a friend's QR code to add each other.",
+          "Bridger uses your camera so you can add a photo or video to your scrapbook page, send a 10 second video reply to a friend, and scan a friend's QR code to add each other.",
         microphonePermission:
           'Bridger uses your microphone so your video replies have sound, and so you can ask the Assistant by voice.',
         recordAudioAndroid: true
@@ -167,14 +177,15 @@ module.exports = ({ config }) => ({
         isAccessMediaLocationEnabled: false
       }
     ],
-    // Choosing an existing photo for your profile picture (the one upload
-    // exception; stories stay capture-only). Asked in context, only when you
-    // tap "Upload" on the confirm-profile step.
+    // Choosing existing photos: your profile picture, and photos or short
+    // videos to add to a Scrapbook page (approved 2026-09-08; replies and
+    // stickers stay capture-only). Asked in context, only when you tap Upload
+    // on the confirm-profile step or the camera-roll button while making a page.
     [
       'expo-image-picker',
       {
         photosPermission:
-          'Bridger opens your photos only when you tap Upload, so you can choose a profile picture.',
+          'Bridger opens your photos only when you tap Upload or the camera roll button, so you can choose a profile picture or add pictures to a scrapbook page.',
         cameraPermission:
           'Bridger uses your camera so you can take a profile picture during setup.'
       }

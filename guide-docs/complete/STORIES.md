@@ -6,8 +6,10 @@ Build doc for the story experience. **Framing: these are "updates," not "stories
 
 ## Posting rules (what you can post)
 
-- **In-the-moment only.** No camera-roll uploads, ever — captured live in the app, Marco-Polo style.
-- **3 posts/day**, **video ≤ 20s** (enforced by `stories`).
+> **Superseded 2026-09-08 by `SCRAPBOOKS.md`.** Posting is now a two-screen Scrapbook flow: an 8.5 x 11 page with layouts, **4 photos/videos a day across 1 to 4 pages**, **camera roll allowed for pages** (replies and stickers stay capture-only), an **Only me** audience, same-day edits, and a local draft. The bullets below describe the old flow and are kept for history; where they disagree with `SCRAPBOOKS.md`, that doc wins.
+
+- ~~**In-the-moment only.** No camera-roll uploads, ever~~ (pages may import from the roll; see `SCRAPBOOKS.md`).
+- ~~**3 posts/day**~~ 4 photos/videos a day across pages; **video ≤ 20s** (enforced by `stories`).
 - **One capture button** — tap for a photo, hold to record video. No separate Photo or Text buttons.
 - **Video is a co-op capability.** Free members post **photos + text/voice-to-text updates**; **posting video** (updates and video reactions) is a co-op unlock — but **everyone can watch** video. See `COOP.md`.
 - **Then write your update.** After capture, the composer prompts **"Update your friends"** / *"What did you do today?"* — a real, slightly longer **update caption** (not a one-word label). Two ways to enter it:
@@ -229,8 +231,8 @@ interface ThemedPrompt { slug: string; label: string; icon: string; }  // admin-
 
 ## Acceptance criteria
 
-- [ ] Posting captures media live in-app only — no camera-roll upload path exists.
-- [ ] Max 3 posts/day; video ≤20s. One capture button (tap photo / hold video); no Photo or Text buttons.
+- [ ] ~~Posting captures media live in-app only~~ Posting follows `SCRAPBOOKS.md` (camera or camera roll for pages; replies and stickers capture-only).
+- [ ] ~~Max 3 posts/day~~ 4 photos/videos a day across 1 to 4 pages (`SCRAPBOOKS.md`); video ≤20s. One capture button (tap photo / hold video); no Photo or Text buttons.
 - [ ] After capture the composer prompts an **update** ("what did you do today"), enterable by typing **or voice-to-text**; video updates are auto-transcribed.
 - [ ] Three themed-post squares (admin-rotatable) sit above capture; picking a theme labels the update.
 - [ ] Capture screen offers an opt-in "BeReal-like reminders" toggle (1–3 notifications a day); pref is `story_prompt`, also in Settings → Notifications; taps open `/story/capture`.

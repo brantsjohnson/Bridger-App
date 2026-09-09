@@ -48,7 +48,12 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `what_gets_you_going` | `discover` (Connect Over) | Values quiz — open then bail? finish? skips? (`dwell_ms`) |
 | `your_funny_bone` | `discover` (Connect Over) | Humor taste quiz — open then bail? finish? (`dwell_ms`) |
 | `end_quiz_sheet` | `quiz` | Back mid-take: do they confirm End quiz or Keep going? (`dwell_ms`) |
-| `post_composer` | `home` (your story) | do they use the suggested buttons? finish? |
+| `post_composer` | `home` (your scrapbook) | do they use the suggested buttons? finish? which layout do they pick? |
+| `prompts_tray` | `post_composer` | themed squares + reminders moved off the camera; do people still open them? (`dwell_ms`) |
+| `caption_sheet` | `post_composer` | tap the caption slot then bail vs Done (`dwell_ms`) |
+| `audience_sheet` | `post_composer` | opened the who-sees-this sheet; changed or just looked? |
+| `add_media_sheet` | `post_composer` | "+": Camera vs Camera roll |
+| `customize_tray` | `post_composer` | pencil: paper swatches + Undo; do people open it at all? (`dwell_ms`) |
 | `add_friend_sheet` | `friends` | QR vs link vs scan (method) |
 | `add_inside_joke_sheet` | `friends` or `profile` | Who said it tags; where free-text vs event chip |
 | `invite_access` | post-onboarding gate (demo week) | must invite a friend to unlock app — do they bail? |
@@ -87,7 +92,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | Flow | Steps (order tracked) |
 |---|---|
 | `onboarding` | privacy → desire → notifications → name → photo → basics → meet → review → coop → welcome |
-| `post_story` | open composer → capture/type/voice → (suggested used?) → post → (add another "+"?) |
+| `post_story` | open composer → capture (method photo\|video\|roll) → layout_picked → caption (method text\|voice) → audience → post (server-confirmed) → (add another "+"?) |
 | `add_friend` | open sheet → choose method (qr/link/scan) → send/confirm |
 | `customize_profile` | open → each change → save (with total `dwell_ms`) |
 | `profile_intro` | open (mandatory once) → continue |
@@ -133,7 +138,11 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `friend_note_added` | a private note / date / check-in is saved on a friend | `kind` (`text`\|`date`\|`check_in`), `cadence` (check_in only) — **never note text** |
 | `friend_note_deleted` | a private note is removed | `—` |
 | `friend_check_in_reminded` | a soft check-in nudge fires for the author | `cadence` — **never note text** |
-| `story_posted` | an update posts | `method` (photo/video/text/voice), `is_coop`, optional `event_id` when tagged to an event album |
+| `story_posted` | a new Scrapbook page posts (server-confirmed) | `method` (photo/video), `media_count`, `layout_id`, `layout_family`, `has_words`, `words_method` (text\|voice\|both\|none), `source_mix` (live\|roll\|mixed), `audience` (only_me\|close\|friend\|everyone\|group), `is_coop`, optional `event_id` |
+| `scrapbook_page_updated` | a page posted earlier today changed (photo added, layout, caption, audience, merge, split) and the server confirmed | `revision`, `media_count`, `layout_family`, `added_via` (camera\|roll\|merge\|split) — never captions or images |
+| `layout_changed` | tapped a different layout thumbnail | `from_layout_id`, `to_layout_id`, `layout_family`, `method` (tap) |
+| `media_imported` | camera-roll import finished (files chosen, not the picker opening) | `count`, `kinds` (photo\|video\|mixed) |
+| `scrapbook_page_deleted` | author deleted a page (merge emptied it) | `—` |
 | `party_capture_prompt_sent` | mid-party capture nudge fires (`story_prompt` on, under daily cap) | `event_id` |
 | `response_posted` | a reaction/reply posts | `method` (video/comment/sticker/custom_sticker/reaction), `duration_seconds` on video |
 | `stories_caught_up` | finished every update in the tray (or a lone author) and the end screen showed | `—` |
@@ -315,14 +324,26 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 |---|---|
 | `actions` | `im_in`, `quietly_decline`, `dismiss` |
 
-### `post_composer` *(surface)*
+### `post_composer` *(surface — Scrapbook capture + compose, two screens)*
 | section | elements |
 |---|---|
-| `capture` | `photo`, `hold_video`, `switch_camera` |
-| `caption` | `type`, `voice_to_text` |
-| `suggested` | `suggested_prompt` (**do they ever use these?**), `random_nudges_toggle`, **`random_nudges_label` (dead)** |
-| `audience` | `close`, `friends`, `everyone`, `group` |
-| `actions` | `post`, `add_another`, `discard` |
+| `capture` | `photo`, `hold_video`, `switch_camera`, `flash` (`flash_mode` off\|on\|auto), `roll` (opens OS picker; `media_imported` fires on files chosen), `today_page_thumb` (opens a page you made today), `prompts_tray_open`, **`count_pill` (dead — the "1/4")** |
+| `caption` | `type`, `voice_to_text`, `done` |
+| `page` | **`canvas` (dead — paper with nothing under the finger)**, `photo_slot` (`element_type`), `caption_slot`, `stamp`, `replace`, `remove`, `move_to_page` |
+| `layouts` | `thumb` (`method` tap\|swipe, `page_index`, `carousel_depth`, `layout_id`, `layout_family`) |
+| `pages` | `page_thumb` (another page from today), `new_page` (split a photo onto a new page) |
+| `suggested` | `suggested_prompt` (**do they ever use these?**), `random_nudges_toggle`, **`random_nudges_label` (dead)**, `event_tag_label` (dead), `event_tag_clear` |
+| `audience` | `chip` (opens `audience_sheet`), `only_me`, `close`, `friends`, `everyone`, `group` |
+| `actions` | `post`, `add_another`, `discard`, `add` (opens `add_media_sheet`), `add_camera`, `add_roll`, `customize` (opens `customize_tray`), `background_swatch` (`paper`), `undo`, `back`, `info` (opens `section_info_tooltip`), `info_dismiss`, **`info_body` (dead)** |
+
+### `prompts_tray` / `caption_sheet` / `audience_sheet` / `add_media_sheet` / `customize_tray` *(surfaces, parent `post_composer`)*
+| surface | elements |
+|---|---|
+| `prompts_tray` | `tray.dismiss` (+ the `post_composer.suggested.*` ids above fire inside it) |
+| `caption_sheet` | `tabs.type`, `tabs.record` (Phase 2), `actions.done`, `actions.dismiss` |
+| `audience_sheet` | `actions.dismiss` (+ `post_composer.audience.*` fire inside it) |
+| `add_media_sheet` | `actions.dismiss` (+ `post_composer.actions.add_camera` / `add_roll`) |
+| `customize_tray` | `actions.dismiss` (+ `post_composer.actions.background_swatch` / `undo`) |
 
 ### `add_inside_joke_sheet` *(surface — Add an Inside Joke)*
 | section | elements |
@@ -681,7 +702,8 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | Where | `method` values | Answers |
 |---|---|---|
 | `friends.add_sheet` | `qr` · `link` · `scan` | "QR vs link when adding friends?" |
-| `post_composer` | `photo` · `video` · `text` · `voice` | what people post most |
+| `post_composer` | `photo` · `video` · `roll` · `text` · `voice` | what people post most; live capture vs camera roll |
+| `post_composer.layouts.thumb` | `tap` · `swipe` | do they swipe the layout row or take what is on screen? |
 | `story.reaction_rail` | `video` · `comment` · `sticker` · `reaction` | **"videos vs comments vs reactions?"** |
 | `hobbies_widget` / `places_map` | `swipe` · `dropdown` | do they swipe or use the dropdown |
 | `onboarding.desire.option` | `frequency` · `depth` · `plans` · `commonality` | which desire leads? |
@@ -830,4 +852,5 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-30 | — | `reveal.quiz_matches.info` | i-tip on "How you line up": "From the quizzes you both took" (footer line removed) |
 | 2026-08-30 | Reveal close 🎉 emoji + bottom "Tap right…" hint | fireworks backdrop behind close; no tap hint | Same story tap zones; close feels like welcome party |
 | 2026-08-30 | — | `profile.header.filter_*` / `photo_look_save` / `photo_look_dismiss` + surface `photo_look_sheet` + `profile_photo_filter_updated` | Edit opens Photo look sheet to switch among the four baked looks |
+| 2026-09-08 | `post_composer` was one screen (camera + caption + audience) | Scrapbooks: `post_composer.capture.flash` / `roll` / `today_page_thumb` / `prompts_tray_open` / `count_pill` (dead); `page.*`; `layouts.thumb`; `pages.*`; `audience.chip` / `only_me`; `actions.add` / `add_camera` / `add_roll` / `customize` / `background_swatch` / `undo` / `back` / `info*`; surfaces `prompts_tray`, `caption_sheet`, `audience_sheet`, `add_media_sheet`, `customize_tray`; product `scrapbook_page_updated`, `layout_changed`, `media_imported`, `scrapbook_page_deleted`; `story_posted` gains page props; `permission_result.permission = photos` | Updates become Scrapbook pages (8.5 x 11, 1 to 4 pages a day, 4 photos/videos across them, camera roll allowed, Only me audience). `post_story` flow steps renamed |
 |
