@@ -38,11 +38,14 @@ import { TelemetryModule } from './telemetry/telemetry.module';
 import { TiersModule } from './tiers/tiers.module';
 import { TouchGrassModule } from './touchgrass/touchgrass.module';
 import { DemoWeekModule } from './demo-week/demo-week.module';
+import { CryptoModule } from './crypto/crypto.module';
 
 @Module({
   imports: [
     // Loads apps/api/.env and makes settings available everywhere (isGlobal).
     ConfigModule.forRoot({ isGlobal: true }),
+    // Phase 1 encryption stubs (split lockbox validation; no DB cutover yet).
+    CryptoModule,
     // The server's admin connection to Supabase (global).
     SupabaseModule,
     // Prefs-gated in-app notification writer (global).
