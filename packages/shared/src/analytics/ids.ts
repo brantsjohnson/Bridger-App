@@ -1183,6 +1183,8 @@ export const PROFILE = {
     blocked_people: aid('profile', 'settings', 'blocked_people'),
     storage_plan: aid('profile', 'settings', 'storage_plan'),
     always_original: aid('profile', 'settings', 'always_original'),
+    /** Opt-in switch: share a read-only slice of my tastes to my own website. */
+    share_interests: aid('profile', 'settings', 'share_interests'),
     /** Opt-in Assistant toggle (hidden unless admin-eligible). */
     assistant_toggle: aid('profile', 'settings', 'assistant_toggle'),
     /** Open the Assistant surface after opt-in. */

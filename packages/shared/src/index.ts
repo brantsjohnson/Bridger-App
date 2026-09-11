@@ -24,6 +24,8 @@ export * from './model/music';
 export * from './model/message';
 export * from './model/quiz';
 export * from './model/jname';
+// Interest share: opt-in read-only export of tastes for a personal website.
+export * from './model/interest-share';
 export * from './model/disclosure';
 export * from './model/weekly-activity';
 export * from './model/delight';

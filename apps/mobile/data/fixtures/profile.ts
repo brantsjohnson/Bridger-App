@@ -82,6 +82,13 @@ export type FavGroup = {
   emoji: string;
   items: string[];
   total: number;
+  /**
+   * Optional per-answer detail kept alongside the flat `items` list. Each entry
+   * remembers which question it answered (id + label), which lets features like
+   * the opt-in website export tell a favorite movie apart from a favorite book.
+   * Additive only: the card still reads `items`.
+   */
+  entries?: { id: string; label: string; value: string }[];
 };
 
 export const FAVS: FavGroup[] = [
