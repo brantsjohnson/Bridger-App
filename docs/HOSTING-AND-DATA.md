@@ -284,11 +284,19 @@ peer chip-in handles like Venmo / Cash App are plain text links, never processed
 | `*.cloudfront.net` | Default web + admin CDN hosts until custom domains are attached | `infra/aws/lib/foundation-stack.ts` |
 | `fewtcanrxmdzyqhlgpdr.supabase.co` | Supabase API host for the Bridger-App-db project | `apps/mobile/eas.json` |
 
-Universal Links are still gated by placeholder credentials: the `.well-known`
-association files use `REPLACE`-style Team ID / SHA-256 placeholders, so
-`https://bridger.app/...` links do not yet verify and the `bridger://` scheme is
-the working path (`apps/site/public/.well-known/`, `apps/mobile/app.config.js`)
-**(repo + ops-verified)**.
+Universal / App Links are not live yet, for two different reasons per platform
+(`apps/site/public/.well-known/`, `apps/mobile/app.config.js`) **(repo + ops-verified)**:
+
+- **iOS:** the AASA file already carries the real Apple Team ID `DG6NU23FXX`
+  (`apple-app-site-association`). Universal Links are paused only because
+  `ios.associatedDomains` is **commented out** in `app.config.js` (to be
+  re-enabled after Associated Domains is turned on for the App ID and the EAS
+  profile is regenerated). The iOS Team ID is not a placeholder.
+- **Android:** `assetlinks.json` still holds the
+  `REPLACE_WITH_ANDROID_SHA256_CERT_FINGERPRINT` placeholder, so App Links do
+  not verify until the app-signing SHA-256 is filled in.
+
+Until both are resolved, the `bridger://` scheme is the working path.
 
 UNKNOWN: whether `bridger.social` and `bridger.app` DNS are pointed at the
 CloudFront distributions / App Runner today (the CDK supports custom web domains
@@ -389,8 +397,10 @@ committed).
   migration `0058_interest_share.sql` must be applied to Bridger-App-db **and**
   the App Runner API must be redeployed. Until both happen, the public route
   returns not-found.
-- **Universal Links unverified.** `.well-known` files still hold `REPLACE`
-  placeholders; only the `bridger://` scheme works today.
+- **Universal / App Links not live.** iOS: AASA already has the real Team ID
+  `DG6NU23FXX`; it is paused only because `ios.associatedDomains` is commented
+  out. Android: `assetlinks.json` still has the `REPLACE_WITH_ANDROID_SHA256...`
+  placeholder. Only the `bridger://` scheme works today.
 
 ### UNKNOWN (neither repo nor GM confirmed)
 
