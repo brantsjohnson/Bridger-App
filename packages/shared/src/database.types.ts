@@ -107,6 +107,45 @@ export type Database = {
         }
         Relationships: []
       }
+      interest_shares: {
+        Row: {
+          user_id: string
+          enabled: boolean
+          slug: string | null
+          share_token: string
+          share_hobbies: boolean
+          share_movies: boolean
+          share_books: boolean
+          share_currently_reading: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          enabled?: boolean
+          slug?: string | null
+          share_token?: string
+          share_hobbies?: boolean
+          share_movies?: boolean
+          share_books?: boolean
+          share_currently_reading?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          enabled?: boolean
+          slug?: string | null
+          share_token?: string
+          share_hobbies?: boolean
+          share_movies?: boolean
+          share_books?: boolean
+          share_currently_reading?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       activity_hearts: {
         Row: {
           created_at: string
