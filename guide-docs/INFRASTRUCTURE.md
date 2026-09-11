@@ -2,6 +2,8 @@
 
 This is the infrastructure contract Cursor should follow. It makes one codebase ship to **iOS, Android, and web**, keeps the **privacy/deletion** guarantees real, and keeps **all AI + secrets server-side**. Read `ARCHITECTURE.md` and `DATA.md` alongside this.
 
+> **Where things actually live right now:** for a factual, evidence-cited map of the deployed hosting (AWS App Runner + S3/CloudFront), the Supabase database project, domains, and env vars, see [`docs/HOSTING-AND-DATA.md`](../docs/HOSTING-AND-DATA.md). This doc is the contract; that one is the current map.
+
 ---
 
 ## The stack (recommended, decided)
