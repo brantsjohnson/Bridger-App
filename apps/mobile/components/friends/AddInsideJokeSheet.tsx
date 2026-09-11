@@ -319,7 +319,13 @@ function Composer({
         <SynthGrid strength="normal" color={gridColor} />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // KEYBOARD (platform split): iOS lifts the content with padding.
+          // Android is edge-to-edge on SDK 57, so the window no longer resizes
+          // itself for the keyboard, which left the note field and "Post it"
+          // hidden behind the keys. "height" shrinks the sheet to the room
+          // above the keyboard so both stay reachable on the first tap. Matches
+          // the other full-screen sheets (Activity capture, Comments).
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View
             className="flex-1"
