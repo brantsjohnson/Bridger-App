@@ -34,6 +34,7 @@ import {
   startBillyPlusStub
 } from '../../data/assistant';
 import { getMembership } from '../../data/coop';
+import { getInterestShare, saveInterestShare } from '../../data/interest-share';
 import {
   EMOJI_BOMB_LIVE,
   __demoQueueTrigger,
@@ -75,6 +76,8 @@ export function ProfileSettings({
   const [appleOn, setAppleOn] = useState(false);
   const [appleBusy, setAppleBusy] = useState(false);
   const [rainPreview, setRainPreview] = useState(false);
+  // THIS SECTION DOES: remember the opt-in "share my interests to my site" switch.
+  const [shareInterestsOn, setShareInterestsOn] = useState(false);
   // THIS SECTION DOES: stop a slow Settings load from flipping the Billy toggle
   // back off after you already switched it (Settings unmounts when you leave).
   const assistantTouched = useRef(false);
@@ -101,6 +104,9 @@ export function ProfileSettings({
         setSpotifyOn(s.spotify);
         setAppleOn(s.appleMusic);
       }
+    });
+    void getInterestShare().then((s) => {
+      if (!cancelled) setShareInterestsOn(s.enabled);
     });
     return () => {
       cancelled = true;
@@ -349,6 +355,39 @@ export function ProfileSettings({
             }}
             label="Always show plain pages"
             analyticsId={PROFILE.settings.always_original}
+          />
+        }
+      />
+      {/* OPT-IN (default off): expose a read-only slice of tastes to your own site */}
+      <ListRow
+        label="Share interests to my website"
+        sublabel="Off by default · read-only hobbies, movies, books, current read"
+        action={
+          <Toggle
+            checked={shareInterestsOn}
+            onChange={(v) => {
+              setShareInterestsOn(v);
+              void saveInterestShare({ enabled: v })
+                .then((s) => {
+                  setShareInterestsOn(s.enabled);
+                  trackProduct('interests_share_toggled', {
+                    enabled: s.enabled,
+                    hobbies: s.fields.hobbies,
+                    movies: s.fields.movies,
+                    books: s.fields.books,
+                    currently_reading: s.fields.currentlyReading
+                  });
+                })
+                .catch(() => {
+                  setShareInterestsOn(!v);
+                  Alert.alert(
+                    'Could not update sharing',
+                    'Please try again in a moment.'
+                  );
+                });
+            }}
+            label="Share interests to my website"
+            analyticsId={PROFILE.settings.share_interests}
           />
         }
       />

@@ -256,7 +256,14 @@ export type AnalyticsProductEvent =
   /** Person turned product analytics on in Settings (after confirm). */
   | 'analytics_opted_in'
   /** Person turned product analytics off in Settings (fires before capture stops). */
-  | 'analytics_opted_out';
+  | 'analytics_opted_out'
+  /**
+   * Opt-in interests export for a personal website was turned on or off, or its
+   * field checkboxes changed. Server-confirmed save only, never a mere tap.
+   * Props: enabled (bool), plus which fields are on (hobbies/movies/books/
+   * currently_reading). Never any taste values, names, slug, or token.
+   */
+  | 'interests_share_toggled';
 
 /** Shared properties stamped on every event. */
 export type AnalyticsBaseProps = {

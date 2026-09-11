@@ -18,6 +18,7 @@ import { DelightModule } from './delight/delight.module';
 import { EventsModule } from './events/events.module';
 import { FeedModule } from './feed/feed.module';
 import { HealthModule } from './health/health.module';
+import { InterestShareModule } from './share/interest-share.module';
 import { JnameModule } from './jname/jname.module';
 import { MatchingModule } from './matching/matching.module';
 import { MeModule } from './me/me.module';
@@ -58,6 +59,8 @@ import { DemoWeekModule } from './demo-week/demo-week.module';
     MusicModule,
     MatchingModule,
     ProfilesModule,
+    // Opt-in read-only interests export for a personal website (slug/token).
+    InterestShareModule,
     PhotoFiltersModule,
     TiersModule,
     ConnectionsModule,

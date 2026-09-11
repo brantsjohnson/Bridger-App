@@ -83,6 +83,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - Quiz completion can write attributes such as `quiz.<slug>.<dimension>` with `visible_to_tier = none` until the user chooses otherwise (generic quiz path shipped).
 - Discover / matching use only **matchable, consented** facts; names rejoin on-device from opaque IDs.
 - **Behind the Scenes (disclosure pre-quiz):** optional. People may name conditions (e.g. ADHD, anxiety), rate how much each shapes day to day, add an optional private note, and choose how strongly matching may use it (`use` / `a_little` / `barely`). Stored in owner-only tables (`disclosure_profiles`, `disclosure_items`), separate from fun-quiz scores. **Never shown on a profile. Matches never see or infer it.** Soft toggle can suspend matching use without deleting. Skippable on every screen. Account delete hard-deletes these rows. **TODO (legal):** confirm special-category / health-data obligations (consent, storage, retention) for your operating regions before launch.
+- **Opt-in interests export (share to your own website):** **off by default.** In Settings you can turn on a **read-only public export** of a small slice of your tastes so your personal site (or an outside tool you control) can show them. You choose which of four categories may leave the app: **hobbies, favorite movies, favorite books, and what you are currently reading**. The export reads only your existing profile facts (`hobby:*`, `fav:*`, `currently_book`); it copies nothing into a new store. Turning it on mints a **friendly public link** (a random slug) and a **secret token**; either one lets a site fetch the chosen categories with no Bridger login. **Nothing else is ever included:** no messages, friends or social graph, places, About Me answers, Top 5, or any matching internals, and never your name, email, or photo. Turning the switch off makes the link return "not found" again. Settings stored in `interest_shares` and hard-deleted with the account. Analytics records only that you toggled it and which categories are on (`interests_share_toggled`), never any taste values, the slug, or the token.
 
 ### 3.3 Content the user creates (UGC)
 
@@ -243,6 +244,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 - Audience / tier pickers on posts, polls, recap share (Close / Friends / Acquaintances). Touch Grass send is Close / Friends only.
 - Discoverable / matching opt-out (drops Zone C).
 - Analytics consent toggle (Settings; ATT on iOS when required).
+- Interests export to your own website (Settings): opt-in, off by default; pick which of hobbies / movies / books / current read may leave the app; turn it off any time to disable the public link.
 - Block and report (person and content).
 - Circles (planned): change visibility, edit handles, pause, or disconnect per Influencer in Settings.
 - Event album (planned): save a photo to your device before the 7-day window; stop adding photos if you do not want them in the shared roll.
@@ -277,6 +279,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
+| 2026-09-11 | Opt-in interests export (off by default): read-only public share of hobbies / movies / books / current read for your own website, via a random slug or secret token. Reads existing attributes only; never messages, graph, places, About, Top 5, matching internals, name, email, or photo. Stored in `interest_shares`, hard-deleted with the account. |
 | 2026-09-10 | Last-seen tab pictures stay on this phone so tabs open on the saved layout; sign-out / leave demo / clear storage wipes them. |
 | 2026-09-09 | Profile photo looks: Pop art, Comic, Sepia, and X-ray all preview on-device (badge stays). Saved avatar still bakes with ImageMagick in our container, never AI. |
 | 2026-09-09 | Friend Pod: earlier locked weeks are a co-op listen perk; this week stays for everyone. Past-week lists are tier-filtered. `recap_played` may include `is_current`. Week chips never log the week label. |
