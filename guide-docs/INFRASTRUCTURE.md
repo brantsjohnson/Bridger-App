@@ -49,6 +49,7 @@ This is *why* we don't need a blockchain — Postgres already gives users full c
 - **Never** put `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or DB service keys in the client bundle. The app holds only the Supabase **anon** key + public config.
 - Store secrets in **AWS Secrets Manager** secret `bridger/api/server` (JSON, one field per env name). App Runner injects a short allow-list. Nest also **reads the whole vault at boot** (`BRIDGER_SERVER_SECRET_NAME`) so Stripe, RevenueCat, and the MusicKit `.p8` are used even when they were added later. Never log values. Local laptop keeps using `apps/api/.env` when that name is unset.
 - All AI calls (day/week summaries, quiz moderation, embedding generation) run in the **API server**, which is the only thing holding the keys.
+- **Field encryption keys** for member PII and messages follow **`docs/ENCRYPTION-AND-ACCESS.md`**: ciphertext in Supabase, DEKs in KMS/Secrets Manager, phone lookup HMAC in a **second** lockbox. No production cutover in the docs-only pass; when live, admin health reports config presence only (never secret values).
 
 ### Env vars (API server)
 ```
@@ -61,8 +62,10 @@ OPENAI_API_KEY               # embeddings
 RESEND_API_KEY, COOP_IDEA_REVIEW_EMAIL
 # Co-op admin allowlists (COOP-PORTAL.md)
 COOP_ADMIN_USERNAMES, COOP_ADMIN_EMAILS, ADMIN_API_KEY
-# Crypto (email hashing / encryption, per existing portal)
+# Crypto — see docs/ENCRYPTION-AND-ACCESS.md (split-key custody; pass 1 docs only)
+# Legacy portal stubs until platform cutover:
 EMAIL_HMAC_KEY, EMAIL_ENCRYPTION_KEY
+# Future: KMS-wrapped DEKs, separate phone_lookup_hmac secret (never same JSON as DEKs)
 # Product analytics (PostHog Cloud; host is configurable for EU / self-host)
 POSTHOG_HOST, POSTHOG_PROJECT_ID, POSTHOG_PERSONAL_API_KEY
 # Optional override if REST API host differs from ingest host
