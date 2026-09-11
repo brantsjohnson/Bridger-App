@@ -26,7 +26,15 @@ import {
 } from '../../../../data/coop';
 
 export default function CoopIdeaDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // ROUTING: deep links and rapid nav can hand us an array or "id1,id2", so we
+  // keep only the first real segment to give the loader one clean id.
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id =
+    typeof params.id === 'string'
+      ? params.id
+      : Array.isArray(params.id)
+        ? params.id[0]
+        : undefined;
   const router = useRouter();
   const c = useThemeColors();
   const [member, setMember] = useState(false);
