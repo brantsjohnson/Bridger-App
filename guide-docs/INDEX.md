@@ -75,9 +75,10 @@ guide-docs/
 │   ├── quiz-voice.md
 │   └── out-of-scope.md
 │
-└── docs/                         ← living legal drafts
+└── docs/                         ← living legal drafts + security contracts
     ├── PRIVACY.md
-    └── TERMS.md
+    ├── TERMS.md
+    └── ENCRYPTION-AND-ACCESS.md  ← split-key custody, tier/group DEKs, E2E roadmap (pass 1 docs)
 
 .cursor/rules/  (OUTSIDE guide-docs, alwaysApply: true)
 ├── guide-rules.mdc

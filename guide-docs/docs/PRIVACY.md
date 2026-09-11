@@ -4,7 +4,7 @@
 >
 > **STATUS:** scaffolding + seeded from shipped product truth. Sections marked `TODO (legal)` need counsel wording. Sections marked `TODO (product)` need a builder to fill from code when that area is touched.
 >
-> **RELATED:** `DATA.md` (zones A/B/C, RLS, deletion), `apps/mobile/PrivacyInfo.xcprivacy` (Apple Privacy Manifest), analytics rules (PostHog consent), `AI-SYSTEM.md`, `complete/COOP.md`.
+> **RELATED:** `DATA.md` (zones A/B/C, RLS, deletion), `docs/ENCRYPTION-AND-ACCESS.md` (split-key custody, field encryption phases, break-glass), `apps/mobile/PrivacyInfo.xcprivacy` (Apple Privacy Manifest), analytics rules (PostHog consent), `AI-SYSTEM.md`, `complete/COOP.md`.
 
 ---
 
@@ -37,6 +37,7 @@ These are enforced in product and schema (`DATA.md`). Do not weaken them in code
 - **No ad tracking** and no third-party ad SDKs.
 - **Product analytics (PostHog)** is first-party, **on by default while signed in**, de-identified, deletable with the account, never sold, never fed into matching.
 - **Tier visibility** (Close / Friends / Everyone / custom groups) controls who sees shared content; RLS enforces it.
+- **Encryption at rest (rolling out):** phones, emails, pending-people phones, and message bodies are being protected with **split-key custody** (ciphertext in Supabase; data keys in AWS KMS/Secrets Manager; phone lookup uses a **separate** HMAC secret). A database dump or one vault alone must not be enough to read them. Tier-gated profile fields and co-op group shares will use per-tier and per-group keys in a later phase; DMs target true end-to-end encryption so the API never holds plaintext. Details: `docs/ENCRYPTION-AND-ACCESS.md`. Founder **break-glass** for Zone A is rare, logged, and not a backdoor into member-only group ciphertext.
 
 ---
 
@@ -279,6 +280,7 @@ Purpose strings must stay accurate in `app.json` / store listings when permissio
 
 | Date | What was added / changed |
 |---|---|
+| 2026-09-11 | Encryption architecture pass 1 (docs): `docs/ENCRYPTION-AND-ACCESS.md` describes split-key custody, Phase 1 PII/messages at rest, tier/group DEKs, E2E roadmap, break-glass. Not shipped in product yet. |
 | 2026-09-11 | Opt-in interests export (off by default): read-only public share of hobbies / movies / books / current read for your own website, via a random slug or secret token. Reads existing attributes only; never messages, graph, places, About, Top 5, matching internals, name, email, or photo. Stored in `interest_shares`, hard-deleted with the account. |
 | 2026-09-10 | Last-seen tab pictures stay on this phone so tabs open on the saved layout; sign-out / leave demo / clear storage wipes them. |
 | 2026-09-09 | Profile photo looks: Pop art, Comic, Sepia, and X-ray all preview on-device (badge stays). Saved avatar still bakes with ImageMagick in our container, never AI. |
