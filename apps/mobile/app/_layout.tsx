@@ -302,12 +302,15 @@ function useProtectedRoute() {
     // returning account into onboarding off an empty device flag.
     if (loading || !welcomeReady || !onbReady || !accessReady) return;
     if (session && !onbServerReady) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[0] === 'onboarding';
-    const inInviteAccess = segments[0] === 'invite-access';
-    if (segments[0] === 'q') return;
+    // THIS SECTION DOES: figure out which top-level route we are on
+    // (CI has no local .expo typed routes, so treat segments as a plain string list).
+    const routeSegments = segments as readonly string[];
+    const inAuthGroup = routeSegments[0] === '(auth)';
+    const inOnboarding = routeSegments[0] === 'onboarding';
+    const inInviteAccess = routeSegments[0] === 'invite-access';
+    if (routeSegments[0] === 'q') return;
     // Logged-out friends can take Which J name from a share link (no account).
-    if (segments[0] === 'quiz' && !session && segments[1] !== 'preview-cards') {
+    if (routeSegments[0] === 'quiz' && !session && routeSegments[1] !== 'preview-cards') {
       return;
     }
     // Let the invite link screen mount so it can either redeem now (signed in)
