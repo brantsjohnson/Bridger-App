@@ -509,9 +509,15 @@ export function OnboardingStep({
         <OnboardingBodyScrollContext.Provider value={bodyScrollApi}>
         <KeyboardAvoidingView
           style={{ flex: 1, minHeight: 0 }}
-          // One keyboard owner: iOS ScrollView insets + ensureVisible.
-          // Extra KAV padding fought the scroll and left people stuck mid-page.
-          behavior={undefined}
+          // KEYBOARD (platform split): iOS keeps ONE keyboard owner — the
+          // ScrollView's own insets + ensureVisible. Adding KAV padding on iOS
+          // fought the scroll and left people stuck mid-page (PR #21), so iOS
+          // stays `undefined`. Android is edge-to-edge on SDK 57, so the window
+          // no longer resizes itself when the keyboard opens; without help the
+          // pinned Continue button hides behind the keys. "height" shrinks this
+          // area to the room above the keyboard so Continue lifts into view and
+          // advances on the first tap.
+          behavior={Platform.OS === 'android' ? 'height' : undefined}
           keyboardVerticalOffset={0}
         >
           {bodyFills ? (
