@@ -795,12 +795,21 @@ export async function saveFavs(
   visibility: Record<string, Tier> = {}
 ): Promise<FavGroup[]> {
   const byGroup = new Map<FavItem['group'], string[]>();
+  // THIS SECTION DOES: keep which question each answer came from (id + label),
+  // so later features (like the website export) can split movies from books.
+  const entriesByGroup = new Map<
+    FavItem['group'],
+    { id: string; label: string; value: string }[]
+  >();
   for (const item of FAV_ITEMS) {
     const raw = answers[item.id];
     if (typeof raw !== 'string' || !raw.trim()) continue;
     const list = byGroup.get(item.group) ?? [];
     list.push(raw.trim());
     byGroup.set(item.group, list);
+    const entryList = entriesByGroup.get(item.group) ?? [];
+    entryList.push({ id: item.id, label: item.label, value: raw.trim() });
+    entriesByGroup.set(item.group, entryList);
     void visibility; // reserved for per-item tier once the card shows it
   }
 
@@ -811,7 +820,8 @@ export async function saveFavs(
       group: display.label,
       emoji: display.emoji,
       items,
-      total: items.length
+      total: items.length,
+      entries: entriesByGroup.get(group) ?? []
     });
   }
 
