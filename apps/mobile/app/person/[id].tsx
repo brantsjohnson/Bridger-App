@@ -6,9 +6,6 @@
 // Analytics: surface=profile (friend view).
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
-// #region agent log
-import { debugScreenMount } from '../../lib/debug-instrumentation';
-// #endregion
 import { Alert, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SendIcon } from 'lucide-react-native';
@@ -118,9 +115,6 @@ function friendTabAnalyticsId(tab: string): string | undefined {
 }
 
 export default function PersonScreen() {
-  // #region agent log
-  useEffect(() => debugScreenMount('person'), []);
-  // #endregion
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const personId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : 'maya';

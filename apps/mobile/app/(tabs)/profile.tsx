@@ -8,9 +8,6 @@
 // Analytics: surface=profile.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
-// #region agent log
-import { debugScreenMount } from '../../lib/debug-instrumentation';
-// #endregion
 import { View } from 'react-native';
 import { type Href, useRouter } from 'expo-router';
 import type { Tier } from '@bridger/shared';
@@ -62,9 +59,6 @@ function profileTabAnalyticsId(tab: string): string | undefined {
 }
 
 export default function ProfileScreen() {
-  // #region agent log
-  useEffect(() => debugScreenMount('profile'), []);
-  // #endregion
   const router = useRouter();
   const profile = useProfile();
   const bucket = useBucketList();

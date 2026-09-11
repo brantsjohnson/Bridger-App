@@ -22,37 +22,6 @@ import Purchases, {
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import { isDemoMode } from './demo';
 
-// #region agent log
-/** Debug ingest: localhost for sim/web, LAN for a physical phone on same Wi‑Fi. */
-function agentLog(
-  hypothesisId: string,
-  location: string,
-  message: string,
-  data: Record<string, unknown>
-): void {
-  const body = JSON.stringify({
-    sessionId: '1e6bf9',
-    runId: 'pre-fix',
-    hypothesisId,
-    location,
-    message,
-    data,
-    timestamp: Date.now()
-  });
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-Debug-Session-Id': '1e6bf9'
-  };
-  for (const host of ['127.0.0.1', '192.168.20.206']) {
-    fetch(`http://${host}:7342/ingest/5893d51f-0bb0-4f73-ad67-eda076bc0ba4`, {
-      method: 'POST',
-      headers,
-      body
-    }).catch(() => {});
-  }
-}
-// #endregion
-
 /** The entitlement id configured in RevenueCat for co-op membership. */
 export const COOP_ENTITLEMENT_ID = 'social_bridger_app_pro';
 
@@ -121,44 +90,18 @@ function rawPublicApiKey(): string | null {
 function publicApiKey(): string | null {
   const key = rawPublicApiKey();
   if (!key) {
-    // #region agent log
-    agentLog('A', 'purchases.ts:publicApiKey', 'no revenuecat key present', {
-      platform: Platform.OS,
-      dev: typeof __DEV__ !== 'undefined' && __DEV__
-    });
-    // #endregion
     return null;
   }
-  const prefix = key.slice(0, 5);
   if (key.startsWith('appl_') || key.startsWith('goog_')) {
-    // #region agent log
-    agentLog('A', 'purchases.ts:publicApiKey', 'allowing store key prefix', {
-      prefix,
-      platform: Platform.OS
-    });
-    // #endregion
     return key;
   }
   if (key.startsWith('test_')) {
-    // #region agent log
-    agentLog('A', 'purchases.ts:publicApiKey', 'blocking test_ key so SDK cannot force-quit', {
-      prefix,
-      platform: Platform.OS,
-      dev: typeof __DEV__ !== 'undefined' && __DEV__
-    });
-    // #endregion
     console.warn(
       'RevenueCat: ignoring test_ key so the app does not force-quit. Soft join stays available until an appl_/goog_ key ships.'
     );
     return null;
   }
   // Unknown prefix: do not configure (safer than a native quit).
-  // #region agent log
-  agentLog('D', 'purchases.ts:publicApiKey', 'blocking unrecognized key prefix', {
-    prefix,
-    platform: Platform.OS
-  });
-  // #endregion
   console.warn('RevenueCat: unrecognized public SDK key prefix; purchases disabled.');
   return null;
 }
@@ -201,26 +144,12 @@ export function purchasesAvailable(): boolean {
  */
 export async function configurePurchases(appUserId: string | null): Promise<void> {
   lastAppUserId = appUserId;
-  // #region agent log
-  agentLog('B', 'purchases.ts:configurePurchases:entry', 'configurePurchases called', {
-    hasUserId: Boolean(appUserId),
-    demo: isDemoMode(),
-    expoGo: isExpoGo(),
-    platform: Platform.OS,
-    alreadyConfigured: configured
-  });
-  // #endregion
   if (isDemoMode()) return;
   if (isExpoGo()) return;
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
 
   const apiKey = publicApiKey();
   if (!apiKey) {
-    // #region agent log
-    agentLog('A', 'purchases.ts:configurePurchases:skip', 'skip Purchases.configure (no usable key)', {
-      platform: Platform.OS
-    });
-    // #endregion
     // Quiet on purpose: preview builds often ship without store keys yet.
     return;
   }
@@ -231,12 +160,6 @@ export async function configurePurchases(appUserId: string | null): Promise<void
     }
 
     if (!configured) {
-      // #region agent log
-      agentLog('C', 'purchases.ts:configurePurchases:configure', 'about to call Purchases.configure', {
-        keyPrefix: apiKey.slice(0, 5),
-        platform: Platform.OS
-      });
-      // #endregion
       // SECURITY: public SDK key only. Never a secret key in the client.
       Purchases.configure({
         apiKey,

@@ -9,9 +9,6 @@
 import type { NotificationKind } from '@bridger/shared';
 import type { TabKey } from '@bridger/ui';
 import { isDemoMode } from '../lib/demo';
-// #region agent log
-import { debugCountNotify } from '../lib/debug-instrumentation';
-// #endregion
 import { hasOpenStoryReplies, unreadNotificationKinds } from './feed';
 
 /** Section analytics keys that can show a title-side attention dot. */
@@ -75,9 +72,6 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 function notify() {
-  // #region agent log
-  debugCountNotify('tab-badges');
-  // #endregion
   listeners.forEach((fn) => fn());
 }
 

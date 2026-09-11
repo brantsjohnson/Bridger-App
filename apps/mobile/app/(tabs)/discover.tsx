@@ -8,9 +8,6 @@
 // Analytics: surface=discover; cards and settings gear use DISCOVER.* IDs.
 // ============================================
 import React, { useEffect, useState } from 'react';
-// #region agent log
-import { debugScreenMount } from '../../lib/debug-instrumentation';
-// #endregion
 import { Alert, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SettingsIcon } from 'lucide-react-native';
@@ -50,9 +47,6 @@ type Selection = {
 };
 
 export default function DiscoverScreen() {
-  // #region agent log
-  useEffect(() => debugScreenMount('discover'), []);
-  // #endregion
   const c = useThemeColors();
   const router = useRouter();
   // THIS SECTION DOES: section title dots after the Discover nav-bar badge clears.
