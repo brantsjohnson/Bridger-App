@@ -24,9 +24,6 @@ import { OBField } from './onboarding-ui';
 import { isDemoMode } from '../../lib/demo';
 import { bakeClientPhotoFilter } from '../../lib/client-photo-filters';
 import { bakeServerPhotoFilter } from '../../lib/photo-filters';
-// #region agent log
-import { debugFilterEvent } from '../../lib/debug-instrumentation';
-// #endregion
 import type { PhotoSource } from '../../data/onboarding';
 
 export function ConfirmProfileStep({
@@ -184,21 +181,10 @@ export function ConfirmProfileStep({
     // Instant LiveFilterPreview already shows the look. Match the server's
     // ImageMagick window (~25s) so Comic is not killed mid-bake at 8s.
     const BAKE_TIMEOUT_MS = 45000;
-    // #region agent log
-    const bakeStartedAt = Date.now();
-    debugFilterEvent('bake start (ConfirmProfileStep)', {
-      filter: serverFilter,
-      demo: isDemoMode(),
-      platform: Platform.OS
-    });
-    // #endregion
     const timeoutId = setTimeout(() => {
       if (__DEV__) {
         console.warn('[photo-filter] bake timed out', serverFilter);
       }
-      // #region agent log
-      debugFilterEvent('bake TIMEOUT at 45s', { filter: serverFilter });
-      // #endregion
       finish(null, null, null);
     }, BAKE_TIMEOUT_MS);
 
@@ -216,20 +202,11 @@ export function ConfirmProfileStep({
         // Native demo: try the live API when signed in; otherwise clear spinner.
         bakeServerPhotoFilter(photoUri, serverFilter)
           .then((res) => {
-            // #region agent log
-            debugFilterEvent('server bake OK (native demo)', { filter: serverFilter, ms: Date.now() - bakeStartedAt });
-            // #endregion
             finishOnce(res.url, res.mediaId, res.originalMediaId);
           })
-          .catch((err) => {
-            // #region agent log
-            debugFilterEvent('server bake FAILED (native demo)', { filter: serverFilter, ms: Date.now() - bakeStartedAt, error: String(err).slice(0, 200) });
-            // #endregion
+          .catch(() => {
             bakeClientPhotoFilter(photoUri, serverFilter)
               .then((url) => {
-                // #region agent log
-                debugFilterEvent('client bake result (native demo)', { filter: serverFilter, gotUrl: !!url, ms: Date.now() - bakeStartedAt });
-                // #endregion
                 finishOnce(url, null, null);
               })
               .catch(() => finishOnce(null, null, null));
@@ -241,15 +218,9 @@ export function ConfirmProfileStep({
       }
       bakeClientPhotoFilter(photoUri, serverFilter)
         .then((url) => {
-          // #region agent log
-          debugFilterEvent('client bake result (web demo)', { filter: serverFilter, gotUrl: !!url, ms: Date.now() - bakeStartedAt });
-          // #endregion
           finishOnce(url, null, null);
         })
-        .catch((err) => {
-          // #region agent log
-          debugFilterEvent('client bake FAILED (web demo)', { filter: serverFilter, ms: Date.now() - bakeStartedAt, error: String(err).slice(0, 200) });
-          // #endregion
+        .catch(() => {
           finishOnce(null, null, null);
         });
       return () => {

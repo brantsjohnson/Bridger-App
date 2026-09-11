@@ -217,14 +217,7 @@ export async function bakeClientPhotoFilter(
   uri: string,
   filter: ServerPhotoFilter
 ): Promise<string | null> {
-  // #region agent log
-  const t0 = Date.now();
-  const { debugFilterEvent } = await import('./debug-instrumentation');
-  // #endregion
   const img = await loadImage(uri);
-  // #region agent log
-  debugFilterEvent('web canvas: image loaded', { filter, ms: Date.now() - t0, w: img.width, h: img.height });
-  // #endregion
   const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
   const w = Math.max(1, Math.round(img.width * scale));
   const h = Math.max(1, Math.round(img.height * scale));
@@ -250,8 +243,5 @@ export async function bakeClientPhotoFilter(
   }
 
   ctx.putImageData(imageData, 0, 0);
-  // #region agent log
-  debugFilterEvent('web canvas: bake done', { filter, totalMs: Date.now() - t0 });
-  // #endregion
   return canvas.toDataURL('image/jpeg', 0.9);
 }

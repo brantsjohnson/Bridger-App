@@ -1,8 +1,3 @@
-// #region agent log
-// TEMPORARY: debug instrumentation for the lag sweep (loads first to catch everything).
-import '../lib/debug-instrumentation';
-import { debugGuardRedirect, debugRouteChange } from '../lib/debug-instrumentation';
-// #endregion
 import 'react-native-gesture-handler';
 import {
   useFonts,
@@ -329,30 +324,18 @@ function useProtectedRoute() {
       // (which just reset the flag) starts the run instead of bouncing to Home.
       const demoDone = isOnboardingCompleteCached();
       if (!demoDone && !inOnboarding) {
-        // #region agent log
-        debugGuardRedirect('/onboarding', 'demo not-done', segments.join('/'));
-        // #endregion
         router.replace('/onboarding');
         return;
       }
       if (demoDone && !accessGranted && !inInviteAccess) {
-        // #region agent log
-        debugGuardRedirect('/invite-access', 'demo no-access', segments.join('/'));
-        // #endregion
         router.replace('/invite-access');
         return;
       }
       if (demoDone && accessGranted && inInviteAccess) {
-        // #region agent log
-        debugGuardRedirect('/home', 'demo leave-invite-access', segments.join('/'));
-        // #endregion
         router.replace('/home');
         return;
       }
       if (demoDone && (inAuthGroup || inOnboarding)) {
-        // #region agent log
-        debugGuardRedirect('/home', 'demo leave-auth-or-onboarding', segments.join('/'));
-        // #endregion
         router.replace('/home');
       }
       return;
@@ -703,8 +686,5 @@ function useRouteTrail() {
   const pathname = usePathname();
   useEffect(() => {
     if (pathname) recordRoutePath(pathname);
-    // #region agent log
-    if (pathname) debugRouteChange(pathname);
-    // #endregion
   }, [pathname]);
 }

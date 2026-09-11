@@ -10,9 +10,6 @@
 // ids from the shared taxonomy (no invented names).
 // ============================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-// #region agent log
-import { debugScreenMount } from '../../lib/debug-instrumentation';
-// #endregion
 import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { PlusIcon } from 'lucide-react-native';
@@ -55,9 +52,6 @@ import { getTabSnapshot, setTabSnapshot } from '../../lib/tab-snapshots';
 const searchEnabled = true;
 
 export default function FriendsScreen() {
-  // #region agent log
-  useEffect(() => debugScreenMount('friends'), []);
-  // #endregion
   const router = useRouter();
   // THIS SECTION DOES: section title dots after the Friends nav-bar badge clears.
   const { sectionDots } = useTabAttention('friends');

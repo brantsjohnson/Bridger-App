@@ -15,9 +15,6 @@
 // Old one-photo posts still fill the screen like before.
 // ============================================
 import React, { useCallback, useEffect, useState } from 'react';
-// #region agent log
-import { debugStoryEvent } from '../../lib/debug-instrumentation';
-// #endregion
 import {
   Alert,
   Image,
@@ -145,9 +142,6 @@ export function StoryViewer({
   // New slide clears a manual pause so the next post can run.
   useEffect(() => {
     setUserPaused(false);
-    // #region agent log
-    debugStoryEvent('slide index now', { index, authorId, postCount: posts.length });
-    // #endregion
   }, [index, authorId]);
 
   // Keep Catch-Up collapsed when moving to the next friend — never carry an
@@ -279,9 +273,6 @@ export function StoryViewer({
 
   const handleNext = useCallback(() => {
     const result = goNext();
-    // #region agent log
-    debugStoryEvent('handleNext fired', { result: String(result), index, postCount: posts.length, authorId });
-    // #endregion
     if (result === 'exhausted') handleExhausted();
   }, [goNext, handleExhausted, index, posts.length, authorId]);
 
@@ -389,16 +380,6 @@ export function StoryViewer({
     // Pages sit on the near-black canvas (like the composer); legacy posts keep their accent.
     <View
       className={cn('relative flex-1 overflow-hidden', isPage ? 'bg-[#0E0E0E]' : token.bg)}
-      // #region agent log
-      onTouchStart={(e) => {
-        debugStoryEvent('root touch', {
-          x: Math.round(e.nativeEvent.pageX),
-          y: Math.round(e.nativeEvent.pageY),
-          isPage,
-          index
-        });
-      }}
-      // #endregion
     >
       {/*
         Media first (under the tap zones). Cover fills this box. pointerEvents
@@ -498,9 +479,6 @@ export function StoryViewer({
       >
         <Pressable
           onPress={withAnalyticsPress(STORY.viewer.tap_prev, () => {
-            // #region agent log
-            debugStoryEvent('tap_prev fired', { index, postCount: posts.length, authorId });
-            // #endregion
             goPrev();
           })}
           accessibilityRole="button"

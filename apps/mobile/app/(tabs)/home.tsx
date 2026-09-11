@@ -6,9 +6,6 @@
 // Analytics: home surface; child components carry HOME.* ids.
 // ============================================
 import React, { useEffect, useState } from 'react';
-// #region agent log
-import { debugScreenMount } from '../../lib/debug-instrumentation';
-// #endregion
 import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -174,9 +171,6 @@ const STANDING_JNAME_QUIZ = {
 };
 
 export default function HomeScreen() {
-  // #region agent log
-  useEffect(() => debugScreenMount('home'), []);
-  // #endregion
   const router = useRouter();
   const feed = useHomeFeed();
   const { events } = useEventsFeed();

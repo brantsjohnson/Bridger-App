@@ -11,9 +11,6 @@
 // ACCESSIBILITY: capture is always a near-black camera UI (fixed #0E0E0E).
 // ============================================
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-// #region agent log
-import { debugCameraEvent } from '../../lib/debug-instrumentation';
-// #endregion
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -169,13 +166,6 @@ function CameraFirstScreen({
         return;
       }
       const timer = setTimeout(() => {
-        // #region agent log
-        debugCameraEvent('waitForCameraReady TIMEOUT after 4s', {
-          granted: camGranted,
-          native: nativeCamera,
-          sinceMountMs: Date.now() - flowStartedAt.current
-        });
-        // #endregion
         resolve(false);
       }, 4000);
       cameraReadyWaiters.current.push(() => {
@@ -197,11 +187,6 @@ function CameraFirstScreen({
   }, []);
 
   const onCameraReady = () => {
-    // #region agent log
-    debugCameraEvent('camera READY', {
-      sinceMountMs: Date.now() - flowStartedAt.current
-    });
-    // #endregion
     cameraReadyRef.current = true;
     const waiters = cameraReadyWaiters.current.splice(0);
     waiters.forEach((fn) => fn());
