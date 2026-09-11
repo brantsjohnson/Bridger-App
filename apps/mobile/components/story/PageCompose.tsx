@@ -1,12 +1,13 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Screen 2 of posting a Scrapbook: the page. You land here right after taking
+// Screen 2 of posting a Collage: the page. You land here right after taking
 // a photo. Bridger has already laid the photo on an 8.5 x 11 page. From here
 // you can: tap a layout thumbnail to change the arrangement (instant, no
 // Apply), tap the caption slot to add words, tap a photo to replace, remove,
 // or move it to another page, tap "+" to add more from the camera or roll,
-// tap the pencil for paper color + Undo, tap the audience chip to choose who
-// sees it, and tap POST. Post is always available once one photo exists.
+// tap the pencil for paper color + Undo, and tap Next. Next opens "Who sees
+// this" so you pick the audience, then Post to Friends (or Close / Only me /
+// Everyone) actually sends it.
 //
 // Almost no words on this screen on purpose. The only sentences live in the
 // tiny "i" popover. Sheets slide up over the page; nothing navigates away.
@@ -19,7 +20,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import {
-  ChevronDownIcon,
   ChevronLeftIcon,
   InfoIcon,
   PencilIcon,
@@ -58,12 +58,12 @@ const ON_LIGHT_INK = '#1C1B16';
 /** Width of the flattened preview we upload (8.5in at 150dpi). Height follows the ratio. */
 const PREVIEW_WIDTH_PX = 1275;
 
-/** Tier color for the audience chip so "who sees this" reads at a glance. */
-const AUDIENCE_CHIP: Record<PostAudience, { label: string; bg: string; ink: string }> = {
-  only_me: { label: 'Only me', bg: '#E8940C', ink: '#FFFFFF' },
-  close: { label: 'Close', bg: '#2FA85B', ink: '#FFFFFF' },
-  friend: { label: 'Friends', bg: '#1D6FE8', ink: '#FFFFFF' },
-  everyone: { label: 'Everyone', bg: '#F2560E', ink: '#FFFFFF' }
+/** Short audience words used in "Post to Friends". */
+const AUDIENCE_LABEL: Record<PostAudience, string> = {
+  only_me: 'Only me',
+  close: 'Close',
+  friend: 'Friends',
+  everyone: 'Everyone'
 };
 
 type Draft = ReturnType<typeof useScrapbookDraft>;
@@ -116,7 +116,10 @@ export function PageCompose({
   const selectedIsMedia = selected?.type === 'photo' || selected?.type === 'video';
   /** Other pages you posted today (not the one being edited). */
   const otherPages = draft.todayPosts.filter((p) => p.id !== draft.postId);
-  const chip = AUDIENCE_CHIP[draft.audience];
+  const audienceWord = AUDIENCE_LABEL[draft.audience];
+  const postToLabel = draft.isEditingPosted
+    ? `Post changes to ${audienceWord}`
+    : `Post to ${audienceWord}`;
   const bgColor =
     draft.page.background.kind === 'solid' && draft.page.background.color
       ? draft.page.background.color
@@ -292,7 +295,7 @@ export function PageCompose({
         backgroundColor: CANVAS_BG
       }}
     >
-      {/* TOP ROW: back · count · audience chip */}
+      {/* TOP ROW: back · photo count. Who-sees lives behind Next, not up here. */}
       <View className="flex-row items-center justify-between px-4">
         <Pressable
           onPress={withAnalyticsPress(POST_COMPOSER.actions.back, onBack)}
@@ -309,18 +312,8 @@ export function PageCompose({
           analyticsId={POST_COMPOSER.capture.count_pill}
         />
 
-        <Pressable
-          onPress={withAnalyticsPress(POST_COMPOSER.audience.chip, () => setAudienceOpen(true))}
-          accessibilityRole="button"
-          accessibilityLabel={`Who sees this: ${chip.label}. Change`}
-          className="min-h-[44px] flex-row items-center gap-1 rounded-full px-3.5"
-          style={{ backgroundColor: chip.bg }}
-        >
-          <Text className="font-sans-b text-[12px]" style={{ color: chip.ink }}>
-            {chip.label}
-          </Text>
-          <ChevronDownIcon size={14} color={chip.ink} strokeWidth={3} />
-        </Pressable>
+        {/* Spacer matches the back button so the count stays centered. */}
+        <View className="h-11 w-11" accessible={false} />
       </View>
 
       {/* PAGE STRIP: only when there are other pages today. Tiny, no words. */}
@@ -500,7 +493,7 @@ export function PageCompose({
         className="mt-1"
       />
 
-      {/* COMPOSER BAR: + · pencil · POST · i */}
+      {/* COMPOSER BAR: + · pencil · Next (who sees this) · i */}
       <View className="mt-4 flex-row items-center gap-3 px-4">
         <RoundButton
           analyticsId={POST_COMPOSER.actions.add}
@@ -520,18 +513,20 @@ export function PageCompose({
         <View className="flex-1">
           <ButtonPrimary
             full
-            loading={posting}
-            disabled={draft.mediaCount === 0}
-            analyticsId={POST_COMPOSER.actions.post}
-            onPress={() => void handlePost()}
-            accessibilityLabel={draft.isEditingPosted ? 'Post changes' : 'Post'}
+            disabled={draft.mediaCount === 0 || posting}
+            analyticsId={POST_COMPOSER.actions.next}
+            onPress={() => {
+              trackFlowStep('post_story', 'audience');
+              setAudienceOpen(true);
+            }}
+            accessibilityLabel="Next, choose who sees this"
           >
-            Post
+            Next
           </ButtonPrimary>
         </View>
         <InfoPopover
           title="About this page"
-          description="Tap a layout to change it. Tap the page to add words. + adds more from today. Everything else is optional."
+          description="Tap a layout to change it. Tap the page to add words. + adds more from today. Next asks who should see it. Everything else is optional."
           infoAnalyticsId={POST_COMPOSER.actions.info}
           dismissAnalyticsId={POST_COMPOSER.actions.info_dismiss}
           bodyAnalyticsId={POST_COMPOSER.actions.info_body}
@@ -564,6 +559,12 @@ export function PageCompose({
         }}
         // No fake demo groups. "Or a group" appears once real co-op groups exist.
         groups={[]}
+        confirmLabel={postToLabel}
+        confirming={posting}
+        onConfirm={() => {
+          // Stay open on failure so they can retry. Success leaves via onPosted.
+          void handlePost();
+        }}
       />
       <AddMediaSheet
         open={addOpen}

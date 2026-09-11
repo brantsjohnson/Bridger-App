@@ -2,77 +2,64 @@
 // WHAT THIS FILE DOES (plain English):
 // A New-onboarding teaching screen: one idea, a picture, and a Continue
 // button (sometimes a second quieter button). Same chrome as the rest of
-// onboarding.
+// onboarding. Continue always sprays emojis.
 // ============================================
 import React from 'react';
 import { View } from 'react-native';
 import { OnboardingStep } from './OnboardingStep';
-import { OBCTA, OBSkipLink } from './onboarding-ui';
+import { OnboardingInfoNote } from './OnboardingInfoNote';
+import { newShellFromSpec } from './new-shell';
 import { VisualSlot } from './tour/VisualSlot';
-import type { CtaSpec } from './onboarding-new-copy';
+import type { OnboardingScreenSpec } from './onboarding-new-copy';
 
 export function OnboardingExplainerStep({
-  step,
-  total,
-  chip,
-  header,
-  subheader,
-  kicker,
-  visualId,
+  spec,
+  formStep,
+  formTotal,
   visualCaption,
-  primaryCta,
-  secondaryCta,
+  lastInTour,
   onPrimary,
   onSecondary,
-  onBack
+  onBack,
+  children
 }: {
-  step: number;
-  total: number;
-  chip?: string;
-  header: string;
-  subheader?: string;
-  kicker?: string;
-  visualId?: string;
+  spec: OnboardingScreenSpec;
+  formStep: number;
+  formTotal: number;
   visualCaption?: string;
-  primaryCta: CtaSpec;
-  secondaryCta?: CtaSpec;
+  /** Last picked feature: CTA becomes the co-op handoff. */
+  lastInTour?: boolean;
   onPrimary: () => void;
   onSecondary?: () => void;
   onBack?: () => void;
+  children?: React.ReactNode;
 }) {
-  const footer = secondaryCta ? (
-    <View style={{ gap: 10 }}>
-      <OBCTA
-        label={primaryCta.label}
-        analyticsId={primaryCta.analyticsId}
-        onPress={onPrimary}
-        accessibilityLabel={primaryCta.label}
-      />
-      <OBSkipLink
-        label={secondaryCta.label}
-        analyticsId={secondaryCta.analyticsId}
-        onPress={onSecondary ?? (() => undefined)}
-      />
-    </View>
-  ) : undefined;
+  const shell = newShellFromSpec(spec, formStep, formTotal);
+  const cta = lastInTour ? 'Why is Bridger different? →' : spec.primaryCta.label;
 
   return (
     <OnboardingStep
-      step={step}
-      total={total}
-      purpose={chip}
-      ask={header}
-      blurb={subheader}
-      kicker={kicker}
-      smallAsk
-      scrollBody
-      cta={primaryCta.label}
-      continueAnalyticsId={primaryCta.analyticsId}
-      onContinue={secondaryCta ? undefined : onPrimary}
-      footer={footer}
+      {...shell}
+      cta={cta}
+      continueAnalyticsId={spec.primaryCta.analyticsId}
+      onContinue={onPrimary}
+      onSkip={
+        spec.secondaryCta
+          ? onSecondary
+          : undefined
+      }
+      skipLabel={spec.secondaryCta?.label}
+      skipAnalyticsId={spec.secondaryCta?.analyticsId}
       onBack={onBack}
+      headerNote={
+        spec.infoNote ? (
+          <OnboardingInfoNote label={spec.infoNote.label} body={spec.infoNote.body} />
+        ) : undefined
+      }
     >
-      <VisualSlot visualId={visualId} caption={visualCaption} />
+      <View style={{ gap: 12 }}>
+        {children ?? <VisualSlot visualId={spec.visualId} caption={visualCaption} />}
+      </View>
     </OnboardingStep>
   );
 }

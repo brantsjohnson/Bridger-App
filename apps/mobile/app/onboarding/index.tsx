@@ -2,8 +2,9 @@
 // WHAT THIS FILE DOES (plain English):
 // The onboarding room. Live / TestFlight accounts walk the Old 19-step flow.
 // Demo password "onboard" walks the New story flow (profile, then education,
-// then optional feature tours). Password "onboardold" is Old. Finishing
-// lands on Home.
+// then the features they picked, then the co-op story, then join / invite).
+// Password "onboardold" is Old. Finishing lands on Home. Home plays the
+// congratulations splash.
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Alert, Linking, View } from 'react-native';
@@ -30,6 +31,7 @@ import { PrivacyControlStep } from '../../components/onboarding/PrivacyControlSt
 import { CoopIntroStep } from '../../components/onboarding/CoopIntroStep';
 import { CoopStep } from '../../components/onboarding/CoopStep';
 import { StepTransition } from '../../components/onboarding/StepTransition';
+import { OB } from '../../components/onboarding/onboarding-theme';
 import { joinCoop, type PhotoSource } from '../../data/onboarding';
 import { redeemPromoCode } from '../../data/coop';
 import { fetchMusicStatus, syncTopArtists } from '../../data/music';
@@ -108,7 +110,11 @@ export default function OnboardingScreen() {
         if (!r.ok) {
           Alert.alert(
             'Could not link Spotify',
-            r.error ? `Something went wrong (${r.error}). Try again.` : 'Try again in a moment.'
+            r.error === 'safari_unavailable' || r.error === 'loopback_redirect'
+              ? 'Spotify could not open on this phone. Type your song below instead, or try again from Settings later.'
+              : r.error
+                ? `Something went wrong (${r.error}). Try again, or type your song below.`
+                : 'Try again in a moment, or type your song below.'
           );
           return;
         }
@@ -184,7 +190,16 @@ export default function OnboardingScreen() {
       const picked = await pickProfilePhoto(source);
       // Cancelled or permission denied: leave the current choice untouched.
       if (!picked) return;
-      patch({ photoSource: source, photoUri: picked.uri });
+      patch({
+        photoSource: source,
+        photoUri: picked.uri,
+        // Real photo replaces any demo emoji stand-in.
+        photoEmoji: null,
+        // New pick needs a fresh bake for the current look.
+        filteredMediaId: null,
+        originalMediaId: null,
+        bakedPhotoUri: null
+      });
     })();
   };
 
@@ -206,6 +221,7 @@ export default function OnboardingScreen() {
     ) => {
       try {
         await joinCoop(true, method, plan);
+        trackProduct('onboarding_tier_chosen', { method: 'coop' });
         void flow.complete();
       } catch (err) {
         const { PurchaseCancelledError } = await import('../../data/coop');
@@ -220,17 +236,52 @@ export default function OnboardingScreen() {
 
     const onRedeemCode = async (redeemCode: string) => {
       await redeemPromoCode(redeemCode);
+      trackProduct('onboarding_tier_chosen', { method: 'coop' });
       void flow.complete();
     };
 
+    const renderCoopJoin = (layout: 'full' | 'simple') => (
+      <CoopStep
+        layout={layout}
+        step={formStep}
+        total={formTotal}
+        invitesSent={draft.inviteSlots.filter((s) => s.sent).length}
+        onInviteRecorded={(label) => {
+          const nextIndex = draft.inviteSlots.findIndex((s) => !s.sent);
+          if (nextIndex < 0) {
+            patch({ invited: true });
+            return;
+          }
+          const next = draft.inviteSlots.map((s, i) =>
+            i === nextIndex ? ({ sent: true, label } satisfies InviteSlot) : s
+          );
+          patch({
+            inviteSlots: next,
+            invited: true
+          });
+          if (next.every((s) => s.sent)) {
+            void joinCoop(false);
+            trackProduct('onboarding_tier_chosen', { method: 'free_lite' });
+            void flow.complete();
+          }
+        }}
+        onJoin={onJoinPaid}
+        onInvitesComplete={() => {
+          void joinCoop(false);
+          trackProduct('onboarding_tier_chosen', { method: 'free_lite' });
+          void flow.complete();
+        }}
+        onRedeem={onRedeemCode}
+        onBack={back ?? (() => {})}
+      />
+    );
+
     if (flow.variant === 'new') {
+      if (step === 'coop-join' || step === 'welcome-in') {
+        return renderCoopJoin('simple');
+      }
       return (
-        <NewOnboardingDispatcher
-          flow={flow}
-          onPickPhoto={onPickPhoto}
-          onJoin={onJoinPaid}
-          onRedeem={onRedeemCode}
-        />
+        <NewOnboardingDispatcher flow={flow} onPickPhoto={onPickPhoto} />
       );
     }
 
@@ -246,7 +297,15 @@ export default function OnboardingScreen() {
             photoUri={draft.photoUri}
             photoEmoji={draft.photoEmoji}
             photoFilter={draft.photoFilter}
-            onChangePhotoFilter={(f) => patch({ photoFilter: f })}
+            onChangePhotoFilter={(f) =>
+              patch({
+                photoFilter: f,
+                // Clear any prior bake so Continue re-bakes the newly picked look.
+                filteredMediaId: null,
+                originalMediaId: null,
+                bakedPhotoUri: null
+              })
+            }
             onFilteredBakeChange={(bake) =>
               patch({
                 filteredMediaId: bake?.mediaId ?? null,
@@ -414,6 +473,9 @@ export default function OnboardingScreen() {
             hometown={draft.hometown}
             currentTown={draft.currentTown}
             favoritePlaceHit={draft.favoritePlaceHit}
+            hometownPrivacy={draft.hometownPrivacy}
+            currentTownPrivacy={draft.currentTownPrivacy}
+            favoritePlacePrivacy={draft.favoritePlacePrivacy}
             onChangeHometown={(v) => patch({ hometown: v })}
             onChangeCurrent={(v) => patch({ currentTown: v })}
             onChangeFavoriteHit={(hit) =>
@@ -421,6 +483,11 @@ export default function OnboardingScreen() {
                 favoritePlaceHit: hit,
                 favoritePlace: hit?.label ?? ''
               })
+            }
+            onChangeHometownPrivacy={(v) => patch({ hometownPrivacy: v })}
+            onChangeCurrentTownPrivacy={(v) => patch({ currentTownPrivacy: v })}
+            onChangeFavoritePlacePrivacy={(v) =>
+              patch({ favoritePlacePrivacy: v })
             }
             onNext={goNext}
             onBack={back ?? (() => {})}
@@ -462,41 +529,7 @@ export default function OnboardingScreen() {
         return <CoopIntroStep onNext={goNext} onBack={back ?? (() => {})} />;
 
       case 'coop':
-        return (
-          <CoopStep
-            step={formStep}
-            total={formTotal}
-            invitesSent={draft.inviteSlots.filter((s) => s.sent).length}
-            onInviteRecorded={(label) => {
-              // CoopStep already opened share / SMS; mark the next empty slot filled.
-              const nextIndex = draft.inviteSlots.findIndex((s) => !s.sent);
-              if (nextIndex < 0) {
-                patch({ invited: true });
-                return;
-              }
-              const next = draft.inviteSlots.map((s, i) =>
-                i === nextIndex ? ({ sent: true, label } satisfies InviteSlot) : s
-              );
-              patch({
-                inviteSlots: next,
-                invited: true
-              });
-              // Third invite done: finish onboarding and go straight to Home.
-              if (next.every((s) => s.sent)) {
-                void joinCoop(false);
-                void flow.complete();
-              }
-            }}
-            onJoin={onJoinPaid}
-            onInvitesComplete={() => {
-              // Already had 3 invites (e.g. from Contacts): Continue finishes.
-              void joinCoop(false);
-              void flow.complete();
-            }}
-            onRedeem={onRedeemCode}
-            onBack={back ?? (() => {})}
-          />
-        );
+        return renderCoopJoin('full');
 
       default:
         return null;
@@ -511,8 +544,12 @@ export default function OnboardingScreen() {
   }
 
   // THIS SECTION DOES: wrap the step in a slide so forward/back feels animated.
+  // The blue reality-check screens get a blue backdrop behind the fade, so the
+  // transition never flashes a bright canvas between two dark screens.
+  const blueBackdrop =
+    step.startsWith('stat') || step === 'coop-intro' ? OB.blue : undefined;
   return (
-    <StepTransition stepKey={step} direction={dir}>
+    <StepTransition stepKey={step} direction={dir} backdrop={blueBackdrop}>
       {renderStep()}
     </StepTransition>
   );

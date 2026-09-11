@@ -29,6 +29,7 @@ import {
 import { CHROME } from '@bridger/shared';
 import { ACCENT_HEX, useThemeColors } from '../tokens';
 import { withAnalyticsPress } from '../lib/analytics';
+import { useResponsiveLayout } from './responsive';
 
 export type TabKey = 'home' | 'friends' | 'events' | 'discover' | 'news';
 
@@ -80,6 +81,11 @@ export function FloatingTabBar({
 }) {
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
+  // THIS SECTION DOES: on a big screen (web / unfolded foldable) keep the nav
+  // pill the same width as the centered content column, so the bar lines up
+  // under the page instead of stretching the full window. On a phone this is
+  // undefined and the pill fills the width exactly like before.
+  const { contentMaxWidth } = useResponsiveLayout();
 
   // THIS SECTION DOES: show the Profile slot on the far-right only when the
   // tabs layout told us where a tap should go.
@@ -94,8 +100,16 @@ export function FloatingTabBar({
       style={{ position: 'absolute', left: 0, right: 0, bottom: Math.max(insets.bottom, 12) }}
       className="px-3"
     >
-      {/* THIS SECTION DOES: the long capsule track. Tabs share the width evenly. */}
-      <View className="w-full flex-row items-center rounded-full border border-ink-line bg-surface px-1.5 py-1.5">
+      {/* THIS SECTION DOES: the long capsule track. Tabs share the width evenly.
+          On big screens it caps at the content column width and centers. */}
+      <View
+        className="w-full flex-row items-center rounded-full border border-ink-line bg-surface px-1.5 py-1.5"
+        style={
+          contentMaxWidth
+            ? { maxWidth: contentMaxWidth, alignSelf: 'center' }
+            : undefined
+        }
+      >
         {TABS.map(({ key, label, Icon, analyticsId }) => {
           const active = key === value;
           const color = TAB_COLOR[key];

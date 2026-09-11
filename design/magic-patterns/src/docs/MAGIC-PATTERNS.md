@@ -58,7 +58,7 @@ One line each; keep them dumb and reusable.
 | `StoryTile` | rectangular, pic-in-corner, image fills |
 | `StoryProgressBars` | 1–3 segments |
 | `PolaroidCard` | white frame, photo, name, heart; slight rotation |
-| `InsideJokeNote` | colored sticky note; quoted person's avatar on the note, taps to reveal who posted it, where and when |
+| `InsideJokeNote` | square sticky note; quoted person's avatar on the note; photo notes flip quote ↔ photo; tap reveals who posted it, where and when |
 | `AddNoteTile` | the dashed "+" tile that sits among the notes and doubles as the empty state |
 | `InsideJokesWall` | one wall with an All / About / By filter, notes grid with a "+" tile, tag-people-and-event sheet |
 | `BucketList` | profile-only module: solo or with-friends items, public/private, checkable |

@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Add-friend sheet from the Friends header "+". Both doors are instant
-// (no request, no accept). Your QR shows the moment the sheet opens; share-link
-// and scan sit under it. Live mode will wire invite-links / qr-tokens.
+// The Add-friend sheet from Friends. Connect your contacts is the first door
+// (pick one person, save that number on a card you made). QR / share-link /
+// scan stay instant (no request, no accept). Your QR shows when the sheet opens.
 //
 // Analytics timing (important): taps here only record flow *steps*
 // (method chosen). `friend_added` + `flow_completed` fire later, when the
@@ -15,7 +15,7 @@
 // ============================================
 import React, { useEffect, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { LinkIcon, ScanLineIcon } from 'lucide-react-native';
+import { LinkIcon, ScanLineIcon, UsersIcon } from 'lucide-react-native';
 import {
   FRIENDS,
   trackFlowAbandoned,
@@ -35,12 +35,14 @@ export function AddFriendSheet({
   open,
   onClose,
   onShare,
-  onScan
+  onScan,
+  onConnectContacts
 }: {
   open: boolean;
   onClose: () => void;
   onShare?: () => void;
   onScan?: () => void;
+  onConnectContacts?: () => void;
 }) {
   // Flow clock: open starts it; dismiss without a method hand-off abandons it.
   // Choosing link/scan hands off (camera / share / redeem) — do not abandon
@@ -90,6 +92,7 @@ export function AddFriendSheet({
         lastStep={lastStep}
         handedOff={handedOff}
         onScan={onScan}
+        onConnectContacts={onConnectContacts}
       />
     </Sheet>
   );
@@ -137,17 +140,39 @@ function AddFriendFooter({
 function AddFriendBody({
   lastStep,
   handedOff,
-  onScan
+  onScan,
+  onConnectContacts
 }: {
   lastStep: React.MutableRefObject<string>;
   handedOff: React.MutableRefObject<boolean>;
   onScan?: () => void;
+  onConnectContacts?: () => void;
 }) {
   const c = useThemeColors();
   const { markActed } = useSurfaceAct();
 
   return (
     <View className="gap-4">
+      {onConnectContacts ? (
+        <ButtonSecondary
+          full
+          size="md"
+          tone="solid"
+          icon={<UsersIcon size={16} color="#FFFFFF" strokeWidth={2.4} />}
+          onPress={() => {
+            lastStep.current = 'contacts';
+            handedOff.current = true;
+            trackFlowStep('add_friend', 'contacts', { method: 'contacts' });
+            markActed();
+            onConnectContacts();
+          }}
+          accessibilityLabel="Connect your contacts"
+          analyticsId={FRIENDS.add_sheet.connect_contacts}
+          analyticsProps={{ method: 'contacts' }}
+        >
+          Connect your contacts
+        </ButtonSecondary>
+      ) : null}
       {/*
         Showing your QR is a method step on this device only.
         The other person scanning completes the friendship on *their* device —

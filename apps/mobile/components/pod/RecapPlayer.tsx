@@ -1,16 +1,19 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The weekly recap "podcast" as a full page (not a popup). Friends' voice
-// answers play as one listen. You can speed them up (1.3× / 1.5× / 2× — stays
-// on for everyone), filter by Close / Friends / Acquaintances, jump to a
-// person from the bottom row, see how many days their clip has left, and send
-// a sticker/emoji that shows up in Notifications.
+// answers play as one listen. Play on Friend Pod starts audio; the arrow
+// opens this page paused. Co-op members can open an earlier locked week.
+// Free Lite stays on this week. You can speed them up with a slider (up to
+// 2.5x, one setting for everyone, saved so it stays your default next week
+// too), filter by Close / Friends / Acquaintances, jump
+// to a person from the bottom row, see how many days their clip has left,
+// and send a sticker/emoji that shows up in Notifications.
 //
 // PRIVACY: you only hear clips shared with a circle you belong to (server
-// filters that). Analytics never include audio or reaction content — only
+// filters that). Analytics never include audio or reaction content, only
 // counts and method.
-// ACCESSIBILITY: transport, speed, filter, and voices are labelled; the
-// current speaker and question are announced as text.
+// ACCESSIBILITY: transport, speed, filter, weeks, and voices are labelled;
+// the current speaker and question are announced as text.
 // ============================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -28,11 +31,18 @@ import {
   useAudioPlayerStatus
 } from 'expo-audio';
 import {
+  CheckCircle2Icon,
+  MicIcon,
   PauseIcon,
   SkipBackIcon,
   SkipForwardIcon
 } from 'lucide-react-native';
-import type { RecapAudience, RecapPlaylist, Tier } from '@bridger/shared';
+import type {
+  RecapAudience,
+  RecapPlaylist,
+  RecapWeekListItem,
+  Tier
+} from '@bridger/shared';
 import {
   RECAP_PLAYER,
   dismissSurface,
@@ -43,6 +53,7 @@ import {
 import {
   AnalyticsRegion,
   Avatar,
+  ButtonSecondary,
   Screen,
   ScreenBody,
   ScreenHeader,
@@ -57,9 +68,16 @@ import { personById } from '../../data/people';
 import { useColorScheme } from '@/components/useColorScheme';
 import { EMOJI_STICKERS } from '../../data/stickers';
 import { RecapPulse } from './RecapPulse';
-
-const SPEEDS = [1, 1.3, 1.5, 2] as const;
-type Speed = (typeof SPEEDS)[number];
+import { RecapWeekStrip } from './RecapWeekStrip';
+import { ThisWeeksQuestions } from './ThisWeeksQuestions';
+import { RecapSpeedControl } from './RecapSpeedControl';
+import { RecapRecorder } from './RecapRecorder';
+import {
+  RECAP_SPEED_DEFAULT,
+  clampRecapSpeed,
+  loadRecapSpeed,
+  saveRecapSpeed
+} from '../../lib/recap-speed';
 
 /** Pixel-art play buttons (transparent PNG) — light and dark theme variants. */
 const RECAP_PLAY_LIGHT = require('../../assets/recap/play-light.png');
@@ -92,10 +110,21 @@ function expiryLabel(days: number | null): string {
 
 export function RecapPlayer({
   playlist,
-  onClose
+  weeks = [],
+  canBrowsePast = false,
+  onSelectWeek,
+  onJoinCoop,
+  onClose,
+  autoplay = false
 }: {
   playlist: RecapPlaylist;
+  weeks?: RecapWeekListItem[];
+  canBrowsePast?: boolean;
+  onSelectWeek?: (weekId: string) => void;
+  onJoinCoop?: () => void;
   onClose?: () => void;
+  /** True when they tapped Play on Friend Pod. Arrow opens paused. */
+  autoplay?: boolean;
 }) {
   const c = useThemeColors();
   const colorScheme = useColorScheme();
@@ -106,12 +135,18 @@ export function RecapPlayer({
   const { width } = useWindowDimensions();
   const avatarSize = Math.round(Math.min(240, Math.max(160, width * 0.6)));
   const [filter, setFilter] = useState<RecapAudience>('close');
-  const [speed, setSpeed] = useState<Speed>(1);
+  // Speed starts at a normal 1× until we read the one you saved last time.
+  const [speed, setSpeed] = useState<number>(RECAP_SPEED_DEFAULT);
   const [index, setIndex] = useState(0);
   const [barWidth, setBarWidth] = useState(1);
   const [reactOpen, setReactOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // "Add your recap" now lives here (moved off the Friends tab widget). Opening
+  // the recorder and, once it posts, showing the green "you're in" panel.
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [posted, setPosted] = useState(false);
   const playedOnce = useRef(false);
+  const autoStarted = useRef(false);
 
   // Only voices in the chosen friendship circle (starts on Close).
   const filteredClips = useMemo(() => {
@@ -129,10 +164,11 @@ export function RecapPlayer({
     return ids.map((id) => personById(id));
   }, [filteredClips]);
 
-  // Keep the playhead inside the filtered list when the filter changes.
+  // Keep the playhead inside the filtered list when the filter or week changes.
   useEffect(() => {
     setIndex(0);
-  }, [filter]);
+    playedOnce.current = false;
+  }, [filter, playlist.week.id]);
 
   const clip = filteredClips[index];
   const player = useAudioPlayer(clip?.audioUrl ? { uri: clip.audioUrl } : null);
@@ -157,11 +193,31 @@ export function RecapPlayer({
     return () => dismissSurface('recap_player');
   }, []);
 
-  // --- CO-OP: keep the recap playing when the phone locks ---
-  // The weekly recap is the co-op Friend Pod feature, so anyone who reaches this
-  // screen is a member. We set the audio session so sound keeps going when the
-  // app is backgrounded or the screen is locked, and hands the session back on
-  // the way out. (Needs the expo-audio background-playback flag in
+  // THIS SECTION DOES: load the speed you last chose so it is your default here
+  // and next week too. Runs once when the page opens.
+  useEffect(() => {
+    let alive = true;
+    void loadRecapSpeed().then((saved) => {
+      if (alive) setSpeed(saved);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // THIS SECTION DOES: change the speed for everyone in the listen and remember
+  // it on the phone, so it stays the default the next time you come back.
+  const changeSpeed = (next: number) => {
+    const clamped = clampRecapSpeed(next);
+    setSpeed(clamped);
+    void saveRecapSpeed(clamped);
+  };
+
+  // --- AUDIO: keep the recap playing when the phone locks ---
+  // This week's listen is free. Co-op adds earlier weeks. Anyone on this
+  // page can keep listening with the phone locked. We set the audio session
+  // so sound keeps going when the app is backgrounded, and hand the session
+  // back on the way out. (Needs the expo-audio background-playback flag in
   // app.config.js plus a fresh dev build to actually take effect on device.)
   useEffect(() => {
     void setAudioModeAsync({
@@ -208,17 +264,44 @@ export function RecapPlayer({
     };
   }, [player]);
 
+  // THIS SECTION DOES: start audio when they tapped Play on Friend Pod.
+  // The replace effect below actually calls play once playedOnce is set.
+  useEffect(() => {
+    if (!autoplay || autoStarted.current) return;
+    if (filteredClips.length === 0) {
+      autoStarted.current = true;
+      return;
+    }
+    if (!clip?.audioUrl) return;
+    autoStarted.current = true;
+    playedOnce.current = true;
+    trackProduct('recap_played', {
+      voices: playlist.voiceIds.length,
+      questions: playlist.week.questions.length,
+      is_current: playlist.isCurrent !== false
+    });
+  }, [
+    autoplay,
+    filteredClips.length,
+    clip?.audioUrl,
+    playlist.voiceIds.length,
+    playlist.week.questions.length,
+    playlist.isCurrent
+  ]);
+
   // Point the player at the current clip; keep the chosen speed on every person.
   useEffect(() => {
     if (!clip?.audioUrl) return;
     player.replace({ uri: clip.audioUrl });
-    player.playbackRate = speed;
+    // Native `playbackRate` is read-only; the setter is setPlaybackRate().
+    player.setPlaybackRate(speed);
     if (playedOnce.current) player.play();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, clip?.audioUrl]);
 
   useEffect(() => {
-    player.playbackRate = speed;
+    // Native `playbackRate` is read-only; the setter is setPlaybackRate().
+    player.setPlaybackRate(speed);
   }, [speed, player]);
 
   // When a clip ends, roll into the next one in this filter.
@@ -239,7 +322,8 @@ export function RecapPlayer({
         playedOnce.current = true;
         trackProduct('recap_played', {
           voices: playlist.voiceIds.length,
-          questions: playlist.week.questions.length
+          questions: playlist.week.questions.length,
+          is_current: playlist.isCurrent !== false
         });
       }
       player.play();
@@ -313,6 +397,16 @@ export function RecapPlayer({
 
       <ScreenBody tabBarInset={false}>
         <View className="gap-4 pb-8">
+          {onSelectWeek ? (
+            <RecapWeekStrip
+              weeks={weeks}
+              selectedId={playlist.week.id}
+              canBrowsePast={canBrowsePast || playlist.canBrowsePast === true}
+              onSelectWeek={onSelectWeek}
+              onJoinCoop={onJoinCoop}
+            />
+          ) : null}
+
           {/* Friend-group filter — always opens on Close; stays visible when empty. */}
           <ScrollView
             horizontal
@@ -351,7 +445,8 @@ export function RecapPlayer({
           {filteredClips.length === 0 || !clip ? (
             <View className="items-center py-16">
               <Text className="font-sans-b text-[15px] text-ink">
-                Nobody in {FILTERS.find((f) => f.key === filter)?.label} this week.
+                Nobody in {FILTERS.find((f) => f.key === filter)?.label}{' '}
+                {playlist.isCurrent === false ? 'that week' : 'this week'}.
               </Text>
               <Text className="mt-2 text-center font-sans-sb text-[13px] text-ink-mute">
                 Try another circle above.
@@ -474,38 +569,13 @@ export function RecapPlayer({
                 </Pressable>
               </View>
 
-              {/* Speed — one setting for every person in this listen. */}
-              <View className="flex-row items-center justify-center gap-2">
-                {SPEEDS.map((s) => {
-                  const on = speed === s;
-                  return (
-                    <Pressable
-                      key={s}
-                      onPress={withAnalyticsPress(RECAP_PLAYER.transport.speed, () => setSpeed(s), {
-                        analyticsProps: { method: String(s) }
-                      })}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: on }}
-                      accessibilityLabel={`${s} times speed`}
-                      className={cn(
-                        'min-h-[36px] min-w-[52px] items-center justify-center rounded-full border px-3',
-                        on
-                          ? 'border-transparent bg-purple'
-                          : 'border-ink-line bg-surface'
-                      )}
-                    >
-                      <Text
-                        className={cn(
-                          'font-sans-b text-[12px]',
-                          on ? 'text-white' : 'text-ink'
-                        )}
-                      >
-                        {s === 1 ? '1×' : `${s}×`}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              {/* Speed — one setting for every person in this listen. Tap the
+                  pill to open a slider up to 2.5×; your choice is remembered. */}
+              <RecapSpeedControl
+                speed={speed}
+                onChange={changeSpeed}
+                analyticsId={RECAP_PLAYER.transport.speed}
+              />
 
               {/* Question progress */}
               <View className="flex-row items-center justify-center gap-1.5">
@@ -526,9 +596,15 @@ export function RecapPlayer({
 
               {/* Voices — scroll + tap to listen / relisten to that person. */}
               <View className="border-t border-ink-line pt-4">
-                <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
-                  In this week · {voices.length}
-                </Text>
+                <AnalyticsRegion
+                  analyticsId={RECAP_PLAYER.in_this_week.body}
+                  interactive={false}
+                >
+                  <Text className="font-sans-b text-[12px] uppercase tracking-wide text-ink-mute">
+                    {playlist.isCurrent === false ? 'That week' : 'In this week'}{' '}
+                    · {voices.length}
+                  </Text>
+                </AnalyticsRegion>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -616,8 +692,61 @@ export function RecapPlayer({
               </View>
             </>
           )}
+
+          {/* Add your recap — only on the live week. After you post, this
+              swaps for a green "you're in this week" panel that lets you add
+              one more answer. (This used to live on the Friends tab widget.) */}
+          {playlist.isCurrent !== false ? (
+            posted ? (
+              <View className="rounded-2xl border border-success bg-[#DFF3E4] p-4">
+                <View className="flex-row items-center gap-2">
+                  <CheckCircle2Icon size={16} color="#1C1B16" strokeWidth={2.6} />
+                  <Text className="font-sans-b text-[13px] text-onaccent">
+                    Your recap is in this week
+                  </Text>
+                </View>
+                <View className="mt-3">
+                  <ButtonSecondary
+                    full
+                    size="sm"
+                    analyticsId={RECAP_PLAYER.actions.record_another}
+                    icon={<MicIcon size={14} color="#1C1B16" strokeWidth={2.6} />}
+                    onPress={() => setRecordOpen(true)}
+                  >
+                    Record another answer
+                  </ButtonSecondary>
+                </View>
+              </View>
+            ) : (
+              <ButtonSecondary
+                full
+                size="lg"
+                tone="solid"
+                analyticsId={RECAP_PLAYER.actions.record}
+                icon={<MicIcon size={18} color="#FFFFFF" strokeWidth={2.5} />}
+                onPress={() => setRecordOpen(true)}
+              >
+                Add your recap
+              </ButtonSecondary>
+            )
+          ) : null}
+
+          <ThisWeeksQuestions
+            weekOf={playlist.week.weekOf}
+            questions={playlist.week.questions}
+            canSuggest={playlist.isCurrent !== false}
+          />
         </View>
       </ScreenBody>
+
+      {/* The recorder sheet: record → review → posted. */}
+      <RecapRecorder
+        open={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        weekId={playlist.week.id}
+        questions={playlist.week.questions}
+        onPosted={() => setPosted(true)}
+      />
     </Screen>
   );
 }

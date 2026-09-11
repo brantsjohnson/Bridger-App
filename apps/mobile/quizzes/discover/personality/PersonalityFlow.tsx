@@ -2,6 +2,7 @@
 // WHAT THIS FILE DOES (plain English):
 // Take Your Vibe with Bridger flair: amber wash, fun emoji tiles, burst on tap,
 // note behind a chip, no scrolling. Scores Big Five + assertiveness.
+// Mid-take answers stay on this phone so you can leave and finish later.
 // ============================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -15,8 +16,14 @@ import {
   trackProduct,
   YOUR_VIBE
 } from '@bridger/shared';
+import { EndQuizSheet } from '../../_shared/EndQuizSheet';
 import { getDisclosure } from '../../../data/discover';
 import { toDisclosureContextForQuiz } from '../_shared/disclosure-context';
+import {
+  clearDiscoverDraft,
+  loadDiscoverDraft,
+  saveDiscoverDraft
+} from '../_shared/discover-draft';
 import { optionEmoji } from '../_shared/option-emoji';
 import { QuizTakeShell } from '../_shared/QuizTakeShell';
 import {
@@ -35,6 +42,8 @@ type Props = {
   onClose: () => void;
   onComplete: (result: PersonalityScoreResult) => void | Promise<void>;
 };
+
+const SLUG = 'personality';
 
 const SHELL_IDS = {
   back: YOUR_VIBE.chrome.back,
@@ -58,6 +67,7 @@ export function PersonalityFlow({
   const startedAt = useRef<number | null>(null);
   const lastStep = useRef('intro');
   const completedRef = useRef(false);
+  const hydratingRef = useRef(false);
 
   const [phase, setPhase] = useState<'intro' | 'take' | 'result'>('intro');
   const [index, setIndex] = useState(0);
@@ -65,22 +75,48 @@ export function PersonalityFlow({
   const [explain, setExplain] = useState('');
   const [answers, setAnswers] = useState<PersonalityAnswer[]>([]);
   const [result, setResult] = useState<PersonalityScoreResult | null>(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [ready, setReady] = useState(false);
 
+  // THIS SECTION DOES: open surface + resume a saved draft when possible.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setReady(false);
+      return;
+    }
     completedRef.current = false;
-    startedAt.current = Date.now();
-    lastStep.current = 'intro';
-    setPhase('intro');
-    setIndex(0);
-    setSelected([]);
-    setExplain('');
-    setAnswers([]);
-    setResult(null);
-    openSurface('your_vibe', parentScreen);
-    trackFlowStarted('your_vibe', { quiz_id: 'personality' });
-    trackProduct('quiz_started', { quiz_id: 'personality', quiz_version: 1 });
+    hydratingRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      const draft = await loadDiscoverDraft<PersonalityAnswer>(SLUG);
+      if (cancelled) return;
+      if (draft && draft.phase !== 'result' && (draft.answers?.length || draft.phase === 'take')) {
+        startedAt.current = draft.startedAt || Date.now();
+        lastStep.current = PERSONALITY_QUESTIONS[draft.index]?.id ?? 'take';
+        setPhase(draft.phase === 'intro' ? 'take' : draft.phase);
+        setIndex(Math.min(draft.index, PERSONALITY_QUESTIONS.length - 1));
+        setAnswers(draft.answers ?? []);
+        setSelected(draft.selected ?? []);
+        setExplain(draft.explain ?? '');
+        setResult(null);
+      } else {
+        startedAt.current = Date.now();
+        lastStep.current = 'intro';
+        setPhase('intro');
+        setIndex(0);
+        setSelected([]);
+        setExplain('');
+        setAnswers([]);
+        setResult(null);
+        trackFlowStarted('your_vibe', { quiz_id: 'personality' });
+        trackProduct('quiz_started', { quiz_id: 'personality', quiz_version: 1 });
+      }
+      openSurface('your_vibe', parentScreen);
+      hydratingRef.current = false;
+      setReady(true);
+    })();
     return () => {
+      cancelled = true;
       if (!completedRef.current) {
         const ms = startedAt.current != null ? Date.now() - startedAt.current : 0;
         trackFlowAbandoned('your_vibe', ms, lastStep.current, {
@@ -95,6 +131,22 @@ export function PersonalityFlow({
       }
     };
   }, [open, parentScreen]);
+
+  // THIS SECTION DOES: keep progress on-device while they answer.
+  useEffect(() => {
+    if (!open || !ready || hydratingRef.current || completedRef.current) return;
+    if (phase === 'intro' || phase === 'result') return;
+    void saveDiscoverDraft({
+      slug: SLUG,
+      phase,
+      index,
+      answers,
+      selected,
+      explain,
+      startedAt: startedAt.current ?? Date.now(),
+      totalQuestions: PERSONALITY_QUESTIONS.length
+    });
+  }, [open, ready, phase, index, answers, selected, explain]);
 
   const question = PERSONALITY_QUESTIONS[index];
   const total = PERSONALITY_QUESTIONS.length;
@@ -164,9 +216,11 @@ export function PersonalityFlow({
     lastStep.current = PERSONALITY_QUESTIONS[index + 1]?.id ?? 'take';
   };
 
+  // THIS SECTION DOES: finish the quiz and wipe the on-device draft.
   const onDoneResult = async () => {
     if (!result) return;
     completedRef.current = true;
+    await clearDiscoverDraft(SLUG);
     const ms = startedAt.current != null ? Date.now() - startedAt.current : 0;
     await onComplete(result);
     trackFlowCompleted('your_vibe', ms, { quiz_id: 'personality' });
@@ -180,9 +234,39 @@ export function PersonalityFlow({
     onClose();
   };
 
+  // THIS SECTION DOES: ask Save and exit / Discard instead of closing cold.
+  const requestLeave = () => {
+    if (phase === 'intro' || completedRef.current) {
+      onClose();
+      return;
+    }
+    setLeaveOpen(true);
+  };
+
+  const saveAndExit = () => {
+    setLeaveOpen(false);
+    void saveDiscoverDraft({
+      slug: SLUG,
+      phase: phase === 'result' ? 'take' : phase,
+      index,
+      answers,
+      selected,
+      explain,
+      startedAt: startedAt.current ?? Date.now(),
+      totalQuestions: total
+    });
+    onClose();
+  };
+
+  const discardAndExit = () => {
+    setLeaveOpen(false);
+    void clearDiscoverDraft(SLUG);
+    onClose();
+  };
+
   const onBack = () => {
     if (phase === 'intro' || (phase === 'take' && index === 0)) {
-      onClose();
+      requestLeave();
       return;
     }
     if (phase === 'result') {
@@ -197,42 +281,54 @@ export function PersonalityFlow({
     setExplain(prev?.explain ?? '');
   };
 
+  if (!ready && open) return null;
+
   return (
-    <QuizTakeShell
-      open={open}
-      accent="amber"
-      ids={SHELL_IDS}
-      phase={phase}
-      progress={progress}
-      onClose={onClose}
-      onBack={onBack}
-      intro={{
-        headline: 'How do you move?',
-        title: PERSONALITY_INSTRUCTIONS.title,
-        lead: PERSONALITY_INSTRUCTIONS.lead,
-        rules: PERSONALITY_INSTRUCTIONS.rules.slice(0, 3),
-        emoji: '✨'
-      }}
-      onStart={() => {
-        setPhase('take');
-        lastStep.current = PERSONALITY_QUESTIONS[0]?.id ?? 'take';
-        trackFlowStep('your_vibe', 'take_start', { quiz_id: 'personality' });
-      }}
-      stepLabel={`${index + 1} of ${total}`}
-      prompt={question?.prompt ?? ''}
-      questionEmoji="✨"
-      options={tiles}
-      selected={selected}
-      maxSelect={question?.maxSelect ?? 2}
-      onToggle={(id) => toggle(id)}
-      explain={explain}
-      onExplainChange={setExplain}
-      continueDisabled={selected.length === 0}
-      continueLabel={index + 1 >= total ? 'See my vibe' : 'Continue'}
-      onContinue={() => void onContinue()}
-      result={result ? <ResultSummary result={result} /> : null}
-      onDoneResult={() => void onDoneResult()}
-    />
+    <>
+      <QuizTakeShell
+        open={open}
+        accent="amber"
+        ids={SHELL_IDS}
+        phase={phase}
+        progress={progress}
+        onClose={requestLeave}
+        onBack={onBack}
+        intro={{
+          headline: 'How do you move?',
+          title: PERSONALITY_INSTRUCTIONS.title,
+          lead: PERSONALITY_INSTRUCTIONS.lead,
+          rules: PERSONALITY_INSTRUCTIONS.rules.slice(0, 3),
+          emoji: '✨'
+        }}
+        onStart={() => {
+          setPhase('take');
+          lastStep.current = PERSONALITY_QUESTIONS[0]?.id ?? 'take';
+          trackFlowStep('your_vibe', 'take_start', { quiz_id: 'personality' });
+        }}
+        stepLabel={`${index + 1} of ${total}`}
+        prompt={question?.prompt ?? ''}
+        questionEmoji="✨"
+        options={tiles}
+        selected={selected}
+        maxSelect={question?.maxSelect ?? 2}
+        onToggle={(id) => toggle(id)}
+        explain={explain}
+        onExplainChange={setExplain}
+        continueDisabled={selected.length === 0}
+        continueLabel={index + 1 >= total ? 'See my vibe' : 'Continue'}
+        onContinue={() => void onContinue()}
+        result={result ? <ResultSummary result={result} /> : null}
+        onDoneResult={() => void onDoneResult()}
+      />
+      <EndQuizSheet
+        open={leaveOpen}
+        onStay={() => setLeaveOpen(false)}
+        onEnd={saveAndExit}
+        onDiscard={discardAndExit}
+        parentScreen="your_vibe"
+        canSaveDraft
+      />
+    </>
   );
 }
 

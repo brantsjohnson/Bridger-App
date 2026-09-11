@@ -31,7 +31,16 @@ const DEMO_INVITE_MESSAGE =
   'I am trying Bridger on TestFlight. Join me with this link:';
 const ONBOARDING_INVITE_MESSAGE = 'Join me on Bridger:';
 
-export type InviteContext = 'invite_access' | 'onboarding';
+export type InviteContext = 'invite_access' | 'onboarding' | 'friends';
+
+/** Stand-in people for demo / web so Connect contacts still opens a picker. */
+export const DEMO_INVITE_CONTACTS: ContactPick[] = [
+  { id: 'demo-1', name: 'Alex Chen', phone: '+15555550101' },
+  { id: 'demo-2', name: 'Jordan Lee', phone: '+15555550102' },
+  { id: 'demo-3', name: 'Sam Rivera', phone: '+15555550103' },
+  { id: 'demo-4', name: 'Riley Quinn', phone: '+15555550104' },
+  { id: 'demo-5', name: 'Casey Morgan', phone: '+15555550105' }
+];
 
 export type ShareInviteOpts = {
   /** 1-based Link slot when sharing from onboarding Link 1 / 2 / 3. */
@@ -68,7 +77,9 @@ export async function loadInviteContacts(
 
   const rows = await Contact.getAllDetails(
     [ContactField.FULL_NAME, ContactField.PHONES] as const,
-    { limit: 300, sortOrder: ContactsSortOrder.GivenName }
+    // Load the full book (or a very high cap). A 300 cut-off made long lists
+    // feel "partial" and forced endless scrolling to find someone.
+    { limit: 5000, sortOrder: ContactsSortOrder.GivenName }
   );
 
   const contacts: ContactPick[] = [];
@@ -82,7 +93,7 @@ export async function loadInviteContacts(
 }
 
 function messageFor(context: InviteContext): string {
-  return context === 'onboarding' ? ONBOARDING_INVITE_MESSAGE : DEMO_INVITE_MESSAGE;
+  return context === 'invite_access' ? DEMO_INVITE_MESSAGE : ONBOARDING_INVITE_MESSAGE;
 }
 
 /** Build the full share body so every app gets the link in the text. */
@@ -201,7 +212,8 @@ export async function sendInviteToContact(
         // PRIVACY: one private card for this picked contact only (never the whole book).
         void upsertPendingPerson({
           phone: contact.phone,
-          displayName: contact.name
+          displayName: contact.name,
+          track: context !== 'friends'
         });
         return { ok: true, method: 'sms', url: invite.url };
       }
@@ -212,7 +224,8 @@ export async function sendInviteToContact(
       await afterInviteSent(context, result.method, opts);
       void upsertPendingPerson({
         phone: contact.phone,
-        displayName: contact.name
+        displayName: contact.name,
+        track: context !== 'friends'
       });
     }
     return result;

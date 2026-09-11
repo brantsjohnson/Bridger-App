@@ -268,7 +268,7 @@ export async function acceptRequest(requestId: string): Promise<void> {
     body: JSON.stringify({})
   });
   // New friend just landed — refresh the people cache for the roster / reveal.
-  await loadPeople();
+  await loadPeople({ force: true });
 }
 
 export async function declineRequest(requestId: string): Promise<void> {
@@ -437,9 +437,9 @@ export async function connectFromReveal(
 }
 
 /**
- * Connect Over cards always come from the on-device catalog (titles, emoji,
- * accent). The server only stores scores after you finish — it does not own
- * the card list. Demo and live share the same five modules.
+ * Personality quiz cards always come from the on-device catalog (titles,
+ * emoji, accent). The server only stores scores after you finish. Demo and
+ * live share the same four live quizzes (Behind the Scenes is archived).
  */
 export async function listMatchModules(): Promise<MatchModule[]> {
   return MATCH_MODULES.map((m) => ({
@@ -449,7 +449,7 @@ export async function listMatchModules(): Promise<MatchModule[]> {
 }
 
 /**
- * Which Connect Over modules this person already finished (Done tags).
+ * Which personality quizzes this person already finished (Done tags).
  * Live mode asks the API so Done survives relaunch; scores stay on the server.
  */
 export async function listCompletedModules(): Promise<string[]> {

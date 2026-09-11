@@ -5,6 +5,7 @@
 // labeled by the in-app title. No live database.
 // ============================================
 import assert from 'node:assert/strict';
+import { fieldVisibleAtGrantedTier } from '@bridger/shared';
 
 function detailOf(value: unknown): string | undefined {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -128,5 +129,19 @@ const titleRow = {
 };
 assert.equal(titleRow.dimension, 'Your Funny Bone');
 assert.notEqual(titleRow.dimension, 'absurdity');
+
+// THIS SECTION DOES: prove one-way circle privacy (asymmetric grants).
+assert.equal(fieldVisibleAtGrantedTier('acquaintance', 'acquaintance'), true);
+assert.equal(fieldVisibleAtGrantedTier('friend', 'acquaintance'), false);
+assert.equal(fieldVisibleAtGrantedTier('close', 'acquaintance'), false);
+assert.equal(fieldVisibleAtGrantedTier('none', 'acquaintance'), false);
+assert.equal(fieldVisibleAtGrantedTier('acquaintance', 'friend'), true);
+assert.equal(fieldVisibleAtGrantedTier('friend', 'friend'), true);
+assert.equal(fieldVisibleAtGrantedTier('close', 'friend'), false);
+assert.equal(fieldVisibleAtGrantedTier('close', 'close'), true);
+// They put me as Friends; I put them as Acquaintances.
+// I can see their Friends-labeled fact; they cannot see mine.
+assert.equal(fieldVisibleAtGrantedTier('friend', 'friend'), true);
+assert.equal(fieldVisibleAtGrantedTier('friend', 'acquaintance'), false);
 
 console.log('matching-overlap.spec.ts: ok');

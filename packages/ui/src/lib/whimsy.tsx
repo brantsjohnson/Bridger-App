@@ -63,6 +63,8 @@ type RevealProps = {
   /** how far it rises from, in pixels */
   distance?: number;
   delayMs?: number;
+  /** Skip the fade-in (tab already shown; remount should look settled). */
+  instant?: boolean;
   /**
    * Layout goes here as real styles. These wrappers are animated views, and
    * Tailwind class names do not reliably apply to those — a dropped class shows
@@ -80,13 +82,15 @@ export function Reveal({
   index = 0,
   distance = 14,
   delayMs,
+  instant = false,
   style
 }: RevealProps) {
   const reduce = useReduceMotion();
-  const progress = useRef(new Animated.Value(0)).current;
+  const skip = reduce || instant;
+  const progress = useRef(new Animated.Value(skip ? 1 : 0)).current;
 
   useEffect(() => {
-    if (reduce) {
+    if (skip) {
       progress.setValue(1);
       return;
     }
@@ -100,7 +104,7 @@ export function Reveal({
     });
     anim.start();
     return () => anim.stop();
-  }, [progress, index, delayMs, reduce]);
+  }, [progress, index, delayMs, skip]);
 
   return (
     <Animated.View
@@ -135,18 +139,22 @@ export function Reveal({
 export function Peel({
   children,
   index = 0,
+  instant = false,
   style
 }: {
   children: React.ReactNode;
   index?: number;
+  /** Skip the landing motion when this wall was already on screen. */
+  instant?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const reduce = useReduceMotion();
-  const progress = useRef(new Animated.Value(0)).current;
+  const skip = reduce || instant;
+  const progress = useRef(new Animated.Value(skip ? 1 : 0)).current;
   const lean = index % 2 === 0 ? -1 : 1;
 
   useEffect(() => {
-    if (reduce) {
+    if (skip) {
       progress.setValue(1);
       return;
     }
@@ -159,7 +167,7 @@ export function Peel({
     });
     anim.start();
     return () => anim.stop();
-  }, [progress, index, reduce]);
+  }, [progress, index, skip]);
 
   return (
     <Animated.View

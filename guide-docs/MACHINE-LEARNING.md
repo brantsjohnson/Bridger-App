@@ -18,7 +18,7 @@ Time-in-app is **not** a reward signal anywhere. If a model change increases tap
 ## 2 · What Bridger learns from (signal taxonomy)
 
 **Explicit, high-trust (primary):**
-- Tier placements & changes — placed/promoted to **Close** (strongest positive), demoted (negative), removed (strong negative), **blocked (strongest negative; retroactive hard-negative on that pair's features)**.
+- Tier placements & changes — placed/promoted to **Close** (strongest positive), placed in **Friends** (real bond, weaker than Close), demoted (negative), removed (strong negative), **blocked (strongest negative; retroactive hard-negative on that pair's features)**. We just met → Acquaintances is not a style label.
 - Suggestion outcomes — added / approved (positive); dismissed / "don't suggest again" / declined (negative).
 - Quiz results **with the moderator's confidence** — low-confidence dimensions are discounted as features, not trusted.
 - Quick-check answers — "yes, still into it" (label: fresh) / edited (label: stale→corrected). This is human-in-the-loop label correction.
@@ -82,7 +82,7 @@ The line between "this app gets me" and "this app is watching me" is **provenanc
 
 ## 8 · The feature dictionary & labels (the contract)
 
-Features are **named, bounded [0–1], and human-readable** — the same names in code, config, snapshots, and this doc: `quiz_alignment` (computed over the **intersection of quizzes both people completed** at compatible versions — 0 when none shared; each shared quiz is its own evidence item) · `embedding_similarity` · `shared_attributes` (inverse-frequency weighted) · `moderator_notes_affinity` · `mutual_warmth` · `context_fit` (+ per-user taste vector, v3). Labels: promoted-to-Close **+1.0** · added/approved **+0.3** · reveal→message/plan **+0.4** · event-attended-after-suggestion **+0.4** · dismissed **−0.3** · don't-suggest-again **−0.5** · removed **−0.7** · blocked **−1.0**. Adding a feature or label = a PR to this table first — the dictionary is the contract that keeps every suggestion explainable.
+Features are **named, bounded [0–1], and human-readable** — the same names in code, config, snapshots, and this doc: `quiz_alignment` (computed over the **intersection of quizzes both people completed** at compatible versions — 0 when none shared; each shared quiz is its own evidence item; **per-dial psychology** in `MATCHING-PSYCHOLOGY.md`) · `embedding_similarity` · `shared_attributes` (inverse-frequency weighted) · `moderator_notes_affinity` · `mutual_warmth` · `context_fit` (+ per-user taste vector, v3). Labels: promoted-to-Close **+1.0** · placed-in-Friends **+0.55** · added/approved **+0.3** · reveal→message/plan **+0.4** · event-attended-after-suggestion **+0.4** · dismissed **−0.3** · don't-suggest-again **−0.5** · demoted **−0.5** · removed **−0.7** · blocked **−1.0**. Adding a feature or label = a PR to this table first — the dictionary is the contract that keeps every suggestion explainable.
 
 ## 9 · Cold start (a new community, day one)
 

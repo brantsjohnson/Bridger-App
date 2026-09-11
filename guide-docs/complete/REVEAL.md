@@ -63,10 +63,10 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 
 ## Where the content comes from
 
-- The strongest thing + the list = the **overlap of your and their matchable attributes** (shared hobbies, matching this-or-that answers, shared places traveled, matching quiz results), respecting tier visibility.
+- The strongest thing + the list = the **overlap of your and their matchable attributes** (shared hobbies, matching this-or-that answers, shared places traveled, matching quiz results). Visibility is **one-way**: you only see what they labeled for the circle they put you in (We just met = Acquaintances). If they placed you as Friends and you placed them as Acquaintances, you may see more of theirs than they see of yours.
 - **Shared hobbies can pair both follow-up answers** ("You both run" → your answer + theirs) — the conversation-starter detail, shown in full on the re-openable "In common" tab (see `PROFILE.md`).
 - `via {mutualFriend}` = the connection path (who introduced you).
-- **If overlap is thin:** show fewer items (screen 2 can shrink to 1–2, or be skipped); screen 1 always shows the single top thing.
+- **If overlap is thin:** show fewer items (screen 2 can shrink to 1–2, or be skipped when there are no extras *and* no shared quizzes). Screen 1 shows the strongest shared thing when there is one. When there is nothing to compare yet (no shared quiz, hobby, or other fact visible at the granted circle), screen 1 shows **Nothing to line up yet** plus a **Personality quizzes** button to Discover. Adding a friend is never blocked on a filled profile. In common on their profile fills in later. Never invent filler.
 
 ## Re-access
 
@@ -89,6 +89,6 @@ The opener. It captures the meeting memory and tells the reveal how to frame its
 
 ## Copy (use these exactly — they carry the charm)
 
-`{their full name}` (screen 0 top) · `How did you two meet?` · `We just met` · `We already know each other` · `Want to add them to a circle?` · `Optional · Close, Friends, or Acquaintances` · `Record where you met` · `Add a note` · `via {name}` (screens 1–3) · `What connects you most` · `You both live for climbing` (dynamic) · `How you line up` · i-tip `From the quizzes you both took` · `You've also got…` · `You two should click.` · `See {name}'s profile` · `Revisit anytime under "In common"`
+`{their full name}` (screen 0 top) · `How did you two meet?` · `We just met` · `We already know each other` · `Want to add them to a circle?` · `Optional · Close, Friends, or Acquaintances` · `Record where you met` · `Add a note` · `via {name}` (screens 1–3) · `What connects you most` · `You both live for climbing` (dynamic) · `Nothing to line up yet` · `Personality quizzes` · `How you line up` · i-tip `From the quizzes you both took` · `You've also got…` · `You two should click.` · `See {name}'s profile` · `Revisit anytime under "In common"`
 
 Everything else: minimal copy. Story beats advance on left/right tap zones with **no** bottom "tap right / tap left" hint.

@@ -1,111 +1,74 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // A New-onboarding screen where you tick one or more rows, then Continue.
-// Multi-select uses checkboxes. Single-select uses a plain row with a mark.
+// A row with an emoji sprays that emoji. Continue always sprays too.
 // ============================================
 import React from 'react';
 import { View } from 'react-native';
+import { ACCENT_HEX } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
-import { OBCTA, OBSkipLink, OBTile } from './onboarding-ui';
-import { VisualSlot } from './tour/VisualSlot';
-import type { CtaSpec, OnboardingChoiceOption } from './onboarding-new-copy';
+import { OnboardingInfoNote } from './OnboardingInfoNote';
+import { OnboardingPickRow } from './OnboardingPickRow';
+import { newShellFromSpec } from './new-shell';
+import { CONCEPT } from './onboarding-new-flow';
+import type { OnboardingScreenSpec } from './onboarding-new-copy';
 
 export function OnboardingChoiceStep({
-  step,
-  total,
-  chip,
-  header,
-  subheader,
-  kicker,
-  visualId,
-  options,
+  spec,
+  formStep,
+  formTotal,
   selectedIds,
-  multiSelect,
-  allowEmpty,
   optionAnalyticsId,
-  primaryCta,
-  secondaryCta,
   onToggle,
   onPrimary,
   onSecondary,
   onBack
 }: {
-  step: number;
-  total: number;
-  chip?: string;
-  header: string;
-  subheader?: string;
-  kicker?: string;
-  visualId?: string;
-  options: OnboardingChoiceOption[];
+  spec: OnboardingScreenSpec;
+  formStep: number;
+  formTotal: number;
   selectedIds: string[];
-  multiSelect?: boolean;
-  allowEmpty?: boolean;
   optionAnalyticsId: string;
-  primaryCta: CtaSpec;
-  secondaryCta?: CtaSpec;
   onToggle: (id: string) => void;
   onPrimary: () => void;
   onSecondary?: () => void;
   onBack?: () => void;
 }) {
-  const canContinue = allowEmpty || selectedIds.length > 0;
-
-  const footer = (
-    <View style={{ gap: 10 }}>
-      <OBCTA
-        label={primaryCta.label}
-        analyticsId={primaryCta.analyticsId}
-        onPress={onPrimary}
-        disabled={!canContinue}
-        accessibilityLabel={primaryCta.label}
-      />
-      {secondaryCta ? (
-        <OBSkipLink
-          label={secondaryCta.label}
-          analyticsId={secondaryCta.analyticsId}
-          onPress={onSecondary ?? (() => undefined)}
-        />
-      ) : null}
-    </View>
-  );
+  const canContinue = spec.allowEmpty || selectedIds.length > 0;
+  const shell = newShellFromSpec(spec, formStep, formTotal);
+  const fill = ACCENT_HEX[CONCEPT[spec.concept].accent] ?? ACCENT_HEX.teal;
 
   return (
     <OnboardingStep
-      step={step}
-      total={total}
-      purpose={chip}
-      ask={header}
-      blurb={subheader}
-      kicker={kicker}
-      smallAsk
-      scrollBody
-      footer={footer}
+      {...shell}
+      cta={spec.primaryCta.label}
+      ctaDisabled={!canContinue}
+      continueAnalyticsId={spec.primaryCta.analyticsId}
+      onContinue={onPrimary}
+      onSkip={spec.secondaryCta ? onSecondary : undefined}
+      skipLabel={spec.secondaryCta?.label}
+      skipAnalyticsId={spec.secondaryCta?.analyticsId}
       onBack={onBack}
+      headerNote={
+        spec.infoNote ? (
+          <OnboardingInfoNote label={spec.infoNote.label} body={spec.infoNote.body} />
+        ) : undefined
+      }
     >
-      <View style={{ gap: 12 }}>
-        <VisualSlot visualId={visualId} />
-        <View style={{ gap: 8 }}>
-          {options.map((opt) => {
-            const selected = selectedIds.includes(opt.id);
-            return (
-              <OBTile
-                key={opt.id}
-                label={opt.label}
-                sublabel={opt.sublabel}
-                selected={selected}
-                variant={multiSelect ? 'checkbox' : 'plain'}
-                mark={!multiSelect && selected ? '✓' : undefined}
-                analyticsId={optionAnalyticsId}
-                analyticsProps={{ option: opt.id }}
-                onPress={() => onToggle(opt.id)}
-                accessibilityLabel={
-                  opt.sublabel ? `${opt.label}. ${opt.sublabel}` : opt.label
-                }
-              />
-            );
-          })}
-        </View>
+      <View style={{ gap: 8 }}>
+        {(spec.options ?? []).map((opt) => (
+          <OnboardingPickRow
+            key={opt.id}
+            label={opt.label}
+            sublabel={opt.sublabel}
+            emoji={opt.emoji}
+            selected={selectedIds.includes(opt.id)}
+            fillColor={fill}
+            analyticsId={optionAnalyticsId}
+            analyticsProps={{ option: opt.id }}
+            onPress={() => onToggle(opt.id)}
+          />
+        ))}
       </View>
     </OnboardingStep>
   );

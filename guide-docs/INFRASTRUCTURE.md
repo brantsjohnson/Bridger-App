@@ -47,7 +47,7 @@ This is *why* we don't need a blockchain — Postgres already gives users full c
 ## Secrets & AI keys (server-side only)
 
 - **Never** put `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, or DB service keys in the client bundle. The app holds only the Supabase **anon** key + public config.
-- Store secrets in **AWS Secrets Manager** (or App Runner env from Secrets Manager); inject at runtime.
+- Store secrets in **AWS Secrets Manager** secret `bridger/api/server` (JSON, one field per env name). App Runner injects a short allow-list. Nest also **reads the whole vault at boot** (`BRIDGER_SERVER_SECRET_NAME`) so Stripe, RevenueCat, and the MusicKit `.p8` are used even when they were added later. Never log values. Local laptop keeps using `apps/api/.env` when that name is unset.
 - All AI calls (day/week summaries, quiz moderation, embedding generation) run in the **API server**, which is the only thing holding the keys.
 
 ### Env vars (API server)

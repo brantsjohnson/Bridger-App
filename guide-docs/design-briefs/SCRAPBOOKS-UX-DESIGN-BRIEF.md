@@ -1,6 +1,6 @@
 # Bridger Scrapbooks: UX design + build brief (grounded in the current app)
 
-Status: **decided 2026-09-08, Phase 1 built on branch `feat/scrapbooks`**. Written after inspecting the live Updates (stories) code, schema, docs, and design system. Founder decisions: camera roll allowed for pages (replies and stickers stay capture-only); user-facing name Scrapbook; a day holds 1 to 4 pages that can be merged or split; build Phase 1 on a branch with the plan in `SCRAPBOOKS-PHASE-PLAN.md`. The feature doc is `guide-docs/complete/SCRAPBOOKS.md`. This reconciles the outside "Bridger Scrapbooks" technical brief with how Bridger is actually built. Where the outside brief and Bridger's own rules disagree, the disagreement is called out in §11 instead of silently picking a side.
+Status: **decided 2026-09-08, Phase 1 built on branch `feat/scrapbooks`**. Written after inspecting the live Updates (stories) code, schema, docs, and design system. Founder decisions: camera roll allowed for pages (replies and stickers stay capture-only); user-facing name Collage (was Scrapbook); a day holds 1 to 4 pages that can be merged or split; build Phase 1 on a branch with the plan in `SCRAPBOOKS-PHASE-PLAN.md`. The feature doc is `guide-docs/complete/SCRAPBOOKS.md`. **Rename:** Scrapbook → Collage (2026-09-09); code names unchanged. This reconciles the outside "Bridger Scrapbooks" technical brief with how Bridger is actually built. Where the outside brief and Bridger's own rules disagree, the disagreement is called out in §11 instead of silently picking a side.
 
 Read alongside: `guide-docs/complete/STORIES.md` (current spec, to be superseded for posting), `guide-docs/DESIGN.md`, `guide-docs/MAGIC-PATTERNS.md`, `guide-docs/ANALYTICS-TAXONOMY.md`, `guide-docs/DATA.md`.
 
@@ -45,13 +45,13 @@ Per the naming rule (users never see internal names; never rename DB tables to c
 
 | User sees | Code says |
 |---|---|
-| **Scrapbook** (the feature), **Today's page** (the daily page), **Post** | `stories` module, `scrapbook_pages` / `scrapbook_elements` tables, `story_posted` event |
+| **Collage** (the feature), **Today's page** (the daily page), **Post** | `stories` module, `scrapbook_pages` / `scrapbook_elements` tables, `story_posted` event |
 | **Layouts** | `layout templates`, `LayoutFamily` |
 | **Add** (`+`) | add-media sheet |
 | **Customize** | customize tray (Phase 3+) |
 | **Who sees this** | `visible_to_tier` |
 
-The Home tile keeps the label "Your story" until the rename decision in §11 is made. Everything below writes "Scrapbook" assuming the rename is approved.
+The Home tile keeps the label "Your story" until the rename decision in §11 is made. Everything below writes "Collage" assuming the rename is approved.
 
 ---
 
@@ -72,36 +72,36 @@ The Home tile keeps the label "Your story" until the rename decision in §11 is 
 
 ```text
 ┌──────────────────────────────────────┐
-│ (v)                    [1/4]  ⚡  ⟲  │   close · count pill · flash · flip
-│                                      │
+│ (v)              [2 photos]  ⚡  ⟲  │   close · photo count · flash · flip
 │                                      │
 │                                      │
 │           LIVE CAMERA                │   full height, rounded 24
-│                                      │
-│                                      │
+│              [.5] [1] [2]            │   zoom chips (only what the phone has)
 │                                      │
 │  ┌────┐                              │
 │  │page│  ← "Today's page" thumb      │   only when a page already exists today
 │  └────┘                              │
 │                                      │
-│   [roll]        ( ● )         [✦]    │   camera roll · shutter · prompts tray
+│   [roll]        ( ● )                │   camera roll · shutter (no prompt icon)
 │                                      │
 └──────────────────────────────────────┘
 ```
 
 **What changed from today**
 
-- The camera fills the screen. The themed-prompt squares and the BeReal reminders card move into the `✦` **prompts tray** (bottom right). Tap `✦` → a small bottom tray with the three dashed prompt squares and, as its footer row, the existing BeReal reminders `Toggle`. Same prefs, same analytics ids, one tap away instead of always on screen.
-- **Count pill** `1/4` top center: how many photos/videos are on today's page out of the shared limit. It is a dead-click region (tagged `interactive:false`). It never reads "3 left"; the fraction is enough.
+- The camera fills the screen. **Themed prompt squares (OOTD / Hot take / Take 0.5) are removed.** BeReal-like reminders stay in Settings → Notifications, not on capture.
+- **Count pill** `2 photos` top center: how many photos/videos are on today's pages. Spoken label still includes the cap ("2 of 4…"). It is a dead-click region. Never use bare `2/4` (reads as step progress).
 - **Flash** `⚡` cycles off / on / auto (icon changes, plus `accessibilityValue`). New control; expo-camera `flash` prop.
+- **Zoom chips** `.5` / `1` / `2` / `4` over the preview: only factors this phone supports (iOS lenses when available; otherwise digital 1 and 2). Never show a chip the hardware cannot do.
 - **Camera roll** thumbnail bottom left: shows the most recent roll photo, small (44pt), muted border. Tap → OS picker (`expo-image-picker`, multiple select up to remaining count, photos + videos ≤ 20s). This is visually secondary to the shutter on purpose. Gated on the decision in §11.1.
-- **Today's page thumb**: when a Daily Scrapbook already exists for today, a small 8.5 x 11 thumbnail of the current page floats bottom left above the roll thumb. Tap → opens Compose directly on the existing page (no capture needed). Read as "I am adding to this."
+- **Today's page thumb**: when a Daily Collage already exists for today, a small 8.5 x 11 thumbnail of the current page floats bottom left above the roll thumb. Tap → opens Compose directly on the existing page (no capture needed). Read as "I am adding to this."
 - Shutter unchanged: tap photo, hold video, co-op lock on video stays.
-- At the cap (`4/4`): the shutter dims, count pill turns amber, tap shows the existing alert copy updated to "4 photos or videos a day".
+- At the cap (4 photos): the shutter dims, count pill turns amber, tap shows the existing alert copy updated to "4 photos or videos a day".
+- **No themed posts / suggested squares** on this screen.
 
-**Copy budget on this screen**: `1/4`. That is it. (Plus the OS permission prompt and the two alerts that already exist.)
+**Copy budget on this screen**: photo count + zoom labels. That is it. (Plus the OS permission prompt and the two alerts that already exist.)
 
-**Accessibility**: every control has a role + label (`Flash: auto`, `Add from camera roll`, `Open today's page`, `Prompts and reminders`). Count pill is `accessibilityLabel="1 of 4 photos on today's page"`. Shutter keeps "Tap for a photo, hold for video".
+**Accessibility**: every control has a role + label (`Flash: auto`, `Add from camera roll`, `Open today's page`, `.5 times zoom`). Count pill is `accessibilityLabel="2 of 4 photos on today's pages"`. Shutter keeps "Tap for a photo, hold for video".
 
 ---
 
@@ -109,7 +109,7 @@ The Home tile keeps the label "Your story" until the rename decision in §11 is 
 
 ```text
 ┌──────────────────────────────────────┐
-│ (<)             [2/4]     [Friends ▾]│   back · count · audience chip
+│ (<)             [2 photos]           │   back · photo count (not steps)
 │                                      │
 │        ┌────────────────────┐        │
 │        │                    │        │
@@ -121,8 +121,8 @@ The Home tile keeps the label "Your story" until the rename decision in §11 is 
 │                                      │
 │   [▣] [▤] [▥] [▦] [▧]   ‹ swipe ›    │   layout carousel (thumbs, no labels)
 │                                      │
-│   (+)         (✎)          [ POST ]  │   add · customize · metallic Post
-│                                (i)   │   info popover, tiny, bottom right
+│   (+)         (✎)          [ Next ]  │   add · customize · Next → who sees
+│                                (i)   │   then "Post to Friends" in the sheet
 └──────────────────────────────────────┘
 ```
 
@@ -144,18 +144,17 @@ The Home tile keeps the label "Your story" until the rename decision in §11 is 
 
 **Bottom bar**
 
-- `+` **Add**: opens the add sheet: `Camera` `Camera roll` (and later `Voice`, `People`, `Place`, `Event photo`). With 1 remaining, both media options still show; at `4/4`, media options are dimmed with the count shown, not hidden.
+- `+` **Add**: opens the add sheet: `Camera` `Camera roll` (and later `Voice`, `People`, `Place`, `Event photo`). With 1 remaining, both media options still show; at 4 photos, media options are dimmed with the count shown, not hidden.
 - `✎` **Customize**: Phase 1 shows a compact tray with only `Style` (page background swatches: eggshell, white, kraft, notebook). Phase 3 grows it to `Add · Text · Decorate · Background · Layout` as icon tabs, still in a tray, still with the page visible above it.
-- `POST`: `ButtonPrimary` (metallic), always enabled when ≥ 1 media. If the page already exists today the label stays `Post` (the user does not need to know it is an update). Product event differs (`story_posted` on first post of the day, `scrapbook_page_updated` afterward).
+- `Next`: metallic `ButtonPrimary`, always enabled when ≥ 1 media. Opens the who-sees sheet. Confirm there is **Post to Friends** (or Close / Only me / Everyone). Product event differs (`story_posted` on first post of the day, `scrapbook_page_updated` afterward).
 - `i`: `InfoPopover` with three short lines. Never a modal.
 
 **Top row**
 
 - `<` back returns to the camera without losing the page (draft persists, §8).
-- Count pill as on screen 1.
-- **Audience chip** `Friends ▾`: tap → `Sheet` containing the existing `AudiencePicker` plus a new `Only me` row at the top and, for co-op members with groups, the existing `Or a group` block. Audience is per page (per day). Default = last used, else Friends. Sheet is its own surface `audience_sheet`.
+- Count pill as on screen 1 ("2 photos"). Who-sees is not on this row; it lives behind Next.
 
-**Copy budget on this screen**: `Post`, the audience label (`Friends`), and the placeholder inside the caption slot (`Add something…`). The `i` popover holds the only sentences.
+**Copy budget on this screen**: `Next`, then in the sheet `Post to {audience}`, plus the placeholder inside the caption slot (`Add something…`). The `i` popover holds the only sentences.
 
 ---
 
@@ -256,7 +255,7 @@ Default template on first capture: `1b` (photo + caption) if the person has type
 | `ComposerBar` | `+` · `✎` · `POST` row with the `i` popover |
 | `CountPill` | `1/4` dead-click pill (amber at cap) |
 | `CaptureRail` | flash · flip · roll thumb · today's-page thumb around the existing shutter |
-| `PromptsTray` | the three dashed prompt squares + reminders toggle, as a tray |
+| `PromptsTray` | **removed** — themed OOTD / Hot take squares are gone from capture |
 | `CaptionSheet` | Type / Record with timer + waveform |
 | `AudienceSheet` | wraps `AudiencePicker` + Only me + groups |
 | `CustomizeTray` | Phase 1: background swatches + Undo. Phase 3: icon tabs |
@@ -286,13 +285,13 @@ Surface `post_composer` (kept) gains:
 
 | section | elements |
 |---|---|
-| `capture` | `photo`, `hold_video`, `switch_camera`, **`flash`** (`method: off\|on\|auto`), **`roll`**, **`today_page_thumb`**, **`prompts_tray_open`**, **`count_pill` (dead)** |
+| `capture` | `photo`, `hold_video`, `switch_camera`, **`flash`** (`method: off\|on\|auto`), **`roll`**, **`today_page_thumb`**, **`zoom`**, **`count_pill` (dead)**. No themed prompts. |
 | `page` | **`canvas` (dead)**, **`photo_slot`**, **`caption_slot`**, **`stamp`**, **`replace`**, **`remove`** |
 | `layouts` | **`thumb`** (`method: swipe\|tap`, `page_index`, `carousel_depth`, `layout_id`, `layout_family`) |
 | `actions` | `post`, `add_another`, `discard`, **`add`**, **`customize`**, **`info`**, **`undo`**, **`back`** |
 | `audience` | `close`, `friends`, `everyone`, `group`, **`only_me`**, **`chip`** |
 
-New surfaces (each with `parent_screen: post_composer`, open/dismiss, `dwell_ms`): `caption_sheet`, `audience_sheet`, `add_media_sheet`, `customize_tray`, `prompts_tray`, `layout_tooltip`.
+New surfaces (each with `parent_screen: post_composer`, open/dismiss, `dwell_ms`): `caption_sheet`, `audience_sheet`, `add_media_sheet`, `customize_tray`, `layout_tooltip`. (`prompts_tray` retired.)
 
 Flow `post_story` steps become: `open_composer → capture (method photo|video|roll) → layout_picked → caption (method text|voice) → audience → post`. `flow_completed` fires only after the server confirms.
 

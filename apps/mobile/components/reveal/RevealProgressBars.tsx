@@ -33,3 +33,6 @@ export function RevealProgressBars({ segments = 3, active, onComplete }: Props) 
     </AnalyticsRegion>
   );
 }
+
+/** Same beat length the progress bars use (export for the close-card auto-open). */
+export const REVEAL_CARD_MS = CARD_MS;

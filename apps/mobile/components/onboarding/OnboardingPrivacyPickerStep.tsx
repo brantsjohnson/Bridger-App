@@ -1,99 +1,122 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The birthday privacy picker. You pick Close Friends, Friends, or
-// Acquaintances. That choice becomes the audience for your birthday.
+// Who can see your birthday. Groups nest: picking Friends also ticks Close
+// Friends and Only Me. The row color never changes. Only the check fills.
 // User-facing word is Groups, never circles or tiers.
 //
-// PRIVACY: we store an opaque group key (close / friend / acquaintance), never
-// a list of names.
+// PRIVACY: we store an opaque group key (none / close / friend / acquaintance).
 // ============================================
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { CheckIcon } from 'lucide-react-native';
 import type { Tier } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
+import { withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep } from './OnboardingStep';
-import { OBCTA, OBTile } from './onboarding-ui';
-import { VisualSlot } from './tour/VisualSlot';
-import type { CtaSpec, OnboardingChoiceOption } from './onboarding-new-copy';
+import { OnboardingInfoNote } from './OnboardingInfoNote';
+import { newShellFromSpec } from './new-shell';
+import { INFO } from './onboarding-new-flow';
+import { OB, OB_RADIUS } from './onboarding-theme';
+import type { OnboardingScreenSpec } from './onboarding-new-copy';
 
-const TIER_LABEL: Record<string, string> = {
-  close: 'Close Friends',
-  friend: 'Friends',
-  acquaintance: 'Acquaintances'
-};
+const ORDER: Tier[] = ['none', 'close', 'friend', 'acquaintance'];
 
 export function OnboardingPrivacyPickerStep({
-  step,
-  total,
-  chip,
-  header,
-  subheader,
-  visualId,
-  options,
+  spec,
+  formStep,
+  formTotal,
   value,
-  primaryCta,
   onChange,
   onPrimary,
   onBack
 }: {
-  step: number;
-  total: number;
-  chip?: string;
-  header: string;
-  subheader?: string;
-  visualId?: string;
-  options: OnboardingChoiceOption[];
+  spec: OnboardingScreenSpec;
+  formStep: number;
+  formTotal: number;
   value: Tier | null;
-  primaryCta: CtaSpec;
   onChange: (tier: Tier) => void;
   onPrimary: () => void;
   onBack?: () => void;
 }) {
-  const caption = value ? `Visible to ${TIER_LABEL[value] ?? value}` : undefined;
+  const shell = newShellFromSpec(spec, formStep, formTotal);
+  const pickedIndex = value ? ORDER.indexOf(value) : -1;
 
   return (
     <OnboardingStep
-      step={step}
-      total={total}
-      purpose={chip}
-      ask={header}
-      blurb={subheader}
-      smallAsk
-      scrollBody
-      footer={
-        <OBCTA
-          label={primaryCta.label}
-          analyticsId={primaryCta.analyticsId}
-          onPress={onPrimary}
-          disabled={!value}
-          accessibilityLabel={primaryCta.label}
-        />
-      }
+      {...shell}
+      cta={spec.primaryCta.label}
+      ctaDisabled={!value}
+      ctaNote={spec.ctaNote}
+      continueAnalyticsId={spec.primaryCta.analyticsId}
+      onContinue={onPrimary}
       onBack={onBack}
+      headerNote={
+        <OnboardingInfoNote label="How privacy works" body={INFO.privacy} />
+      }
     >
-      <View style={{ gap: 12 }}>
-        <VisualSlot visualId={visualId} caption={caption} />
-        <View style={{ gap: 8 }}>
-          {options.map((opt) => {
-            const selected = value === opt.id;
-            return (
-              <OBTile
-                key={opt.id}
-                label={opt.label}
-                sublabel={opt.sublabel}
-                selected={selected}
-                variant="plain"
-                mark={selected ? '✓' : undefined}
-                analyticsId={ONBOARDING.privacy.group_option}
-                analyticsProps={{ option: opt.id }}
-                onPress={() => onChange(opt.id as Tier)}
-                accessibilityLabel={
-                  opt.sublabel ? `${opt.label}. ${opt.sublabel}` : opt.label
-                }
-              />
-            );
-          })}
-        </View>
+      <View style={{ gap: 8 }} accessibilityRole="radiogroup">
+        {(spec.options ?? []).map((opt, i) => {
+          const ticked = pickedIndex >= 0 && i <= pickedIndex;
+          const active = value === opt.id;
+          return (
+            <Pressable
+              key={opt.id}
+              onPress={withAnalyticsPress(ONBOARDING.privacy.group_option, () =>
+                onChange(opt.id as Tier)
+              , { analyticsProps: { option: opt.id } })}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={
+                opt.sublabel ? `${opt.label}. ${opt.sublabel}` : opt.label
+              }
+              style={{
+                minHeight: 52,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: '#FFFFFF',
+                borderWidth: 0,
+                borderRadius: OB_RADIUS
+              }}
+            >
+              <View
+                accessible={false}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 999,
+                  borderWidth: 2,
+                  borderColor: ticked ? OB.blue : 'rgba(28,27,22,0.25)',
+                  backgroundColor: ticked ? OB.blue : '#FFFFFF',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                {ticked ? <CheckIcon size={14} color="#FFFFFF" strokeWidth={3.5} /> : null}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text className="font-sans-b text-[15px]" style={{ color: OB.navy }}>
+                  {opt.label}
+                </Text>
+                {opt.sublabel ? (
+                  <Text className="font-sans-sb text-[12px]" style={{ color: OB.inkSoft }}>
+                    {opt.sublabel}
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
+          );
+        })}
+        {!value ? (
+          <Text
+            className="pt-1 text-center font-sans-b text-[13px]"
+            style={{ color: OB.inkSoft }}
+          >
+            Choose one to continue
+          </Text>
+        ) : null}
       </View>
     </OnboardingStep>
   );

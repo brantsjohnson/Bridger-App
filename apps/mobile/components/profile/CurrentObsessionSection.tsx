@@ -1,8 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Who you are today: a 2-up grid of squares (Reading…, Building…, …). Top 4
-// show; a pill CTA under them expands the rest. Empty squares fall back to
-// an emoji. Listening squares can show artwork + a preview play control.
+// Current Obsession on your profile: a 2-up grid of squares (Reading…,
+// Building…, Listening…). Top 4 show; a pill under them expands the rest.
+// Empty squares fall back to an emoji. Listening squares can show artwork
+// and a preview play control. The empty-state card asks for an obsession
+// on your full own profile only. Friend / View-as previews hide the whole
+// section when nothing is visible (no header, no "nothing right now").
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
@@ -33,6 +36,7 @@ export function CurrentObsessionSection({
   items,
   editable,
   own,
+  showEmptyCtas,
   onAdd,
   onPressSquare
 }: {
@@ -40,12 +44,16 @@ export function CurrentObsessionSection({
   editable?: boolean;
   /** Own profile can always add/fill, even when not in rearrange (Edit) mode. */
   own?: boolean;
+  /**
+   * When false (friend view or View as Friends/Everyone), an empty Obsession
+   * section disappears completely so it does not hint at hidden content.
+   */
+  showEmptyCtas?: boolean;
   onAdd?: () => void;
   onPressSquare?: (item: ObsessionSquare) => void;
 }) {
-  // THIS SECTION DOES: reveal the "Who are you today?" add card whenever it's
-  // your own profile, not only while the layout Edit toggle is on.
-  const canAdd = editable || own;
+  // THIS SECTION DOES: reveal the empty add card on your full own profile only.
+  const canAdd = showEmptyCtas ?? Boolean(editable || own);
   // Canvas color for the play glyph on bg-ink (ink flips cream in dark mode).
   const theme = useThemeColors();
   const [expanded, setExpanded] = useState(false);
@@ -56,6 +64,9 @@ export function CurrentObsessionSection({
   const hasMore = ordered.length > 4;
 
   useEffect(() => subscribeMusicPreview(setPlayingUrl), []);
+
+  // PRIVACY / UX: no empty header for viewers. The section simply is not there.
+  if (ordered.length === 0 && !canAdd) return null;
 
   return (
     <View>
@@ -73,20 +84,16 @@ export function CurrentObsessionSection({
         style={{ marginTop: PROFILE_TITLE_TO_BODY, gap: PROFILE_GRID_GAP }}
       >
         {visible.length === 0 ? (
-          canAdd ? (
-            <ProfileAddCard
-              label="Who are you today?"
-              helper="Share what you are into right now."
-              emoji="✨"
-              accent="purple"
-              minHeight={96}
-              analyticsId={PROFILE.card.add_module}
-              accessibilityLabel="Add Current Obsession"
-              onPress={() => onAdd?.()}
-            />
-          ) : (
-            <Text className="font-sans-sb text-[14px] text-ink-mute">Nothing right now.</Text>
-          )
+          <ProfileAddCard
+            label="What's your current obsession?"
+            helper="A show, hobby, song, or anything on repeat right now."
+            emoji="✨"
+            accent="purple"
+            minHeight={96}
+            analyticsId={PROFILE.card.add_module}
+            accessibilityLabel="Add Current Obsession"
+            onPress={() => onAdd?.()}
+          />
         ) : (
           visible.map((item) => {
             const music = item.music;

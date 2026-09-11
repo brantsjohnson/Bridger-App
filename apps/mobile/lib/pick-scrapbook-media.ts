@@ -1,14 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Opens the phone's photo library so someone can add existing photos or short
-// videos to a Scrapbook page. It asks for permission the moment they tap
+// videos to a Collage page. It asks for permission the moment they tap
 // (never at launch), lets them pick up to the number of photos they have left
 // today, and hands back plain file paths tagged "camera_roll" so the page
 // remembers where each picture came from.
 //
 // PRIVACY: this only ever touches the photos the person picks. We never read
 // the whole library. The profile photo used to be the app's only upload
-// exception; Scrapbook pages are the second (approved 2026-09-08). Circle
+// exception; Collage pages are the second (approved 2026-09-08). Circle
 // replies and stickers stay capture-only.
 // ============================================
 import { Platform } from 'react-native';

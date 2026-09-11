@@ -83,6 +83,7 @@ user_settings    user_id⟶users · discoverable · notif_prefs(jsonb {kinds,cir
                  · page_authoring(auto|manual|assist|null)
                  [home_city = city only, never street address; profile_color tints SynthGrid for this user]
 pending_people   id · author_id⟶users · phone_e164 · display_name · merged_user_id⟶users · created_at
+                 [PII, author-only; created when you pick one contact on Friends; merge on matching phone]
                  [author-only private card for someone not on Bridger yet; unique open (author, phone);
                   never a full address book; merge on signup with matching Auth phone]
 music_connections user_id⟶users · provider(spotify|apple_music) · refresh_token_enc · access_token_enc
@@ -136,6 +137,22 @@ friend_notes     id · author_id⟶users · person_id⟶users (nullable) · pend
                  [private, author-only; exactly one of person_id / pending_person_id; never matching/AI]
 ```
 
+### Circles / Influencers (PLANNED: docs only, no migration yet)
+
+Separate from `connections` / `tiers`. Spec: `CIRCLES.md`.
+```
+influencer_profiles      user_id⟶users · status(pending|active|suspended) · display_name · bio · share_token
+influencer_entitlements  user_id⟶users · provider(revenuecat|stripe) · status · period_end
+                         · cancel_at_period_end · provider_ref
+circle_edges             fan_id⟶users · influencer_id⟶users · status(active|paused)
+                         · visibility_tier(acquaintance|friend|close)
+                         · follow_platforms(text[]) · handles_json · connected_at
+                         [unique (fan, influencer); handles = Zone A; never matchable]
+circle_queries           id · influencer_id⟶users · query_shape(jsonb) · result_count · created_at
+                         [audit; NO names, handles, or attribute values]
+```
+RLS when migrated: fan owns their edge (read/update/delete). Influencer reads `active` edges where they are `influencer_id`, plus the fan's attributes allowed by `visibility_tier`. Disconnect or account delete hard-deletes the edge and handles. Circle edges are **not** mutual bridges for Discover FoF.
+
 ### Content
 ```
 media            id · owner_id⟶users · storage_path · kind · created_at · expires_at   [retention]
@@ -148,19 +165,42 @@ day_summaries    author_id⟶users · date · text(AI, from update_text + transc
 reactions        id · story_id⟶stories · author_id⟶users · kind(circleVideo|text|sticker)
                  · media_id⟶media · text · sticker_id · parent_reaction_id⟶reactions
 quips (Inside Jokes)  id · author_id⟶users(posted by) · quoted_person_id⟶users(pic on note)
-                 · text · context_event_id⟶events · place · created_at · visible_to_tier
-                 [note shows quoted person's photo; tap → posted-by + event/place + date]
-                 [shares to tagged people + tagged event's attendees; cross-posts to tagged people's walls]
+                 · text · context_event_id⟶events · place · accent · photo_media_id⟶media
+                 · created_at · visible_to_tier
+                 [note shows quoted person's face; optional co-op photo on the paper]
+                 [newest first on Friends; lands on the poster's wall and the tagged person's wall]
+recap_weeks      id · week_of · week_start(Mon UTC) · origin(admin|auto) · active · created_at
+                 [one live week; Monday lock if admin did not set one]
+recap_questions  id · week_id⟶recap_weeks · idx(0-4) · text · source(admin|submitted|ai|builtin)
+                 · author_id⟶users|null
+recap_submitted_questions  id · author_id⟶users · text · votes · used · created_at
+                 [suggest + upvote for next Monday; used once pulled into a week]
+recap_question_votes  question_id⟶recap_submitted_questions · user_id⟶users  [one vote each]
+recap_answers    id · week_id⟶recap_weeks · author_id⟶users · question_index
+                 · media_id⟶media · duration_seconds · visible_to_tier · expires_at
+                 [voice clip; audience = Close / Friends / Acquaintances]
+                 [expires_at +7d free / null co-op; GET /recap/weeks + playlist?weekId=]
+                 [this week for all; past weeks only if listener is co-op and can hear a clip]
 quip_tags        quip_id⟶quips · tagged_user_id⟶users            [tagged people — receive + cross-post]
 bucket_list      id · owner_id⟶users · text · is_public · done · created_at   [profile module]
 bucket_list_tags item_id⟶bucket_list · tagged_user_id⟶users     [friends tagged to do it together]
 events           id · host_id⟶users · co_host_ids · title · bio · starts_at · address · place · bring
                  · chip_in(amount,note,methods[{kind,handle}]) · allow_friends_invite · cap(35|coop 100)
                  · recurrence(jsonb|null)  [weekly|monthly|yearly rule; null = one-off; starts_at = next]
+                 · remind_day(bool) · remind_hours(bool)   [PLANNED persist; worker emits event_reminder]
+                 · audience_kind(friends|circle) · circle_segment_ids(uuid[]|null)  [PLANNED; CIRCLES.md]
 event_invites    event_id⟶events · user_id⟶users · status(going|cant|invited)
                  · invited_by⟶users|null   [null = host invited; else the attendee who invited]
                  · allergies_optin · allergies_text            [host-only, opt-in]
 event_intros     event_id⟶events · a⟶users · b⟶users · why
+event_host_notes id · event_id⟶events · author_id⟶users · text · photo_media_id⟶media
+                 · audience(going|invited|both) · created_at
+                 [PLANNED; one-way host→guest; not a chat]
+event_album_saves event_id⟶events · user_id⟶users · media_id⟶media · saved_to_device_at
+                 [PLANNED; per-viewer save-to-Photos; unique (user, media)]
+event_album_quota event_id⟶events · used_bytes · used_count · quota_bytes · quota_count
+                 · add_on_active(bool) · add_on_provider_ref
+                 [PLANNED; event-scoped pool, not plan_state.storage]
 polls            id · author_id⟶users · question · closes_at(≤7d)   [CREATE = co-op; answering free]
 poll_options     poll_id⟶polls · label      /   poll_votes  poll_id · option_id · user_id
 touch_grass      id · author_id⟶users · audience_tier · when · why · created_at   [send on Events only; answer cards shown on Home]
@@ -214,12 +254,14 @@ coop_memberships   user_id⟶users · since · active · dues_paid_through
                    [unlocks all co-op benefits, see COOP.md; cancel_at_period_end keeps perks until dues_paid_through]
 plan_state         user_id⟶users · plan(free|coop) · storage(rolling30|unlimited) · used_bytes
                    · circle_caps(free 5/30/∞, coop 25/125/∞) · video(bool) · summary(weekly|daily) · event_cap(35|100)
-payments           id · user_id⟶users · kind(coop_dues) · amount · provider_ref   [one membership; no à-la-carte SKUs]
+payments           id · user_id⟶users · kind(coop_dues|billy_plus|influencer|event_album_storage)
+                   · amount · provider_ref
+                   [co-op is still the membership SKU; extra kinds = Billy+, Influencer role, host album add-on]
 coop_promo_codes   id · code(unique, UPPER) · label · grant_months(12) · max_redemptions(the "amount", e.g. 25) · redeemed_count · active(bool)
                    [admin-issued auth codes for a free year; server-only writes; RLS: no client read]
 coop_promo_redemptions promo_code_id⟶coop_promo_codes · user_id⟶users · redeemed_at   [PK(promo_code_id,user_id): one use per person; RLS select-own; hard-delete with account]
 ```
-*(Recommended model: the co-op is the single paid membership; storage/video/circles/hosting-scale are benefits of it, not separate purchases — see `COOP.md`.)*
+*(Recommended model: the co-op is the single paid **membership**; storage/video/friend-circle scale/hosting-scale are benefits of it, not micro-SKUs. Intentional extra SKUs: **Billy+**, **Influencer** entitlement (`CIRCLES.md`), and **event album storage** add-on (`EVENTS.md`).)*
 
 ### Admin / config
 ```
@@ -229,11 +271,24 @@ quizzes            id · version · goal · dimensions(jsonb) · moderator_instr
 quiz_questions     id · quiz_id⟶quizzes · prompt · type(single|multi) · options(jsonb: label + dimension weights) · allow_explain
 quiz_responses     id · quiz_id · user_id⟶users · question_id · selected_option_ids · explain_text
 quiz_results       user_id⟶users · quiz_id · dimension_scores(jsonb, deterministic rubric) · confidence(jsonb, AI moderator) · completed_at   [feeds attributes → matching Zone B/C]
-jname_results      user_id⟶users(PK) · j_name · percent · top_names(text[]: top J-names by score, for match alerts) · updated_at   [Which J name; retakes overwrite; RLS owner-only; friend reads via Nest; pairwise fun compatibility % derived at read time from both results; cascade]
+
+### User-authored version quizzes (PLANNED: docs only, no migration yet)
+
+Separate from admin `quiz_registry`. Spec: `VERSION-OF-ME.md`. Never writes matchable Discover attributes.
+```
+user_quizzes           id · owner_id⟶users · slug · title · status(draft|live|archived) · version
+user_quiz_versions     id · quiz_id⟶user_quizzes · key · label · blurb · photo_media_id⟶media
+user_quiz_questions    id · quiz_id⟶user_quizzes · prompt · sort · options(jsonb: label + version weights)
+user_quiz_responses    id · quiz_id · taker_id⟶users · question_id · selected_option_id
+user_quiz_results      quiz_id · taker_id⟶users · version_key · completed_at   [unique (quiz, taker)]
+user_quiz_shares       token(PK) · quiz_id⟶user_quizzes · owner_id⟶users   [one live share link]
+```
+RLS when migrated: owner reads/writes own quiz; taker reads `live` via share token and writes own response/result; who-got-who is owner + mutual friends only. Cascade on account or quiz delete.
+jname_results      user_id⟶users(PK) · j_name · percent · top_names(text[]: top J-names by score, for match alerts) · updated_at   [Which J name; first finish is durable (fun retakes stay on-device and do not overwrite); RLS owner-only; friend reads via Nest; pairwise fun compatibility % derived at read time from both first results; cascade]
 jname_shares       token(PK) · sharer_id⟶users(unique) · j_name · percent   [one stable public share link per person; snapshot; public web view reads via Nest service role; cascade]
-jname_referrals    id · token⟶jname_shares · sharer_id⟶users · invited_user_id⟶users|null · anon_ref(opaque, logged-out) · opened_at · resolved_at   [who opened a link / who-invited-whom; resolved after signup by Nest; RLS: sharer or invited can read; cascade]
+jname_referrals    id · token⟶jname_shares · sharer_id⟶users · invited_user_id⟶users|null · anon_ref(opaque, logged-out) · opened_at · resolved_at   [who opened a link; signup resolve adds an accepted connection (`made_via=link`) so both can see the duo result; RLS: sharer or invited can read; cascade]
 disclosure_profiles user_id⟶users · version · status(pending|skipped|completed) · match_weight_preference(use|a_little|barely?) · matching_enabled · completed_at · updated_at
-                   [Behind the Scenes; owner-only; NEVER profile / NEVER reveal evidence; additive matching only]
+                   [Behind the Scenes; archived from Discover list; owner-only; NEVER profile / NEVER reveal evidence; additive matching only]
 disclosure_items   id · user_id⟶users · condition_key · condition_label_custom? · impact_level(1–4)? · context_note? · unique(user_id, condition_key)
                    [sensitive free text stays owner-only; hard-delete with account]
 coop_announcements id · body · published_at
@@ -244,7 +299,7 @@ notifications      id · user_id⟶users · kind · payload(jsonb) · read · cr
 ```
 
 ### Deletion cascade
-Deleting a `users` row cascades to **every** table above keyed by that user — identity, attributes, relationships, content, embeddings, summaries, media (and the storage objects) — so account deletion leaves nothing behind. Opt-out (Discoverable off) deletes Zone C derived rows: `person_embeddings`, `person_summaries`, `module_moderator_notes`, `freshness_prompts` (and related week/day summary rows stay with the author's content cascade on full account delete).
+Deleting a `users` row cascades to **every** table above keyed by that user — identity, attributes, relationships (including `circle_edges` and handles), content, embeddings, summaries, media (and the storage objects), planned `user_quizzes` / results, Influencer entitlements — so account deletion leaves nothing behind. Opt-out (Discoverable off) deletes Zone C derived rows: `person_embeddings`, `person_summaries`, `module_moderator_notes`, `freshness_prompts` (and related week/day summary rows stay with the author's content cascade on full account delete). Disconnecting a Circle edge hard-deletes that row and its handles without deleting the accounts.
 
 ---
 
@@ -258,3 +313,6 @@ Deleting a `users` row cascades to **every** table above keyed by that user — 
 - [ ] Turning off Discoverable deletes the user's embeddings + summary (instantly unfindable).
 - [ ] Deleting an attribute rebuilds affected embeddings; deleting an account hard-deletes all zones and storage objects via cascade — nothing retained.
 - [ ] RLS prevents reads above a viewer's tier even if the API errs.
+- [ ] Planned Circles tables (`circle_edges`, Influencer profile/entitlement) are a separate edge from `connections` / `tiers`; fan-chosen `visibility_tier` gates Influencer reads; handles are Zone A.
+- [ ] Planned event host notes, album saves, and event-scoped album quota are documented; album expiry is 7 days after event end unless that viewer saved.
+- [ ] Planned `user_quizzes` stay out of `quiz_registry` and never write matchable Discover attributes.

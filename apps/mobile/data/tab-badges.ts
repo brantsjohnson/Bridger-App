@@ -9,6 +9,9 @@
 import type { NotificationKind } from '@bridger/shared';
 import type { TabKey } from '@bridger/ui';
 import { isDemoMode } from '../lib/demo';
+// #region agent log
+import { debugCountNotify } from '../lib/debug-instrumentation';
+// #endregion
 import { hasOpenStoryReplies, unreadNotificationKinds } from './feed';
 
 /** Section analytics keys that can show a title-side attention dot. */
@@ -39,6 +42,7 @@ const KIND_TO_ATTENTION: Partial<
   story_reply: { tab: 'home', section: 'stories_row' },
   story_reply_elsewhere: { tab: 'home', section: 'notifications_preview' },
   story_prompt: { tab: 'home', section: 'stories_row' },
+  collage_tag: { tab: 'home', section: 'stories_row' },
   poll_activity: { tab: 'home', section: 'ask_the_group' },
   activity_live: { tab: 'home', section: 'activity' },
   delight_gift: { tab: 'home', section: 'announcements' },
@@ -71,6 +75,9 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 function notify() {
+  // #region agent log
+  debugCountNotify('tab-badges');
+  // #endregion
   listeners.forEach((fn) => fn());
 }
 

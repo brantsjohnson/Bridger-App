@@ -64,7 +64,9 @@ export function LocalMapTeaser() {
               Friend radar for your city
             </Text>
             <Text className="mt-0.5 font-sans-sb text-[13px] leading-snug text-ink-soft">
-              See friends nearby when they choose to share.
+              See friends nearby when they choose to share. When a close friend
+              visits your city, Bridger will ask them if they want to let you
+              know so you can say hey or plan a Touch Grass.
             </Text>
           </View>
         </View>

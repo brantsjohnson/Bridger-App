@@ -1,7 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Full-screen modal route for making a Scrapbook page (camera, then the page).
-// Opened from the "Your scrapbook" tile on Home, from a party capture
+// Full-screen modal route for making a Collage page (camera, then the page).
+// Opened from the "Your collage" tile on Home, from a party capture
 // notification that passes ?eventId= so the post tags the event photo album,
 // or with ?postId= to open one of today's pages straight away to add to it.
 // Video posting is a co-op perk: we load real membership before compose mounts.
@@ -14,7 +14,11 @@ import { getEvent } from '../../data/events';
 
 export default function StoryCaptureScreen() {
   const router = useRouter();
-  const { eventId, postId } = useLocalSearchParams<{ eventId?: string; postId?: string }>();
+  const { eventId, postId, photoUri } = useLocalSearchParams<{
+    eventId?: string;
+    postId?: string;
+    photoUri?: string;
+  }>();
   const [isCoopMember, setIsCoopMember] = useState(false);
   const [eventTitle, setEventTitle] = useState<string | undefined>();
 
@@ -63,6 +67,7 @@ export default function StoryCaptureScreen() {
       initialEventId={tagEventId}
       initialEventTitle={eventTitle}
       initialPostId={typeof postId === 'string' ? postId : undefined}
+      initialPhotoUri={typeof photoUri === 'string' ? photoUri : undefined}
     />
   );
 }

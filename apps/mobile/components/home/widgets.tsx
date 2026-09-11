@@ -29,9 +29,11 @@ import {
 import { PersonAvatar } from '../PersonAvatar';
 import { EventDateChip } from '../event/EventDateChip';
 import { QuizCoverCycler } from './QuizCoverCycler';
+import { ToDoBadge } from './ToDoBadge';
 import { meetSuggestionsForEvent } from '../../data/events';
 import { personById } from '../../data/people';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
+import { getLiveJnameSessionResult } from '../../data/quiz';
 import type { WidgetSize } from './HomeWidget';
 
 /** Tailwind h-52 / h-28 in px (default 1rem = 16px). Matches QuizWidget banner heights. */
@@ -440,7 +442,8 @@ export function QuizWidget({
 }) {
   // Your result comes from myResultLabel (or resultId), not from friend buckets.
   // Friend buckets only power "Your versions" / who-got-who.
-  const myLabel = quiz.myResultLabel ?? resultId;
+  const session = quiz.id === 'what-j-name' ? getLiveJnameSessionResult() : null;
+  const myLabel = quiz.myResultLabel ?? resultId ?? session?.jName ?? null;
   const myAccent = quiz.myResultAccent ?? 'purple';
   const completed = Boolean(myLabel);
   const c = useThemeColors();
@@ -470,9 +473,12 @@ export function QuizWidget({
             )}
           </View>
           <View className="p-5">
-            <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
-              Quiz
-            </Text>
+            <View className="flex-row items-center justify-between gap-2">
+              <Text className="font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
+                Quiz
+              </Text>
+              <ToDoBadge analyticsId={takeId} />
+            </View>
             {/* THIS SECTION DOES: the quiz name. The pixel font is wide, so
                 allow up to two lines and shrink to fit — otherwise a long name
                 like "Which J name are you?" overflows and gets clipped. */}
@@ -520,33 +526,43 @@ export function QuizWidget({
           <View className="mt-3 items-center">
             <ButtonSecondary
               size="sm"
-              icon={<Share2Icon size={16} color={c.ink} strokeWidth={2.4} />}
-              analyticsId={HOME.quiz.share}
-              accessibilityLabel="Share this quiz"
-              onPress={() => {
-                void (async () => {
-                  // Prefer the stable server share link so friends who take it
-                  // can connect back to you. Fall back to a plain invite line.
-                  let url: string | undefined;
-                  if (quiz.id === 'what-j-name') {
-                    try {
-                      const { getJnameShareLink } = await import('../../lib/jname-api');
-                      const share = await getJnameShareLink();
-                      url = share?.url;
-                    } catch {
-                      url = undefined;
-                    }
-                  }
-                  await Share.share({
-                    message: url
-                      ? `I'm ${myLabel} on Bridger. Which J are you? ${url}`
-                      : `Take "${quiz.title}" on Bridger. I got: ${myLabel}.`
-                  });
-                })();
-              }}
+              analyticsId={HOME.quiz.open_result}
+              accessibilityLabel="See your quiz result"
+              onPress={() => onOpenResult(myLabel)}
             >
-              Share quiz
+              See your result
             </ButtonSecondary>
+            <View className="mt-2">
+              <ButtonSecondary
+                size="sm"
+                icon={<Share2Icon size={16} color={c.ink} strokeWidth={2.4} />}
+                analyticsId={HOME.quiz.share}
+                accessibilityLabel="Share this quiz"
+                onPress={() => {
+                  void (async () => {
+                    // Prefer the stable server share link so friends who take it
+                    // can connect back to you. Fall back to a plain invite line.
+                    let url: string | undefined;
+                    if (quiz.id === 'what-j-name') {
+                      try {
+                        const { getJnameShareLink } = await import('../../lib/jname-api');
+                        const share = await getJnameShareLink();
+                        url = share?.url;
+                      } catch {
+                        url = undefined;
+                      }
+                    }
+                    await Share.share({
+                      message: url
+                        ? `I'm ${myLabel} on Bridger. Which J are you? ${url}`
+                        : `Take "${quiz.title}" on Bridger. I got: ${myLabel}.`
+                    });
+                  })();
+                }}
+              >
+                Share quiz
+              </ButtonSecondary>
+            </View>
           </View>
         </View>
 
@@ -556,8 +572,13 @@ export function QuizWidget({
               <Text className="font-sans-b text-[13px] text-ink">
                 {quiz.id === 'what-j-name' ? 'Your versions' : 'Who got who'}
               </Text>
-              <Pressable onPress={() => onOpenResult(myLabel)}>
-                <Text className="font-sans-b text-[12px] text-purple">See more</Text>
+              <Pressable
+                onPress={withAnalyticsPress(HOME.quiz.open_result, () => onOpenResult(myLabel))}
+                accessibilityRole="button"
+                accessibilityLabel="See your quiz result"
+                className="min-h-[44px] justify-center"
+              >
+                <Text className="font-sans-b text-[12px] text-purple">See your result</Text>
               </Pressable>
             </View>
             <View className="gap-2.5">
@@ -607,10 +628,11 @@ export function QuizWidget({
   return (
     <Pressable
       onPress={withAnalyticsPress(
-        takeId,
+        completed ? HOME.quiz.open_result : takeId,
         completed ? () => onOpenResult(myLabel!) : onTake
       )}
       accessibilityRole="button"
+      accessibilityLabel={completed ? `See your result. You got ${myLabel}` : quiz.title}
       className="min-h-[140px] w-full overflow-hidden rounded-card active:opacity-90"
     >
       <View className={cycling ? 'relative h-28 w-full shrink-0' : 'h-14 w-full shrink-0'}>
@@ -625,15 +647,16 @@ export function QuizWidget({
         )}
       </View>
       <View className="flex-1 justify-between bg-[#D5C2FF] p-4">
-        <Text className="font-sans-b text-[13px] leading-snug text-onaccent">
+        <Text
+          className="font-sans-b text-[13px] leading-snug text-onaccent"
+          numberOfLines={3}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+        >
           {completed ? myLabel ?? quiz.title : quiz.title}
         </Text>
-        <Text className="mt-1 font-sans-b text-[11px] text-onaccent/75">
-          {completed
-            ? quiz.id === 'what-j-name'
-              ? 'Your versions'
-              : 'Who got who'
-            : 'Take the quiz'}
+        <Text className="mt-1 font-sans-b text-[11px] text-onaccent/75" numberOfLines={1}>
+          {completed ? 'See your result' : 'Take the quiz'}
         </Text>
       </View>
     </Pressable>

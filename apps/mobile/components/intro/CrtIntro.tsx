@@ -3,36 +3,58 @@
 // This is the retro "old TV terminal" movie that plays ONCE, the very first time
 // someone opens Bridger. Color bars flash on (and glitch / tear), the picture
 // collapses into a dot, a green terminal boots up and types a short story about
-// the internet, the screen tears apart in a glitch, then shuts off, and we hand
-// the person to the sign-in screen.
+// the internet. After each screen finishes typing, Next pops up with a five-second
+// fill so people can finish reading (tap Next, or wait and it moves on). Then the
+// screen tears apart in a glitch, shuts off, and we hand the person to sign-in.
+//
+// SKIP (for testing / anyone stuck): press and hold the MIDDLE of the screen
+// for a moment and we jump straight to sign-in, skipping the rest of the movie.
+// It is invisible on purpose so it never distracts a real first-time viewer.
 //
 // It draws everything itself (colored bars, typed green text, a glitch, screen
 // glow) using plain Views + a little SVG for the CRT scanlines and dark corners.
-// A single clock (the `t` seconds counter) drives the whole thing, and the same
-// clock start is handed to the haptics engine so the vibrations land on the exact
-// right frame.
+// A single clock (the `t` seconds counter) drives the movie. We pause that clock
+// after each typed screen so reading time does not rush the next scene. The same
+// clock is handed to the haptics engine so the vibrations land on the right frame.
 //
 // The opening SMPTE bars and the ending terminal both reuse one GlitchLayer
 // (ported from the Magic Patterns "CRT Terminal Animation Sequence" web piece):
 // shake, skew, red/cyan color-split copies, and horizontal tear slices.
 //
 // ACCESSIBILITY: if the phone has Reduce Motion on, we drop the shake, glitch,
-// flicker, and collapse drama and just calmly cross-fade + type the words.
+// flicker, and collapse drama and just calmly cross-fade + type the words. Next
+// still appears after typing. The five-second auto-advance is off so they can
+// read at their own pace.
 // ============================================
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AccessibilityInfo,
+  Animated,
+  Easing,
   Platform,
+  Pressable,
   StatusBar,
   Text,
-  useWindowDimensions,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, Pattern, Rect, RadialGradient, Stop } from 'react-native-svg';
-import { dismissSurface, openSurface } from '@bridger/shared';
+import {
+  AUTH,
+  dismissSurface,
+  openSurface,
+  trackFlowAbandoned,
+  trackFlowCompleted,
+  trackFlowStarted,
+  trackFlowStep
+} from '@bridger/shared';
+import { NATIVE_DRIVER, useResponsiveLayout, withAnalyticsPress } from '@bridger/ui';
 import {
   CRT_CPS,
+  CRT_HOLD_SEC,
   CRT_TIMELINE,
+  crtActiveBlockIndex,
+  crtBlockTypeEnd,
   crtClamp,
   crtRand,
   crtSeg,
@@ -139,22 +161,41 @@ function visibleFromTypedChars(original: string, maxChars: number, typedChars: n
 }
 
 type CrtIntroProps = {
-  /** Called once when the movie finishes. There is no skip: it must be watched. */
+  /** Called once when the movie finishes (typing cannot be skipped). */
   onDone: () => void;
 };
 
 export function CrtIntro({ onDone }: CrtIntroProps) {
-  const { width: W, height: H } = useWindowDimensions();
+  const { width: W, height: H, contentMaxWidth } = useResponsiveLayout();
+  const insets = useSafeAreaInsets();
   const [t, setT] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [ready, setReady] = useState(false);
+  // After a screen finishes typing, Next is up and the five-second fill is running.
+  const [holding, setHolding] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [holdBlockIndex, setHoldBlockIndex] = useState(0);
+  // Movie clock freezes on Next, so this flips so the block cursor keeps blinking.
+  const [holdCursorOn, setHoldCursorOn] = useState(true);
 
   // Keep the moving parts in refs so the animation loop never gets stale values.
-  const startRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastSetRef = useRef(0);
+  const lastHoldUiRef = useRef(0);
   const doneRef = useRef(false);
   const hapticsRef = useRef<CrtHapticRunner | null>(null);
+  const tRef = useRef(0);
+  const playingRef = useRef(false);
+  const lastTickRef = useRef(0);
+  const holdingRef = useRef(false);
+  const holdConsumedRef = useRef(false);
+  const holdStartRef = useRef(0);
+  const holdBlockIndexRef = useRef(-1);
+  const heldBlocksRef = useRef<Set<number>>(new Set());
+  const reduceMotionRef = useRef(false);
+  const flowStartedAtRef = useRef(0);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   const TL = CRT_TIMELINE;
 
@@ -172,34 +213,144 @@ export function CrtIntro({ onDone }: CrtIntroProps) {
     };
   }, []);
 
-  // THIS SECTION DOES: this is its own analytics "surface" (auto-play, but we
-  // still measure how long people stay and whether they skip).
+  // THIS SECTION DOES: this is its own analytics "surface". We also time the
+  // welcome flow so we can see which typed screens people tap through vs wait.
   useEffect(() => {
     openSurface('auth', 'welcome');
     return () => dismissSurface('auth');
   }, []);
 
-  // THIS SECTION DOES: the heartbeat. Once we know the motion setting, start the
-  // clock + the haptics together, and stop everything at the end.
+  // THIS SECTION DOES: end the movie exactly once and send people to sign-in.
+  // Typing cannot be skipped. After the last Next (or its five-second fill)
+  // the glitch and shut-off still play, then we leave.
+  const finish = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    hapticsRef.current?.stop();
+    const started = flowStartedAtRef.current;
+    if (started) {
+      trackFlowCompleted('welcome', Date.now() - started);
+    }
+    onDoneRef.current();
+  }, []);
+
+  // THIS SECTION DOES: leave the reading pause. Jump the clock to the next
+  // screen (or the ending glitch) and start the buzz track from that moment.
+  const advanceHold = useCallback((method: 'tap' | 'auto') => {
+    if (!holdingRef.current || holdConsumedRef.current) return;
+    holdConsumedRef.current = true;
+    const idx = holdBlockIndexRef.current;
+    const block = TL.blocks[idx];
+    if (block) {
+      trackFlowStep('welcome', block.cue, {
+        method,
+        page_index: idx,
+        surface: 'auth'
+      });
+    }
+    const nextT =
+      idx < TL.blocks.length - 1 && block ? block.end : TL.glitchStart;
+    tRef.current = nextT;
+    lastTickRef.current = Date.now();
+    lastSetRef.current = nextT;
+    holdingRef.current = false;
+    setHolding(false);
+    setHoldProgress(0);
+    setT(nextT);
+    playingRef.current = true;
+    hapticsRef.current?.start(nextT);
+  }, [TL]);
+
+  const advanceHoldRef = useRef(advanceHold);
+  advanceHoldRef.current = advanceHold;
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+
+  // THIS SECTION DOES: keep the green block cursor blinking while Next is up.
+  // The movie clock is paused then, so blink off its own timer (~2 times a second).
+  useEffect(() => {
+    if (!holding) {
+      setHoldCursorOn(true);
+      return;
+    }
+    setHoldCursorOn(true);
+    const id = setInterval(() => {
+      setHoldCursorOn((on) => !on);
+    }, 450);
+    return () => clearInterval(id);
+  }, [holding]);
+
+  // THIS SECTION DOES: the heartbeat. The clock runs while a scene is playing
+  // and freezes when a typed screen is waiting on Next (or the five-second fill).
   useEffect(() => {
     if (!ready) return;
 
     const runner = new CrtHapticRunner({ reduced: reduceMotion });
     hapticsRef.current = runner;
-    startRef.current = Date.now();
+    tRef.current = 0;
+    playingRef.current = true;
+    lastTickRef.current = Date.now();
+    lastSetRef.current = 0;
+    lastHoldUiRef.current = 0;
+    holdingRef.current = false;
+    holdConsumedRef.current = false;
+    heldBlocksRef.current = new Set();
+    reduceMotionRef.current = reduceMotion;
+    flowStartedAtRef.current = Date.now();
+    setHolding(false);
+    setHoldProgress(0);
+    setT(0);
     runner.start(0);
+    trackFlowStarted('welcome');
 
     const loop = () => {
-      const elapsed = (Date.now() - startRef.current) / 1000;
-      // Update the picture ~33 times a second (smooth enough, easy on the phone).
-      if (elapsed - lastSetRef.current >= 0.03) {
-        lastSetRef.current = elapsed;
-        setT(elapsed);
+      const now = Date.now();
+
+      if (playingRef.current) {
+        const dt = (now - lastTickRef.current) / 1000;
+        lastTickRef.current = now;
+        let nextT = tRef.current + dt;
+
+        const idx = crtActiveBlockIndex(nextT, TL.blocks);
+        if (idx >= 0 && !heldBlocksRef.current.has(idx)) {
+          const typeEnd = crtBlockTypeEnd(TL.blocks[idx]);
+          if (nextT >= typeEnd) {
+            nextT = typeEnd;
+            heldBlocksRef.current.add(idx);
+            holdBlockIndexRef.current = idx;
+            holdingRef.current = true;
+            holdConsumedRef.current = false;
+            holdStartRef.current = now;
+            playingRef.current = false;
+            runner.stop();
+            setHoldBlockIndex(idx);
+            setHolding(true);
+            setHoldProgress(0);
+          }
+        }
+
+        tRef.current = nextT;
+        if (nextT - lastSetRef.current >= 0.03) {
+          lastSetRef.current = nextT;
+          setT(nextT);
+        }
+
+        if (nextT >= TL.end) {
+          finishRef.current();
+          return;
+        }
+      } else if (holdingRef.current && !reduceMotionRef.current) {
+        const p = crtClamp((now - holdStartRef.current) / (CRT_HOLD_SEC * 1000), 0, 1);
+        if (now - lastHoldUiRef.current >= 30) {
+          lastHoldUiRef.current = now;
+          setHoldProgress(p);
+        }
+        if (p >= 1) {
+          advanceHoldRef.current('auto');
+        }
       }
-      if (elapsed >= TL.end) {
-        finish();
-        return;
-      }
+
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -207,20 +358,16 @@ export function CrtIntro({ onDone }: CrtIntroProps) {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
       runner.stop();
+      if (!doneRef.current && flowStartedAtRef.current) {
+        const last =
+          holdBlockIndexRef.current >= 0
+            ? TL.blocks[holdBlockIndexRef.current]?.cue ?? 'start'
+            : 'start';
+        trackFlowAbandoned('welcome', Date.now() - flowStartedAtRef.current, last);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, reduceMotion]);
-
-  // THIS SECTION DOES: end the movie exactly once, only when it reaches the end,
-  // and hand control to whoever mounted us (the welcome route sends people to
-  // sign-in). There is no skip: the intro plays all the way through.
-  function finish() {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-    hapticsRef.current?.stop();
-    onDone();
-  }
 
   const motion = !reduceMotion;
 
@@ -303,12 +450,7 @@ export function CrtIntro({ onDone }: CrtIntroProps) {
   const whiteFlash = t > cSh ? (1 - crtSeg(t, cSh, cSh + 0.16)) * 0.92 : 0;
 
   // Which block of text is on screen right now, and is a previous one wiping away?
-  const activeIndex = useMemo(() => {
-    let idx = -1;
-    for (let i = 0; i < TL.blocks.length; i++) if (t >= TL.blocks[i].start) idx = i;
-    return idx;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t]);
+  const activeIndex = useMemo(() => crtActiveBlockIndex(t, TL.blocks), [t, TL.blocks]);
 
   const pad = Math.round(W * 0.07);
   // How wide the typed words can be (screen minus the side padding).
@@ -335,8 +477,17 @@ export function CrtIntro({ onDone }: CrtIntroProps) {
 
       const isTyping = !opts.fading && chars < line.length && t >= line.start;
       const isLast = li === block.lines.length - 1;
-      const showCursor = opts.showCursor && !opts.fading && (isTyping || (isLast && activeIndex === block.blockIndex));
-      const blinkOn = isTyping ? true : Math.floor(t * 2.2) % 2 === 0;
+      const showCursor =
+        opts.showCursor &&
+        !opts.fading &&
+        (isTyping || (isLast && activeIndex === block.blockIndex));
+      // While typing: solid cursor. After typing / on Next: blink (movie clock
+      // freezes on hold, so use holdCursorOn; otherwise blink off movie time).
+      const blinkOn = isTyping
+        ? true
+        : holding
+          ? holdCursorOn
+          : Math.floor(t * 2.2) % 2 === 0;
       const bright = line.kind === 'head' || line.kind === 'emph';
       const fs = fontFor(line.kind);
       const letterSpacing = letterFor(line.kind);
@@ -524,7 +675,151 @@ export function CrtIntro({ onDone }: CrtIntroProps) {
         {motion ? <Rect x={0} y={0} width={W} height={H} fill="url(#scan)" opacity={0.34 + glitchPeak * 0.15} /> : null}
         <Rect x={0} y={0} width={W} height={H} fill="url(#vign)" />
       </Svg>
+
+      {/* --- SKIP (hold the middle): a hidden escape hatch so a tester never
+             gets stuck watching the intro replay. Press and hold the center of
+             the screen for a moment and we jump straight to sign-in, skipping
+             the rest of the movie. It draws nothing (so it never distracts a
+             real first-time viewer) and sits above the picture but clear of the
+             Next button at the bottom, so the two never fight. --- */}
+      <Pressable
+        onLongPress={() => finish()}
+        delayLongPress={700}
+        accessibilityRole="button"
+        accessibilityLabel="Skip intro"
+        accessibilityHint="Press and hold to skip the intro and go to sign in"
+        style={{
+          position: 'absolute',
+          left: W * 0.2,
+          right: W * 0.2,
+          top: H * 0.28,
+          bottom: H * 0.28
+        }}
+      />
+
+      {/* --- NEXT: pops up after typing so people can finish reading --- */}
+      {holding ? (
+        <CrtNextHold
+          progress={holdProgress}
+          reduceMotion={reduceMotion}
+          pageIndex={holdBlockIndex}
+          maxWidth={contentMaxWidth ?? W - pad * 2}
+          bottom={insets.bottom + 20}
+          onNext={() => advanceHold('tap')}
+        />
+      ) : null}
     </View>
+  );
+}
+
+// THIS SECTION DOES: the Next button that appears after a screen finishes
+// typing. The green fill grows for five seconds. Tap it to go on now. Reduce
+// Motion shows the button with no fill and no auto-advance.
+function CrtNextHold({
+  progress,
+  reduceMotion,
+  pageIndex,
+  maxWidth,
+  bottom,
+  onNext
+}: {
+  progress: number;
+  reduceMotion: boolean;
+  pageIndex: number;
+  maxWidth: number;
+  bottom: number;
+  onNext: () => void;
+}) {
+  const opacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+  const y = useRef(new Animated.Value(reduceMotion ? 0 : 14)).current;
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: NATIVE_DRIVER
+      }),
+      Animated.timing(y, {
+        toValue: 0,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: NATIVE_DRIVER
+      })
+    ]).start();
+  }, [opacity, reduceMotion, y]);
+
+  const fillPct = Math.round(crtClamp(progress, 0, 1) * 100);
+
+  return (
+    <Animated.View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom,
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        opacity,
+        transform: [{ translateY: y }]
+      }}
+    >
+      <Pressable
+        onPress={withAnalyticsPress(AUTH.welcome.next, onNext, {
+          analyticsProps: { method: 'tap', page_index: pageIndex }
+        })}
+        accessibilityRole="button"
+        accessibilityLabel="Next"
+        accessibilityLiveRegion="polite"
+        accessibilityHint={
+          reduceMotion
+            ? 'Goes to the next screen'
+            : 'Goes to the next screen. If you wait five seconds it moves on by itself.'
+        }
+        style={{
+          width: '100%',
+          maxWidth,
+          minHeight: 48,
+          borderWidth: 2,
+          borderColor: PHOS.hi,
+          backgroundColor: '#04140a',
+          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 12,
+          paddingHorizontal: 20
+        }}
+      >
+        {!reduceMotion ? (
+          <View
+            pointerEvents="none"
+            accessible={false}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: `${fillPct}%` as `${number}%`,
+              backgroundColor: 'rgba(57,255,106,0.28)'
+            }}
+          />
+        ) : null}
+        <Text
+          style={{
+            fontFamily: MONO,
+            fontSize: 16,
+            letterSpacing: 2,
+            color: PHOS.hi,
+            fontWeight: '600'
+          }}
+        >
+          NEXT
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

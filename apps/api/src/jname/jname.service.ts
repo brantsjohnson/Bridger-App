@@ -1,12 +1,12 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The server brain for the "Which J name are you?" quiz. It can:
-//  1) save a person's result,
+//  1) save a person's first result (later fun retakes stay on the phone),
 //  2) hand back one stable share link for them,
 //  3) show the free, no-account web view of a shared result (and quietly note
 //     that someone opened it),
-//  4) after a new person signs up, connect them to the friend whose link they
-//     opened ("who invited whom"),
+//  4) after a new person signs up, add them as friends with the person whose
+//     link they opened, so both can see the duo / compatibility result,
 //  5) build the "your version of Jake" leaderboard (friends grouped by the
 //     J-name they got),
 //  6) notify when a friend opens your link, or when a friend lands on one of
@@ -25,18 +25,21 @@ import { ConfigService } from '@nestjs/config';
 import type {
   JnameLeaderboard,
   JnameMyResult,
+  JnameResolveReferralResult,
   JnameResultInput,
   JnameShareResponse,
   JnameSharedView
 } from '@bridger/shared';
 import { jnameCompatibilityPercent } from '@bridger/shared';
+import { ConnectionsService } from '../connections/connections.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
 export class JnameService {
   constructor(
     private readonly supabase: SupabaseService,
-    private readonly config: ConfigService
+    private readonly config: ConfigService,
+    private readonly connections: ConnectionsService
   ) {}
 
   // --- Where the public web page lives (used to build share links). ---
@@ -89,7 +92,7 @@ export class JnameService {
     };
   }
 
-  // --- Save (or overwrite on retake) this person's result + notify friends. ---
+  // --- Save the first result only. Fun retakes stay on the phone. ---
   async saveResult(userId: string, body: JnameResultInput) {
     if (!body?.jName) {
       throw new BadRequestException('jName is required');
@@ -99,35 +102,26 @@ export class JnameService {
       ? body.topNames.filter((n) => typeof n === 'string' && n.trim()).slice(0, 3)
       : [];
 
-    // Did they already have this same result? Skip re-notifying on a retake.
+    // SECURITY/PRIVACY: the first finish is the one friends and matching use.
     const { data: prior } = await this.supabase.admin
       .from('jname_results')
       .select('j_name')
       .eq('user_id', userId)
       .maybeSingle();
-    const isNewResult = !prior || prior.j_name !== body.jName;
+    if (prior) {
+      return { ok: true, kept: true };
+    }
 
-    const { error } = await this.supabase.admin.from('jname_results').upsert(
-      {
-        user_id: userId,
-        j_name: body.jName,
-        percent,
-        top_names: topNames,
-        updated_at: new Date().toISOString()
-      },
-      { onConflict: 'user_id' }
-    );
+    const { error } = await this.supabase.admin.from('jname_results').insert({
+      user_id: userId,
+      j_name: body.jName,
+      percent,
+      top_names: topNames,
+      updated_at: new Date().toISOString()
+    });
     if (error) throw error;
 
-    // Keep the public share page in sync when they retake (same token, new snapshot).
-    await this.supabase.admin
-      .from('jname_shares')
-      .update({ j_name: body.jName, percent })
-      .eq('sharer_id', userId);
-
-    if (isNewResult) {
-      await this.notifyFriendsOfTopMatch(userId, body.jName);
-    }
+    await this.notifyFriendsOfTopMatch(userId, body.jName);
 
     return { ok: true };
   }
@@ -321,7 +315,7 @@ export class JnameService {
   async resolveReferral(
     userId: string,
     input: { token?: string; anonRef?: string }
-  ) {
+  ): Promise<JnameResolveReferralResult> {
     let token = input.token;
     if (!token && input.anonRef) {
       const { data: byAnon } = await this.supabase.admin
@@ -351,7 +345,23 @@ export class JnameService {
       },
       { onConflict: 'token,invited_user_id' }
     );
-    return { resolved: true };
+
+    // THIS SECTION DOES: opening a quiz link and making an account adds
+    // the sharer as a friend, so both can see the duo / compatibility board.
+    try {
+      const pair = await this.connections.connectAcceptedPair(
+        userId,
+        share.sharer_id
+      );
+      return {
+        resolved: true,
+        connected: pair.created,
+        alreadyFriends: !pair.created,
+        personId: pair.personId
+      };
+    } catch {
+      return { resolved: true, connected: false, personId: share.sharer_id };
+    }
   }
 
   // --- NOTIFY: someone opened your shared quiz link. ---

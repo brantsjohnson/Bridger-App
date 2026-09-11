@@ -20,10 +20,17 @@ type Props = {
   stepKey: string;
   /** 1 = forward (from the right), -1 = back (from the left). */
   direction: 1 | -1;
+  /**
+   * Solid color painted BEHIND the step while it fades in. Without this, the
+   * navigator's default (white) background shows through and dark screens get
+   * a bright flash on every step change. Defaults to the app canvas color
+   * (eggshell in light mode, dark in dark mode) via the bg-canvas class.
+   */
+  backdrop?: string;
   children: React.ReactNode;
 };
 
-export function StepTransition({ stepKey, direction, children }: Props) {
+export function StepTransition({ stepKey, direction, backdrop, children }: Props) {
   const reduce = useReduceMotion();
   const opacity = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
@@ -62,13 +69,27 @@ export function StepTransition({ stepKey, direction, children }: Props) {
     alignSelf: 'stretch' as const
   };
 
+  // THIS SECTION DOES: paint a solid canvas behind the animated step, so the
+  // fade never reveals the navigator's white background (the "bright flash").
   if (reduce) {
-    return <View style={shell}>{children}</View>;
+    return (
+      <View
+        className={backdrop ? undefined : 'bg-canvas'}
+        style={[shell, backdrop ? { backgroundColor: backdrop } : null]}
+      >
+        {children}
+      </View>
+    );
   }
 
   return (
-    <Animated.View style={[shell, { opacity, transform: [{ translateX }] }]}>
-      {children}
-    </Animated.View>
+    <View
+      className={backdrop ? undefined : 'bg-canvas'}
+      style={[shell, backdrop ? { backgroundColor: backdrop } : null]}
+    >
+      <Animated.View style={[shell, { opacity, transform: [{ translateX }] }]}>
+        {children}
+      </Animated.View>
+    </View>
   );
 }

@@ -70,9 +70,15 @@ export class MusicService {
   }
 
   // THIS SECTION DOES: start Spotify connect (account link, not Bridger login).
-  async beginSpotifyConnect(userId: string): Promise<{ url: string }> {
+  // requestPublicBase: the HTTPS origin the phone used to hit Nest (from
+  // Host / X-Forwarded-*). Used when secrets forgot API_PUBLIC_URL so we never
+  // hand Spotify a 127.0.0.1 redirect that only works on this laptop.
+  async beginSpotifyConnect(
+    userId: string,
+    requestPublicBase?: string
+  ): Promise<{ url: string }> {
     const clientId = this.requireClientId();
-    const redirectUri = this.redirectUri();
+    const redirectUri = this.redirectUri(requestPublicBase);
     const state = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
@@ -96,10 +102,13 @@ export class MusicService {
   }
 
   // THIS SECTION DOES: finish Spotify OAuth, store encrypted tokens, sync taste.
+  // requestPublicBase must match the Host used when building authorize, so the
+  // token exchange redirect_uri equals the one Spotify already redirected to.
   async handleSpotifyCallback(
     code: string | undefined,
     state: string | undefined,
-    oauthError: string | undefined
+    oauthError: string | undefined,
+    requestPublicBase?: string
   ): Promise<string> {
     if (oauthError) {
       return `${APP_RETURN}?ok=0&error=${encodeURIComponent(oauthError)}`;
@@ -122,7 +131,7 @@ export class MusicService {
     }
 
     try {
-      const tokens = await this.exchangeCode(code);
+      const tokens = await this.exchangeCode(code, requestPublicBase);
       const encKey = this.tokenSecret();
       const me = await this.spotifyGet<{ id: string }>(
         'https://api.spotify.com/v1/me',
@@ -175,7 +184,12 @@ export class MusicService {
   }
 
   // THIS SECTION DOES: start Apple Music link (opens Nest page with MusicKit JS).
-  async beginAppleConnect(userId: string): Promise<{ url: string }> {
+  // requestPublicBase: the HTTPS origin the phone already used, so we never
+  // send Safari to a laptop-only URL when the vault forgot API_PUBLIC_URL.
+  async beginAppleConnect(
+    userId: string,
+    requestPublicBase?: string
+  ): Promise<{ url: string }> {
     this.requireAppleMusicConfigured();
     const state = randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -186,11 +200,15 @@ export class MusicService {
       expires_at: expiresAt
     });
     if (error) throw error;
-    return { url: `${this.apiPublicBase()}/music/apple/authorize?state=${encodeURIComponent(state)}` };
+    const base = this.publicApiBase(requestPublicBase);
+    return { url: `${base}/music/apple/authorize?state=${encodeURIComponent(state)}` };
   }
 
   // THIS SECTION DOES: HTML page that asks Apple for a music-user-token (MusicKit).
-  async appleAuthorizePageHtml(state: string | undefined): Promise<string> {
+  async appleAuthorizePageHtml(
+    state: string | undefined,
+    requestPublicBase?: string
+  ): Promise<string> {
     if (!state) {
       return appleAuthorizeErrorHtml('missing_state');
     }
@@ -204,8 +222,9 @@ export class MusicService {
       return appleAuthorizeErrorHtml('bad_or_expired_state');
     }
     try {
-      const { token } = await this.mintDeveloperToken();
-      const completeUrl = `${this.apiPublicBase()}/music/apple/complete`;
+      const pageBase = this.publicApiBase(requestPublicBase);
+      const { token } = await this.mintDeveloperToken(pageBase);
+      const completeUrl = `${pageBase}/music/apple/complete`;
       return appleAuthorizeHtml({
         developerToken: token,
         state,
@@ -688,10 +707,11 @@ export class MusicService {
     return s;
   }
 
-  private redirectUri(): string {
+  private redirectUri(requestPublicBase?: string): string {
     // THIS SECTION DOES: pick a redirect Spotify can open on a real phone.
     // Never send the phone to 127.0.0.1 / localhost (that is this laptop, not
-    // the phone). Prefer an explicit public URI, then API_PUBLIC_URL.
+    // the phone). Prefer an explicit public URI, then API_PUBLIC_URL, then the
+    // Host the phone already used to reach Nest.
     const configured = this.config.get<string>('SPOTIFY_REDIRECT_URI')?.trim();
     if (configured && !this.isLoopbackHttpUrl(configured)) {
       return configured;
@@ -705,13 +725,18 @@ export class MusicService {
       }
       return `${publicBase}/music/spotify/callback`;
     }
-    if (configured) {
+    const fromRequest = requestPublicBase?.trim().replace(/\/$/, '');
+    if (fromRequest && !this.isLoopbackHttpUrl(fromRequest)) {
       this.log.warn(
-        'SPOTIFY_REDIRECT_URI is loopback and API_PUBLIC_URL is missing. Spotify Agree will fail on a physical phone.'
+        'SPOTIFY_REDIRECT_URI / API_PUBLIC_URL missing or loopback; using request Host for Spotify callback.'
       );
-      return configured;
+      return `${fromRequest}/music/spotify/callback`;
     }
-    return 'http://127.0.0.1:3000/music/spotify/callback';
+    // SECURITY / UX: refuse loopback. A phone Safari at 127.0.0.1 can never
+    // finish Agree, so fail loud instead of shipping a broken authorize URL.
+    throw new ServiceUnavailableException(
+      'Spotify redirect is not configured for phones. Set SPOTIFY_REDIRECT_URI (and the matching Spotify dashboard URI) to https://<public-api>/music/spotify/callback.'
+    );
   }
 
   /** True when the URL points at this machine (useless as a phone redirect). */
@@ -736,7 +761,10 @@ export class MusicService {
     return key;
   }
 
-  private async exchangeCode(code: string): Promise<{
+  private async exchangeCode(
+    code: string,
+    requestPublicBase?: string
+  ): Promise<{
     access_token: string;
     refresh_token: string;
     expires_in: number;
@@ -744,7 +772,8 @@ export class MusicService {
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      redirect_uri: this.redirectUri()
+      // Must match the redirect_uri sent on /authorize (same Host / secret).
+      redirect_uri: this.redirectUri(requestPublicBase)
     });
     const basic = Buffer.from(
       `${this.requireClientId()}:${this.requireClientSecret()}`
@@ -1026,9 +1055,9 @@ export class MusicService {
     });
   }
 
-  private async mintDeveloperToken() {
-    const teamId = this.config.get<string>('APPLE_MUSIC_TEAM_ID');
-    const keyId = this.config.get<string>('APPLE_MUSIC_KEY_ID');
+  private async mintDeveloperToken(pageOrigin?: string) {
+    const teamId = this.config.get<string>('APPLE_MUSIC_TEAM_ID')?.trim();
+    const keyId = this.config.get<string>('APPLE_MUSIC_KEY_ID')?.trim();
     if (!teamId || !keyId) {
       throw new ServiceUnavailableException('Apple Music is not configured');
     }
@@ -1037,13 +1066,24 @@ export class MusicService {
       inlinePem: this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY')
     });
     const origin =
-      this.config.get<string>('APPLE_MUSIC_ORIGIN') ?? this.apiPublicBase();
+      this.config.get<string>('APPLE_MUSIC_ORIGIN')?.trim() ||
+      pageOrigin ||
+      this.apiPublicBase();
     return mintAppleMusicDeveloperToken({
       teamId,
       keyId,
       privateKeyPem,
       origin
     });
+  }
+
+  // THIS SECTION DOES: pick the public HTTPS host the phone can actually open.
+  private publicApiBase(requestPublicBase?: string): string {
+    const fromRequest = requestPublicBase?.trim().replace(/\/$/, '');
+    if (fromRequest && !this.isLoopbackHttpUrl(fromRequest)) {
+      return fromRequest;
+    }
+    return this.apiPublicBase();
   }
 
   private async appleMusicUserToken(userId: string): Promise<string> {

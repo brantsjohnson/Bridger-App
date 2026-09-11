@@ -81,7 +81,7 @@ There is **no** global "Bring" field — use Assignments on step 3 instead.
 
 **Step 3 — Cover + Assignments.**
 
-- **Cover modes:** Photo · Emoji. Photo can include **banner text** over the image. Emoji uses the system keyboard (clearable) plus a **vibrant** background color. Tap the cover preview anytime to change it. If skipped, a random emoji cover is chosen at create time. **MEDIA EXCEPTION:** Bridger is capture-only everywhere except the profile photo and this event cover.
+- **Cover modes:** Photo · Emoji. Photo can include **banner text** over the image. Emoji uses the system keyboard (clearable) plus a **vibrant** background color. Tap the cover preview anytime to change it. If skipped, a random emoji cover is chosen at create time. **MEDIA EXCEPTION:** Bridger is capture-only except the profile photo, Collage camera-roll picks, this event cover, and **event album uploads** (see §7).
 - **Assignments** (renamed from "Who's bringing what"): host adds items. List is public on the event. Assigning someone does **not** check the item off. No per-item chip-in. Checking off happens on the event page — the **assignee or the host/co-host** can do it (hosts can check off anyone's item). Open items can be snagged; assignees can remove themselves (host is notified).
 
 **Step 4 — Preview + create.** A read-only render of the event exactly as guests will see it (including the recurrence label under When when Repeats is on), then the **Create event** button. On create we emit `event_created` with **booleans + counts only** (`has_cohost`, `has_chip_in`, `has_cover`, `assignment_count`, `invited_count`, `has_recurrence`, optional `recurrence_freq`) — never the title, bio, address, or schedule prose — and route to the new event page.
@@ -147,7 +147,8 @@ The host's own view of their event — **fully editable in place** via **Edit / 
 - **Chip-in.** Amount + method + handle (Venmo / Cash App / person). Plain link the app never processes.
 - **Introductions** — who's being introduced to whom and why ("Sam & Alex · both climbers"), from `matching` over **invited + going**. Suggested people can get an `event_introduction` notification.
 - **Allergies** — aggregated from guests who opted to share. **The "Only you can see this" note sits *under the Allergies header*, not inside the box**.
-- **Reminders** — toggleable in Edit: **2 days before** and **2 hours before**, via `notifications`.
+- **Reminders** — toggleable in Edit: **2 days before** and **2 hours before**. Prefs persist on the event (`remind_day`, `remind_hours`) and a Nest job emits `event_reminder` at those times. Toggles that are only on the client are not enough; the API must store them and a worker must fire them.
+- **Host notes** — one-way notes to guests (text + optional photo). See §6.
 
 ---
 
@@ -160,6 +161,78 @@ Because Events is where plans happen, the **Touch Grass button lives here too** 
 - **Each card has a split action row: "I'm in" and "Details."** "I'm in" says yes right there; "Details" (or tapping anywhere on the card) opens the full signal sheet. The old ✕ still quietly dismisses it from the list.
 - **The detail sheet offers "I'm in" and "Quietly decline."** Declining tells the poster nothing — it just clears the card for you. Same touch-grass mechanics as `TOUCHGRASS-AND-QUIZ.md` — no counts, no public "no," private who's-in.
 - **Who to tell is Close / Friends only.** A signal may show it went to **Close** or **Friends**. Older leftover "Everyone" rows show *no* circle label.
+
+---
+
+## 6 · Host notes (reminders you write)
+
+The host (and co-hosts who can already edit) can send a short **Event note** to people on the guest list. This is how the house says "someone left a jacket," "doors at 7," or attaches a photo of what was left behind.
+
+- **One-way.** Not a group chat. Guests receive a notification (`event_host_note`) and see the note on the event page. They do not reply in-thread.
+- **Audience:** `going`, `invited`, or both (host picks). Never outsiders who only opened a share link.
+- **Body:** short text. Optional one photo (capture or camera roll, in context). Photo is UGC; reportable.
+- **Not a 1:1 DM.** It does not create Messages threads and does not burn anyone's 5/day cap.
+- Circle-sourced events (`CIRCLES.md`) use the same note path for the Influencer-as-host.
+
+Scheduled 2-day / 2-hour reminders stay automatic (no custom text). Host notes are the freeform path.
+
+```ts
+interface EventHostNote {
+  id: string;
+  eventId: string;
+  authorId: string;          // host or co-host
+  text: string;
+  photoMediaId?: string;
+  audience: 'going' | 'invited' | 'both';
+  createdAt: string;
+}
+```
+
+Product event: `event_host_note_sent` after the server accepts the note (not on composer open). Analytics: audience enum + `has_photo` only. Never the text.
+
+---
+
+## 7 · Shared photo album
+
+The guest-list **Photo album** is the shared roll from a night. Backbone stays tagged Updates (`stories.event_id`) plus album-only uploads that still store as `media` tied to the event.
+
+**Who can see it:** everyone on the guest list (invited or going). Not shared-link outsiders.
+
+**Who can add:** anyone on the guest list. Capture in-app or pick from the camera roll **for this event only** (permission in context; we read only the items they pick). This is a listed capture-only exception (`INDEX.md` §6).
+
+**Viewer:** full-screen tiles (not emoji placeholders). Tap opens the photo. Dead-click the section title. Interactive: open, save, (author) delete.
+
+### Save to device photos
+
+- **Save** writes the image to the phone's library (iOS Photos / Android Pictures or the user's chosen cloud Photos app via the OS).
+- Permission is **add-only** (same pattern as saving a quiz result card). We never scan the library for this action.
+- Per person, per media: `event_album_saves` (`user_id`, `media_id`, `saved_to_device_at`). Saving is personal. One guest saving does not mark it saved for others.
+- Web: download the file (browser download). No photo-library permission.
+
+Product event: `event_album_saved` (`method`: `photos` | `download`) after the OS/browser confirms. Never the image.
+
+### Auto-delete if not saved
+
+- Album copies expire **7 days after the event end** (`starts_at` + duration; one-off events treat end as `starts_at` + 6 hours if no end time) **unless** that viewer has a save row.
+- Expiry deletes the **shared album access** for that person (they can no longer fetch the signed URL). The author's own Update may still follow personal story retention (Free Lite ~30 days / co-op keep) on their profile. Album vs story retention must not fight: the album listing hides expired unsigned photos even if the story row still exists for the author.
+- Saving to the device is the way to keep a copy after the album window. Bridger does not keep a second forever copy for Free Lite guests who never saved.
+
+### Storage quotas (event-scoped, not personal `plan_state`)
+
+Personal co-op storage (`rolling30` vs `unlimited`) is about **your** Updates. The event album is a **shared pool** on the event.
+
+| Who | Included album pool |
+|---|---|
+| Free Lite guests adding photos | Small per-event cap (count + bytes). Default: **50 photos or 500 MB** per event, whichever hits first. |
+| Co-op guests adding photos | Higher included cap. Default: **200 photos or 2 GB** per event. |
+| Host pays for more | Host (or the house) can buy an **event album storage add-on** that raises that event's cap. Recorded on `event_album_quota`. Separate from co-op dues and from Billy+. |
+
+- Meter is per event (`used_bytes`, `used_count` vs `quota_bytes`, `quota_count`).
+- Hitting the cap blocks new uploads with a clear message. Viewing and saving already-uploaded photos still works.
+- Co-op "unlimited" personal storage does **not** make every event album unlimited. The host add-on is how a house buys a bigger shared roll.
+- Soft-join era: show the cap and the add-on price; do not silently charge until the SKU is live (`COOP.md` changelog).
+
+**TODO (product):** exact add-on price and whether leftover unused add-on bytes expire with the 7-day album window (yes: unused quota dies with the event album).
 
 ---
 
@@ -200,7 +273,22 @@ interface HostView {           // editable in place
   inviteByIds?: Record<string, string>; // personId → inviter; omit = host invited
   introductions: Introduction[];   // pairwise, with the "why"
   sharedAllergies: string[];       // host-only, opt-in
-  reminders: { twoDays: boolean; twoHours: boolean };
+  reminders: { twoDays: boolean; twoHours: boolean }; // persisted as remind_day / remind_hours
+  hostNotes: EventHostNote[];
+  album: {
+    photos: EventAlbumPhoto[];
+    usedCount: number;
+    usedBytes: number;
+    quotaCount: number;
+    quotaBytes: number;
+  };
+}
+
+interface EventAlbumPhoto {
+  mediaId: string;
+  authorId: string;
+  createdAt: string;
+  savedByMe: boolean;              // this viewer has a save row
 }
 
 interface RsvpInput {
@@ -218,8 +306,11 @@ interface RsvpInput {
 | List, create, detail, RSVP | `events` |
 | Suggested invites · who-you-should-meet · introductions | `matching` |
 | "Add them" from who-you-should-meet | `connections` (routes to Discover) |
-| Auto reminders (2d / 2h) | `notifications` |
-| Guest-cap expansion payment | **`payments` (new module — flag)** |
+| Auto reminders (2d / 2h) | `events` prefs + worker → `notifications` (`event_reminder`) |
+| Host notes (text + photo) | `events` (`event_host_notes`) → `notifications` (`event_host_note`) |
+| Shared album + save + expiry | `stories` (`event_id`) + `event_album_saves` + album quota |
+| Event album storage add-on | `payments` (`event_album_storage`) |
+| Guest-cap expansion payment | **retired** (co-op guest cap 35→100; see `COOP.md`) |
 | Chip-in handle | plain field on `events` (not processed) |
 
 ---
@@ -241,7 +332,11 @@ interface RsvpInput {
 - [ ] Guests see only "{N} going" (people they know) and "{N} to meet" — never a raw invited/going total — and both counts are tappable.
 - [ ] Shared-link outsiders (not on the invite list) see basics only: no going / to-meet counts. If friends-can-invite is on they may RSVP Going; if off they cannot RSVP until invited.
 - [ ] The event detail clearly shows host (+ co-host) with real profile photos when available, date/time, full address (maps link), a bio/description, assignments, and the chip-in line; one header Share control (iOS-style icon) opens the native share sheet (web without Share copies the link). Guests never see invited totals or guest caps. Host and guest views share the same layout.
-- [ ] When guests tag updates to the event (party capture flow), a **Photo album** section shows those photos on the event detail for everyone on the guest list (not outsiders).
+- [ ] When guests tag updates to the event (party capture flow) or upload to the album, a **Photo album** section shows those photos on the event detail for everyone on the guest list (not outsiders). Tiles are real thumbnails; tap opens the photo.
+- [ ] Guests can **Save** an album photo to the device library (add-only permission on iOS/Android; file download on web). Save is per user (`event_album_saves`).
+- [ ] Album access expires **7 days after the event end** for a viewer who has not saved that photo. Author profile Updates still follow personal retention.
+- [ ] Free Lite vs co-op guests hit different per-event album caps. Hosts may buy an event album storage add-on. Personal co-op unlimited storage does not lift the album pool.
+- [ ] Host (or co-host) can send an Event note (text + optional photo) to going / invited / both. Guests get `event_host_note` and see it on the event page. Not a chat. Not a Messages thread.
 - [ ] The host view is fully editable in place (Edit / Done); it shows tappable "{N} going" and "{N} invited" (wide pills, big numerals). When friends-can-invite is on, people-sheet rows show invite attribution ("invited by" / "brought by"); no separate "brought" count pill.
 - [ ] The date square sits next to the title; the When row uses a live flip-tile countdown (Reduce Motion: update without flip animation).
 - [ ] The host can add a co-host who can also edit/manage.
@@ -250,4 +345,12 @@ interface RsvpInput {
 - [ ] The Events page shows the Touch Grass button with friend signals listed directly under it (no separate "Who's free" heading), each showing when + what they want to do, with a split "I'm in" / "Details" action row; tapping the card opens a detail sheet offering "I'm in" or "Quietly decline."
 - [ ] The send sheet offers **Close** and **Friends** only (no Everyone). A signal only names those two circles; any leftover wide send shows no circle label.
 - [ ] Host view shows introductions (with the "why"), shared allergies (host-only), and reminder toggles.
-- [ ] Reminders auto-send 2 days and 2 hours before when enabled.
+- [ ] Reminder toggles persist on the event (`remind_day`, `remind_hours`). A worker sends `event_reminder` 2 days and 2 hours before when enabled.
+
+---
+
+## Changelog
+
+| Date | Change |
+|---|---|
+| 2026-09-09 | Host notes (one-way text + photo). Reminder prefs persist + scheduled `event_reminder`. Shared album: real viewer, save-to-Photos, 7-day unsaved expiry, per-event quota, host-paid add-on. Capture-only exception list includes album uploads. Docs only; no migration yet. |

@@ -3,14 +3,14 @@
 // The four full-screen reality-check moments between onboarding questions.
 // Each one states a hard truth on a flat blue background, shows a colorful
 // animated picture of that stat, counts a big number up from zero, and ends
-// with "Let's try again." The screen-time one is a story: an 80-year life
+// with "Keep going." The screen-time one is a story: an 80-year life
 // colors in beat by beat, and the green button waits until the last number
 // lands.
 //
 // HOW IT ANIMATES IN (the same on every blue screen): the headline TYPES in
 // row by row with a blinking cursor so the person can read it first. Only once
 // both headline lines finish does the graphic POP up, then the big stat, then
-// the "Let's try again" button and a small "Where this comes from" link under
+// the "Keep going" button and a small "Where this comes from" link under
 // it (that opens the sources). So the eye naturally moves headline → picture →
 // stat → button.
 //
@@ -22,7 +22,7 @@
 //
 // LOOK: flat blue page (no graph-paper overlay), cream display type that stays
 // light in dark mode, light red for accent type on blue, the display font for
-// the headline, and a green square "Let's try again" button at the bottom.
+// the headline, and a green square "Keep going" button at the bottom.
 //
 // ACCESSIBILITY: all the moving art is marked decorative and the stat is always
 // shown as plain text too. When the phone asks for reduced motion, nothing
@@ -35,6 +35,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   Text,
   View,
   useWindowDimensions,
@@ -95,10 +96,10 @@ const CONTENT: Record<StatVariant, StatContent> = {
   },
   isolation: {
     line1: {
-      text: "The internet was supposed to help us ",
+      text: "Remember when the internet was supposed to help us ",
       underline: "make friends",
     },
-    line2: { text: "Instead, it ", underline: "isolated us" },
+    line2: { text: "Instead, it has ", underline: "isolated us" },
     // Isolation draws its own top/bottom "1 in X" stats + pie; these stay empty.
     number: "",
     caption: "",
@@ -161,7 +162,9 @@ export function StatScreen({
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   // Short phones need tighter headlines + gaps so isolation / feed do not clip.
-  const isolationCompact = variant === "isolation" && windowHeight < 780;
+  // Isolation packs a headline + two big stats + ring + sources + CTA, so treat
+  // almost every phone as "compact" (780 was still overlapping on typical iPhones).
+  const isolationCompact = variant === "isolation";
   // Feed: leave room for the 18% + caption + green button (was overflowing).
   const feedCompact = variant === "feed" && windowHeight < 860;
   // Stable so ScreenTimeVisual's "I'm done" callback does not reset every render.
@@ -170,7 +173,7 @@ export function StatScreen({
   // THIS SECTION DOES: run each screen as a little story so nothing lands at
   // once. Stage 0 = the headline TYPES in row by row. When it finishes we go to
   // stage 1 (the graphic pops up), then stage 2 (the big stat), then stage 3
-  // (the "Let's try again" button + the "Where this comes from" link under it).
+  // (the "Keep going" button + the "Where this comes from" link under it).
   // Reduce Motion jumps straight to stage 3 so everything shows immediately.
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(reduce ? 3 : 0);
   // Called once the headline finishes typing: let the graphic pop up.
@@ -234,21 +237,22 @@ export function StatScreen({
         alignSelf: "stretch",
         height: "100%",
         backgroundColor: OB.blue,
-        overflow: "hidden",
+        // Isolation packs a lot; allow scroll instead of clipping the bottom lines.
+        overflow: variant === "isolation" ? "visible" : "hidden",
       }}
     >
-      <View
-        style={{
-          flex: 1,
-          width: "100%",
-          // Space-between keeps the headline up, the post + % in the middle, and
-          // the green button at the bottom (feed included, so the square is centered).
+      <ScrollView
+        style={{ flex: 1, width: "100%" }}
+        contentContainerStyle={{
+          flexGrow: 1,
           justifyContent: "space-between",
           gap: isolationCompact || feedCompact ? 14 : 22,
           paddingHorizontal: 24,
           paddingTop: insets.top + (isolationCompact || feedCompact ? 12 : 14),
           paddingBottom: Math.max(insets.bottom, 12) + 8,
         }}
+        showsVerticalScrollIndicator={variant === "isolation"}
+        bounces={variant === "isolation"}
       >
         {/* THIS SECTION DOES: the headline that TYPES in row by row with a
             blinking cursor, so the person reads it first. Only when the second
@@ -282,6 +286,8 @@ export function StatScreen({
             minHeight: 0,
             width: "100%",
             gap: stackGap,
+            // Isolation: clip overflow so the ring never paints over the CTA.
+            overflow: variant === "isolation" ? "hidden" : "visible",
             justifyContent:
               variant === "screentime"
                 ? "flex-start"
@@ -368,55 +374,58 @@ export function StatScreen({
         </View>
 
         {/* THIS SECTION DOES: the "Where this comes from" sources link, then the
-            green "Let's try again" button. Both slots keep their height and just
+            green "Keep going" button. Both slots keep their height and just
             fade in (opacity), so the art above never jumps when they appear. The
             link shows with the stat (stage 2); the button shows right after (stage
-            3). On screen-time both wait for its story to finish (showFooter). */}
+            3). On screen-time both wait for its story to finish (showFooter).
+            Isolation puts the link UNDER the button so it never lands on "1 in 2". */}
         <View
           style={{
-            gap: feedCompact ? 6 : 10,
+            gap: feedCompact || isolationCompact ? 6 : 10,
             flexShrink: 0,
             width: "100%",
           }}
         >
-          {/* SOURCES LINK: sits right after the stat and opens the citations
-              sheet. This replaces the old "i" that used to live by the eyebrow. */}
-          <View
-            pointerEvents={infoIn ? "auto" : "none"}
-            style={{ opacity: infoIn ? 1 : 0, alignItems: "center" }}
-          >
-            <Pressable
-              onPress={withAnalyticsPress(
-                ONBOARDING.stat.info,
-                () => setSourcesOpen(true),
-                { analyticsProps: { variant } },
-              )}
-              accessibilityRole="button"
-              accessibilityLabel="Where this comes from"
-              hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingVertical: 2,
-              }}
+          {/* SOURCES LINK (feed / retention / screen-time): sits right after the
+              stat. Isolation waits until after the green button (below). */}
+          {variant !== "isolation" ? (
+            <View
+              pointerEvents={infoIn ? "auto" : "none"}
+              style={{ opacity: infoIn ? 1 : 0, alignItems: "center" }}
             >
-              <InfoIcon
-                size={14}
-                color="rgba(245,240,230,0.85)"
-                strokeWidth={2.4}
-              />
-              <Text
-                className="font-sans-sb text-[13px]"
+              <Pressable
+                onPress={withAnalyticsPress(
+                  ONBOARDING.stat.info,
+                  () => setSourcesOpen(true),
+                  { analyticsProps: { variant } },
+                )}
+                accessibilityRole="button"
+                accessibilityLabel="Where this comes from"
+                hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
                 style={{
-                  color: ON_BLUE_MUTE,
-                  textDecorationLine: "underline",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingVertical: 2,
                 }}
               >
-                Where this comes from
-              </Text>
-            </Pressable>
-          </View>
+                <InfoIcon
+                  size={14}
+                  color="rgba(245,240,230,0.85)"
+                  strokeWidth={2.4}
+                />
+                <Text
+                  className="font-sans-sb text-[13px]"
+                  style={{
+                    color: ON_BLUE_MUTE,
+                    textDecorationLine: "underline",
+                  }}
+                >
+                  Where this comes from
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
           {/* THE BUTTON: reserved height via opacity so the art never reflows. */}
           <View
             pointerEvents={ctaIn ? "auto" : "none"}
@@ -426,14 +435,52 @@ export function StatScreen({
             style={{ opacity: ctaIn ? 1 : 0 }}
           >
             <OBCTA
-              label="Let's try again"
+              label="Keep going"
               tone="green"
               analyticsId={ONBOARDING.stat.bridge}
               analyticsProps={{ variant }}
               onPress={onBridge}
-              accessibilityLabel="Let's try again"
+              accessibilityLabel="Keep going"
             />
           </View>
+          {variant === "isolation" ? (
+            <View
+              pointerEvents={infoIn ? "auto" : "none"}
+              style={{ opacity: infoIn ? 1 : 0, alignItems: "center" }}
+            >
+              <Pressable
+                onPress={withAnalyticsPress(
+                  ONBOARDING.stat.info,
+                  () => setSourcesOpen(true),
+                  { analyticsProps: { variant } },
+                )}
+                accessibilityRole="button"
+                accessibilityLabel="Where this comes from"
+                hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingVertical: 2,
+                }}
+              >
+                <InfoIcon
+                  size={14}
+                  color="rgba(245,240,230,0.85)"
+                  strokeWidth={2.4}
+                />
+                <Text
+                  className="font-sans-sb text-[13px]"
+                  style={{
+                    color: ON_BLUE_MUTE,
+                    textDecorationLine: "underline",
+                  }}
+                >
+                  Where this comes from
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
           {onBack ? (
             <Pressable
               onPress={withAnalyticsPress(ONBOARDING.chrome.back, onBack)}
@@ -456,7 +503,7 @@ export function StatScreen({
             </Pressable>
           ) : null}
         </View>
-      </View>
+      </ScrollView>
 
       {/* THE SOURCES SHEET: plain text list, opened by the link. */}
       <Modal
@@ -668,10 +715,16 @@ function TypedLine({
     <Text
       className={
         compact
-          ? "font-display text-[28px] uppercase tracking-tight"
+          ? "font-display text-[26px] uppercase tracking-tight"
           : "font-display text-[32px] uppercase tracking-tight"
       }
-      style={{ lineHeight: compact ? 32 : 37, color: ON_BLUE }}
+      style={{
+        // Big Shoulders needs roomy leading; 1:1 chops caps and looks doubled.
+        lineHeight: compact ? 34 : 42,
+        color: ON_BLUE,
+        paddingTop: 4,
+        includeFontPadding: true,
+      }}
     >
       {textPart}
       {underlinePart ? (
@@ -1184,14 +1237,15 @@ function ringArcPath(
 function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
   const { height: windowHeight } = useWindowDimensions();
   // THIS SECTION DOES: shrink the ring and type on short phones so nothing clips.
-  const compact = windowHeight < 780;
-  const tight = windowHeight < 700;
-  const size = tight ? 150 : compact ? 174 : 216;
-  const stroke = tight ? 26 : compact ? 30 : 34;
-  const statFont = tight ? 46 : compact ? 54 : 66;
-  const captionFont = tight ? 14 : 16;
-  const stackGap = tight ? 6 : compact ? 10 : 14;
-  const stubLen = tight ? 14 : compact ? 18 : 22;
+  // Thresholds are high on purpose: the sources link used to land on "1 in 2".
+  const compact = windowHeight < 900;
+  const tight = windowHeight < 780;
+  const size = tight ? 132 : compact ? 156 : 200;
+  const stroke = tight ? 22 : compact ? 28 : 34;
+  const statFont = tight ? 40 : compact ? 48 : 60;
+  const captionFont = tight ? 13 : 15;
+  const stackGap = tight ? 4 : compact ? 8 : 12;
+  const stubLen = tight ? 10 : compact ? 14 : 20;
 
   const r = (size - stroke) / 2;
   const cx = size / 2;
@@ -1331,8 +1385,10 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
             color: ON_BLUE_ACCENT,
             letterSpacing: -2,
             fontSize: statFont,
-            lineHeight: Math.round(statFont * 1.08),
-            paddingTop: 6,
+            // Roomier leading so Big Shoulders caps are not clipped / stretched.
+            lineHeight: Math.round(statFont * 1.2),
+            paddingTop: 8,
+            includeFontPadding: true,
           }}
           accessibilityRole="header"
         >
@@ -1470,8 +1526,9 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
             color: OB.purple,
             letterSpacing: -2,
             fontSize: statFont,
-            lineHeight: Math.round(statFont * 1.08),
-            paddingTop: 6,
+            lineHeight: Math.round(statFont * 1.2),
+            paddingTop: 8,
+            includeFontPadding: true,
           }}
           accessibilityRole="header"
         >
@@ -1479,7 +1536,7 @@ function IsolationVisual({ reduceMotion }: { reduceMotion: boolean }) {
         </Text>
         <Text
           className="mt-1.5 max-w-[300px] text-center font-sans-sb leading-snug"
-          style={{ color: ON_BLUE, fontSize: captionFont }}
+          style={{ color: ON_BLUE, fontSize: captionFont, marginBottom: 4 }}
         >
           have only 1–4 close friends.
         </Text>

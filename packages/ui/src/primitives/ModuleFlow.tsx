@@ -113,7 +113,9 @@ export function ModuleFlow({
   searchPlaces,
   placeSearchAnalyticsId,
   placeResultAnalyticsId,
-  onBurstStart
+  onBurstStart,
+  /** Prefill answers when reopening a module (e.g. birthday already saved). */
+  initialAnswers
 }: {
   open: boolean;
   title: string;
@@ -140,13 +142,16 @@ export function ModuleFlow({
   placeResultAnalyticsId?: string;
   /** Optional buzz when a hobby chip sprays emoji (mobile wires fireworks haptics). */
   onBurstStart?: () => void;
+  initialAnswers?: Record<string, ModuleAnswer>;
 }) {
   const isPrivate = mode === 'private';
   const insets = useSafeAreaInsets();
   const c = useThemeColors();
   const [started, setStarted] = useState(!isPrivate);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, ModuleAnswer>>({});
+  const [answers, setAnswers] = useState<Record<string, ModuleAnswer>>(
+    () => initialAnswers ?? {}
+  );
   const [visibility, setVisibility] = useState<ModuleVisibility>({});
   const [matchable, setMatchable] = useState<ModuleMatchable>({});
   const [hobbyBursts, setHobbyBursts] = useState<
@@ -161,8 +166,13 @@ export function ModuleFlow({
       setVisibility({});
       setMatchable({});
       setHobbyBursts([]);
+      return;
     }
-  }, [open, isPrivate]);
+    // Seed once per open so typing is not wiped if about refreshes mid-flow.
+    setAnswers((prev) =>
+      Object.keys(prev).length > 0 ? prev : (initialAnswers ?? {})
+    );
+  }, [open, isPrivate, initialAnswers]);
 
   // Hobby select expands into one follow-up text screen per picked hobby.
   const hobbySelectQ = questions.find((q) => q.type === 'hobbySelect');
@@ -348,8 +358,12 @@ export function ModuleFlow({
                   style={{ width: `${((step + 1) / total) * 100}%` }}
                 />
               </View>
-              <Text className="shrink-0 font-sans-b text-[11px] text-ink-mute">
-                {step + 1}/{total}
+              {/* Bar only: showing "1/14" made people quit before answering. */}
+              <Text
+                className="shrink-0 font-sans-b text-[11px] text-ink-mute"
+                accessibilityLabel={`Step ${step + 1} of ${total}`}
+              >
+                {matching || reviewing ? 'Almost done' : 'Optional'}
               </Text>
             </View>
 
@@ -471,6 +485,12 @@ function QuestionBody({
       <Text className="mt-2 font-sans-b text-[24px] leading-tight tracking-tight text-ink">
         {q.ask}
       </Text>
+      {/* Birthday: Google / Apple do not hand this over, so people fill it once. */}
+      {q.id === 'about-birthday' ? (
+        <Text className="mt-2 font-sans-sb text-[13px] leading-snug text-ink-mute">
+          Sign-in does not share your birthday with Bridger. Add it here (you can skip).
+        </Text>
+      ) : null}
       <View className="mt-6">
         {q.type === 'text' ? (
           <TextInput

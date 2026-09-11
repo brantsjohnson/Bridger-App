@@ -5,10 +5,9 @@
 // (profile, then education, then optional feature tours). Demo can still run
 // the Old 19-step flow. Finishing marks onboarding complete and lands on Home.
 //
-// New flow: first name → last name → photo → birthday → why → privacy
-// (birthday example) → groups → co-op story → optional membership / invite
-// routing → "what would help" → only the tours they picked → Home.
-// Co-op is optional. There is no paywall.
+// New flow: name → photo → birthday → why → privacy → what would help →
+// only the feature screens they picked → co-op story → join / invite → Home.
+// Home plays the congratulations splash. Joining stays skippable via invite 3.
 //
 // Old flow (demo): confirm profile through Co-op, same as before.
 // ============================================
@@ -36,7 +35,6 @@ import {
   saveNotifications,
   saveObsessionSong,
   saveOnboardingProgress,
-  savePageAuthoring,
   savePhoto,
   savePlaces,
   savePrivacyRowValue,
@@ -50,7 +48,6 @@ import {
 import type { PhotoFilterKey } from '../components/onboarding/PhotoFilterPicker';
 import {
   BRANCH_DEEP_LINK,
-  BRANCH_ORDER,
   BRANCH_START,
   NEW_ONBOARDING_ORDER,
   ROUTING_ONLY_STEPS,
@@ -58,6 +55,11 @@ import {
   type CtaAction,
   type NewOnboardingStepKey
 } from '../components/onboarding/onboarding-new-copy';
+import {
+  FEATURE_IDS,
+  LEGACY_HELP_INTEREST,
+  RESUME_ALIASES
+} from '../components/onboarding/onboarding-new-flow';
 
 export type FlowVariant = 'new' | 'old';
 
@@ -120,10 +122,12 @@ const OLD_NON_FORM: OldOnboardingStepKey[] = [
 const OLD_FORM_STEPS = OLD_ONBOARDING_ORDER.filter((s) => !OLD_NON_FORM.includes(s));
 
 const NEW_FORM_STEPS: NewOnboardingStepKey[] = [
-  'first-name',
-  'last-name',
+  'name',
   'photo',
-  'birthday'
+  'birthday',
+  'privacy-birthday',
+  'product-picks',
+  'coop-matters'
 ];
 
 const ROUTING_SET = new Set<string>(ROUTING_ONLY_STEPS);
@@ -166,6 +170,10 @@ type Draft = {
   favoritePlace: string;
   /** Geocoded pick for the favorite trip (map pin). Null until they search and pick. */
   favoritePlaceHit: GeocodeHit | null;
+  /** Places step: Private (none) or Close friends only (close). */
+  hometownPrivacy: 'none' | 'close';
+  currentTownPrivacy: 'none' | 'close';
+  favoritePlacePrivacy: 'none' | 'close';
   visibility: VisibilityRow[];
   /** New: who can see the birthday (Groups). */
   birthdayTier: Tier | null;
@@ -209,6 +217,10 @@ const EMPTY_DRAFT: Draft = {
   currentTown: '',
   favoritePlace: '',
   favoritePlaceHit: null,
+  // Default: Private until they widen it. Close friends is one tap away.
+  hometownPrivacy: 'none',
+  currentTownPrivacy: 'none',
+  favoritePlacePrivacy: 'close',
   visibility: [],
   birthdayTier: null,
   membershipInterests: [],
@@ -226,7 +238,7 @@ export function useOnboarding(
   const order: OnboardingStepKey[] =
     variant === 'old' ? OLD_ONBOARDING_ORDER : NEW_ONBOARDING_ORDER;
   const startStep: OnboardingStepKey =
-    variant === 'old' ? 'confirm-profile' : 'first-name';
+    variant === 'old' ? 'confirm-profile' : 'name';
   const [step, setStep] = useState<OnboardingStepKey>(startStep);
   // Start empty, unless we entered via the "onboard" demo bypass — then pre-fill
   // the first + last name and an emoji avatar so it feels already set up.
@@ -241,6 +253,9 @@ export function useOnboarding(
     };
   });
   const [startedAt] = useState(() => Date.now());
+  // Blocks double-taps on Continue while a required save is still running
+  // (comic bake + PATCH /me). Stops stacked "Could not save" alerts.
+  const savingRef = useRef(false);
 
   // THIS SECTION DOES: track whether we have finished checking for a saved
   // resume point yet. The screen waits on this so it never flashes screen one
@@ -262,13 +277,19 @@ export function useOnboarding(
     void (async () => {
       try {
         const saved = await loadOnboardingProgress();
-        if (
-          !cancelled &&
-          saved &&
-          order.includes(saved.step as OnboardingStepKey)
-        ) {
-          setDraft((d) => ({ ...d, ...(saved.draft as Partial<Draft>) }));
-          setStep(saved.step as OnboardingStepKey);
+        if (!cancelled && saved) {
+          const rawStep = saved.step as string;
+          const mappedStep = (RESUME_ALIASES[rawStep] ?? rawStep) as OnboardingStepKey;
+          const savedDraft = { ...(saved.draft as Partial<Draft>) };
+          if (Array.isArray(savedDraft.helpInterests)) {
+            savedDraft.helpInterests = savedDraft.helpInterests.map(
+              (id) => LEGACY_HELP_INTEREST[id] ?? id
+            );
+          }
+          setDraft((d) => ({ ...d, ...savedDraft }));
+          if (order.includes(mappedStep)) {
+            setStep(mappedStep);
+          }
         }
       } catch {
         // No resume point / read failed: start at the beginning.
@@ -354,7 +375,7 @@ export function useOnboarding(
       if (variant === 'old') return true;
       if (ROUTING_SET.has(key)) return false;
       const branch = STEP_BRANCH[key as NewOnboardingStepKey];
-      if (branch && !d.branchQueue.includes(branch)) return false;
+      if (branch && !d.helpInterests.includes(branch)) return false;
       return true;
     },
     [variant]
@@ -411,11 +432,12 @@ export function useOnboarding(
       setDraft((prev) => ({ ...prev, branchIndex: nextIndex }));
       draftRef.current = { ...draftRef.current, branchIndex: nextIndex };
       if (nextKey) jumpTo(nextKey);
-      else void completeRef.current();
+      else advance();
       return;
     }
-    void completeRef.current();
-  }, [jumpTo, step]);
+    // Tours done: keep walking into the co-op story and the join screen.
+    advance();
+  }, [advance, jumpTo, step]);
 
   const finishOpen = useCallback((route: string) => {
     draftRef.current = { ...draftRef.current, pendingDeepLink: route };
@@ -426,13 +448,36 @@ export function useOnboarding(
   /**
    * Leave this step: move the UI first, save in the background.
    *
-   * IMPORTANT: Continue should feel instant. We wait on the network for
-   * confirm-profile (Old) and the four New profile fields. Every other step
-   * advances immediately and finishes its save quietly.
+   * IMPORTANT: Continue waits on the network for every step that writes
+   * profile data (name, photo, birthday, places, song, privacy, …). Quiet
+   * background saves used to drop answers when the API blipped.
    */
   const goNext = useCallback(async () => {
+    if (savingRef.current) return;
     const leaving = step;
     const snapshot = draft;
+
+    // Wait for the network on any step that writes profile data. Quiet
+    // background saves used to drop places / song / privacy when the API
+    // blipped, and people landed on Profile empty (TestFlight).
+    const waitOn =
+      leaving === 'confirm-profile' ||
+      leaving === 'name' ||
+      leaving === 'photo' ||
+      leaving === 'birthday' ||
+      leaving === 'privacy-birthday' ||
+      leaving === 'right-now' ||
+      leaving === 'obsession' ||
+      leaving === 'places' ||
+      leaving === 'privacy-control' ||
+      leaving === 'friends-of-friends' ||
+      leaving === 'notifications' ||
+      leaving === 'coop-matters' ||
+      leaving === 'product-picks' ||
+      leaving === 'social-battery' ||
+      leaving === 'color';
+
+    if (waitOn) savingRef.current = true;
 
     const bakePhoto = async () => {
       let filteredMediaId = snapshot.filteredMediaId;
@@ -465,6 +510,8 @@ export function useOnboarding(
         snapshot.photoFilter &&
         !bakedPhotoUri
       ) {
+        // Web demo can paint looks in-canvas. Native demo has no canvas bake;
+        // skip so Continue never hangs or crashes on a missing native painter.
         try {
           const { bakeClientPhotoFilter } = await import(
             '../lib/client-photo-filters'
@@ -475,7 +522,7 @@ export function useOnboarding(
           );
           if (url) bakedPhotoUri = url;
         } catch {
-          // Native demo may not paint looks; plain photo is fine.
+          // Plain photo is fine for demo.
         }
       }
 
@@ -501,17 +548,17 @@ export function useOnboarding(
           }
           break;
         }
-        case 'first-name':
-          if (snapshot.firstName.trim()) {
-            await saveName(snapshot.firstName.trim());
-          }
-          break;
-        case 'last-name':
+        case 'name':
           await saveName(`${snapshot.firstName} ${snapshot.lastName}`.trim());
           break;
         case 'photo': {
+          // THIS SECTION DOES: save the picked face. Never crash the run if a
+          // filter bake or upload fails; keep the plain photo and move on.
           const baked = await bakePhoto();
-          if (snapshot.photoUri || baked.filteredMediaId || baked.bakedPhotoUri) {
+          if (!snapshot.photoUri && !baked.filteredMediaId && !baked.bakedPhotoUri) {
+            throw new Error('Add a profile photo to continue.');
+          }
+          try {
             await savePhoto({
               source: snapshot.photoSource,
               uri: baked.bakedPhotoUri ?? snapshot.photoUri ?? undefined,
@@ -520,6 +567,23 @@ export function useOnboarding(
               filter: snapshot.photoFilter,
               originalUri: snapshot.photoUri
             });
+          } catch (err) {
+            // Demo / offline: still keep a local preview so the run continues.
+            if (isDemoMode() && snapshot.photoUri) {
+              console.warn('[onboarding] demo photo save failed; keeping local', err);
+              try {
+                await savePhoto({
+                  source: snapshot.photoSource,
+                  uri: snapshot.photoUri,
+                  filter: snapshot.photoFilter,
+                  originalUri: snapshot.photoUri
+                });
+              } catch (err2) {
+                console.warn('[onboarding] demo plain photo save failed', err2);
+              }
+              break;
+            }
+            throw err;
           }
           break;
         }
@@ -528,20 +592,21 @@ export function useOnboarding(
             await saveBirthday(snapshot.birthday, snapshot.birthdayTier ?? 'friend');
           }
           break;
-        case 'privacy-3':
+        case 'privacy-birthday':
           if (snapshot.birthdayTier) {
             await saveBirthdayAudience(snapshot.birthday, snapshot.birthdayTier);
           }
           break;
-        case 'coop-6':
+        case 'coop-matters':
           await saveMembershipInterests(snapshot.membershipInterests);
           break;
-        case 'product-2':
-          await saveHelpInterests(snapshot.helpInterests);
+        case 'product-picks': {
+          const ordered = FEATURE_IDS.filter((id) =>
+            snapshot.helpInterests.includes(id)
+          );
+          await saveHelpInterests(ordered);
           break;
-        case 'memories-4':
-          if (snapshot.pageAuthoring) await savePageAuthoring(snapshot.pageAuthoring);
-          break;
+        }
         case 'friends-of-friends':
           await saveConnectionStyle(snapshot.connectStyles);
           break;
@@ -568,7 +633,10 @@ export function useOnboarding(
             hometown: snapshot.hometown,
             currentTown: snapshot.currentTown,
             favoritePlace: snapshot.favoritePlace,
-            favoritePlaceHit: snapshot.favoritePlaceHit
+            favoritePlaceHit: snapshot.favoritePlaceHit,
+            hometownTier: snapshot.hometownPrivacy,
+            currentTownTier: snapshot.currentTownPrivacy,
+            favoritePlaceTier: snapshot.favoritePlacePrivacy
           });
           break;
         case 'privacy-control':
@@ -579,70 +647,55 @@ export function useOnboarding(
       }
     };
 
-    const waitOn =
-      leaving === 'confirm-profile' ||
-      leaving === 'first-name' ||
-      leaving === 'last-name' ||
-      leaving === 'photo' ||
-      leaving === 'birthday';
-
     if (waitOn) {
       try {
         await runSave();
       } catch (err) {
         console.warn(`Onboarding save failed on ${leaving}; staying put.`, err);
-        Alert.alert(
-          'Could not save your profile',
-          err instanceof Error
-            ? err.message
-            : 'Check your connection and try Continue again.'
-        );
+        const raw = err instanceof Error ? err.message : '';
+        const friendly =
+          /api 502|internal server error|gateway|not signed in/i.test(raw) || !raw
+            ? 'Something went wrong saving. Check your connection and try Continue again.'
+            : raw;
+        try {
+          Alert.alert('Could not save', friendly);
+        } catch {
+          // Alert unavailable (rare): still stay on this step.
+        }
         return;
+      } finally {
+        savingRef.current = false;
       }
     }
 
-    // THIS SECTION DOES: after Co-op 6, pick a routing screen (or skip to product).
-    if (leaving === 'coop-6') {
-      const ids = snapshot.membershipInterests;
-      if (ids.includes('custom_groups')) {
-        if (!waitOn) void runSave().catch(() => undefined);
-        goto('route-custom-groups');
-        return;
+    // THIS SECTION DOES: remember the first picked feature so Home can open it.
+    if (leaving === 'product-picks') {
+      const ordered = FEATURE_IDS.filter((id) => snapshot.helpInterests.includes(id));
+      const first = ordered[0];
+      const route = first ? BRANCH_DEEP_LINK[first] : null;
+      if (route) {
+        draftRef.current = { ...snapshot, helpInterests: ordered, pendingDeepLink: route };
+        setDraft((prev) => ({ ...prev, helpInterests: ordered, pendingDeepLink: route }));
+      } else {
+        draftRef.current = { ...snapshot, helpInterests: ordered };
+        setDraft((prev) => ({ ...prev, helpInterests: ordered }));
       }
-      if (ids.includes('vote')) {
-        if (!waitOn) void runSave().catch(() => undefined);
-        goto('route-vote');
-        return;
-      }
-      if (ids.includes('no_ads')) {
-        if (!waitOn) void runSave().catch(() => undefined);
-        goto('route-no-ads');
-        return;
-      }
-    }
-
-    // THIS SECTION DOES: after Product 2, walk only the tours they picked.
-    if (leaving === 'product-2') {
-      const queue = BRANCH_ORDER.filter((id) => snapshot.helpInterests.includes(id));
-      setDraft((prev) => ({ ...prev, branchQueue: queue, branchIndex: 0 }));
-      draftRef.current = { ...snapshot, branchQueue: queue, branchIndex: 0 };
-      if (!waitOn) void runSave().catch(() => undefined);
-      if (queue.length === 0) {
-        void completeRef.current();
-        return;
-      }
-      const first = BRANCH_START[queue[0]!];
-      if (first) goto(first);
-      else void completeRef.current();
-      return;
     }
 
     if (waitOn) {
-      advance();
+      try {
+        advance();
+      } catch (err) {
+        console.warn(`Onboarding advance failed after ${leaving}`, err);
+      }
       return;
     }
 
-    advance();
+    try {
+      advance();
+    } catch (err) {
+      console.warn(`Onboarding advance failed after ${leaving}`, err);
+    }
     void runSave().catch((err) => {
       console.warn(`Onboarding save failed on "${leaving}"; continuing.`, err);
     });
@@ -664,9 +717,6 @@ export function useOnboarding(
           goto(action.step);
           return;
         case 'next-branch':
-          if (step === 'memories-4' && draft.pageAuthoring) {
-            void savePageAuthoring(draft.pageAuthoring);
-          }
           nextBranch();
           return;
         case 'finish':
@@ -677,7 +727,7 @@ export function useOnboarding(
           return;
       }
     },
-    [advance, finishOpen, goNext, goto, nextBranch, step, draft.pageAuthoring]
+    [advance, finishOpen, goNext, goto, nextBranch]
   );
 
   /** Skip a step: move on without saving its slice. */
@@ -731,7 +781,15 @@ export function useOnboarding(
     try {
       await flushOnboardingDraft(draftRef.current);
     } catch (err) {
-      console.warn('Onboarding flush failed; continuing to Home.', err);
+      completingRef.current = false;
+      const raw = err instanceof Error ? err.message : '';
+      Alert.alert(
+        'Could not finish saving',
+        /api 502|internal server error|gateway/i.test(raw) || !raw
+          ? 'Check your connection and tap Continue again so your answers land on your profile.'
+          : raw
+      );
+      return;
     }
     try {
       if (draftRef.current.pendingDeepLink) {
@@ -777,7 +835,10 @@ export function useOnboarding(
           currentJob: d.currentJob,
           dreamJob: d.dreamJob,
           favoritePlace: d.favoritePlace,
-          song: d.song
+          song: d.song,
+          hometownTier: d.hometownPrivacy,
+          currentTownTier: d.currentTownPrivacy,
+          favoritePlaceTier: d.favoritePlacePrivacy
         })
       };
     });
@@ -805,7 +866,11 @@ export function useOnboarding(
     const trimmed = value.trim();
     const display = trimmed || 'Not added';
 
-    // THIS SECTION DOES: mirror the edit into the matching draft fields.
+    // Write the server first. Only then mirror into the draft — otherwise a
+    // failed AI follow-up (or network blip) showed "Could not save" while the
+    // draft already looked updated (hometown edit bug).
+    await savePrivacyRowValue(rowId, trimmed);
+
     setDraft((d) => {
       const next = {
         ...d,
@@ -826,8 +891,6 @@ export function useOnboarding(
       if (rowId === 'currently_song') next.song = trimmed;
       return next;
     });
-
-    await savePrivacyRowValue(rowId, trimmed);
   }, []);
 
   // Progress numbers: where we are among the question screens (stat + welcome

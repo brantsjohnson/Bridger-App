@@ -42,6 +42,7 @@ export function AboutMeSection({
   fields,
   editable,
   own,
+  showEmptyCtas,
   onAdd,
   onEditField,
   onEditBio,
@@ -57,6 +58,11 @@ export function AboutMeSection({
   editable?: boolean;
   /** Own profile can always edit/add/change photo, not only in Edit mode. */
   own?: boolean;
+  /**
+   * When false (friend view or View as Friends/Everyone), empty field lists
+   * and "Add details" CTAs stay hidden. No "Nothing shared at this level."
+   */
+  showEmptyCtas?: boolean;
   onAdd?: () => void;
   /** Open the fill flow / editor for one about-me field. */
   onEditField?: (field: AboutFieldView) => void;
@@ -68,9 +74,9 @@ export function AboutMeSection({
   onReorderFields?: (next: AboutFieldView[]) => void;
 }) {
   const c = useThemeColors();
-  // THIS SECTION DOES: on your own profile you can always edit/add and change
-  // your photo. The layout Edit toggle only controls rearranging sections.
-  const canEditContent = editable || own;
+  // THIS SECTION DOES: fill / edit chrome only on your full own profile.
+  // View-as and friend views look like the answers simply are not there.
+  const canEditContent = showEmptyCtas ?? Boolean(editable || own);
   // Keep the details open by default (matches the About card design).
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [bioExpanded, setBioExpanded] = useState(false);
@@ -197,24 +203,26 @@ export function AboutMeSection({
                 </View>
               ) : null}
             </View>
-            <Pressable
-              onPress={withAnalyticsPress(PROFILE.card.about_me_toggle, () =>
-                setDetailsOpen((o) => !o)
-              )}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: detailsOpen }}
-              accessibilityLabel={
-                detailsOpen ? 'Hide About me details' : 'Show About me details'
-              }
-              hitSlop={8}
-              className="h-9 w-9 items-center justify-center"
-            >
-              {detailsOpen ? (
-                <ChevronUpIcon size={18} color={c.ink} strokeWidth={2.4} />
-              ) : (
-                <ChevronDownIcon size={18} color={c.ink} strokeWidth={2.4} />
-              )}
-            </Pressable>
+            {ordered.length > 0 || canEditContent ? (
+              <Pressable
+                onPress={withAnalyticsPress(PROFILE.card.about_me_toggle, () =>
+                  setDetailsOpen((o) => !o)
+                )}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: detailsOpen }}
+                accessibilityLabel={
+                  detailsOpen ? 'Hide About me details' : 'Show About me details'
+                }
+                hitSlop={8}
+                className="h-9 w-9 items-center justify-center"
+              >
+                {detailsOpen ? (
+                  <ChevronUpIcon size={18} color={c.ink} strokeWidth={2.4} />
+                ) : (
+                  <ChevronDownIcon size={18} color={c.ink} strokeWidth={2.4} />
+                )}
+              </Pressable>
+            ) : null}
           </View>
 
           {bioText ? (
@@ -274,8 +282,9 @@ export function AboutMeSection({
         </View>
       </View>
 
-      {/* THIS SECTION DOES: the field list under the card (stays open by default). */}
-      {detailsOpen ? (
+      {/* THIS SECTION DOES: the field list under the card (stays open by default).
+          Viewers with no fields at this circle see nothing here (no empty hint). */}
+      {detailsOpen && (ordered.length > 0 || canEditContent) ? (
         <AnalyticsRegion
           analyticsId={PROFILE.card.about_me}
           interactive={false}
@@ -292,11 +301,7 @@ export function AboutMeSection({
                 accessibilityLabel="Add About me details"
                 onPress={() => onAdd?.()}
               />
-            ) : (
-              <Text className="font-sans-sb text-[14px] text-ink-mute">
-                Nothing shared at this level.
-              </Text>
-            )
+            ) : null
           ) : (
             <View className="gap-0">
               {ordered.map((f, i) => (

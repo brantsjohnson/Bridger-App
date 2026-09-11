@@ -21,6 +21,7 @@ import {
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
+import { setTabSnapshot } from '../lib/tab-snapshots';
 import { getCurrentActivity } from './activity';
 import { getLiveQuiz, type HomeQuiz } from './quiz';
 import {
@@ -395,17 +396,26 @@ export async function getHomeLayout(): Promise<HomeWidgetDefault[]> {
       effective: HomeWidgetDefault[];
     }>('/content/home-layout');
 
-    if (Array.isArray(res.layout) && res.layout.length) {
-      return res.layout;
+    const picked = Array.isArray(res.layout) && res.layout.length
+      ? res.layout
+      : null;
+    if (picked) {
+      setTabSnapshot('homeLayout', picked);
+      return picked;
     }
 
     // No personal layout: prefer admin defaults over the hard-coded seed.
     const defaults = await getHomeDefaults();
-    if (defaults.length) return defaults;
+    if (defaults.length) {
+      setTabSnapshot('homeLayout', defaults);
+      return defaults;
+    }
 
-    return Array.isArray(res.effective) && res.effective.length
+    const effective = Array.isArray(res.effective) && res.effective.length
       ? res.effective
       : DEFAULT_HOME_LAYOUT.map((w) => ({ ...w }));
+    setTabSnapshot('homeLayout', effective);
+    return effective;
   } catch {
     return getHomeDefaults();
   }
@@ -413,8 +423,10 @@ export async function getHomeLayout(): Promise<HomeWidgetDefault[]> {
 
 /** Save the user's Home widget order/sizes after Edit → Done. */
 export async function saveHomeLayout(layout: HomeWidgetDefault[]): Promise<void> {
+  // Keep the arrangement on the phone so the next Home tap is already in order.
+  setTabSnapshot('homeLayout', layout);
   if (isDemoMode()) {
-    // Demo keeps layout session-only in the Home screen state.
+    // Demo has no API row; the snapshot is what makes Edit stick.
     return;
   }
   await apiFetch('/content/home-layout', {

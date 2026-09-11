@@ -14,29 +14,31 @@ Live and TestFlight accounts still walk the **Old 19-step onboarding** below. Th
 
 Sign-in is **phone + SMS OTP** (iOS one-time-code autofill). Google / Apple / email stay compiled behind `EXPO_PUBLIC_AUTH_MODE=legacy`. Phone is stored in E.164 on `user_contacts`. If someone already made a private card for that number (`pending_people`), signup merges notes and a friend connection into the new account.
 
-The onboarding container starts at **first name**. Copy lives in `apps/mobile/components/onboarding/onboarding-new-copy.ts`. Screens use four archetypes (explainer, story, choice, privacy-picker) plus the existing name / photo / birthday / contacts / co-op components.
+The onboarding container starts at **name** (first + last on one screen). Copy lives in `apps/mobile/components/onboarding/onboarding-new-copy.ts`. Layouts follow the Magic Patterns handoff (`docs/HANDOFF.md` in the design zip). Photo filters, the live Touch Grass button, and the pixel Friend Podcast play control stay the app's.
 
 **Order** (driven by `hooks/useOnboarding.ts` with `flowVariant='new'`):
 
-1. **First name** (required *)
-2. **Last name** (required *)
-3. **Photo** (required * with an explicit "Add one later" skip)
-4. **Birthday** (required *; audience chosen later)
-5. **Why Bridger** (2 explainers)
-6. **Privacy, taught with birthday** (explainers + one Groups picker that saves `visibleToTier`; user-facing word is Groups, never circles)
-7. **Groups** (3 screens: Close Friends / Friends / Acquaintances)
-8. **Custom groups bridge** (membership teaser)
-9. **Co-op story** (6 screens) + interest chips, then optional routing to join or invite-3
-10. **What would help** (multi-select) then **only the tours they picked**: see friends (Touch Grass), keep up (notes), memories (pages), meet people (friends of friends)
-11. **Home** as Free Lite. Co-op is optional. There is no paywall.
+1. **Name** (first + last, required)
+2. **Photo** (required with an explicit "Add one later" skip; real looks)
+3. **Birthday** (required; year → month → day → confirm)
+4. **Why Bridger** (scattered, then the tool grid)
+5. **Privacy** (claim → two profiles → who can see your birthday, including Only Me)
+6. **What would help** (ten features; four first, See more for the rest)
+7. **Feature tour** (one educational screen per pick, in list order)
+8. **Co-op story** (what a co-op is → no ads → who pays → members vote → benefits → what matters)
+9. **Join the co-op** (last screen). Simple: **Join the co-op and don't be the product.** They already learned what a co-op is, so no comparison table. **Join the co-op** opens the same pay sheet as Old (Apple Pay / Google Pay / card, monthly or yearly). **Or invite 3 friends** for Free Lite. Hold Join for 10 seconds for an auth code. Paying, the 3rd invite, or a redeem finishes onboarding → **Home**. Home shows the congratulations splash over the real homepage (not another onboarding screen).
 
-**Progress bar:** only the four profile fields (name, photo, birthday). Everything else is education.
+**Progress bar:** the six things you actually do (name, photo, birthday, birthday audience, feature picks, what matters). Information screens hide the bar.
+
+**Info vs action:** information screens invert the phone's light/dark mode and color the heading with the concept. Action screens stay on the app canvas, show an amber "Your turn" pill, and keep a blue heading.
 
 **Demo:** password `onboard` runs this New flow. Password `onboardold` (and live / TestFlight) run the Old 19-step flow. New is preview-only until we flip the switch.
 
-**Reduce Motion:** story cards never auto-advance; the Continue button stays visible.
+**Look (New):** rounded cards like the rest of the app. Name fields and pick rows have **no outline**. Only the progress bar stays square. Continue is the **pink** onboarding button (never the gray Windows metallic). Labels already include `→`, so the button does not add a second arrow. Photo looks (Pop art, Comic, Sepia, X-ray) keep the "Ran 100% locally - not AI" badge. "Bridger brings it together" is a 3×3 tool grid. Emoji showers do not block scrolling.
 
-Graphics are placeholders (`VisualSlot`) until a Magic Patterns pass.
+**Reduce Motion:** no looping drift, no confetti, no emoji burst. Continue stays visible.
+
+**Emoji bursts:** every Continue sprays emojis. A pick row whose label has an emoji sprays that emoji. The shower paints over the page so you can still scroll while emojis fall. Magic Patterns does not keep this; Bridger does.
 
 ---
 
@@ -115,7 +117,7 @@ This is product onboarding, not the Assistant. Billy stays founder-only and is n
 2. **Fun and visual.** Prefer **tappable choices over typing**: single-select, **multi-select**, **image-choice**, and **ranking** tiles. Typing only where it's genuinely needed (name, city).
 3. **Purpose before ask.** Each question is prefaced by one short "trying again" purpose line so the person always knows *why*.
 4. **Clean, plain wording.** Short sentences, no jargon. No em dashes.
-5. **Welcome is non-skippable and auto-advancing.** It flows into auth on its own.
+5. **Welcome typing is non-skippable.** After each typed screen, Next (or a 5s fill) moves on. The ending still flows into auth.
 6. **Keep it short.** Onboarding collects essentials + connection style + notifications + one meeting question + join tier. The deep matching / personality questions are **not** here — they live in Discover Me, later (see `DISCOVER.md`).
 
 This one-question-at-a-time pattern is the **same pattern used by every profile module and quiz** (see "Module flow" below) — onboarding is just the first place the person meets it.
@@ -124,7 +126,13 @@ This one-question-at-a-time pattern is the **same pattern used by every profile 
 
 ## Phase 0 · Welcome (`(auth)/welcome.tsx`)
 
-One continuous animated sequence — either a required video or an animated type-out of text beats (design choice; the beat list below drives either). No skip. When the last beat finishes, it **auto-navigates to auth** with no tap.
+Live build: the CRT terminal intro (`CrtIntro.tsx`, script in `content/crt-intro.ts`). Color bars, then a green terminal types one screen at a time. **Typing cannot be skipped.** After the last line of a screen finishes typing, **Next** pops up with a **five-second progress fill**. Tap Next to go on, or wait and it advances on its own. Reduce Motion still types, still shows Next, and does **not** auto-advance. After the last Next, the glitch / shut-off plays, then we go to sign-in.
+
+*Changelog (2026-09-09): people said screens moved on before they could finish reading. Next + 5s fill replaced the old auto-wipe.*
+
+### Older beat list (kept for the Magic Patterns welcome prototype)
+
+One continuous animated sequence in the Magic Patterns welcome screen (`content/welcome.ts`). That prototype still auto-advances. The shipped app uses the CRT hold above.
 
 ### Beat sequence (source of truth: `apps/mobile/content/welcome.ts`)
 
@@ -142,7 +150,8 @@ One continuous animated sequence — either a required video or an animated type
 
 ### Behavior
 - Plays automatically on first open.
-- No skip, no scrub, no back.
+- No skip of the typing, no scrub, no back.
+- After each typed screen: Next + 5s fill (Reduce Motion: Next only).
 - On completion → `router.replace('(auth)/sign-in')`.
 - Sets `hasSeenWelcome = true` (device-local before account; persisted to the profile once the account exists, so a reinstall on the same account doesn't replay it).
 
@@ -319,7 +328,7 @@ root _layout:
   else                      → (tabs)/home
 ```
 
-- Welcome → auto-advances to auth (no button).
+- Welcome → after each typed screen, Next or a 5s fill; last screen then shuts off into auth.
 - Each onboarding screen advances on continue; skippable screens show "Skip for now."
 - `CoopStep` (pay, invite 3, or auth code) is the only place `onboardingComplete` is set to true; Home then plays the welcome fireworks.
 
@@ -327,7 +336,7 @@ root _layout:
 
 ## Acceptance criteria
 
-- [ ] Welcome plays on first open, cannot be skipped, and auto-advances to auth on completion.
+- [ ] Welcome plays on first open. Typing cannot be skipped. After each typed screen, Next appears with a 5s fill (tap or wait). Reduce Motion waits for Next. Then auth.
 - [ ] Welcome beats use the "promised / instead / trying again" refrain (copy in `content/welcome.ts`).
 - [ ] Every screen is one question, Typeform-style, with a progress bar and smooth transitions; tappable/multi-select/image/rank choices are preferred over typing.
 - [ ] Onboarding order ends at co-op (pay / invite 3 / auth code) → Home; no separate Welcome in screen.
@@ -384,8 +393,8 @@ apps/mobile/data/onboarding.ts          # per-step saves (demo in-memory + live)
 apps/mobile/content/welcome.ts          # editable welcome beat copy
 
 apps/mobile/lib/welcome-celebration.ts  # one-time "just onboarded" flag (mark on finish / consume on Home)
-apps/mobile/components/home/WelcomeCelebration.tsx  # black overlay + fireworks + "You did it! Welcome to Bridger!!!"
+apps/mobile/components/home/WelcomeCelebration.tsx  # black overlay + fireworks + congratulations on onboarding
 apps/mobile/lib/celebration-haptics.ts  # fireFireworksHaptics(): the boom + crackle buzz
 ```
 
-**Welcome fireworks (replaces the old "You're in" screen):** finishing Co-op calls `useOnboarding.complete()`, which marks the account complete, flags a one-time celebration (`lib/welcome-celebration.markWelcomeCelebration`), and routes to Home. Home consumes the flag once (`consumeWelcomeCelebration`, also via a mark subscriber so an already-mounted Home still wakes up) and shows `WelcomeCelebration`: a black see-through overlay, cross-platform fireworks (built with React Native's own `Animated`, not the web-only fireworks-js canvas library), the words "You did it!" and "Welcome to Bridger!!!", and firework haptics (`fireFireworksHaptics`). Tap anywhere (or the "Tap to continue" hint) to clear it; it also clears itself after ~6s. A session latch (`playedWelcome`) stops remounts (post composer, Fast Refresh) from replaying it. Its own analytics surface is `welcome_celebration` (parent `home`). Reduce Motion shows the words only, with no fireworks and no haptics.
+**Welcome fireworks (replaces the old "You're in" screen):** finishing Co-op (Old or New) calls `useOnboarding.complete()`, which marks the account complete, flags a one-time celebration (`lib/welcome-celebration.markWelcomeCelebration`), and routes to Home. Home consumes the flag once (`consumeWelcomeCelebration`, also via a mark subscriber so an already-mounted Home still wakes up) and shows `WelcomeCelebration` as a splash **over the real homepage**: a black see-through overlay, cross-platform fireworks (built with React Native's own `Animated`, not the web-only fireworks-js canvas library), the words "Congratulations on onboarding" and "Welcome to Bridger", and firework haptics (`fireFireworksHaptics`). Tap anywhere (or the "Tap to continue" hint) to clear it; it also clears itself after ~6s. Feature-tour deep links wait until this splash is gone. A session latch (`playedWelcome`) stops remounts (post composer, Fast Refresh) from replaying it. Its own analytics surface is `welcome_celebration` (parent `home`). Reduce Motion shows the words only, with no fireworks and no haptics.

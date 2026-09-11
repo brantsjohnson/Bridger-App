@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Everything the Stories ("Updates", shown as Scrapbook pages) player and
+// Everything the Stories ("Updates", shown as Collage pages) player and
 // composer need: list someone's posts, load their Catch-Up sheet, list/add
 // replies, answer a poll/question, create a new page, change or delete a page
 // you posted today, and the daily limit (4 photos or videos across all of
@@ -83,7 +83,7 @@ export type CreatePostInput = {
   /** Already-uploaded media row id (skips upload when set). */
   mediaId?: string;
   /**
-   * The Scrapbook page. Media elements must already have `mediaId` (live) or a
+   * The Collage page. Media elements must already have `mediaId` (live) or a
    * local `uri` (demo). The composer uploads them before calling this.
    */
   page?: PageInput;
@@ -198,8 +198,21 @@ function pageToWire(page: PageInput): PageInput {
     layoutId: page.layoutId,
     layoutFamily: page.layoutFamily,
     background: page.background,
-    elements: page.elements.map(({ uri: _uri, ...el }) => el)
+    elements: page.elements.map(({ uri: _uri, ...el }) => ({
+      ...el,
+      data: stripClientOnlyData(el.data)
+    }))
   };
+}
+
+/** Names and local file paths stay on the phone. */
+function stripClientOnlyData(data: ScrapbookElement['data']): ScrapbookElement['data'] {
+  const { displayNames: _names, ...rest } = data;
+  if (typeof rest.maskUri === 'string' && !/^https?:\/\//i.test(rest.maskUri)) {
+    const { maskUri: _mask, ...clean } = rest;
+    return clean;
+  }
+  return rest;
 }
 
 /**
@@ -376,11 +389,24 @@ export async function getPostQuota(): Promise<{ left: number; cap: number }> {
 export async function uploadPageMedia(page: PageInput): Promise<PageInput> {
   const elements: ScrapbookElement[] = [];
   for (const el of page.elements) {
-    const isMedia = el.type === 'photo' || el.type === 'video';
-    if (isMedia && !el.mediaId && el.uri) {
+    const needsUpload =
+      (el.type === 'photo' ||
+        el.type === 'video' ||
+        el.type === 'voice' ||
+        el.type === 'cutout') &&
+      !el.mediaId &&
+      el.uri;
+    if (needsUpload) {
+      const localUri = el.uri;
+      if (!localUri) {
+        elements.push(el);
+        continue;
+      }
+      const kind =
+        el.type === 'voice' ? 'audio' : el.type === 'video' ? 'video' : 'photo';
       const mediaId = await uploadMedia(
-        el.uri,
-        el.type === 'video' ? 'video' : 'photo',
+        localUri,
+        kind,
         `stories/page-${Date.now()}-${el.id}`
       );
       elements.push({ ...el, mediaId });

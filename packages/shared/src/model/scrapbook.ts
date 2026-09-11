@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The shapes behind a Scrapbook page (user-facing name for what the code still
+// The shapes behind a Collage page (user-facing name for what the code still
 // calls a "story"). A page is a portrait 8.5 x 11 sheet. Everything you see on
 // it (a photo, a caption, a date stamp) is an "element" with a position given
 // as fractions of the page (0 to 1), so the same page draws the same on any
@@ -96,6 +96,41 @@ export interface ScrapbookElement extends NormalizedRect {
   data: ScrapbookElementData;
 }
 
+/** How a photo sits on the paper. Old pages may still say `thin`. */
+export type CollageFrame =
+  | 'none'
+  | 'polaroid'
+  | 'thin'
+  | 'shadow'
+  | 'tape'
+  | 'film'
+  | 'torn';
+
+/** Colour look applied when drawing (never burns the original file). */
+export type CollageFilter =
+  | 'none'
+  | 'mono'
+  | 'vibrant'
+  | 'retro'
+  | 'dramatic'
+  | 'sepia';
+
+/** Extra tilt on top of `rotation` (a named recipe, not extra degrees). */
+export type CollageTilt = 'none' | 'pivot' | 'wave' | 'slide' | 'swivel' | 'rotate';
+
+/**
+ * Shape used to clip a photo. `blob` is the OS subject lift (Vision / Galaxy).
+ * We do not ship a hand-drawn lasso: that looked jagged and unfriendly.
+ */
+export type CollageClip =
+  | 'none'
+  | 'blob'
+  | 'square'
+  | 'circle'
+  | 'heart'
+  | 'flower'
+  | 'scallop';
+
 /** The loose bag of per-type settings. Keep keys snake-free and small. */
 export interface ScrapbookElementData {
   /** text / date: what it says */
@@ -104,18 +139,51 @@ export interface ScrapbookElementData {
   placeholder?: string;
   /** photo / video: non-destructive crop */
   crop?: CropConfig;
-  /** photo: visual frame preset id (polaroid, thin, none) */
-  frame?: 'none' | 'polaroid' | 'thin';
-  /** video: length in ms once known */
+  /** photo: visual frame preset */
+  frame?: CollageFrame;
+  /** photo: colour look (preview + print) */
+  filter?: CollageFilter;
+  /** photo: named extra tilt */
+  tilt?: CollageTilt;
+  /** photo / cutout: shape or OS subject mask */
+  clip?: CollageClip;
+  /** cutout: local/signed uri of the lifted subject PNG (alpha) */
+  maskUri?: string;
+  /** video / voice: length in ms once known */
   durationMs?: number;
-  /** text: which font role to use */
-  font?: 'sans' | 'pixel' | 'hand';
+  /**
+   * text: which font style to use. Each maps to a real, distinct loaded
+   * typeface (see collageFontFamily). 'serif' / 'hand' are kept so older
+   * saved pages keep rendering.
+   */
+  font?:
+    | 'sans'
+    | 'sans_bold'
+    | 'condensed'
+    | 'display'
+    | 'retro'
+    | 'mono'
+    | 'pixel'
+    | 'caps'
+    | 'serif'
+    | 'hand';
   /** text: size preset */
   size?: 'sm' | 'md' | 'lg';
+  /** text: explicit pixel size (12 to 72) when the composer slider is used */
+  fontPx?: number;
   /** text: horizontal alignment */
   align?: 'left' | 'center' | 'right';
+  /** text: soft white card behind the words */
+  textBg?: boolean;
   /** any: hex color for text or shape */
   color?: string;
+  /** voice: server transcript (words only; never sent to analytics) */
+  transcript?: string;
+  /**
+   * person: opaque friend ids only. Names rejoin on the phone from the roster.
+   * Never log these ids as PII; analytics only records a count.
+   */
+  personIds?: string[];
   [key: string]: unknown;
 }
 
@@ -156,6 +224,39 @@ export interface ScrapbookPage {
 /** Count the photos + videos on a page (the only things that use the daily limit). */
 export function countMediaElements(page: Pick<ScrapbookPage, 'elements'>): number {
   return page.elements.filter((e) => MEDIA_ELEMENT_TYPES.includes(e.type)).length;
+}
+
+/**
+ * True when the draft has anything worth keeping: a photo, words, a voice
+ * note, or a friend tag. Empty caption slots do not count.
+ */
+export function pageHasDraftContent(page: Pick<ScrapbookPage, 'elements'>): boolean {
+  return page.elements.some((e) => {
+    if (e.type === 'photo' || e.type === 'video' || e.type === 'voice' || e.type === 'cutout') {
+      return !!(e.uri || e.mediaId);
+    }
+    if (e.type === 'person') {
+      return Array.isArray(e.data.personIds) && e.data.personIds.length > 0;
+    }
+    if (e.type === 'text') {
+      return typeof e.data.text === 'string' && e.data.text.trim().length > 0;
+    }
+    return false;
+  });
+}
+
+/** Opaque friend ids tagged on the page (for notify-after-post). */
+export function taggedPersonIds(page: Pick<ScrapbookPage, 'elements'>): string[] {
+  const ids = new Set<string>();
+  for (const e of page.elements) {
+    if (e.type !== 'person') continue;
+    const list = e.data.personIds;
+    if (!Array.isArray(list)) continue;
+    for (const id of list) {
+      if (typeof id === 'string' && id.trim()) ids.add(id);
+    }
+  }
+  return [...ids];
 }
 
 /** True when any element on the page is a video (co-op only to post). */

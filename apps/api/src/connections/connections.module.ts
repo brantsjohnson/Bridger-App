@@ -13,6 +13,7 @@ import { ConnectionsService } from './connections.service';
 @Module({
   imports: [TiersModule, MatchingModule],
   controllers: [ConnectionsController],
-  providers: [ConnectionsService, SupabaseAuthGuard]
+  providers: [ConnectionsService, SupabaseAuthGuard],
+  exports: [ConnectionsService]
 })
 export class ConnectionsModule {}

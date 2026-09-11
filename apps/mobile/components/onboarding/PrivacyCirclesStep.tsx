@@ -36,21 +36,21 @@ const CIRCLES: {
   {
     id: 'close',
     label: TIER_LABEL.close,
-    meaning: 'Your innermost circle. The few you tell almost everything.',
-    size: `Up to ${CAPS.close} people`,
+    meaning: 'The few you tell almost everything.',
+    size: `Up to ${CAPS.close}`,
     accent: 'coral'
   },
   {
     id: 'friend',
     label: TIER_LABEL.friend,
     meaning: 'People you actually know and hang with.',
-    size: `Up to ${CAPS.friends} people`,
+    size: `Up to ${CAPS.friends}`,
     accent: 'purple'
   },
   {
     id: 'acquaintance',
     label: TIER_LABEL.acquaintance,
-    meaning: 'Everyone else you have added. Connection stays uncapped.',
+    meaning: 'Everyone else you have added.',
     size: 'Unlimited',
     accent: 'blue'
   }
@@ -74,7 +74,7 @@ export function PrivacyCirclesStep({
       step={step}
       total={total}
       purpose="Privacy First"
-      ask="Three circles. You pick who sees what."
+      ask="Your three circles"
       // Blurb sits beside the lock in the body (not stacked under the ask).
       cta="Got it"
       smallAsk
@@ -87,7 +87,7 @@ export function PrivacyCirclesStep({
         <AnalyticsRegion
           analyticsId={ONBOARDING.circles.lock}
           interactive={false}
-          accessibilityLabel="Privacy lock. Next you will set an audience for each answer. Change any of it anytime."
+          accessibilityLabel="Privacy lock. Next you pick who sees each answer."
         >
           <View
             style={{
@@ -104,7 +104,7 @@ export function PrivacyCirclesStep({
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <OBBody>
-                Next you will set an audience for each answer. Change any of it anytime.
+                Next you pick who sees each answer. Change anytime.
               </OBBody>
             </View>
           </View>

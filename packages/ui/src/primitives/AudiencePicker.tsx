@@ -144,6 +144,16 @@ export function AudiencePicker({
         })}
       </View>
 
+      {/* Concentric reach: Friends lights Close too. One choice is stored. */}
+      <Text
+        className={cn(
+          'mt-2 font-sans-sb text-[12px]',
+          dark ? 'text-white/55' : 'text-ink-mute'
+        )}
+      >
+        Wider circles include closer ones. Tap one choice.
+      </Text>
+
       {/* Groups only when they have some. Empty = no "Or a group" section. */}
       {groups.length > 0 ? (
         <View>

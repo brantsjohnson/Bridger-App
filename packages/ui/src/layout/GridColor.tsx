@@ -6,7 +6,7 @@
 // ============================================
 import React, { useCallback, useMemo, useState } from 'react';
 
-/** Classic Bridger purple used when no personal color is set. */
+/** Classic Bridger purple used when no personal color is set (light canvas). */
 export const DEFAULT_GRID_COLOR = 'rgba(127, 119, 221, 0.5)';
 
 type GridColorContextValue = {
@@ -22,8 +22,8 @@ const GridColorContext = React.createContext<GridColorContextValue>({
 });
 
 /**
- * Turn #RRGGBB into the same soft rgba the default purple uses (0.5 alpha)
- * so personal colors stay atmospheric, not neon.
+ * Turn #RRGGBB into a soft rgba line. SynthGrid boosts alpha further in dark
+ * mode so the grid still shows on a near-black canvas.
  */
 export function hexToGridLine(hex: string): string {
   const raw = hex.trim().replace(/^#/, '');
@@ -31,7 +31,7 @@ export function hexToGridLine(hex: string): string {
   const r = parseInt(raw.slice(0, 2), 16);
   const g = parseInt(raw.slice(2, 4), 16);
   const b = parseInt(raw.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, 0.5)`;
+  return `rgba(${r}, ${g}, ${b}, 0.55)`;
 }
 
 export function GridColorProvider({ children }: { children: React.ReactNode }) {

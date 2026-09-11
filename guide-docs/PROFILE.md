@@ -81,7 +81,9 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 └───────────────────────────────────────────┘
 ```
 
-The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → …). Each content section sits in a **widget box**. Own **Edit** enters rearrange mode (up/down on boxes + pencil to edit that box's contents); **Customize look** opens co-op theme. Co-op **Greatest hits** photos (§9) can sit between sections. Customization rules live in `PROFILE-CUSTOMIZATION.md`; **"View original"** always returns this native layout.
+The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → …). Each content section sits in a **widget box**. Own **Edit** enters rearrange mode (up/down on boxes + pencil to edit that box's contents); **Customize look** opens co-op theme. Co-op **Greatest hits** photos (§9) can sit between sections. Customization rules live in `PROFILE-CUSTOMIZATION.md`; **"View original"** always returns this native layout. The last saved module order stays on the phone so opening Profile does not rebuild from the default and then jump.
+
+**Your quizzes (own profile only).** After you finish Which "J" name are you, Profile keeps that **first** result even after Home rotates the featured quiz. The card shows the J-name + percent, **See your result**, **Share**, the **visible invite URL** (Copy / Preview), and **Retake for fun**. Fun retakes stay on this phone and do not change the stored first result or friend matching. Untaken older quizzes still list under "Quizzes to catch up on."
 
 ---
 
@@ -109,7 +111,7 @@ The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → 
 - **Story tile** — Home-style cover (story media), not a second face Avatar. Ring if unseen. **Own + empty:** dashed tile; tap opens capture to post an update (`post_prompt`).
 - **Compact pill** — View as (own) or friend-level tier (friend), small, to the left of search.
 - **Search** — fills the rest of the action row; searches visible fields on *this* profile (never logs query text). Replaces the old top-right / overflow search slot.
-- **Tier / View as pill** — compact control left of search. Friend: re-tier (fires `friend_retiered` on change). Own: View as Close / Friends / Everyone. Message stays in the friend screen header.
+- **Tier / View as pill** — compact control left of search. Friend: re-tier (fires `friend_retiered` on change). Own: View as Close / Friends / Everyone. Message stays in the friend screen header. **View as (and friend pages):** sections with nothing visible at that circle are omitted entirely (no empty header, no "fill this out," no "nothing shared") so the preview does not hint at hidden content.
 - **Tab bar** — Profile · Stories · Inside jokes · Bucket list.
 
 ---
@@ -261,18 +263,19 @@ Same page; the differences:
 | Header action | Edit · ⚙ Settings · **View as ▾** | **Tier control** · Message · … |
 | Editing | Every field inline | None |
 | Tier filter | You see all; preview via View as | Filtered to your tier with them |
+| Empty sections | "Add …" cards on your full own view | **Hidden entirely** (no header, no "nothing shared", no fill hint). View as Friends / Everyone matches this. |
 | Stories tab | Your **calendar archive** (tap a day → play) | — |
 | In common | — | The re-openable reveal (shared things, both hobby answers side-by-side) |
 | Settings | Gear (§14) | — |
 
-**In common** (friend only) is the permanent, re-openable version of the connection reveal (`REVEAL.md`, `DISCOVER.md`): strongest shared thing, shared hobbies **showing both people's follow-up answers side by side**, matching this-or-that, shared places (with co-op photos), matching quiz results — computed from attribute overlap, tier-respecting.
+**In common** (friend only) is the permanent, re-openable version of the connection reveal (`REVEAL.md`, `DISCOVER.md`): strongest shared thing, shared hobbies **showing both people's follow-up answers side by side**, matching this-or-that, shared places (with co-op photos), matching quiz results — computed from attribute overlap. **Privacy is one-way:** you only see what they labeled for the circle they put you in (We just met = Acquaintances). If they placed you as Friends and you placed them as Acquaintances, you may see more of theirs than they see of yours. Empty state points to **Personality quizzes** on Discover; adding a friend is never blocked on a filled profile.
 
 ---
 
 ## 13 · Stories tab (own) · Inside jokes · Bucket list
 
 - **Stories** (own only) — a **calendar archive**; each day with a post shows a dot/thumbnail; **tap a day to play that story**. A subtle **storage bar** sits at the bottom (§14 / `PROFILE-CUSTOMIZATION.md` for storage economics). Story media older than 30 days rolls off (co-op = full retention).
-- **Inside jokes** — the sticky-note wall: quoted person's photo on each note; tap for who-posted + event/place + date; a single **All / About you / By you** filter; add via a "+" tile with an "Add an Inside Joke" null state; tagging shares to tagged people + event attendees and cross-posts. Backed by `quotes`.
+- **Inside jokes** — square sticky notes. Quote on the paper; if there is a co-op photo the note slowly flips quote ↔ photo (Reduce Motion: tap to cycle). Tap also shows who posted + event + date. **All / About you / By you**. Add is a **full-screen** composer: type on the square note, pick color, **search** who said it, optionally **search** an event. Newest on Friends and on both walls. Backed by `quotes`.
 - **Bucket list** — its own tab: items solo or friend-tagged, each public/private, checkable; the **Goals** module (§10) feeds it. A friend's tab shows only public items.
 
 ---
@@ -351,6 +354,7 @@ Every field is an `Attribute` with its own `visibleToTier` **and** `matchable` f
 ## Acceptance criteria
 
 - [ ] Own and friend profiles render the **same Spotify-style composition**; differences are edit access, tier filtering, and tabs.
+- [ ] **Empty sections stay invisible** on friend pages and on View as Friends / Everyone: no section header, no "Add …" card, no "nothing shared" copy. Only your full own view (Close) shows fill empty states.
 - [ ] Header: square photo, name, city line, ▶ recap (only if present), current-story square (own empty → tap opens capture), **tier control** (friend) / **Edit + ⚙ Settings + View as** (own), and a **search** control that searches this profile's content.
 - [ ] The page order matches §2: Mutuals → Top 5 → About me → Upcoming → Current Obsession → Favorites (+hobbies) → Places → Where you met.
 - [ ] **Top 5** captures up to 5 ordered "things to know," each optionally imaged, each tier-visible.
@@ -363,7 +367,9 @@ Every field is an `Attribute` with its own `visibleToTier` **and** `matchable` f
 - [ ] **Greatest hits** (co-op) allows up to 3 large photos insertable between sections.
 - [ ] **Life timeline** (education/jobs/cities + defining moments) and **Recommendations** (books/movies/etc.) modules exist and fill via the standard flow.
 - [ ] **Every module ends with** (1) a who-sees Set-all + per-item step and (2) an explicit "use this to connect me in Discover?" toggle writing `matchable`; the two consents are independent.
-- [ ] Friend profiles show an **In common** tab (shared things; shared hobbies show *both* answers side by side); own profiles show a **Stories calendar** (tap a day to play).
+- [ ] Friend profiles show an **In common** tab (shared things; shared hobbies show *both* answers side by side; empty state points to Personality quizzes); own profiles show a **Stories calendar** (tap a day to play).
+- [ ] Own Profile keeps finished fun quizzes (starting with Which "J" name are you) under **Your quizzes**: first result + See your result / Share / visible invite URL / Retake for fun. The first result is still there after Home no longer features the quiz.
 - [ ] Categories are **unlimited**; long sections stay calm (counts, collapse, See all).
 - [ ] A mandatory one-time intro covers group-based sharing + delete-anytime; any field/module is deletable (removed from Bridger's store).
 - [ ] The native layout is always reachable via **View original** regardless of customization (`PROFILE-CUSTOMIZATION.md`).
+- [ ] Inside Joke notes are **square**. A photo on the note slowly flips quote ↔ photo (Reduce Motion: tap to cycle). Tap still shows who posted + where + when.

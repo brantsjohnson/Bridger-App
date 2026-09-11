@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // A round search bar with a magnifying-glass icon and an optional clear button.
-// Built and ready for Friends (and Messages later). On Friends it stays behind
-// the searchEnabled flag — when the flag is off, the screen does not render it.
+// Used on Friends (filters people already in your circle) and Messages.
+// Focus emits the taxonomy id; the typed query is never logged.
 // ============================================
 import React from 'react';
 import { Pressable, TextInput, View } from 'react-native';
@@ -17,23 +17,28 @@ export function SearchField({
   onChange,
   placeholder = 'Search',
   className,
+  size = 'md',
   analyticsId
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  /** lg is the taller bar used on full-screen composers. */
+  size?: 'md' | 'lg';
 } & Pick<AnalyticsProps, 'analyticsId'>) {
   const c = useThemeColors();
+  const large = size === 'lg';
 
   return (
     <View
       className={cn(
-        'h-11 flex-row items-center gap-2 rounded-full border border-ink-line bg-canvas-raised px-4',
+        'flex-row items-center gap-2 rounded-full border border-ink-line bg-canvas-raised px-4',
+        large ? 'h-14' : 'h-11',
         className
       )}
     >
-      <SearchIcon size={17} color={c.inkMute} strokeWidth={2.5} />
+      <SearchIcon size={large ? 20 : 17} color={c.inkMute} strokeWidth={2.5} />
       <TextInput
         value={value}
         onChangeText={onChange}
@@ -42,7 +47,10 @@ export function SearchField({
         accessibilityLabel={placeholder}
         autoCorrect={false}
         autoCapitalize="none"
-        className="min-w-0 flex-1 font-sans-sb text-[14px] text-ink"
+        className={cn(
+          'min-w-0 flex-1 font-sans-sb text-ink',
+          large ? 'text-[17px]' : 'text-[14px]'
+        )}
         style={{ padding: 0 }}
         onFocus={() => {
           if (analyticsId) trackUi('focus', analyticsId);

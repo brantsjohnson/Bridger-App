@@ -1,0 +1,85 @@
+<!doctype html>
+<!--
+  ============================================
+  WHAT THIS FILE DOES (plain English):
+  Static hosts (S3 / CloudFront) send unknown paths here. The script below
+  looks for /q/<token> quiz-share links so a friend without the app still
+  sees a take-the-quiz page instead of a dead 404.
+  ============================================
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bridger</title>
+    <meta name="description" content="Bridger is a social app for real-world friendship." />
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 40px 24px;
+        background: #f4f1ea;
+        color: #111111;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        text-align: center;
+      }
+      h1 {
+        font-size: clamp(40px, 12vw, 96px);
+        letter-spacing: -0.02em;
+        margin: 0;
+        font-weight: 800;
+      }
+      p.tagline {
+        font-size: clamp(16px, 4vw, 20px);
+        margin: 0;
+        max-width: 30ch;
+        line-height: 1.4;
+      }
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      nav a {
+        color: #111111;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        font-size: 15px;
+      }
+      nav a:focus-visible { outline: 2px solid #111111; outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>Bridger</h1>
+    <p class="tagline">A social app for real-world friendship. Something new is coming.</p>
+    <nav>
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="mailto:hello@bridger.social">Contact</a>
+    </nav>
+    <script>
+      (function () {
+        var match = location.pathname.match(/^\/q\/([^/]+)\/?$/);
+        if (!match) return;
+        var token = decodeURIComponent(match[1]);
+        document.title = 'Which J name are you?';
+        var appLink = 'bridger://q/' + encodeURIComponent(token);
+        document.body.innerHTML =
+          '<h1>Which J name are you?</h1>' +
+          '<p class="tagline">A friend shared a Bridger quiz. Open the app to take it. No account needed to play. Making an account adds them so you can see how you line up.</p>' +
+          '<nav>' +
+          '<a href="' + appLink + '">Open in Bridger</a>' +
+          '<a href="/privacy.html">Privacy Policy</a>' +
+          '</nav>';
+      })();
+    </script>
+  </body>
+</html>

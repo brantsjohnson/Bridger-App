@@ -10,6 +10,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { FilterIcon } from 'lucide-react-native';
 import type { InsideJoke } from '@bridger/shared';
 import { Peel, cn, useThemeColors, withAnalyticsPress } from '@bridger/ui';
+import { skipTabEnterAnimation } from '../../lib/tab-snapshots';
 import type { InsideJokeFilter } from '../../data/insideJokes';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 import { AddInsideJokeSheet } from './AddInsideJokeSheet';
@@ -42,7 +43,12 @@ export function InsideJokesWidget({
     <View className="flex-row flex-wrap gap-3.5">
       {notes.map((j, i) => (
         // Each note presses onto the wall instead of just appearing.
-        <Peel key={j.id} index={i} style={{ width: size === 'full' ? '47%' : '100%' }}>
+        <Peel
+          key={j.id}
+          index={i}
+          instant={skipTabEnterAnimation('jokes:me:all')}
+          style={{ width: size === 'full' ? '47%' : '100%' }}
+        >
           <InsideJokeNote
             joke={j}
             index={i}
@@ -64,15 +70,18 @@ export function InsideJokesWidget({
 /** Full wall with filters (Profile + richer Friends uses). */
 export function InsideJokesWall({
   ownerFirstName,
+  personId = 'me',
   empty = false,
   analyticsIds
 }: {
   ownerFirstName?: string;
+  /** Whose wall this is. 'me' on your profile; their id on a friend. */
+  personId?: string;
   empty?: boolean;
   analyticsIds?: InsideJokesAnalyticsIds;
 }) {
   const who = ownerFirstName ?? 'you';
-  const { jokes, counts, filter, setFilter, onAdd } = useInsideJokes('all');
+  const { jokes, counts, filter, setFilter, onAdd } = useInsideJokes('all', personId);
   const [adding, setAdding] = useState(false);
   const notes = empty ? [] : jokes;
 
@@ -93,7 +102,12 @@ export function InsideJokesWall({
             <AddNoteTile onPress={() => setAdding(true)} analyticsId={analyticsIds?.add} />
           </View>
           {notes.map((joke, i) => (
-            <Peel key={joke.id} index={i + 1} style={{ width: '47%' }}>
+            <Peel
+              key={joke.id}
+              index={i + 1}
+              instant={skipTabEnterAnimation(`jokes:${personId}:${filter}`)}
+              style={{ width: '47%' }}
+            >
               <InsideJokeNote
                 joke={joke}
                 index={i + 1}
@@ -115,9 +129,11 @@ export function InsideJokesWall({
       <AddInsideJokeSheet
         open={adding}
         onClose={() => setAdding(false)}
+        parentScreen="profile"
+        defaultQuotedId={personId !== 'me' ? personId : undefined}
         onAdd={async (input) => {
           await onAdd(input);
-          setFilter('by');
+          setFilter('all');
         }}
       />
     </View>

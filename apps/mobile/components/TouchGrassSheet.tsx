@@ -24,12 +24,12 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 
-// Close and Friends only. Acquaintances never get a Touch Grass blast.
-const WHO = ['Close', 'Friends'] as const;
+// Close friends and Friends only. Acquaintances never get a Touch Grass blast.
+const WHO = ['Close friends', 'Friends'] as const;
 const WHEN = ['Now', 'Tonight', 'This weekend'] as const;
 
 const WHO_ID: Record<(typeof WHO)[number], string> = {
-  Close: TOUCH_GRASS_SHEET.who.close,
+  'Close friends': TOUCH_GRASS_SHEET.who.close,
   Friends: TOUCH_GRASS_SHEET.who.friends
 };
 
@@ -41,7 +41,7 @@ const WHEN_ID: Record<(typeof WHEN)[number], string> = {
 
 /** Map UI labels to product-event property values (no free text). */
 const WHO_AUDIENCE: Record<(typeof WHO)[number], string> = {
-  Close: 'close',
+  'Close friends': 'close',
   Friends: 'friends'
 };
 

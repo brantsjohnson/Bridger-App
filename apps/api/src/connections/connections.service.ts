@@ -456,6 +456,55 @@ export class ConnectionsService {
     return { personId: ownerId };
   }
 
+  // THIS SECTION DOES: make two people accepted friends (quiz-share signup).
+  // Same end state as redeeming an invite link. made_via stays `link`.
+  async connectAcceptedPair(
+    userId: string,
+    otherId: string
+  ): Promise<{ personId: string; created: boolean }> {
+    if (!otherId || otherId === userId) {
+      throw new BadRequestException('Cannot connect to yourself');
+    }
+    if (await this.isBlocked(userId, otherId)) {
+      throw new ConflictException('Blocked');
+    }
+
+    const existing = await this.findPair(userId, otherId);
+    if (existing?.status === 'accepted') {
+      return { personId: otherId, created: false };
+    }
+    if (existing) {
+      const { error: upErr } = await this.supabase.admin
+        .from('connections')
+        .update({ status: 'accepted', made_via: 'link' })
+        .eq('id', existing.id);
+      if (upErr) throw upErr;
+    } else {
+      const { error: insErr } = await this.supabase.admin.from('connections').insert({
+        user_a: userId,
+        user_b: otherId,
+        status: 'accepted',
+        made_via: 'link'
+      });
+      if (insErr) throw insErr;
+    }
+
+    await this.demoWeek.markJoinedViaInvite(userId);
+
+    try {
+      await this.supabase.admin.from('notifications').insert({
+        user_id: otherId,
+        kind: 'connection_accepted',
+        payload: { from: userId, via: 'invite' } as never,
+        read: false
+      });
+    } catch {
+      // Never fail the add because the alert row could not write.
+    }
+
+    return { personId: otherId, created: true };
+  }
+
   /** Demo week blocks invite links for people who joined via someone else. */
   private async assertInviteAllowed(userId: string): Promise<void> {
     try {

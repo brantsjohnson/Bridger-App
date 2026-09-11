@@ -147,7 +147,7 @@ export function ResultCard({ jName, percent }: { jName: string; percent: number 
               color: POSTER.pink
             }}
           >
-            J–NAME
+            J-NAME
           </StrokeText>
           <View style={{ transform: [{ rotate: '-9deg' }], marginTop: 4 }}>
             <StrokeText

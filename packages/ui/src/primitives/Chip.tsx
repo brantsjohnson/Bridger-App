@@ -20,6 +20,8 @@ type ChipProps = {
   onPress?: () => void;
   icon?: React.ReactNode;
   size?: 'sm' | 'md';
+  /** VoiceOver / TalkBack name. Defaults to the visible label. */
+  accessibilityLabel?: string;
 } & AnalyticsProps;
 
 export function Chip({
@@ -29,6 +31,7 @@ export function Chip({
   onPress,
   icon,
   size = 'md',
+  accessibilityLabel,
   analyticsId,
   analyticsProps
 }: ChipProps) {
@@ -57,6 +60,7 @@ export function Chip({
       <Pressable
         onPress={withAnalyticsPress(analyticsId, onPress, { analyticsProps })}
         accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? label}
         accessibilityState={{ selected }}
         className={cn(container, 'active:opacity-90')}
       >

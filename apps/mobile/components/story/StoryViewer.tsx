@@ -2,11 +2,12 @@
 // WHAT THIS FILE DOES (plain English):
 // The full-screen Updates player. Shows one friend's posts with timed progress
 // bars, caption on the left with bottom controls (emoji → comment → red-dot
-// record) on the right, floating
-// reply balloons, and the Catch-Up peek. Tap left = previous, center = pause,
-// right = next. When the last post ends, we either open the next friend in the
-// tray sequence or show "You're all caught up" with confetti. Catch-Up stays
-// parked at the peek while swapping friends. Respects reduce-motion.
+// record) on the right, floating reply balloons, and the Catch-Up peek. Tap
+// left = previous, center = pause, right = next (zones sit above the media so
+// collage pages and photos cannot steal the tap). When the last post ends, we
+// either open the next friend in the tray sequence or show "You're all caught
+// up" with confetti. Catch-Up stays parked at the peek while swapping friends.
+// Respects reduce-motion.
 //
 // SCRAPBOOK PAGES: a post that carries a real page (photos laid out on an
 // 8.5 x 11 sheet) is drawn as that page, letterboxed on the dark canvas, so
@@ -14,6 +15,9 @@
 // Old one-photo posts still fill the screen like before.
 // ============================================
 import React, { useCallback, useEffect, useState } from 'react';
+// #region agent log
+import { debugStoryEvent } from '../../lib/debug-instrumentation';
+// #endregion
 import {
   Alert,
   Image,
@@ -30,6 +34,7 @@ import {
   XIcon
 } from 'lucide-react-native';
 import {
+  SCRAPBOOK_ASPECT_RATIO,
   STORY,
   dismissSurface,
   openSurface,
@@ -44,8 +49,9 @@ import {
   cn,
   withAnalyticsPress
 } from '@bridger/ui';
-import { SCRAPBOOK_ASPECT_RATIO } from '@bridger/shared';
 import { clearStoryReplyNotifications, markStorySeen } from '../../data/feed';
+import { withFriendNames } from '../../data/collage';
+import { useCollageVoice } from '../../hooks/useCollageVoice';
 import { getMembership } from '../../data/coop';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { useStoryViewer } from '../../hooks/useStoryViewer';
@@ -101,6 +107,7 @@ export function StoryViewer({
   onAdvanceAuthor
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { play: playVoice, stop: stopVoice } = useCollageVoice();
   const {
     author,
     posts,
@@ -138,6 +145,9 @@ export function StoryViewer({
   // New slide clears a manual pause so the next post can run.
   useEffect(() => {
     setUserPaused(false);
+    // #region agent log
+    debugStoryEvent('slide index now', { index, authorId, postCount: posts.length });
+    // #endregion
   }, [index, authorId]);
 
   // Keep Catch-Up collapsed when moving to the next friend — never carry an
@@ -175,7 +185,7 @@ export function StoryViewer({
     }
   };
 
-  // --- PAGE: a real Scrapbook page (not the one-photo legacy shape)? ---
+  // --- PAGE: a real Collage page (not the one-photo legacy shape)? ---
   const isPage = !!post?.page && !post.page.id.startsWith('legacy-');
   // The first video on the page is the one that plays (others show a poster).
   const pageVideo = isPage
@@ -191,9 +201,17 @@ export function StoryViewer({
     : ((post?.media as VideoSource | undefined) ?? null);
   // How wide the page can be drawn inside the media frame (measured below).
   const [pageBox, setPageBox] = useState<{ w: number; h: number } | null>(null);
+  const pageForView = post?.page ? withFriendNames(post.page) : null;
+  const pageVoice = pageForView?.elements.find((e) => e.type === 'voice' && e.uri);
   // How long the progress bar should take. Photos use a fixed 6s; videos use
   // their real length once we learn it (falls back to 6s until then).
   const [videoDurationMs, setVideoDurationMs] = useState(POST_MS);
+
+  // THIS SECTION DOES: play a voice note when this page opens.
+  useEffect(() => {
+    if (pageVoice?.uri) playVoice(pageVoice.uri);
+    return () => stopVoice();
+  }, [post?.id, pageVoice?.uri, playVoice, stopVoice]);
 
   // One reusable video player for the whole viewer. We swap its source as the
   // slides change rather than creating a new player each time.
@@ -261,8 +279,11 @@ export function StoryViewer({
 
   const handleNext = useCallback(() => {
     const result = goNext();
+    // #region agent log
+    debugStoryEvent('handleNext fired', { result: String(result), index, postCount: posts.length, authorId });
+    // #endregion
     if (result === 'exhausted') handleExhausted();
-  }, [goNext, handleExhausted]);
+  }, [goNext, handleExhausted, index, posts.length, authorId]);
 
   const togglePause = useCallback(() => {
     setUserPaused((v) => !v);
@@ -366,66 +387,53 @@ export function StoryViewer({
 
   return (
     // Pages sit on the near-black canvas (like the composer); legacy posts keep their accent.
-    <View className={cn('relative flex-1 overflow-hidden', isPage ? 'bg-[#0E0E0E]' : token.bg)}>
+    <View
+      className={cn('relative flex-1 overflow-hidden', isPage ? 'bg-[#0E0E0E]' : token.bg)}
+      // #region agent log
+      onTouchStart={(e) => {
+        debugStoryEvent('root touch', {
+          x: Math.round(e.nativeEvent.pageX),
+          y: Math.round(e.nativeEvent.pageY),
+          isPage,
+          index
+        });
+      }}
+      // #endregion
+    >
       {/*
-        Tap zones over the media: left = previous, center = pause/play,
-        right = next. Chrome (header, bottom controls, Catch-Up) sits above
-        and keeps its own taps.
-      */}
-      <View className="absolute inset-0 flex-row" style={{ bottom: mediaBottom }}>
-        <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_prev, goPrev)}
-          accessibilityRole="button"
-          accessibilityLabel="Previous post"
-          className="w-[28%]"
-        />
-        <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_pause, togglePause)}
-          accessibilityRole="button"
-          accessibilityLabel={userPaused ? 'Play' : 'Pause'}
-          className="flex-1"
-        />
-        <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_next, handleNext)}
-          accessibilityRole="button"
-          accessibilityLabel="Next post"
-          className="w-[28%]"
-        />
-      </View>
-
-      {/*
-        Media frame: full screen width, stops at the top of Catch-Up.
-        Cover fills this box — crop story photos to ~9:15.5 so faces aren't cut.
+        Media first (under the tap zones). Cover fills this box. pointerEvents
+        none so left / center / right taps always reach the zones above — the
+        collage page, photo, and video used to sit on top and block skip.
       */}
       <View
         pointerEvents="none"
         className="absolute inset-x-0 top-0 items-center justify-center overflow-hidden"
         style={{ bottom: mediaBottom }}
       >
-        {isPage && post.page ? (
-          // SCRAPBOOK PAGE: letterboxed so the header + caption row never cover it.
+        {isPage && pageForView ? (
+          // COLLAGE PAGE: fills the media frame edge to edge, exactly like a
+          // photo story. The 8.5 x 11 sheet is scaled up to COVER the frame
+          // (the sides crop evenly) instead of letterboxing with empty space.
           <View
             className="flex-1 items-center justify-center"
-            style={{
-              width: '100%',
-              paddingTop: Math.max(insets.top, 12) + 84,
-              paddingBottom: 84,
-              paddingHorizontal: 16
-            }}
+            style={{ width: '100%' }}
             onLayout={(e) => {
               const { width, height } = e.nativeEvent.layout;
-              setPageBox({
-                w: width - 32,
-                h: height - (Math.max(insets.top, 12) + 84) - 84
-              });
+              setPageBox({ w: width, h: height });
             }}
           >
             {pageBox ? (
               <ScrapbookPage
-                page={post.page}
-                width={Math.max(120, Math.min(pageBox.w, pageBox.h * SCRAPBOOK_ASPECT_RATIO))}
+                page={pageForView}
+                // Cover math: wide enough that the page's height reaches the
+                // frame's height, and never narrower than the frame itself.
+                width={Math.max(
+                  120,
+                  pageBox.w,
+                  pageBox.h * SCRAPBOOK_ASPECT_RATIO
+                )}
                 mode="view"
-                radius={8}
+                radius={0}
                 accessibilityLabel={`${author.name}'s page`}
                 renderMedia={(el, box) =>
                   el.type === 'video' ? (
@@ -479,12 +487,52 @@ export function StoryViewer({
         ) : null}
       </View>
 
-      <FloatingReactions
-        replies={replies}
-        paused={paused}
-        bottomInset={controlsBottom + 56}
-        onOpen={() => setCommentsOpen(true)}
-      />
+      {/*
+        Tap zones OVER the media: left = previous, center = pause/play,
+        right = next. Must sit above the page/photo or taps never land.
+        Chrome (header, bottom controls, Catch-Up) stays higher via z-index.
+      */}
+      <View
+        className="absolute inset-0 z-10 flex-row"
+        style={{ bottom: mediaBottom }}
+      >
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_prev, () => {
+            // #region agent log
+            debugStoryEvent('tap_prev fired', { index, postCount: posts.length, authorId });
+            // #endregion
+            goPrev();
+          })}
+          accessibilityRole="button"
+          accessibilityLabel="Previous post"
+          className="w-[28%]"
+        />
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_pause, togglePause)}
+          accessibilityRole="button"
+          accessibilityLabel={userPaused ? 'Play' : 'Pause'}
+          className="flex-1"
+        />
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_next, handleNext)}
+          accessibilityRole="button"
+          accessibilityLabel="Next post"
+          className="w-[28%]"
+        />
+      </View>
+
+      <View
+        pointerEvents="box-none"
+        className="absolute inset-0 z-[15]"
+        style={{ bottom: mediaBottom }}
+      >
+        <FloatingReactions
+          replies={replies}
+          paused={paused}
+          bottomInset={controlsBottom + 56}
+          onOpen={() => setCommentsOpen(true)}
+        />
+      </View>
 
       {/* timed progress + header */}
       <View
@@ -533,7 +581,6 @@ export function StoryViewer({
                 style={{ textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 4 }}
               >
                 {post.createdAt}
-                {post.themeSlug ? ' · Take 0.5' : ''}
               </Text>
             </View>
           </Pressable>

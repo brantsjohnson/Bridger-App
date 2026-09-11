@@ -1,39 +1,41 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Paints one New-onboarding screen from the copy deck. Field screens and the
-// join / invite surfaces reuse the existing step components. Everything else
-// uses the explainer / story / choice / privacy-picker archetypes.
+// Paints one New-onboarding screen from the copy deck. Field screens reuse
+// the real name / photo / birthday components (photo filters stay ours).
+// Teaching screens use the Magic Patterns layouts. Feature tours are pictures
+// only. They do not open live sheets. The last join / invite screen is
+// CoopStep, rendered by the onboarding room, not here.
 // ============================================
 import React from 'react';
-import { ONBOARDING, type Tier } from '@bridger/shared';
+import { ONBOARDING } from '@bridger/shared';
+import type { Tier } from '@bridger/shared';
 import type { useOnboarding } from '../../hooks/useOnboarding';
-import { NEW_ONBOARDING_BY_KEY, type NewOnboardingStepKey } from './onboarding-new-copy';
-import { OnboardingExplainerStep } from './OnboardingExplainerStep';
-import { OnboardingStoryCard } from './OnboardingStoryCard';
-import { OnboardingChoiceStep } from './OnboardingChoiceStep';
-import { OnboardingPrivacyPickerStep } from './OnboardingPrivacyPickerStep';
-import { NameFieldStep } from './NameFieldStep';
+import type { PhotoSource } from '../../data/onboarding';
+import { FEATURES, featureById } from './onboarding-new-flow';
+import {
+  NEW_ONBOARDING_BY_KEY,
+  STEP_BRANCH,
+  type NewOnboardingStepKey
+} from './onboarding-new-copy';
+import { NameBothStep } from './NameBothStep';
 import { ConfirmProfileStep } from './ConfirmProfileStep';
 import { BirthdayStep } from './BirthdayStep';
-import { ContactsStep } from './ContactsStep';
-import { CoopStep } from './CoopStep';
-import type { PhotoSource } from '../../data/onboarding';
+import { OnboardingExplainerStep } from './OnboardingExplainerStep';
+import { OnboardingChoiceStep } from './OnboardingChoiceStep';
+import { OnboardingPrivacyPickerStep } from './OnboardingPrivacyPickerStep';
+import { ProductPicksStep } from './ProductPicksStep';
+import { CoopBenefitsStep } from './CoopBenefitsStep';
+import { CONCEPT } from './onboarding-new-flow';
+import { newShellFromSpec } from './new-shell';
 
 type Flow = ReturnType<typeof useOnboarding>;
 
 export function NewOnboardingDispatcher({
   flow,
-  onPickPhoto,
-  onJoin,
-  onRedeem
+  onPickPhoto
 }: {
   flow: Flow;
   onPickPhoto: (s: PhotoSource) => void;
-  onJoin: (
-    method: 'apple' | 'google' | 'card',
-    plan: 'monthly' | 'yearly'
-  ) => void | Promise<void>;
-  onRedeem: (code: string) => Promise<void>;
 }) {
   const spec = NEW_ONBOARDING_BY_KEY[flow.step as NewOnboardingStepKey];
   const back = flow.index > 0 ? flow.goBack : undefined;
@@ -41,57 +43,46 @@ export function NewOnboardingDispatcher({
 
   if (!spec) return null;
 
-  // THIS SECTION DOES: first name / last name as their own required screens.
-  if (spec.key === 'first-name') {
+  // THIS SECTION DOES: first + last name on one required screen.
+  if (spec.key === 'name') {
     return (
-      <NameFieldStep
-        step={formStep}
-        total={formTotal}
-        which="first"
-        header={spec.header}
-        subheader={spec.subheader ?? ''}
-        value={draft.firstName}
-        ctaLabel={spec.primaryCta.label}
-        continueAnalyticsId={spec.primaryCta.analyticsId}
-        onChange={(v) => patch({ firstName: v })}
+      <NameBothStep
+        spec={spec}
+        formStep={formStep}
+        formTotal={formTotal}
+        first={draft.firstName}
+        last={draft.lastName}
+        onChangeFirst={(v) => patch({ firstName: v })}
+        onChangeLast={(v) => patch({ lastName: v })}
         onNext={() => act(spec.primaryCta.action)}
         onBack={back}
       />
     );
   }
 
-  if (spec.key === 'last-name') {
-    return (
-      <NameFieldStep
-        step={formStep}
-        total={formTotal}
-        which="last"
-        header={spec.header}
-        subheader={spec.subheader ?? ''}
-        value={draft.lastName}
-        ctaLabel={spec.primaryCta.label}
-        continueAnalyticsId={spec.primaryCta.analyticsId}
-        onChange={(v) => patch({ lastName: v })}
-        onNext={() => act(spec.primaryCta.action)}
-        onBack={back}
-      />
-    );
-  }
-
-  // THIS SECTION DOES: photo square + looks. Skip is allowed in New.
+  // THIS SECTION DOES: photo square + real looks. Skip is allowed in New.
   if (spec.key === 'photo') {
+    const shell = newShellFromSpec(spec, formStep, formTotal);
     return (
       <ConfirmProfileStep
         layout="photo"
-        step={formStep}
-        total={formTotal}
+        step={shell.step}
+        total={shell.total}
         first={draft.firstName}
         last={draft.lastName}
         photoSource={draft.photoSource}
         photoUri={draft.photoUri}
         photoEmoji={draft.photoEmoji}
         photoFilter={draft.photoFilter}
-        onChangePhotoFilter={(f) => patch({ photoFilter: f })}
+        onChangePhotoFilter={(f) =>
+          patch({
+            photoFilter: f,
+            // Clear any prior bake so Continue re-bakes the newly picked look.
+            filteredMediaId: null,
+            originalMediaId: null,
+            bakedPhotoUri: null
+          })
+        }
         onFilteredBakeChange={(bake) =>
           patch({
             filteredMediaId: bake?.mediaId ?? null,
@@ -109,6 +100,9 @@ export function NewOnboardingDispatcher({
         onSkip={() => spec.secondaryCta && act(spec.secondaryCta.action)}
         onNext={() => act(spec.primaryCta.action)}
         onBack={back ?? (() => {})}
+        tone={spec.tone}
+        accent={CONCEPT[spec.concept].accent}
+        conceptLabel={CONCEPT[spec.concept].label}
       />
     );
   }
@@ -126,76 +120,52 @@ export function NewOnboardingDispatcher({
         blurb={spec.subheader}
         cta={spec.primaryCta.label}
         continueAnalyticsId={spec.primaryCta.analyticsId}
+        purpose={spec.chip}
+        tone={spec.tone}
+        accent={CONCEPT[spec.concept].accent}
+        conceptLabel={CONCEPT[spec.concept].label}
       />
     );
   }
 
-  // THIS SECTION DOES: optional membership join. Paying finishes. Free skip
-  // keeps walking the product tour.
-  if (spec.key === 'coop-join') {
+  if (spec.key === 'product-picks') {
     return (
-      <CoopStep
-        step={formStep}
-        total={formTotal}
-        inviteMode="hidden"
-        invitesSent={draft.inviteSlots.filter((s) => s.sent).length}
-        onInviteRecorded={() => undefined}
-        onJoin={onJoin}
-        onInvitesComplete={() => flow.goto('product-1')}
-        onContinueFree={() => flow.goto('product-1')}
-        onRedeem={onRedeem}
-        onBack={back ?? (() => {})}
-      />
-    );
-  }
-
-  // THIS SECTION DOES: invite 3 friends, then continue into the product tour.
-  if (spec.key === 'free-1') {
-    return (
-      <ContactsStep
-        step={formStep}
-        total={formTotal}
-        synced={draft.contactsSynced}
-        slots={draft.inviteSlots}
-        ask={spec.header}
-        purpose="Invite people you actually want on Bridger."
-        blurb={spec.subheader}
-        onSynced={() => patch({ contactsSynced: true })}
-        onFillSlot={(index, slot) => {
-          const next = draft.inviteSlots.map((s, i) => (i === index ? slot : s));
-          patch({
-            inviteSlots: next,
-            invited: next.some((s) => s.sent)
-          });
+      <ProductPicksStep
+        spec={spec}
+        formStep={formStep}
+        formTotal={formTotal}
+        selectedIds={draft.helpInterests}
+        onToggle={(id) => {
+          const list = draft.helpInterests;
+          const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+          patch({ helpInterests: next });
         }}
-        onNext={() => flow.goto('product-1')}
-        onSkip={() => flow.goto('product-1')}
-        onBack={back ?? (() => {})}
+        onNext={() => act(spec.primaryCta.action)}
+        onBack={back}
       />
     );
   }
 
-  const visualCaption =
-    spec.key === 'privacy-4' && draft.birthdayTier
-      ? draft.birthdayTier === 'close'
-        ? 'Visible to Close Friends'
-        : draft.birthdayTier === 'acquaintance'
-          ? 'Visible to Acquaintances (and closer groups)'
-          : 'Visible to Friends (and Close Friends)'
-      : undefined;
+  if (spec.key === 'coop-benefits') {
+    return (
+      <CoopBenefitsStep
+        spec={spec}
+        formStep={formStep}
+        formTotal={formTotal}
+        onNext={() => act(spec.primaryCta.action)}
+        onBack={back}
+        onDetail={(step) => flow.goto(step)}
+      />
+    );
+  }
 
   if (spec.archetype === 'privacy-picker') {
     return (
       <OnboardingPrivacyPickerStep
-        step={formStep}
-        total={formTotal}
-        chip={spec.chip}
-        header={spec.header}
-        subheader={spec.subheader}
-        visualId={spec.visualId}
-        options={spec.options ?? []}
+        spec={spec}
+        formStep={formStep}
+        formTotal={formTotal}
         value={draft.birthdayTier}
-        primaryCta={spec.primaryCta}
         onChange={(tier: Tier) => patch({ birthdayTier: tier })}
         onPrimary={() => act(spec.primaryCta.action)}
         onBack={back}
@@ -207,56 +177,28 @@ export function NewOnboardingDispatcher({
     const selected =
       spec.saveId === 'membership-interests'
         ? draft.membershipInterests
-        : spec.saveId === 'help-interests'
-          ? draft.helpInterests
-          : spec.saveId === 'page-authoring'
-            ? draft.pageAuthoring
-              ? [draft.pageAuthoring]
-              : []
-            : [];
+        : draft.helpInterests;
     const optionId =
       spec.saveId === 'membership-interests'
         ? ONBOARDING.coop.interest_option
-        : spec.saveId === 'help-interests'
-          ? ONBOARDING.product.option
-          : ONBOARDING.memories.option;
-
-    const onToggle = (id: string) => {
-      if (spec.saveId === 'page-authoring') {
-        patch({ pageAuthoring: id as 'auto' | 'manual' | 'assist' });
-        return;
-      }
-      if (!spec.multiSelect) {
-        if (spec.saveId === 'membership-interests') patch({ membershipInterests: [id] });
-        else if (spec.saveId === 'help-interests') patch({ helpInterests: [id] });
-        return;
-      }
-      const list =
-        spec.saveId === 'membership-interests'
-          ? draft.membershipInterests
-          : draft.helpInterests;
-      const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-      if (spec.saveId === 'membership-interests') patch({ membershipInterests: next });
-      else patch({ helpInterests: next });
-    };
+        : ONBOARDING.product.option;
 
     return (
       <OnboardingChoiceStep
-        step={formStep}
-        total={formTotal}
-        chip={spec.chip}
-        header={spec.header}
-        subheader={spec.subheader}
-        kicker={spec.kicker}
-        visualId={spec.visualId}
-        options={spec.options ?? []}
+        spec={spec}
+        formStep={formStep}
+        formTotal={formTotal}
         selectedIds={selected}
-        multiSelect={spec.multiSelect}
-        allowEmpty={spec.allowEmpty}
         optionAnalyticsId={optionId}
-        primaryCta={spec.primaryCta}
-        secondaryCta={spec.secondaryCta}
-        onToggle={onToggle}
+        onToggle={(id) => {
+          const list =
+            spec.saveId === 'membership-interests'
+              ? draft.membershipInterests
+              : draft.helpInterests;
+          const next = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+          if (spec.saveId === 'membership-interests') patch({ membershipInterests: next });
+          else patch({ helpInterests: next });
+        }}
         onPrimary={() => act(spec.primaryCta.action)}
         onSecondary={
           spec.secondaryCta ? () => act(spec.secondaryCta!.action) : undefined
@@ -266,36 +208,19 @@ export function NewOnboardingDispatcher({
     );
   }
 
-  if (spec.archetype === 'story') {
-    return (
-      <OnboardingStoryCard
-        step={formStep}
-        total={formTotal}
-        chip={spec.chip}
-        header={spec.header}
-        subheader={spec.subheader}
-        visualId={spec.visualId}
-        visualCaption={visualCaption}
-        autoAdvanceMs={spec.autoAdvanceMs}
-        primaryCta={spec.primaryCta}
-        onPrimary={() => act(spec.primaryCta.action)}
-        onBack={back}
-      />
-    );
-  }
+  const branch = STEP_BRANCH[spec.key];
+  const feature = branch ? featureById(branch) : undefined;
+  const picked = FEATURES.filter((f) => draft.helpInterests.includes(f.id));
+  const lastInTour = Boolean(
+    feature && picked.length > 0 && picked[picked.length - 1]!.id === feature.id
+  );
 
   return (
     <OnboardingExplainerStep
-      step={formStep}
-      total={formTotal}
-      chip={spec.chip}
-      header={spec.header}
-      subheader={spec.subheader}
-      kicker={spec.kicker}
-      visualId={spec.visualId}
-      visualCaption={visualCaption}
-      primaryCta={spec.primaryCta}
-      secondaryCta={spec.secondaryCta}
+      spec={spec}
+      formStep={formStep}
+      formTotal={formTotal}
+      lastInTour={lastInTour}
       onPrimary={() => act(spec.primaryCta.action)}
       onSecondary={
         spec.secondaryCta ? () => act(spec.secondaryCta!.action) : undefined

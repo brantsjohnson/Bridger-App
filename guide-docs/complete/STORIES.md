@@ -6,7 +6,7 @@ Build doc for the story experience. **Framing: these are "updates," not "stories
 
 ## Posting rules (what you can post)
 
-> **Superseded 2026-09-08 by `SCRAPBOOKS.md`.** Posting is now a two-screen Scrapbook flow: an 8.5 x 11 page with layouts, **4 photos/videos a day across 1 to 4 pages**, **camera roll allowed for pages** (replies and stickers stay capture-only), an **Only me** audience, same-day edits, and a local draft. The bullets below describe the old flow and are kept for history; where they disagree with `SCRAPBOOKS.md`, that doc wins.
+> **Superseded 2026-09-08 by `SCRAPBOOKS.md`.** Posting is now a two-screen Collage flow: an 8.5 x 11 page with layouts, **4 photos/videos a day across 1 to 4 pages**, **camera roll allowed for pages** (replies and stickers stay capture-only), an **Only me** audience, same-day edits, and a local draft. The bullets below describe the old flow and are kept for history; where they disagree with `SCRAPBOOKS.md`, that doc wins.
 
 - ~~**In-the-moment only.** No camera-roll uploads, ever~~ (pages may import from the roll; see `SCRAPBOOKS.md`).
 - ~~**3 posts/day**~~ 4 photos/videos a day across pages; **video ≤ 20s** (enforced by `stories`).
@@ -20,18 +20,16 @@ Build doc for the story experience. **Framing: these are "updates," not "stories
 
 ### Themed posts (suggested prompts)
 
-Above the capture button sit three **themed-post squares** (dashed) under a "Themed posts" label — e.g. **OOTD** (outfit of the day), **Take 0.5** (the candid/bed-head/after-the-day shot), **Hot take**. Picking one **labels the resulting update** ("Outfit of the day"). Users can ignore them and just capture openly.
-
-The three themes are **rotatable from the admin console** (see `ADMIN.md`).
+**Removed from capture (2026-09-09).** The OOTD / Take 0.5 / Hot take squares are no longer shown. Capture is just the camera, zoom, roll, and shutter. An admin editor for those rows may still exist; it does not affect the live capture rail. See `SCRAPBOOKS.md` for the current post flow.
 
 ### BeReal-like reminders (opt-in)
 
-Under the themed posts sits a **toggle: "BeReal-like reminders"** — **1–3 notifications a day** with BeReal-style random timing to capture your life. Off by default. Turning it on:
+**Toggle lives in Profile → Settings → Notifications** (kind `story_prompt`), not on the capture screen. Off by default. Turning it on:
 
-- Saves notification pref kind `story_prompt` (same row in Profile → Settings → Notifications).
+- Saves notification pref kind `story_prompt`.
 - Asks for notification permission in context (if not already granted).
 - Schedules **1–3** push/in-app prompts per day at random times (server-side when push ships; demo schedules locally).
-- When you are **hosting or going** to a **live event**, one of those prompts may be a mid-party nudge: **"📸 Don't forget to capture the mems"** at a random time during the party (once per event, per person). Skipped if you already posted **3 updates today**. Opens `/story/capture?eventId=…` with the event pre-tagged; posting saves the photo to that event's **Photo album** on the event page.
+- When you are **hosting or going** to a **live event**, one of those prompts may be a mid-party nudge: **"📸 Don't forget to capture the mems"** at a random time during the party (once per event, per person). Skipped if you already posted **4 photos/videos today**. Opens `/story/capture?eventId=…` with the event pre-tagged; posting saves the photo to that event's **Photo album** on the event page.
 - Other prompts open `/story/capture` so they can post right then.
 - Not circle-gated (you are nudging yourself). Does **not** appear in the Home notifications widget (push / Notifications page only when delivered).
 
@@ -51,7 +49,7 @@ Modeled on a music player's now-playing screen (Bridger-original, not a copy):
 - **Live replies preview.** Floating reply balloons drift up over the media (clamped so they never leave the screen). The **video does not auto-play**; it's a signal of activity. Tapping a bubble opens the full comment section.
 - **Peek card = the Catch-Up.** A colored card at the bottom edge showing a peek of the Catch-Up's top item, inviting a swipe up.
 
-**Tap zones on the media:** left third = previous post, **center = pause / resume**, right third = next post. Progress bars fill as you go.
+**Tap zones on the media:** left third = previous post, **center = pause / resume**, right third = next post. Progress bars fill as you go. Zones sit **above** the photo / collage page (media is not tappable) so you can skip without waiting for the timer; header, reply tools, reply bubbles, and Catch-Up keep their own taps. Voice notes still auto-play when the page opens.
 
 **End of an author's posts:**
 - From the **Home tray**, advance to the next friend in tray order (query `sequence=`). Keep going until the sequence ends or the viewer closes. Catch-Up stays **collapsed at the peek** while swapping friends (never flash open-then-closed).

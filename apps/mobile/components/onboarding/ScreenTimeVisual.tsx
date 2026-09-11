@@ -46,7 +46,7 @@ const TYPE_MS = 32;
  * Kept tight (icon + ~2 display lines) so we do not leave a big blue hole
  * under short lines like "11.6 years on work & school."
  */
-const STAT_ROW_FALLBACK_H = 72;
+const STAT_ROW_FALLBACK_H = 112;
 /** How long open/close of a caption row takes. */
 const ACCORDION_MS = 340;
 
@@ -263,6 +263,17 @@ export function ScreenTimeVisual({
         />
       </AnalyticsRegion>
 
+      {/* THIS SECTION DOES: make tap-through obvious (people missed it). */}
+      {canAdvance ? (
+        <Text
+          className="text-center font-sans-sb text-[12px]"
+          style={{ color: "rgba(255,255,255,0.72)" }}
+          accessibilityLiveRegion="polite"
+        >
+          Tap the bar to read the next stat · {beat} of {LAST_BEAT}
+        </Text>
+      ) : null}
+
       {/* INTRO ONLY: "This represents an 80-year life." lives under the stack
           until the first band opens and takes over with its own caption. */}
       {beat === 0 ? (
@@ -324,44 +335,58 @@ function LifeBar({
   onTypingDone: () => void;
 }) {
   return (
-    // No gap between siblings: closed accordions are height 0, and a flex gap
-    // would punch uneven blue holes between bands. Height follows the ticks
-    // (fixed) + open caption, not the leftover screen.
+    // THIS SECTION DOES: stack year-bands. When a caption is open, collapse
+    // every band below it to a short "rest of life" stub so dense blue ticks
+    // cannot cover the big caption (the "stats are covered" bug).
     <View style={{ width: "100%" }}>
       {SLICES.map((slice, sliceIndex) => {
         const on = sliceIndex < filled;
-        // Revealed = this beat of the story has started (band may still be
-        // painting). Open the caption as soon as the beat lands so typing can
-        // kick off and call onTextVisible to fill the bars.
         const revealed = sliceIndex < beat;
         const open = openSlice === sliceIndex && revealed;
-        // Live typing only on the slice the story just opened; older reopen
-        // taps show the finished line right away.
         const animateThis =
           open && typingSlice === sliceIndex && beat === sliceIndex + 1;
+        // Hide full tick stacks under an open caption; show a thin stub instead.
+        const collapsedUnderCaption =
+          openSlice != null && sliceIndex > openSlice;
         return (
           <React.Fragment key={slice.key}>
-            {/* THE BAND: one fixed-height hash line per year tick. */}
-            <YearBand
-              slice={slice}
-              sliceIndex={sliceIndex}
-              on={on}
-              open={open}
-              canAdvance={canAdvance}
-              onBandPress={onBandPress}
-              onAdvance={onAdvance}
-            />
+            {collapsedUnderCaption ? (
+              sliceIndex === openSlice! + 1 ? (
+                <View
+                  accessible={false}
+                  style={{
+                    width: "100%",
+                    height: 10,
+                    marginTop: 4,
+                    borderRadius: 2,
+                    backgroundColor: FAINT,
+                    opacity: 0.85
+                  }}
+                />
+              ) : null
+            ) : (
+              <YearBand
+                slice={slice}
+                sliceIndex={sliceIndex}
+                on={on}
+                open={open}
+                canAdvance={canAdvance}
+                onBandPress={onBandPress}
+                onAdvance={onAdvance}
+              />
+            )}
 
-            {/* ACCORDION: icon + big thick caption between the year bands. */}
-            <SliceCaptionRow
-              open={open}
-              slice={slice}
-              animate={animateThis}
-              beat={beat}
-              reduceMotion={reduceMotion}
-              onTextVisible={onTextVisible}
-              onTypingDone={onTypingDone}
-            />
+            {!collapsedUnderCaption ? (
+              <SliceCaptionRow
+                open={open}
+                slice={slice}
+                animate={animateThis}
+                beat={beat}
+                reduceMotion={reduceMotion}
+                onTextVisible={onTextVisible}
+                onTypingDone={onTypingDone}
+              />
+            ) : null}
           </React.Fragment>
         );
       })}
@@ -497,26 +522,35 @@ function SliceCaptionRow({
 
   return (
     <Animated.View
-      style={{ height, overflow: "hidden", opacity }}
+      style={{
+        // Extra room so Big Shoulders glyphs + icon are never clipped mid-type.
+        height: open ? openH + 8 : height,
+        overflow: open ? "visible" : "hidden",
+        opacity
+      }}
       accessible={false}
       importantForAccessibility="no-hide-descendants"
     >
       <View
         onLayout={(e) => {
           const h = Math.ceil(e.nativeEvent.layout.height);
-          if (h > 0 && h !== contentH) setContentH(h);
+          // Pad measured height so wrap + display font never get clipped.
+          const next = h + 12;
+          if (next > 0 && next !== contentH) setContentH(next);
         }}
         style={{
           flexDirection: "row",
-          alignItems: "center",
+          alignItems: "flex-start",
           gap: 10,
-          paddingTop: 6,
-          paddingBottom: 6,
-          paddingHorizontal: 2,
+          paddingTop: 16,
+          paddingBottom: 18,
+          paddingHorizontal: 4,
         }}
       >
-        {/* Keep the slice emoji / icon beside the big caption. */}
-        <Icon size={22} color={slice.color} strokeWidth={2.4} />
+        {/* Keep the slice emoji / icon beside the big caption. Never shrink. */}
+        <View style={{ flexShrink: 0, paddingTop: 4 }}>
+          <Icon size={22} color={slice.color} strokeWidth={2.4} />
+        </View>
         <AnalyticsRegion
           analyticsId={ONBOARDING.stat.caption}
           interactive={false}
@@ -529,8 +563,6 @@ function SliceCaptionRow({
             reduceMotion={reduceMotion}
             onTextVisible={onTextVisible}
             onTypingDone={onTypingDone}
-            // Re-key so a reopen tap still shows the finished line, while a
-            // fresh story beat restarts the typewriter.
             typeKey={`${slice.key}-${animate ? beat : "static"}`}
           />
         </AnalyticsRegion>
@@ -631,8 +663,15 @@ function TypeCaption({
 
   return (
     <Text
-      className="font-display text-[26px] uppercase tracking-tight"
-      style={{ lineHeight: 32, color: OB.onColor }}
+      className="font-display uppercase tracking-tight"
+      style={{
+        fontSize: 18,
+        lineHeight: 26,
+        color: OB.onColor,
+        paddingTop: 2,
+        paddingBottom: 8,
+        includeFontPadding: true,
+      }}
       accessibilityLabel={full}
     >
       {shownA ? (

@@ -8,6 +8,9 @@
 // Analytics: surface=discover; cards and settings gear use DISCOVER.* IDs.
 // ============================================
 import React, { useEffect, useState } from 'react';
+// #region agent log
+import { debugScreenMount } from '../../lib/debug-instrumentation';
+// #endregion
 import { Alert, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SettingsIcon } from 'lucide-react-native';
@@ -47,6 +50,9 @@ type Selection = {
 };
 
 export default function DiscoverScreen() {
+  // #region agent log
+  useEffect(() => debugScreenMount('discover'), []);
+  // #endregion
   const c = useThemeColors();
   const router = useRouter();
   // THIS SECTION DOES: section title dots after the Discover nav-bar badge clears.
@@ -108,20 +114,12 @@ export default function DiscoverScreen() {
   };
 
   if (!settings) {
-    // While settings load, paint the splash (not a blank "Loading…") so Discover
-    // never looks stuck. Get started waits until settings exist, then opts in.
+    // THIS SECTION DOES: while settings load, show ONLY the header on the dark
+    // intro canvas. Painting the gate here made it flash and then vanish (the
+    // "glitch") for people whose settings come back with matching already on.
     return (
       <Screen tone="intro">
         <ScreenHeader title="Discover" analyticsSurface="discover" />
-        <ScreenBody padded={false} scrollEnabled={false} tabBarInset={false}>
-          <DiscoverGate
-            onStart={() => {
-              setSettingsOpen(false);
-              setView('main');
-              void onSetDiscoverable(true);
-            }}
-          />
-        </ScreenBody>
       </Screen>
     );
   }
@@ -160,16 +158,24 @@ export default function DiscoverScreen() {
         }}
         onAccept={() => {
           if (selected.kind === 'request' && selected.requestId) {
-            // Both sides are connected — play the celebratory reveal.
-            void onAcceptRequest(selected.requestId);
+            // Await accept + roster refresh before reveal so Friends is not empty
+            // and the black reveal does not race a stale people cache.
             const personId = selected.personId;
             const via = selected.viaId;
+            const requestId = selected.requestId;
             setView('main');
             setSelected(null);
-            router.push({
-              pathname: '/reveal/[id]',
-              params: { id: personId, via }
-            });
+            void (async () => {
+              try {
+                await onAcceptRequest(requestId);
+              } catch {
+                // Still open reveal; connection may already exist.
+              }
+              router.push({
+                pathname: '/reveal/[id]',
+                params: { id: personId, via }
+              });
+            })();
             return;
           }
           if (selected.suggestionId) {
@@ -229,21 +235,21 @@ export default function DiscoverScreen() {
 
         {requests.length > 0 ? (
           <View className="mt-7">
-            {/* Title opens the same info bubble as People to meet; badge stays next to it */}
-            <View className="mb-2 flex-row items-center gap-2">
-              <View>
-                <SectionTitle
-                  title="Wants to connect"
-                  description="People who asked to connect with you through a mutual friend. Confirm to add them, or dismiss."
-                  infoAnalyticsId={DISCOVER.wants_to_connect.info}
-                  parentScreen="discover"
-                  section="wants_to_connect"
-                  showDot={!!sectionDots.wants_to_connect}
-                  dotColor={discoverDot}
-                />
-              </View>
-              <Badge tone="new">{requests.length}</Badge>
-            </View>
+            {/* THIS SECTION DOES: section tip on the title; request count sits
+                in SectionTitle's action slot so the heading keeps full width
+                (wrapping the title in a bare flex-row View squeezes it to one
+                letter per line). */}
+            <SectionTitle
+              title="Wants to connect"
+              description="People who asked to connect with you through a mutual friend. Confirm to add them, or dismiss."
+              infoAnalyticsId={DISCOVER.wants_to_connect.info}
+              parentScreen="discover"
+              section="wants_to_connect"
+              showDot={!!sectionDots.wants_to_connect}
+              dotColor={discoverDot}
+              className="mb-2"
+              action={<Badge tone="new">{requests.length}</Badge>}
+            />
             <View className="gap-2.5">
               {requests.map((r) => {
                 const p = personById(r.personId);

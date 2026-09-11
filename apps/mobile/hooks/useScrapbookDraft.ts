@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The brain behind the Scrapbook compose screen. It holds the page you are
+// The brain behind the Collage compose screen. It holds the page you are
 // working on (photos, caption, layout, who can see it), saves it on the phone
 // so a back-swipe never loses it, knows today's other pages and how many
 // photos you have left, and does the posting. Screens call this hook instead
@@ -18,14 +18,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DAILY_SCRAPBOOK_MEDIA_LIMIT,
   applyLayout,
+  applyPackToPage,
   countMediaElements,
   emptyPage,
   findLayout,
   layoutForFamily,
   layoutsFor,
   newElementId,
+  pageHasDraftContent,
   pageHasVideo,
+  paperById,
   relayoutForCount,
+  type CollagePack,
   type LayoutTemplate,
   type PendingMedia,
   type ScrapbookElement,
@@ -74,7 +78,9 @@ export function useScrapbookDraft() {
   const [eventId, setEventId] = useState<string | undefined>(undefined);
   const [hydrated, setHydrated] = useState(false);
   const undoStack = useRef<ScrapbookPage[]>([]);
+  const redoStack = useRef<ScrapbookPage[]>([]);
   const [undoDepth, setUndoDepth] = useState(0);
+  const [redoDepth, setRedoDepth] = useState(0);
 
   // THIS SECTION DOES: today's other pages + how many photos are already used.
   const [todayPosts, setTodayPosts] = useState<StoryPost[]>([]);
@@ -108,7 +114,7 @@ export function useScrapbookDraft() {
         }
         if (raw) {
           const stored = JSON.parse(raw) as StoredDraft;
-          if (stored.page && countMediaElements(stored.page) > 0) {
+          if (stored.page && pageHasDraftContent(stored.page)) {
             setPage(stored.page);
             setAudienceState(stored.audience ?? 'friend');
             setPostId(stored.postId);
@@ -131,9 +137,9 @@ export function useScrapbookDraft() {
   // THIS SECTION DOES: save the draft whenever it changes (after hydration).
   useEffect(() => {
     if (!hydrated) return;
-    const hasMedia = countMediaElements(page) > 0;
+    const hasContent = pageHasDraftContent(page);
     const key = todayKey();
-    if (!hasMedia) {
+    if (!hasContent) {
       void AsyncStorage.removeItem(key);
       return;
     }
@@ -154,7 +160,9 @@ export function useScrapbookDraft() {
       const resolved = typeof next === 'function' ? next(prev) : next;
       if (resolved === prev) return prev;
       undoStack.current = [...undoStack.current.slice(-(UNDO_DEPTH - 1)), prev];
+      redoStack.current = [];
       setUndoDepth(undoStack.current.length);
+      setRedoDepth(0);
       return resolved;
     });
   }, []);
@@ -162,7 +170,25 @@ export function useScrapbookDraft() {
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     setUndoDepth(undoStack.current.length);
-    if (prev) setPage(prev);
+    if (prev) {
+      setPage((cur) => {
+        redoStack.current = [...redoStack.current, cur];
+        setRedoDepth(redoStack.current.length);
+        return prev;
+      });
+    }
+  }, []);
+
+  const redo = useCallback(() => {
+    const next = redoStack.current.pop();
+    setRedoDepth(redoStack.current.length);
+    if (next) {
+      setPage((cur) => {
+        undoStack.current = [...undoStack.current, cur];
+        setUndoDepth(undoStack.current.length);
+        return next;
+      });
+    }
   }, []);
 
   // --- Derived numbers ---
@@ -275,7 +301,9 @@ export function useScrapbookDraft() {
   /** Start over with an empty page (after posting, or Discard). */
   const reset = useCallback(() => {
     undoStack.current = [];
+    redoStack.current = [];
     setUndoDepth(0);
+    setRedoDepth(0);
     setPage(emptyPage());
     setPostId(undefined);
     setThemeSlug(undefined);
@@ -286,7 +314,9 @@ export function useScrapbookDraft() {
   /** Open a page you already posted today so you can add to it. */
   const loadFromPost = useCallback((post: StoryPost) => {
     undoStack.current = [];
+    redoStack.current = [];
     setUndoDepth(0);
+    setRedoDepth(0);
     const base: ScrapbookPage = post.page
       ? { ...post.page }
       : {
@@ -451,6 +481,273 @@ export function useScrapbookDraft() {
     [page, postId, todayPosts, reset, refreshToday]
   );
 
+  /** Highest drawing order on the page right now. */
+  const nextZ = (els: ScrapbookElement[]) =>
+    els.reduce((m, e) => Math.max(m, e.zIndex), 0) + 1;
+
+  /** Add a movable caption / sticker-like line of words. */
+  const addText = useCallback(
+    (opts: {
+      text: string;
+      font?: ScrapbookElement['data']['font'];
+      fontPx?: number;
+      color?: string;
+      textBg?: boolean;
+    }) => {
+      commit((prev) => ({
+        ...prev,
+        elements: [
+          ...prev.elements,
+          {
+            id: newElementId(),
+            type: 'text',
+            x: 0.12,
+            y: 0.7,
+            width: 0.76,
+            height: 0.12,
+            rotation: 0,
+            zIndex: nextZ(prev.elements),
+            userModified: true,
+            data: {
+              role: 'free',
+              text: opts.text,
+              font: opts.font ?? 'sans',
+              fontPx: opts.fontPx,
+              color: opts.color ?? '#1C1B16',
+              textBg: opts.textBg === true,
+              align: 'center'
+            }
+          }
+        ]
+      }));
+    },
+    [commit]
+  );
+
+  /** Drop a voice note on the page (does not use the 4-photo daily cap). */
+  const addVoice = useCallback(
+    (opts: { uri: string; durationMs?: number; transcript?: string; mediaId?: string }) => {
+      commit((prev) => ({
+        ...prev,
+        elements: [
+          ...prev.elements,
+          {
+            id: newElementId(),
+            type: 'voice',
+            x: 0.1,
+            y: 0.8,
+            width: 0.8,
+            height: 0.1,
+            rotation: 0,
+            zIndex: nextZ(prev.elements),
+            userModified: true,
+            uri: opts.uri,
+            mediaId: opts.mediaId,
+            data: {
+              durationMs: opts.durationMs,
+              transcript: opts.transcript ?? ''
+            }
+          }
+        ]
+      }));
+    },
+    [commit]
+  );
+
+  /** Tag friends (ids only). Names are looked up on the phone from the roster. */
+  const addPeople = useCallback(
+    (personIds: string[]) => {
+      const unique = [...new Set(personIds.filter(Boolean))];
+      if (!unique.length) return;
+      commit((prev) => {
+        const existing = prev.elements.find((e) => e.type === 'person');
+        if (existing) {
+          const merged = [
+            ...new Set([
+              ...((existing.data.personIds as string[] | undefined) ?? []),
+              ...unique
+            ])
+          ];
+          return {
+            ...prev,
+            elements: prev.elements.map((e) =>
+              e.id === existing.id ? { ...e, data: { ...e.data, personIds: merged } } : e
+            )
+          };
+        }
+        return {
+          ...prev,
+          elements: [
+            ...prev.elements,
+            {
+              id: newElementId(),
+              type: 'person',
+              x: 0.1,
+              y: 0.88,
+              width: 0.8,
+              height: 0.07,
+              rotation: 0,
+              zIndex: nextZ(prev.elements),
+              userModified: true,
+              data: { personIds: unique }
+            }
+          ]
+        };
+      });
+    },
+    [commit]
+  );
+
+  /** A cut-out photo (shape or OS subject). Counts as a photo if it is new media. */
+  const addCutout = useCallback(
+    (opts: {
+      uri: string;
+      mediaId?: string;
+      source?: ScrapbookElement['source'];
+      clip?: ScrapbookElement['data']['clip'];
+      maskUri?: string;
+      countsAsMedia?: boolean;
+    }) => {
+      commit((prev) => {
+        const asPhoto = opts.countsAsMedia !== false;
+        if (asPhoto) {
+          const room = Math.max(0, DAILY_SCRAPBOOK_MEDIA_LIMIT - countMediaElements(prev));
+          if (room <= 0) return prev;
+        }
+        const el: ScrapbookElement = {
+          id: newElementId(),
+          type: asPhoto ? 'photo' : 'cutout',
+          x: 0.18,
+          y: 0.2,
+          width: 0.64,
+          height: 0.42,
+          rotation: -2,
+          zIndex: nextZ(prev.elements),
+          userModified: true,
+          source: opts.source ?? 'bridger_camera',
+          uri: opts.uri,
+          mediaId: opts.mediaId,
+          data: {
+            frame: 'none',
+            clip: opts.clip ?? 'blob',
+            maskUri: opts.maskUri
+          }
+        };
+        return { ...prev, elements: [...prev.elements, el] };
+      });
+    },
+    [commit]
+  );
+
+  const updateElement = useCallback(
+    (elementId: string, patch: Partial<ScrapbookElement>) => {
+      commit((prev) => ({
+        ...prev,
+        elements: prev.elements.map((e) =>
+          e.id === elementId
+            ? {
+                ...e,
+                ...patch,
+                data: patch.data ? { ...e.data, ...patch.data } : e.data,
+                userModified: true
+              }
+            : e
+        )
+      }));
+    },
+    [commit]
+  );
+
+  const removeElement = useCallback(
+    (elementId: string) => {
+      const el = page.elements.find((e) => e.id === elementId);
+      if (el && (el.type === 'photo' || el.type === 'video')) {
+        removeMedia(elementId);
+        return;
+      }
+      commit((prev) => ({
+        ...prev,
+        elements: prev.elements.filter((e) => e.id !== elementId)
+      }));
+    },
+    [commit, page.elements, removeMedia]
+  );
+
+  const duplicateElement = useCallback(
+    (elementId: string) => {
+      commit((prev) => {
+        const el = prev.elements.find((e) => e.id === elementId);
+        if (!el) return prev;
+        if (
+          (el.type === 'photo' || el.type === 'video') &&
+          countMediaElements(prev) >= DAILY_SCRAPBOOK_MEDIA_LIMIT
+        ) {
+          return prev;
+        }
+        const copy: ScrapbookElement = {
+          ...el,
+          id: newElementId(),
+          x: Math.min(0.7, el.x + 0.04),
+          y: Math.min(0.7, el.y + 0.04),
+          zIndex: nextZ(prev.elements),
+          userModified: true
+        };
+        return { ...prev, elements: [...prev.elements, copy] };
+      });
+    },
+    [commit]
+  );
+
+  const bringToFront = useCallback(
+    (elementId: string) => {
+      commit((prev) => ({
+        ...prev,
+        elements: prev.elements.map((e) =>
+          e.id === elementId ? { ...e, zIndex: nextZ(prev.elements), userModified: true } : e
+        )
+      }));
+    },
+    [commit]
+  );
+
+  const moveElement = useCallback(
+    (elementId: string, pos: { x: number; y: number }) => {
+      commit((prev) => ({
+        ...prev,
+        elements: prev.elements.map((e) =>
+          e.id === elementId
+            ? {
+                ...e,
+                x: Math.min(1.1, Math.max(-0.2, pos.x)),
+                y: Math.min(1.1, Math.max(-0.2, pos.y)),
+                userModified: true
+              }
+            : e
+        )
+      }));
+    },
+    [commit]
+  );
+
+  const setPaper = useCallback(
+    (paperId: string) => {
+      const paper = paperById(paperId);
+      commit((prev) => ({ ...prev, background: { kind: 'solid', color: paper.color } }));
+    },
+    [commit]
+  );
+
+  const setPack = useCallback(
+    (pack: CollagePack) => {
+      commit((prev) => applyPackToPage(prev, pack));
+    },
+    [commit]
+  );
+
+  const clearPage = useCallback(() => {
+    commit(emptyPage());
+  }, [commit]);
+
   return {
     hydrated,
     page,
@@ -469,11 +766,25 @@ export function useScrapbookDraft() {
     atCap,
     todayPosts,
     canUndo: undoDepth > 0,
+    canRedo: redoDepth > 0,
     hasVideo: pageHasVideo(page),
+    hasContent: pageHasDraftContent(page),
     // edits
     addMedia,
     removeMedia,
     replaceMedia,
+    addText,
+    addVoice,
+    addPeople,
+    addCutout,
+    updateElement,
+    removeElement,
+    duplicateElement,
+    bringToFront,
+    moveElement,
+    setPaper,
+    setPack,
+    clearPage,
     setLayout,
     setCaption,
     setBackground,
@@ -481,6 +792,7 @@ export function useScrapbookDraft() {
     setThemeSlug,
     setEventId,
     undo,
+    redo,
     reset,
     loadFromPost,
     moveMediaTo,

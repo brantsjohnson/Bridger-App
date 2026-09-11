@@ -9,6 +9,7 @@ import { MatchingAnnService } from './matching-ann.service';
 import { MatchingBridgeService } from './matching-bridge.service';
 import { MatchingConfigService } from './matching-config.service';
 import { MatchingCronService } from './matching-cron.service';
+import { MatchingLearnService } from './matching-learn.service';
 import { MatchingDiscoverService } from './matching-discover.service';
 import { MatchingEligibilityService } from './matching-eligibility.service';
 import { MatchingEventService } from './matching-event.service';
@@ -36,7 +37,8 @@ import { MatchingController } from './matching.controller';
     MatchingBridgeService,
     MatchingEventService,
     MatchingOverlapService,
-    MatchingCronService
+    MatchingCronService,
+    MatchingLearnService
   ],
   exports: [
     MatchingEventService,
@@ -45,7 +47,8 @@ import { MatchingController } from './matching.controller';
     MatchingBridgeService,
     MatchingOverlapService,
     MatchingConfigService,
-    MatchingCronService
+    MatchingCronService,
+    MatchingLearnService
   ]
 })
 export class MatchingModule {}

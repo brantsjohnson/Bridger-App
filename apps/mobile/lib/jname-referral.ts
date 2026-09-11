@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ANON_REF_KEY = 'bridger.jname.anon_ref';
 const PENDING_TOKEN_KEY = 'bridger.jname.pending_token';
+const SHOW_DUO_KEY = 'bridger.jname.show_duo_token';
 
 // THIS SECTION DOES: make a throwaway, non-identifying id for this device.
 function randomAnonRef(): string {
@@ -41,11 +42,40 @@ export async function setPendingReferral(token: string): Promise<void> {
   }
 }
 
+// THIS SECTION DOES: peek at the pending token without forgetting it.
+export async function peekPendingReferral(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(PENDING_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 // THIS SECTION DOES: read and clear the pending token (used right after signup).
 export async function takePendingReferral(): Promise<string | null> {
   try {
     const value = await AsyncStorage.getItem(PENDING_TOKEN_KEY);
     if (value) await AsyncStorage.removeItem(PENDING_TOKEN_KEY);
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+// THIS SECTION DOES: remember that we should open the quiz result (duo) after
+// they finish making an account / onboarding.
+export async function setShowDuoToken(token: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SHOW_DUO_KEY, token);
+  } catch {
+    // Best effort only.
+  }
+}
+
+export async function takeShowDuoToken(): Promise<string | null> {
+  try {
+    const value = await AsyncStorage.getItem(SHOW_DUO_KEY);
+    if (value) await AsyncStorage.removeItem(SHOW_DUO_KEY);
     return value;
   } catch {
     return null;

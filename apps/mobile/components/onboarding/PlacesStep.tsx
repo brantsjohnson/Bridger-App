@@ -2,23 +2,22 @@
 // WHAT THIS FILE DOES (plain English):
 // Step 10E - "Your places." Hometown and current town stay as light text
 // questions (towns only, never street addresses). Favorite place uses a map
-// search that drops a FAV pin on Places traveled. When you Continue with a
-// favorite picked, the button shower uses that country's flag emoji instead
-// of the usual party mix. Nothing is required: Continue advances empty, and
-// the top-left back arrow is enough to go back (no Skip link under Continue).
-// The amber chip says "Shown on your profile."
-//
-// PRODUCT NOTE (not shown on this screen): We star this one as FAV on your
-// map. You can keep adding other places from your profile. That behavior
-// lives in the save / map code, not as onboarding copy.
+// search that drops a FAV pin on Places traveled. Each field has a Private /
+// Close friends only color toggle (public later in Privacy settings). When you
+// Continue with a favorite picked, the button shower uses that country's flag
+// emoji. Nothing is required.
 // ============================================
 import React, { useMemo } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { ONBOARDING } from '@bridger/shared';
 import type { GeocodeHit } from '../../lib/geocode';
 import { countryCodeToFlagEmoji } from '../../lib/geocode';
 import { OnboardingStep, useOnboardingBodyScroll } from './OnboardingStep';
 import { OnboardingPlacePicker } from './OnboardingPlacePicker';
+import {
+  PrivateCloseToggle,
+  type PlacesPrivacyChoice
+} from './PrivateCloseToggle';
 import { OBField } from './onboarding-ui';
 
 export function PlacesStep({
@@ -27,9 +26,15 @@ export function PlacesStep({
   hometown,
   currentTown,
   favoritePlaceHit,
+  hometownPrivacy,
+  currentTownPrivacy,
+  favoritePlacePrivacy,
   onChangeHometown,
   onChangeCurrent,
   onChangeFavoriteHit,
+  onChangeHometownPrivacy,
+  onChangeCurrentTownPrivacy,
+  onChangeFavoritePlacePrivacy,
   onNext,
   onBack
 }: {
@@ -38,9 +43,15 @@ export function PlacesStep({
   hometown: string;
   currentTown: string;
   favoritePlaceHit: GeocodeHit | null;
+  hometownPrivacy: PlacesPrivacyChoice;
+  currentTownPrivacy: PlacesPrivacyChoice;
+  favoritePlacePrivacy: PlacesPrivacyChoice;
   onChangeHometown: (v: string) => void;
   onChangeCurrent: (v: string) => void;
   onChangeFavoriteHit: (hit: GeocodeHit | null) => void;
+  onChangeHometownPrivacy: (v: PlacesPrivacyChoice) => void;
+  onChangeCurrentTownPrivacy: (v: PlacesPrivacyChoice) => void;
+  onChangeFavoritePlacePrivacy: (v: PlacesPrivacyChoice) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
@@ -58,40 +69,67 @@ export function PlacesStep({
     <OnboardingStep
       step={step}
       total={total}
-      purpose="Shown on your profile"
+      purpose="You choose who sees each one"
       ask="Your places"
       onContinue={onNext}
       onBack={onBack}
       burstEmojis={burstEmojis}
-      // Map + search results are taller than one screen; let the body scroll
-      // so Continue never covers the hit list.
       scrollBody
       smallAsk
     >
-      {/* THIS SECTION DOES: hometown + current town text, then favorite-place
-          search (above the map) that seeds Places traveled. PRIVACY: towns /
-          places only, never a street address. */}
+      {/* THIS SECTION DOES: hometown + town + favorite, each with privacy pills. */}
       <View style={{ gap: 18 }}>
-        <OBField
-          label="Hometown"
-          value={hometown}
-          onChange={onChangeHometown}
-          placeholder="Where you're from"
-          analyticsId={ONBOARDING.taste.hometown_input}
-          onFocusExtra={(anchor) => ensureVisible(anchor)}
-        />
-        <OBField
-          label="Current town"
-          value={currentTown}
-          onChange={onChangeCurrent}
-          placeholder="Where you live now"
-          analyticsId={ONBOARDING.taste.current_town_input}
-          onFocusExtra={(anchor) => ensureVisible(anchor)}
-        />
-        <OnboardingPlacePicker
-          hit={favoritePlaceHit}
-          onPick={onChangeFavoriteHit}
-        />
+        <Text className="font-sans-sb text-[12px] leading-snug text-ink-soft">
+          Yellow is Private (only you). Green is Close friends only. You can
+          open something to more people later in Privacy settings.
+        </Text>
+
+        <View style={{ gap: 8 }}>
+          <OBField
+            label="Hometown"
+            value={hometown}
+            onChange={onChangeHometown}
+            placeholder="Where you're from"
+            analyticsId={ONBOARDING.taste.hometown_input}
+            onFocusExtra={(anchor) => ensureVisible(anchor)}
+          />
+          <PrivateCloseToggle
+            value={hometownPrivacy}
+            onChange={onChangeHometownPrivacy}
+            analyticsId={ONBOARDING.taste.hometown_privacy}
+            fieldLabel="Hometown"
+          />
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <OBField
+            label="Current town"
+            value={currentTown}
+            onChange={onChangeCurrent}
+            placeholder="Where you live now"
+            analyticsId={ONBOARDING.taste.current_town_input}
+            onFocusExtra={(anchor) => ensureVisible(anchor)}
+          />
+          <PrivateCloseToggle
+            value={currentTownPrivacy}
+            onChange={onChangeCurrentTownPrivacy}
+            analyticsId={ONBOARDING.taste.current_town_privacy}
+            fieldLabel="Current town"
+          />
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <OnboardingPlacePicker
+            hit={favoritePlaceHit}
+            onPick={onChangeFavoriteHit}
+          />
+          <PrivateCloseToggle
+            value={favoritePlacePrivacy}
+            onChange={onChangeFavoritePlacePrivacy}
+            analyticsId={ONBOARDING.taste.favorite_place_privacy}
+            fieldLabel="Favorite place"
+          />
+        </View>
       </View>
     </OnboardingStep>
   );

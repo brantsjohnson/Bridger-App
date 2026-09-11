@@ -198,6 +198,9 @@ export async function disableDemoMode(): Promise<void> {
   runtimeDemo = false;
   hydrated = true;
   await AsyncStorage.removeItem(RUNTIME_DEMO_KEY);
+  // PRIVACY: demo last-seen tabs should not linger after you leave demo.
+  const { clearSessionCaches } = await import('./session-caches');
+  await clearSessionCaches();
 }
 
 // --- DEV PREVIEW (localhost / internal builds only) -------------------------

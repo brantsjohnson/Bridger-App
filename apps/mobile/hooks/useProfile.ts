@@ -39,30 +39,62 @@ import {
   type TravelPlace
 } from '../data/profile';
 import type { UpcomingEventRow } from '../components/profile/UpcomingEventsSection';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+type ProfileSnap = {
+  header: MyProfileHeader | null;
+  about: AboutField[];
+  hobbies: Interest[];
+  favs: FavGroup[];
+  thisOrThat: ThisOrThatRow[];
+  places: TravelPlace[];
+  top5: Top5Item[];
+  obsession: ObsessionSquare[];
+  favorites: FavoriteModule[];
+  greatestHits: PhotoBlock[];
+  upcoming: UpcomingEventRow[];
+  hobbyFollowUps: Record<string, { question: string; answer: string }>;
+  blocked: Person[];
+  introSeen: boolean;
+};
+
+const SNAP_KEY = 'profile';
 
 export function useProfile() {
-  const [header, setHeader] = useState<MyProfileHeader | null>(null);
-  const [about, setAbout] = useState<AboutField[]>([]);
-  const [hobbies, setHobbies] = useState<Interest[]>([]);
-  const [favs, setFavs] = useState<FavGroup[]>([]);
-  const [thisOrThat, setThisOrThat] = useState<ThisOrThatRow[]>([]);
-  const [places, setPlaces] = useState<TravelPlace[]>([]);
-  const [top5, setTop5] = useState<Top5Item[]>([]);
-  const [obsession, setObsession] = useState<ObsessionSquare[]>([]);
-  const [favorites, setFavorites] = useState<FavoriteModule[]>([]);
-  const [greatestHits, setGreatestHits] = useState<PhotoBlock[]>([]);
-  const [upcoming, setUpcoming] = useState<UpcomingEventRow[]>([]);
+  const cached = getTabSnapshot<ProfileSnap>(SNAP_KEY);
+  const [header, setHeader] = useState<MyProfileHeader | null>(cached?.header ?? null);
+  const [about, setAbout] = useState<AboutField[]>(cached?.about ?? []);
+  const [hobbies, setHobbies] = useState<Interest[]>(cached?.hobbies ?? []);
+  const [favs, setFavs] = useState<FavGroup[]>(cached?.favs ?? []);
+  const [thisOrThat, setThisOrThat] = useState<ThisOrThatRow[]>(
+    cached?.thisOrThat ?? []
+  );
+  const [places, setPlaces] = useState<TravelPlace[]>(cached?.places ?? []);
+  const [top5, setTop5] = useState<Top5Item[]>(cached?.top5 ?? []);
+  const [obsession, setObsession] = useState<ObsessionSquare[]>(
+    cached?.obsession ?? []
+  );
+  const [favorites, setFavorites] = useState<FavoriteModule[]>(
+    cached?.favorites ?? []
+  );
+  const [greatestHits, setGreatestHits] = useState<PhotoBlock[]>(
+    cached?.greatestHits ?? []
+  );
+  const [upcoming, setUpcoming] = useState<UpcomingEventRow[]>(
+    cached?.upcoming ?? []
+  );
   const [hobbyFollowUps, setHobbyFollowUps] = useState<
     Record<string, { question: string; answer: string }>
-  >({});
-  const [blocked, setBlocked] = useState<Person[]>([]);
-  const [introSeen, setIntroSeen] = useState(true);
-  const [loading, setLoading] = useState(true);
+  >(cached?.hobbyFollowUps ?? {});
+  const [blocked, setBlocked] = useState<Person[]>(cached?.blocked ?? []);
+  const [introSeen, setIntroSeen] = useState(cached?.introSeen ?? true);
+  const [loading, setLoading] = useState(!cached);
 
   const me = getMe();
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<ProfileSnap>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     try {
       const [h, ab, hob, fv, tot, pl, t5, ob, favMods, gh, up, bl, intro] =
         await Promise.all([
@@ -80,6 +112,7 @@ export function useProfile() {
           listBlocked(),
           getProfileIntroSeen()
         ]);
+      const followUps = getHobbyFollowUps();
       setHeader(h);
       setAbout(ab);
       setHobbies(hob);
@@ -91,9 +124,25 @@ export function useProfile() {
       setFavorites(favMods);
       setGreatestHits(gh);
       setUpcoming(up);
-      setHobbyFollowUps(getHobbyFollowUps());
+      setHobbyFollowUps(followUps);
       setBlocked(bl);
       setIntroSeen(intro);
+      setTabSnapshot<ProfileSnap>(SNAP_KEY, {
+        header: h,
+        about: ab,
+        hobbies: hob,
+        favs: fv,
+        thisOrThat: tot,
+        places: pl,
+        top5: t5,
+        obsession: ob,
+        favorites: favMods,
+        greatestHits: gh,
+        upcoming: up,
+        hobbyFollowUps: followUps,
+        blocked: bl,
+        introSeen: intro
+      });
     } finally {
       setLoading(false);
     }
@@ -104,7 +153,10 @@ export function useProfile() {
   }, [refresh]);
 
   const onEditHeader = useCallback(async (patch: Partial<MyProfileHeader>) => {
-    setHeader(await setMyProfileHeader(patch));
+    const next = await setMyProfileHeader(patch);
+    setHeader(next);
+    const prev = getTabSnapshot<ProfileSnap>(SNAP_KEY);
+    if (prev) setTabSnapshot(SNAP_KEY, { ...prev, header: next });
   }, []);
 
   const onUnblock = useCallback(async (personId: string) => {

@@ -21,6 +21,7 @@ export type JobName =
   | 'freshness'
   | 'voice_captions'
   | 'recap_podcast'
+  | 'recap_week_fill'
   | 'agent_reasoning'
   | 'agent_query'
   | 'agent_voice';

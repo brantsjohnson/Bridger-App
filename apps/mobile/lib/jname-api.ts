@@ -10,6 +10,7 @@ import type {
   JnameLeaderboard,
   JnameMyResult,
   JnameResolveReferralInput,
+  JnameResolveReferralResult,
   JnameResultInput,
   JnameSharedView,
   JnameShareResponse
@@ -17,7 +18,7 @@ import type {
 import { apiFetch } from './api';
 import { isDemoMode } from './demo';
 
-// THIS SECTION DOES: save (or overwrite on retake) my result on the server.
+// THIS SECTION DOES: save my first result on the server. Fun retakes stay local.
 export async function saveJnameResult(input: JnameResultInput): Promise<void> {
   if (isDemoMode()) return;
   try {
@@ -52,7 +53,9 @@ export async function fetchJnameLeaderboard(): Promise<JnameLeaderboard | null> 
 
 // THIS SECTION DOES: fetch my one stable share link (null if not available yet).
 export async function getJnameShareLink(): Promise<JnameShareResponse | null> {
-  if (isDemoMode()) return null;
+  if (isDemoMode()) {
+    return { token: 'demo', url: 'https://bridger.app/q/demo' };
+  }
   try {
     return await apiFetch<JnameShareResponse>('/jname/share', {
       method: 'POST'
@@ -67,6 +70,9 @@ export async function fetchJnameSharedView(
   token: string,
   anonRef?: string
 ): Promise<JnameSharedView | null> {
+  if (isDemoMode()) {
+    return { jName: 'Jake', percent: 86, sharerFirstName: 'You' };
+  }
   try {
     const q = anonRef ? `?a=${encodeURIComponent(anonRef)}` : '';
     return await apiFetch<JnameSharedView>(
@@ -80,15 +86,14 @@ export async function fetchJnameSharedView(
 // THIS SECTION DOES: after signup, tell the server which friend invited me.
 export async function resolveJnameReferral(
   input: JnameResolveReferralInput
-): Promise<boolean> {
-  if (isDemoMode()) return false;
+): Promise<JnameResolveReferralResult> {
+  if (isDemoMode()) return { resolved: false };
   try {
-    const res = await apiFetch<{ resolved: boolean }>(
+    return await apiFetch<JnameResolveReferralResult>(
       '/jname/referrals/resolve',
       { method: 'POST', body: JSON.stringify(input) }
     );
-    return Boolean(res?.resolved);
   } catch {
-    return false;
+    return { resolved: false };
   }
 }

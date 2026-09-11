@@ -44,8 +44,10 @@ Run these from the repo root.
    pnpm --filter @bridger/infra deploy BridgerFoundationStack
    ```
 
-3. **Fill the secret** with the real values from `apps/api/.env` (write-only; no
-   values are printed):
+3. **Fill the secret** from `apps/api/.env` (write-only; no values are printed).
+   The script **merges**. It will not overwrite a non-empty AWS field with a
+   blank or a different local value. If `APPLE_MUSIC_PRIVATE_KEY` is empty in
+   AWS, it copies the local `.p8` from `APPLE_MUSIC_PRIVATE_KEY_PATH`.
 
    ```bash
    node infra/aws/scripts/seed-secret.mjs

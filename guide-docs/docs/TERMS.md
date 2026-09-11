@@ -45,9 +45,9 @@
 
 ## 4 · What Bridger is (and is not)
 
-- Bridger helps you stay close to people you choose (Friends tiers, Updates, Events, Touch Grass, quizzes, recap Friend Pod, Discover).
-- Account creation is through **phone number + SMS one-time code** on Sign in (first use creates the account; next time signs you in). Google / Apple / email stay available when we turn on legacy auth. Completing onboarding after first sign-in is required before using the app. If you invite a contact who later joins with the same phone number, your private notes stay private to you and their real profile replaces your pending card.
-- The **co-op** is optional membership for richer creation, named groups, and storage. New onboarding teaches membership, then lets you join, invite friends, or continue for free (Free Lite). **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
+- Bridger helps you stay close to people you choose (Friends tiers, Updates, Events, Touch Grass, quizzes, recap Friend Pod, Discover). Circles (planned) let you add an Influencer without making them a friend.
+- Account creation is through **phone number + SMS one-time code** on Sign in (first use creates the account; next time signs you in). Google / Apple / email stay available when we turn on legacy auth. Completing onboarding after first sign-in is required before using the app. On Friends you may **Connect your contacts** and make a private card about someone who is not on Bridger yet (their number plus notes only you can see). If they later join with the same phone number, their real profile replaces your card and your notes stay private to you. Do not use those cards to impersonate someone or to store information you do not have a right to keep.
+- The **co-op** is optional membership for richer creation, named groups, and storage. Onboarding teaches what a co-op is, then the last screen is join or invite 3 friends (Apple Pay / Google Pay / card, monthly or yearly). Joining is never required to use Bridger: invite 3 friends for Free Lite, or redeem an auth code for a free year. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
 - During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (workout, go out, creative, industry, travel, nearby, someone who gets me). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
 - Onboarding also asks a few optional, skippable "taste" questions (job, dream job, a song, your towns, a favorite trip that may be placed on your map, a weekly highlight, a grid color, social-events pacing). You choose the audience for each on the Privacy & Control screen, and nothing is required except your name.
@@ -62,6 +62,7 @@
 - Product analytics is **on while you are signed in**. It records anonymous screen and button names so we can fix confusing flows. It is not ads. It does not include your name, messages, or photos. Demo mode does not send. Deleting your account also erases your analytics person.
 - Data export on request: **TODO (product + legal)**.
 - **Demo / preview builds:** entering the on-device fake-data walkthrough (logo long-press where enabled) does **not** create a Bridger account. You are not bound as a registered user until you complete a real sign-up / sign-in. Demo fixtures are sample content for exploring the product, not other people's real data.
+- The app may keep a last-seen picture of each tab on this device so switching tabs does not look like a reload. That cache is yours on this phone only. Sign-out or leaving demo clears it.
 
 ---
 
@@ -72,7 +73,7 @@
 - Post illegal, hateful, harassing, sexual-involving-minors, graphic-violent, or otherwise objectionable content.
 - Impersonate others, spam, scam, or attempt to break the service (scraping, reverse engineering beyond fair use, attacking infrastructure).
 - Share others' private information without consent.
-- Use Bridger to track or advertise to people without consent.
+- Use Bridger to track or advertise to people without consent. Circles are the consented path: a person who adds an Influencer is allowing that Influencer to see facts at the tier they picked and the handles they typed. Influencers may not export Circle data to an ad network or message fans in Bridger 1:1.
 - Circumvent blocks, bans, tier limits, or rate limits (e.g. Messages 5/day per conversation).
 
 **Content license:** you keep ownership of content you post. You grant Bridger a limited license to host, display, and deliver that content to the audiences you chose, and to operate moderation and safety features.
@@ -85,15 +86,19 @@
 
 ## 7 · Features with special rules
 
-### 7.1 Updates (Scrapbook pages) and Side Quest posts
+### 7.1 Updates (Collage pages) and Side Quest posts
 
-Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or short videos a day (across 1 to 4 pages), a caption, and a date stamp. Photos and videos may be **captured live in Bridger or chosen from your camera roll**; you are responsible for having the right to share anything you import (no one else's copyrighted work or private images without permission). **Side Quest** posts are also UGC: photo quests use in-app capture; text quests (e.g. Notes App Discovery) store a short blurb you type. Same report / block expectations as other user content.
+Updates are shown as **Collage pages**: a page can hold up to 4 photos or short videos a day (across 1 to 4 pages), words you type, a date stamp, optional voice notes (and a transcript of those notes), and friend tags. Photos and videos may be **captured live in Bridger or chosen from your camera roll**; you are responsible for having the right to share anything you import (no one else's copyrighted work or private images without permission). Tag a friend only if you want them to see they were on that page. Cut-outs use your phone's own tools when they exist. We do not send that photo to a server just to cut it out. **Side Quest** posts are also UGC: photo quests use in-app capture; text quests (e.g. Notes App Discovery) store a short blurb you type. Same report / block expectations as other user content.
 
-- Live capture or camera roll for scrapbook pages; circle video replies and stickers stay capture-only.
+- live capture or camera roll for collage pages; circle video replies and stickers stay capture-only.
 - Audience is chosen per page: Only me, Close, Friends, Everyone, or a co-op group. Only me pages are visible to you alone.
 - You may edit or delete a page the same day; friends may see it light up again on their Home.
 - No view counts.
-- Optional **BeReal-like reminders** (1–3 notifications a day) are opt-in only. You can turn them off from the capture screen or Settings → Notifications.
+- Optional **BeReal-like reminders** (1–3 notifications a day) are opt-in only. You can turn them off from Settings → Notifications.
+
+### 7.1b Inside Jokes
+
+You may post a short quote on a sticky note and tag a friend who said it (and optionally an event). That note shows on Friends and on your profile plus the tagged person's profile. **A photo on the note is a co-op perk.** You must have the right to share that photo. Joke text and photos are UGC under the same report / block / no-tolerance rules as other user content. We do not send joke text to analytics or to AI.
 
 ### 7.2 Touch Grass
 
@@ -103,7 +108,11 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 ### 7.3 Friend Pod / recap
 
 - Lives on the **Friends** tab (`/recap`), not Home.
-- Voice answers are shared with the audience you pick; rolling retention with purge.
+- Each week has the same 5 questions for everyone. If Bridger does not publish a themed week, Monday locks rose / thorn / bud plus the most-voted suggestions from friends, plus short fill-ins.
+- Suggested questions are UGC. Friends may vote on them. Bridger may use the top unused ones as next week's extras.
+- Fill-in prompts are Bridger's (canned bank, or a leftover-prompt model that never sees a friend's typed question). They are not another person's content.
+- Voice answers are shared with the **friend group you pick** (Close / Friends / Acquaintances); rolling retention with purge.
+- **This week's** Friend Pod is free. **Earlier locked weeks** are a co-op perk. Free Lite is offered join instead of a hidden archive.
 - The recap player supports **background playback**: it keeps playing when you background the app or lock your phone, and offers standard lock-screen / Control Center controls. The lock-screen card shows only the current friend's first name and a "Bridger · Weekly recap" label, never the question or answer content.
 
 ### 7.4 Quizzes and polls
@@ -111,8 +120,10 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 - Taking quizzes and **answering** polls is free.
 - **Creating** polls / "ask the group" is a co-op perk.
 - Quiz "who got who" / "your versions" is friends-only where implemented (account required to see friend results).
-- **J-name compatibility:** when you and an added friend have both finished Which J name are you, Bridger may show a fun % for how you line up on that quiz. It is entertainment only, not a clinical, dating, or ranking score.
+- **J-name compatibility:** when you and an added friend have both finished Which J name are you, Bridger may show a fun % for how you line up on that quiz. It uses each person's **first** result only. A later "retake for fun" stays on that person's phone and does not change matching or the shared result. It is entertainment only, not a clinical, dating, or ranking score.
 - **Sharing your result:** you can save your result card image to your phone or send the image / a result link to other apps (Instagram, Snapchat, Messages, etc.). Once you share it off Bridger you are responsible for it, and the app you send it to has its own terms. Result links you share are meant to invite friends to take the quiz; do not use them to spam.
+- **Opening a quiz share link:** you can take Which J name are you without a Bridger account. If you then make an account (or add the person who shared it while signed in), Bridger may add that person as a friend so both of you can see how you line up on that quiz. Do not open or share quiz links to spam or harass.
+- **What version of me (planned):** you may build a quiz about yourself (versions, photos, questions) for friends to take. That content is UGC: you need the right to use the photos, and the same report / block / no-tolerance rules apply. Results are entertainment, not a clinical or ranking score. No public leaderboard. Do not use share links to spam.
 
 ### 7.4b Optional surprises (delights)
 
@@ -154,7 +165,7 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 - You may delete any field; deletion removes it from Bridger's store.
 - Co-op profile customization is a **skin** only: it cannot invent, hide, or delete your facts. Theme and Layout are no-code. Custom CSS/HTML (Code tier) is admin-gated and not generally available yet; when it ships it must not include scripts, tracking pixels, or off-Bridger assets. Customized profiles are UGC and may be reverted to the native layout after a report.
 - Co-op **Greatest hits** photos are UGC you upload to Bridger-hosted storage (up to 3). Same report / revert expectations as other profile media; they are not off-platform hotlinks.
-- **Profile photo "looks"** (Pop art, Comic, X-ray, Sepia) are cosmetic filters you apply to your own photo during onboarding, and you may change them later from Profile Edit. All four are baked on Bridger's own servers with a standard image tool (no AI, no third party); Pop art also shows an instant on-device preview. A filtered photo is still your content and the same acceptable-use, who-sees, report, and deletion rules apply.
+- **Profile photo "looks"** (Pop art, Comic, X-ray, Sepia) are cosmetic filters you apply to your own photo during onboarding, and you may change them later from Profile Edit. While you pick, all four preview on your phone (not AI). The saved avatar is baked on Bridger's own servers with a standard image tool (no AI, no third party). A filtered photo is still your content and the same acceptable-use, who-sees, report, and deletion rules apply.
 - Viewers may always choose "View original" or a standing "always show plain pages" preference.
 - **Storage meter:** co-op members see used vs included media storage. Going over shows an overage price before any charge (current wave: display stub only; no silent charges). Free accounts use the rolling story window.
 
@@ -165,22 +176,34 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 - Hosts may show chip-in amount + method (Venmo / Cash App etc.) as **peer-to-peer text links**. Bridger does **not** process those payments.
 - Guest caps: Free Lite 35 / co-op 100. Co-hosts, allergy collection, and assignments are co-op host tools. Hosting itself is never paywalled. See `COOP.md` / `EVENTS.md`.
 - When a host turns on "let friends invite friends," going attendees may invite people they are connected with. Those invites are attributed to the inviter for the host's planning lists. Do not spam event invites.
+- Hosts may send one-way **event notes** (text + optional photo) to guests. Do not use notes to harass. Guests do not get a chat reply path.
+- Guests may upload to the **shared event album**. You must have the right to share those photos. Album access expires about 7 days after the event unless a person saved a copy to their device. Free Lite and co-op guests have different per-event caps; the host may pay for more storage for that event. Do not upload other people's private images without permission.
 
 ### 7.8 AI-generated text (when enabled)
 
 - Day/week summaries and similar ambient text are model-assisted. Bridger does **not** label them as "AI" in the product voice; they must read as Bridger being attentive.
 - Summaries are grounded in your own words/transcripts. Thin days may show no summary. You can delete Updates (and their derived summaries) at any time.
 - Bridger does **not** guarantee that model-assisted text is complete or free of error. Harmful or objectionable model output can be reported like other content.
-- Discover suggestions use what you marked matchable; you can turn Discoverable off anytime. We do not use time-in-app or click analytics to rank people. Turning Discover off or deleting your account removes matching data about you.
-- After you connect with someone, the connection reveal may show what you share (hobbies, favorites, music, quiz compatibility by the quiz's in-app title) and, if Discover matching is on, up to a few friends of friends Bridger thinks you might click with. You can send them a connect request from that screen; they still have to accept.
+- Discover suggestions use what you marked matchable; you can turn Discoverable off anytime. We do not use time-in-app or click analytics to rank people. Turning Discover off or deleting your account removes matching data about you. Placing someone in Friends or Close friends may help Bridger learn which kinds of overlap lead to real friendships (numbers only, never your messages).
+- After you connect with someone, the connection reveal may show what you share at the circle each of you granted the other (hobbies, favorites, music, quiz compatibility by the quiz's in-app title). If nothing overlaps yet, Bridger points you to Personality quizzes. Adding a friend is never required to fill a profile first. If Discover matching is on, the last reveal screen may show a few friends of friends Bridger thinks you might click with. You can send them a connect request from that screen; they still have to accept.
 - A future **Local map** (friend radar on Discover) will be opt-in only and for people you already know who choose to share nearby presence. It is not live yet (Discover shows Coming soon only). It is not a stranger or dating map.
-- **Behind the Scenes** is optional. You may share private context (for example mental-health related) to help matching go at your pace. It never appears on your profile and other people never see it. You choose how strongly matching may use it, you can skip it, and you can edit or remove it in Settings. Bridger does not use it to exclude or hide you from others.
-- **Your Vibe** and other Discover quizzes are optional private modules. Results help introductions; they are not shown on your profile. Optional written explanations stay private. Emotional-sensitivity style signals are not used to block who you can meet.
+- **Behind the Scenes** is archived from Discover. If you already completed it, it stays optional and private: you may share private context (for example mental-health related) to help matching go at your pace. It never appears on your profile and other people never see it. You choose how strongly matching may use it, and you can edit or remove it in Settings. Bridger does not use it to exclude or hide you from others.
+- **Personality quizzes** (Your Vibe and the other Discover quizzes) are optional and private. Results help introductions; they are not shown on your profile. Optional written explanations stay private. Emotional-sensitivity style signals are not used to block who you can meet.
 - **The Friend Zone** is an optional friendship-pattern quiz (not a clinical attachment diagnosis). Results stay private and may gently inform introductions.
 - **What Gets You Going** is an optional values quiz about relative priorities (not a moral ranking). It does not ask about political parties. Results stay private and may inform introductions by similarity.
 - **Your Funny Bone** is an optional humor-taste quiz (what you laugh at, not a comedy skill grade). Results stay private and may inform introductions by similar taste. How you joke with friends may be noted for later product use and does not currently gate matches.
 - The optional relationship assistant (**Billy**) is off by default, admin-gated, and never acts without your confirm. It drafts Bridger messages and events; you approve send, schedule (full draft + exact send time), or create. It does not use your phone texts. Style-aware drafting (optional, on by default) learns how you write from your own Bridger messages, not what you said to whom. Voice questions are optional and transcribed only to answer you. After you speak, Billy may auto-send when it hears a few seconds of silence; you can also stop and discard from the Island stop square. On some browsers, live captions while listening may use the platform speech service. People who have not opted in should not see Widget, Screen, or Island. You are responsible for messages you send or schedule and events you publish after a Billy draft.
+- **Founder-only software agents** (e.g. Grokbot for building Bridger) are not part of the member product and are not available to users. They are not Billy.
 - The app must remain fully usable with every AI job disabled.
+
+### 7.9 Circles and Influencers (planned)
+
+- Adding an Influencer is **not** a friend request. You choose what they may see (Acquaintance / Friend / Close). You can change that, pause, or disconnect in Settings.
+- You may give them your Instagram / TikTok / other handles so they can contact you off Bridger. Bridger does not send those messages.
+- Influencers pay for a separate role (not co-op membership). Fans never pay to add someone.
+- Influencers may query people who added them using facts those people chose to share, and may invite a Circle (or a segment) to an Event. They may not open a 1:1 Bridger message to a fan.
+- Influencers must not sell or dump Circle lists to third-party ad networks. Misuse can mean suspension of the Influencer profile.
+- No public follower counts. An Influencer may see a private Circle size in their own portal only.
 
 ---
 
@@ -195,6 +218,8 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 - Cancel schedules end-of-period; you keep member perks until paid-through, then return to free limits.
 - Refunds: **TODO (legal):** align with Apple / Google / card-processor policies when live payments ship.
 - Chip-in handles on events are not Bridger charges.
+- **Influencer SKU (planned):** a separate paid entitlement from co-op and Billy+. Same store / Stripe rules as membership (no iOS web checkout for the digital SKU).
+- **Event album storage add-on (planned):** optional host purchase that raises one event's shared album cap. Not a membership. Unused quota ends when the album window ends.
 
 ---
 
@@ -241,6 +266,18 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 
 | Date | What was added / changed |
 |---|---|
+| 2026-09-10 | Founder-only software agents (e.g. Grokbot) are not part of the member product and are not Billy. |
+| 2026-09-09 | Inside Jokes: you are responsible for tagged quotes and any co-op photo you attach. Same report / block rules as other UGC. |
+| 2026-09-09 | Profile photo looks preview on your phone (not AI). The saved avatar still uses Bridger's own image tool. |
+| 2026-09-09 | Friend Pod earlier weeks are a co-op perk. This week's listen and record stay free. |
+| 2026-09-09 | Friend Pod self-locks each Monday (rose / thorn / bud + voted extras + fill-ins). Suggested questions are UGC. You pick which friend group hears your recap. |
+| 2026-09-09 | New onboarding (preview) ends on join / invite (same pay sheet as Old). Congratulations splash plays over Home. Joining stays skippable via invite 3. |
+| 2026-09-09 | Matching may learn from Close / Friends placements to improve later suggestions. Optional Personality quizzes stay private; answers are never shown to other people. |
+| 2026-09-09 | Discover Personality quizzes rename (was Connect Over). Behind the Scenes archived from the live list. Reveal / In common may be empty until something overlaps at the granted circle; quizzes stay optional. |
+| 2026-09-09 | Friends Connect your contacts: private cards you author; merge on matching phone; notes stay yours; no impersonation. |
+| 2026-09-09 | Circles / Influencer role (planned): consented sharing, handles, no 1:1 Bridger DM, Event-to-Circle, no ad-network dumps. Event notes + album save/expiry/host-paid storage. Version-of-me UGC quizzes. Extra SKUs: Influencer, event album add-on. |
+| 2026-09-09 | User-facing name Scrapbook → **Collage**. Same posting rules; code names unchanged. |
+| 2026-09-09 | Collage pages may include voice notes (and a transcript) and friend tags. You must have the right to share what you import from the camera roll. Cut-outs stay on the phone. |
 | 2026-09-08 | Phone OTP sign-in; pending-people merge; New onboarding (profile then education; co-op optional). Groups, not circles, in New copy. |
 | 2026-08-30 | Side Quest posts (photo or text blurb, e.g. Notes App Discovery) are UGC under the same report / block rules as Updates. |
 | 2026-08-30 | Reveal Screen 3 may suggest friends of friends (Discover on) or nudge to turn Discover on; connect requests from that screen still need the other person to accept. Quiz compatibility on reveal uses in-app titles. |
@@ -278,8 +315,10 @@ Updates are shown as **Scrapbook pages**: a page can hold up to 4 photos or shor
 | 2026-08-20 | Product analytics on while signed in; no Settings off-switch in this build; purge on account delete |
 | 2026-08-20 | Quiz result sharing: save card image or send image/result link to other apps; user owns/responsible once shared off Bridger; links are quiz invites, not for spam |
 | 2026-08-20 | J-name share links: stable per-person link; opening one may connect a later signup to the friend who invited them; free public web view, but seeing your friends' results needs an account |
-| 2026-09-08 | Scrapbooks: Updates shown as pages; camera-roll import allowed for pages (you must have rights to what you import); Only me audience; same-day edits; 4 photos/videos a day across 1 to 4 pages |
+| 2026-09-09 | J-name guest take: no account needed to play; making an account or tapping Add friend after a share link may add the sharer as a friend so both can see the duo result |
+| 2026-09-08 | Collages (then called Scrapbooks): Updates shown as pages; camera-roll import allowed for pages (you must have rights to what you import); Only me audience; same-day edits; 4 photos/videos a day across 1 to 4 pages |
 | 2026-08-21 | J-name "your versions" board is friends-only (account required); alerts when someone opens your quiz link or a friend lands on one of your top J picks |
+| 2026-09-09 | J-name: first result is the one friends and matching use; a later fun retake stays on the phone and does not change the stored result |
 | 2026-08-30 | J-name: after you and a friend both finish, you can see how compatible you are on that quiz (fun % only; not a clinical or dating score) |
 | 2026-08-21 | Hobby bank includes optional culture / advocacy / wellness labels plus add-your-own; same visibility and matchable rules; none required |
 | 2026-08-19 | Product analytics opt-in in Settings; opt-out stops capture and purges the PostHog person |

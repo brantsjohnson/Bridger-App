@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open Bridger in Expo Go</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; padding: 28px; background: #111; color: #fff; }
+    a { color: #7dd3fc; font-size: 20px; }
+    p { line-height: 1.4; opacity: 0.9; }
+    code { word-break: break-all; background: #222; padding: 8px; display: block; margin-top: 12px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <!-- THIS PAGE DOES: hand the phone from Safari into Expo Go with the tunnel URL -->
+  <h1>Opening Bridger…</h1>
+  <p>First load can take up to a minute over tunnel. Keep Expo Go open and wait.</p>
+  <p>If Expo Go does not open automatically, tap the link below.</p>
+  <p><a id="open" href="#">Open in Expo Go</a></p>
+  <code id="url"></code>
+  <script>
+    var host = window.location.hostname;
+    var expUrl = 'exp://' + host + ':80';
+    document.getElementById('url').textContent = expUrl;
+    document.getElementById('open').href = expUrl;
+    // Try to launch Expo Go right away
+    window.location.href = expUrl;
+  </script>
+</body>
+</html>

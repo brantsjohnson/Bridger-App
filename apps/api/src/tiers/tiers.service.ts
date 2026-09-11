@@ -102,7 +102,7 @@ export class TiersService {
     );
     if (error) throw error;
 
-    // Learning labels: Close is gold; demote from Close is negative.
+    // Learning labels: Close is gold; Friends is a real bond; demote is negative.
     if (landedIn === 'close' && fromTier !== 'close') {
       await this.matchingFeedback
         .recordOutcome({
@@ -111,10 +111,27 @@ export class TiersService {
           outcome: 'close'
         })
         .catch(() => undefined);
+    } else if (fromTier === 'close' && landedIn !== 'close') {
+      await this.matchingFeedback
+        .recordOutcome({
+          userA: userId,
+          userB: personId,
+          outcome: 'demoted'
+        })
+        .catch(() => undefined);
     } else if (
-      fromTier === 'close' &&
-      landedIn !== 'close'
+      landedIn === 'friend' &&
+      fromTier !== 'friend' &&
+      fromTier !== 'close'
     ) {
+      await this.matchingFeedback
+        .recordOutcome({
+          userA: userId,
+          userB: personId,
+          outcome: 'friend'
+        })
+        .catch(() => undefined);
+    } else if (fromTier === 'friend' && landedIn === 'acquaintance') {
       await this.matchingFeedback
         .recordOutcome({
           userA: userId,

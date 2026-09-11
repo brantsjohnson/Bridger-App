@@ -75,5 +75,23 @@
       <a href="/privacy.html">Privacy Policy</a>
       <a href="mailto:hello@bridger.social">Contact</a>
     </nav>
+    <script>
+      // THIS SECTION DOES: if someone opens a /q/<token> quiz share on this
+      // static host (no app installed), show a take-the-quiz landing.
+      (function () {
+        var match = location.pathname.match(/^\/q\/([^/]+)\/?$/);
+        if (!match) return;
+        var token = decodeURIComponent(match[1]);
+        document.title = 'Which J name are you?';
+        var appLink = 'bridger://q/' + encodeURIComponent(token);
+        document.body.innerHTML =
+          '<h1>Which J name are you?</h1>' +
+          '<p class="tagline">A friend shared a Bridger quiz. Open the app to take it. No account needed to play. Making an account adds them so you can see how you line up.</p>' +
+          '<nav>' +
+          '<a href="' + appLink + '">Open in Bridger</a>' +
+          '<a href="/privacy.html">Privacy Policy</a>' +
+          '</nav>';
+      })();
+    </script>
   </body>
 </html>

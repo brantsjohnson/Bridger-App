@@ -1,9 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Friend Zone measures two continuous dials (anxiety + avoidance), then
-// derives a gentle style label. Matching uses a hand-authored style matrix,
-// not plain similarity. SES is a helper score so we do not mistake every
-// embarrassed feeling for attachment anxiety.
+// derives a gentle style label. Matching uses a hand-authored style matrix
+// (same chart in @bridger/shared quiz-match), not plain similarity. SES is
+// a helper so we do not mistake every embarrassed feeling for anxiety.
 // ============================================
 
 /** Research-backed axes (friendship-worded, not romance). */

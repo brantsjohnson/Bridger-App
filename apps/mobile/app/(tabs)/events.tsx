@@ -46,6 +46,16 @@ const FORCE_EVENTS_GATE =
 /** Saved on device so Explore Events only has to be tapped once. */
 const EVENTS_GATE_EXPLORED_KEY = 'bridger.eventsGateExplored';
 
+// THIS SECTION DOES: remember the explored answer in memory and start reading
+// it from the device the moment the app loads this file. That way the screen
+// almost always knows the answer synchronously on mount, so the gate never
+// flashes on screen and then gets yanked away (the "glitch").
+let exploredCache: boolean | null = null;
+const exploredCacheReady = AsyncStorage.getItem(EVENTS_GATE_EXPLORED_KEY).then((v) => {
+  exploredCache = v === '1';
+  return exploredCache;
+});
+
 const SECTIONS: Array<{
   role: EventRole;
   label: string;
@@ -88,8 +98,9 @@ export default function EventsScreen() {
   const [rsvp, setRsvp] = useState<Record<string, 'going' | 'cant'>>({});
   const [grassOpen, setGrassOpen] = useState(false);
   const [openSignal, setOpenSignal] = useState<GrassSignal | null>(null);
-  /** null = still reading device storage; then true/false for Explore once. */
-  const [gateExplored, setGateExplored] = useState<boolean | null>(null);
+  /** null = still reading device storage; then true/false for Explore once.
+   *  Starts from the in-memory cache so revisits decide instantly (no glitch). */
+  const [gateExplored, setGateExplored] = useState<boolean | null>(exploredCache);
 
   // Mark Events as the active analytics surface.
   useEffect(() => {
@@ -98,8 +109,8 @@ export default function EventsScreen() {
 
   // THIS SECTION DOES: remember if they already tapped Explore Events.
   useEffect(() => {
-    void AsyncStorage.getItem(EVENTS_GATE_EXPLORED_KEY).then((v) => {
-      setGateExplored(v === '1');
+    void exploredCacheReady.then((v) => {
+      setGateExplored((cur) => (cur == null ? v : cur));
     });
   }, []);
 
@@ -118,6 +129,8 @@ export default function EventsScreen() {
   // Delay the swap slightly so this same tap cannot land on a section-info
   // bubble on the list (that popup is easy to mistake for settings).
   const exploreEvents = () => {
+    // Hidden forever from here on: memory cache + device flag both say done.
+    exploredCache = true;
     void AsyncStorage.setItem(EVENTS_GATE_EXPLORED_KEY, '1');
     setTimeout(() => setGateExplored(true), 200);
   };
@@ -151,7 +164,9 @@ export default function EventsScreen() {
         scrollEnabled={!showGate}
         tabBarInset={!showGate}
       >
-        {gateExplored === null && !FORCE_EVENTS_GATE && !everHosted ? null : showGate ? (
+        {/* THIS SECTION DOES: while the explored flag is still unknown, paint
+            NOTHING (not the gate) so nothing flashes and disappears. */}
+        {gateExplored === null ? null : showGate ? (
           <EventsGate onExplore={exploreEvents} />
         ) : (
           <>
@@ -159,7 +174,7 @@ export default function EventsScreen() {
             <View>
               <SectionTitle
                 title="Touch grass"
-                description="Tap the button to tell your circle you're free. Friends who are also free show up right here."
+                description="Tap the green card to tell your circle you're free. Friends who are also free show up right here. (This is the main thing on Events after Explore.)"
                 infoAnalyticsId={EVENTS.touch_grass.info}
                 parentScreen="events"
                 section="touch_grass"
@@ -175,9 +190,11 @@ export default function EventsScreen() {
                 onEnd={myLive ? () => void onEndMine() : undefined}
               />
 
-              {signals.length > 0 ? (
+              {signals.filter((s) => !s.mine).length > 0 ? (
                 <View className="mt-3 gap-2.5">
-                  {signals.map((s, i) => (
+                  {signals
+                    .filter((s) => !s.mine)
+                    .map((s, i) => (
                     <FreeSignalCard
                       key={s.id}
                       signal={s}

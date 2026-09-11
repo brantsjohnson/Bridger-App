@@ -7,8 +7,9 @@
 // RETENTION (important):
 // - Each recap answer lives for a ROLLING 7 days from when it was recorded.
 // - You can only re-record once your own 7 days have passed.
-// - Co-op members keep their recaps (archived to the Profile stories calendar);
-//   non-members' audio is hard-deleted after 7 days.
+// - Co-op members keep their recaps (archived to the Profile stories calendar)
+//   and can open earlier locked weeks in the player. Non-members stay on
+//   this week; their audio is hard-deleted after 7 days.
 // PRIVACY: listeners only hear answers shared with a tier they belong to.
 // Mirrors guide-docs/complete/RECAP-PODCAST.md.
 // ============================================
@@ -19,7 +20,10 @@ import type { Tier } from './tier';
 export type RecapAudience = Extract<Tier, 'close' | 'friend' | 'acquaintance'>;
 
 /** Where a week's question came from. */
-export type RecapQuestionSource = 'admin' | 'submitted';
+export type RecapQuestionSource = 'admin' | 'submitted' | 'ai' | 'builtin';
+
+/** Who locked the live week: a person in admin, or the Monday auto-lock. */
+export type RecapWeekOrigin = 'admin' | 'auto';
 
 /** One week of recap questions (the same 5 for everyone). */
 export interface RecapWeek {
@@ -30,6 +34,10 @@ export interface RecapWeek {
   questions: string[];
   /** True while this is the live week people record into. */
   active?: boolean;
+  /** Monday (UTC) this week is locked to, YYYY-MM-DD. */
+  weekStart?: string;
+  /** admin = set in the portal; auto = Monday lock. */
+  origin?: RecapWeekOrigin;
 }
 
 /** One prompt inside a week (admin-set or drawn from a submitted question). */
@@ -84,6 +92,24 @@ export interface RecapPlaylist {
   clips: RecapAnswer[];
   /** Unique author ids included this rolling week ("In this week"). */
   voiceIds: string[];
+  /** True when this playlist is the live Monday. */
+  isCurrent?: boolean;
+  /** True when this listener may open older weeks (co-op). */
+  canBrowsePast?: boolean;
+}
+
+/** One row in the Friend Pod week strip. No voice counts (no vanity totals). */
+export interface RecapWeekListItem {
+  id: string;
+  weekOf: string;
+  weekStart?: string;
+  isCurrent: boolean;
+}
+
+/** Weeks a listener may open in the player. */
+export interface RecapWeeksDTO {
+  canBrowsePast: boolean;
+  weeks: RecapWeekListItem[];
 }
 
 /** Summary for the Friend Pod entry card (voices + length this week). */

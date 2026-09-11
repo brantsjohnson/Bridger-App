@@ -40,10 +40,10 @@ export function StoryRepliesRow({
       <Pressable
         onPress={withAnalyticsPress(HOME.responses.responses_header, onOpenHeader)}
         accessibilityRole="button"
-        accessibilityLabel={`${replies.length} replies to your scrapbook`}
+        accessibilityLabel={`${replies.length} replies to your collage`}
         className="mb-2 flex-row items-center gap-2 active:opacity-80"
       >
-        <Text className="font-sans-b text-[13px] text-ink">{replies.length} replies to your scrapbook</Text>
+        <Text className="font-sans-b text-[13px] text-ink">{replies.length} replies to your collage</Text>
         {videos.length > 0 ? (
           <View className="rounded-full bg-[#F1ECFF] px-2 py-0.5">
             <Text className="font-sans-b text-[11px] text-purple">{videos.length} video</Text>

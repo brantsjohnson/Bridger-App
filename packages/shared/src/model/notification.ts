@@ -13,6 +13,8 @@ export type NotificationKind =
   | 'story_reply_elsewhere'
   /** Opt-in: BeReal-like capture reminders, 1–3 notifications a day */
   | 'story_prompt'
+  /** A friend tagged you on a Collage page they posted. */
+  | 'collage_tag'
   | 'connect_request'
   | 'mutual_connection'
   /** Someone you already kept a private card for just joined Bridger. */
@@ -182,6 +184,16 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     circleGated: false,
     homePreview: false,
     defaultOn: false
+  },
+  {
+    kind: 'collage_tag',
+    label: 'Tagged on a collage',
+    description: 'A friend tagged you on a collage page',
+    section: 'Updates & replies',
+    onboardingGroup: 'life_updates',
+    circleGated: true,
+    homePreview: true,
+    defaultOn: true
   },
   // --- Birthdays & dates ---
   {
@@ -533,6 +545,7 @@ const KIND_TO_PAGE: Record<NotificationKind, NotificationPageFilter | null> = {
   story_reply: 'home',
   story_reply_elsewhere: 'home',
   story_prompt: 'home',
+  collage_tag: 'home',
   recap_reaction: 'home',
   poll_activity: 'home',
   activity_live: 'home',

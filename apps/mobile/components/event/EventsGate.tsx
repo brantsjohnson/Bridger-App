@@ -1,11 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Events marketing page before you have looked around. Black intro canvas
-// with the drifting graph grid behind it (same family as Discover's first
-// look). Big headline at the top, three slow-scrolling rows of idea chips
-// centered in the middle, and Explore Events pinned near the bottom. Chips
-// are decoration only — they do not fill in the create wizard. Creating
-// lives on the header + after you explore.
+// with the drifting graph grid behind it. Big headline, ONE slow-scrolling row
+// of idea chips (a rolling strip, not a wall of options), and Explore Events
+// pinned near the bottom. Chips are decoration only.
 // ============================================
 import React, { useMemo } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
@@ -16,8 +14,13 @@ import {
   ButtonPrimary,
   PixelHeading
 } from '@bridger/ui';
-import { EVENT_IDEAS, type EventIdea } from '../../data/fixtures/event-ideas';
+import { EVENT_IDEAS } from '../../data/fixtures/event-ideas';
+import { GateCtaProgress } from '../GateCtaProgress';
+import { useGateProgress } from '../../hooks/useGateProgress';
 import { IdeaMarqueeRow } from './IdeaMarqueeRow';
+
+/** Device key for the 15 second CTA charge-up (time left, in milliseconds). */
+const EVENTS_GATE_CHARGE_KEY = 'bridger.gate.events.charge_remaining_ms';
 
 /** Match ScreenHeader spacing so we size the gate under the title row. */
 const HEADER_TOP_PAD = 16;
@@ -27,26 +30,15 @@ const HEADER_ROW = 44;
 /** Room for the floating tab bar so the CTA sits above it. */
 const TAB_BAR_CLEARANCE = 120;
 
-/** Split the catalog into three interleaved rows so each row feels different. */
-function splitRows(ideas: EventIdea[]): [EventIdea[], EventIdea[], EventIdea[]] {
-  const a: EventIdea[] = [];
-  const b: EventIdea[] = [];
-  const c: EventIdea[] = [];
-  ideas.forEach((idea, i) => {
-    if (i % 3 === 0) a.push(idea);
-    else if (i % 3 === 1) b.push(idea);
-    else c.push(idea);
-  });
-  return [a, b, c];
-}
-
 export function EventsGate({ onExplore }: { onExplore: () => void }) {
-  const [rowA, rowB, rowC] = useMemo(() => splitRows(EVENT_IDEAS), []);
+  // THIS SECTION DOES: charge the CTA over 15 total seconds of looking at this
+  // page (pauses when you leave, resumes where it stopped next visit).
+  const { done: ctaReady, progress } = useGateProgress(EVENTS_GATE_CHARGE_KEY);
+  // One rolling row: enough ideas to feel lively without a 3-row wall.
+  const row = useMemo(() => EVENT_IDEAS.slice(0, 12), []);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
 
-  // THIS SECTION DOES: fill the open canvas under the header so the chip wall
-  // can sit in the vertical middle and the CTA can sit at the bottom.
   const headerBlock =
     insets.top + HEADER_TOP_PAD + HEADER_ROW + HEADER_BOTTOM_PAD + GAP_BELOW_HEADER;
   const contentMinHeight = Math.max(
@@ -56,7 +48,6 @@ export function EventsGate({ onExplore }: { onExplore: () => void }) {
 
   return (
     <View style={{ minHeight: contentMinHeight }} className="pt-2">
-      {/* THIS SECTION DOES: the hero line that explains what Events is for */}
       <AnalyticsRegion
         analyticsId={EVENTS.gate.headline}
         interactive={false}
@@ -77,33 +68,42 @@ export function EventsGate({ onExplore }: { onExplore: () => void }) {
           style={{ color: 'rgba(255,255,255,0.8)' }}
         >
           Plans, dinners, clubs, nights out. Start something people can return
-          to.
+          to. After you explore, Touch Grass is at the top: tell friends you are
+          free in one tap.
         </Text>
       </AnalyticsRegion>
 
-      {/* THIS SECTION DOES: full-bleed marquees centered in the leftover space.
-          pointerEvents none so the scrolling chips cannot steal the Explore tap. */}
+      {/* THIS SECTION DOES: one horizontal idea strip (not a 3-row grid wall). */}
       <View
-        className="-mx-5 gap-2.5"
+        className="-mx-5"
         pointerEvents="none"
-        style={{ flex: 1, justifyContent: 'center', minHeight: 160 }}
+        style={{ flex: 1, justifyContent: 'center', minHeight: 96 }}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
-        <IdeaMarqueeRow items={rowA} direction={1} durationSec={34} />
-        <IdeaMarqueeRow items={rowB} direction={-1} durationSec={40} />
-        <IdeaMarqueeRow items={rowC} direction={1} durationSec={36} />
+        <IdeaMarqueeRow items={row} direction={1} durationSec={42} />
       </View>
 
-      {/* THIS SECTION DOES: leave the gate and open the normal Events list */}
       <View className="z-10 pb-2">
-        <ButtonPrimary
-          full
-          size="lg"
-          onPress={onExplore}
-          analyticsId={EVENTS.gate.explore}
-          accessibilityLabel="Explore Events"
-        >
-          Explore Events
-        </ButtonPrimary>
+        {/* THIS SECTION DOES: show the charging bar until the 15 seconds are
+            done, then swap in the real Explore Events button. */}
+        {ctaReady ? (
+          <ButtonPrimary
+            full
+            size="lg"
+            onPress={onExplore}
+            analyticsId={EVENTS.gate.explore}
+            accessibilityLabel="Explore Events"
+          >
+            Explore Events
+          </ButtonPrimary>
+        ) : (
+          <GateCtaProgress
+            progress={progress}
+            analyticsId={EVENTS.gate.cta_loading}
+            label="Loading your Events space"
+          />
+        )}
       </View>
     </View>
   );

@@ -7,9 +7,12 @@
 //
 // Fields the database does not store (emoji, accent, handle, label) are made
 // up deterministically from the person's id so cards never crash.
+// Signed photo links keep the URL we already drew when only the token changed,
+// so faces do not look like they are loading again on every tab tap.
 // ============================================
 import type { Accent, Person, Tier } from '@bridger/shared';
 import { apiFetch } from './api';
+import { keepLoadedMediaUrl } from './media-url';
 
 /** Shape returned by GET /connections. */
 type ConnDto = {
@@ -39,7 +42,11 @@ const ACCENTS: Accent[] = [
 const cache = new Map<string, Person>();
 let meCache: Person | null = null;
 let loaded = false;
+let loadedAt = 0;
 let loadPromise: Promise<void> | null = null;
+
+/** How long we treat the people book as "already fresh" (2 minutes). */
+const PEOPLE_FRESH_MS = 2 * 60 * 1000;
 
 /** Screens that show your face subscribe so they re-render when the cache fills. */
 const listeners = new Set<() => void>();
@@ -86,11 +93,26 @@ function toPerson(d: ConnDto): Person {
 
 /**
  * Pull the roster + my name from the API into the cache.
- * Safe to call often — concurrent callers share one in-flight request.
- * /me is loaded on its own so a connections hiccup never hides your photo.
+ * Safe to call often — concurrent callers share one in-flight request unless
+ * `force` is set (after add friend / retier) so we do not reuse a stale fetch
+ * that started before the connection existed.
  */
-export async function loadPeople(): Promise<void> {
-  if (loadPromise) return loadPromise;
+export async function loadPeople(opts?: { force?: boolean }): Promise<void> {
+  if (opts?.force) {
+    // Drop any in-flight roster started before this connection existed.
+    const prev = loadPromise;
+    loadPromise = null;
+    if (prev) {
+      try {
+        await prev;
+      } catch {
+        // ignore; we refetch below
+      }
+    }
+  } else if (loadPromise) {
+    return loadPromise;
+  }
+
   loadPromise = (async () => {
     try {
       // THIS SECTION DOES: load your face + name even if the friends list fails.
@@ -109,9 +131,17 @@ export async function loadPeople(): Promise<void> {
         conns = [];
       }
 
-      cache.clear();
+      // Keep the face URL we already drew when only the signed token changed.
+      const nextPeople = new Map<string, Person>();
       for (const c of conns) {
-        cache.set(c.id, toPerson(c));
+        const row = toPerson(c);
+        const prev = cache.get(c.id);
+        row.avatarUrl = keepLoadedMediaUrl(prev?.avatarUrl, row.avatarUrl);
+        nextPeople.set(c.id, row);
+      }
+      cache.clear();
+      for (const [id, row] of nextPeople) {
+        cache.set(id, row);
       }
       meCache = {
         id: 'me',
@@ -122,9 +152,10 @@ export async function loadPeople(): Promise<void> {
         tier: 'close',
         label: '',
         mutuals: 0,
-        avatarUrl: me?.avatarUrl ?? null
+        avatarUrl: keepLoadedMediaUrl(meCache?.avatarUrl, me?.avatarUrl ?? null)
       };
       loaded = true;
+      loadedAt = Date.now();
       notifyPeopleListeners();
     } finally {
       loadPromise = null;
@@ -148,4 +179,18 @@ export function getCachedMe(): Person | null {
 
 export function isPeopleLoaded(): boolean {
   return loaded;
+}
+
+/** True when we already filled the book recently (skip a Home-focus refetch). */
+export function isPeopleFresh(maxAgeMs = PEOPLE_FRESH_MS): boolean {
+  return loaded && Date.now() - loadedAt < maxAgeMs;
+}
+
+/** PRIVACY: forget the in-memory people book (sign-out / leave demo). */
+export function clearPeopleCache(): void {
+  cache.clear();
+  meCache = null;
+  loaded = false;
+  loadedAt = 0;
+  loadPromise = null;
 }

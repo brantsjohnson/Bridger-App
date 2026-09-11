@@ -42,20 +42,36 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `grass_signal_sheet` | `home` or `events` | a friend's signal detail — do they say "I'm in" or quietly decline after opening? |
 | `ask_sheet` | `home` | create poll / ask question — do they open then bail? |
 | `discover_settings_sheet` | `discover` | Discoverable + source toggles — do they open settings then bail? |
-| `behind_the_scenes` | `discover` (Connect Over) or first Discover quiz | Optional disclosure pre-quiz — open then bail? finish vs skip? (`dwell_ms`) |
-| `your_vibe` | `discover` (Connect Over) | Personality quiz — open then bail? finish? (`dwell_ms`) |
-| `the_friend_zone` | `discover` (Connect Over) | Attachment quiz — open then bail? finish? (`dwell_ms`) |
-| `what_gets_you_going` | `discover` (Connect Over) | Values quiz — open then bail? finish? skips? (`dwell_ms`) |
-| `your_funny_bone` | `discover` (Connect Over) | Humor taste quiz — open then bail? finish? (`dwell_ms`) |
+| `behind_the_scenes` | archived from Discover list (IDs kept) | Optional disclosure pre-quiz — open then bail? finish vs skip? (`dwell_ms`) |
+| `your_vibe` | `discover` (Personality quizzes / `connect_over`) | Personality quiz — open then bail? finish? (`dwell_ms`) |
+| `the_friend_zone` | `discover` (Personality quizzes / `connect_over`) | Attachment quiz — open then bail? finish? (`dwell_ms`) |
+| `what_gets_you_going` | `discover` (Personality quizzes / `connect_over`) | Values quiz — open then bail? finish? skips? (`dwell_ms`) |
+| `your_funny_bone` | `discover` (Personality quizzes / `connect_over`) | Humor taste quiz — open then bail? finish? (`dwell_ms`) |
 | `end_quiz_sheet` | `quiz` | Back mid-take: do they confirm End quiz or Keep going? (`dwell_ms`) |
-| `post_composer` | `home` (your scrapbook) | do they use the suggested buttons? finish? which layout do they pick? |
-| `prompts_tray` | `post_composer` | themed squares + reminders moved off the camera; do people still open them? (`dwell_ms`) |
+| `quiz_share` | shared `/q/<token>` | friend opened a J-name link: take (no account) vs make account vs add friend |
+| `post_composer` | `home` (your collage) | camera-first: shutter then just-shot vs editor? finish? |
+| `just_shot` | `post_composer` | after shutter: Done vs Make it a collage vs Retake (`dwell_ms`) |
+| `collage_editor` | `post_composer` | optional canvas: add, drag, leave, Next |
+| `collage_hub` | `collage_editor` | "+" sheet: which add tile? |
+| `collage_paper` | `collage_editor` | paper vs pack |
+| `collage_text` | `collage_editor` | type then Done vs dismiss |
+| `collage_voice` | `collage_editor` | record / transcribe / add |
+| `collage_people` | `collage_editor` | tag friends then Done |
+| `collage_cutout` | `collage_editor` | subject lift vs shape |
+| `collage_layer` | `collage_editor` | frame / colour / tilt / delete |
+| `collage_exit` | `collage_editor` | Save for later vs Discard |
+| `collage_finish` | `collage_editor` | save roll / share / Done |
+| `collage_packs` | `collage_editor` | Use a pack |
+| `collage_layouts` | `collage_editor` | pick a layout |
+| `prompts_tray` | `post_composer` | **retired** — themed squares removed from capture (keep historical events) |
 | `caption_sheet` | `post_composer` | tap the caption slot then bail vs Done (`dwell_ms`) |
 | `audience_sheet` | `post_composer` | opened the who-sees-this sheet; changed or just looked? |
 | `add_media_sheet` | `post_composer` | "+": Camera vs Camera roll |
 | `customize_tray` | `post_composer` | pencil: paper swatches + Undo; do people open it at all? (`dwell_ms`) |
-| `add_friend_sheet` | `friends` | QR vs link vs scan (method) |
-| `add_inside_joke_sheet` | `friends` or `profile` | Who said it tags; where free-text vs event chip |
+| `add_friend_sheet` | `friends` | Connect contacts vs QR vs link vs scan (method) |
+| `friends_contacts_sheet` | `friends` | pick one on-device contact to save a private card |
+| `pending_profile` | `friends` | card you made for someone not on Bridger yet; notes vs invite |
+| `add_inside_joke_sheet` | `friends` or `profile` | Full-screen composer: sticky note, color, friend search, event search, co-op photo |
 | `invite_access` | post-onboarding gate (demo week) | must invite a friend to unlock app — do they bail? |
 | `invite_contacts_sheet` | `invite_access` | pick one contact to text invite link (on-device only) |
 | `onboarding_invite_contacts_sheet` | `onboarding` | pick a contact for invite slot #1 / #2 / #3 during onboarding |
@@ -71,9 +87,18 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 | `create_event` | `events` | the 4-step create-event wizard — where in Details → Invite → Extras → Preview do hosts drop off? |
 | `event_share_sheet` | `events.detail` | native share invoked? |
 | `event_people_sheet` | `events.detail` | going / invited people list — open then bail? |
+| `event_host_note_sheet` | `events.detail` | host note composer: open then bail vs send? |
+| `event_album` | `events.detail` | album viewer: save vs just look? (`dwell_ms`) |
+| `circle_connect` | share link / QR | fan connect: drop-off on visibility vs handles? |
+| `circles_settings` | `profile.settings` | pause / disconnect vs just look |
+| `influencer_portal` | Influencer chrome | query then create event vs bail |
+| `influencer_join` | Influencer marketing | pay then confirm vs bail |
+| `version_quiz_author` | TBD home | author wizard drop-off |
+| `version_quiz_take` | share link | friend take vs abandon |
 | `section_info_tooltip` | any screen with section headers | do they open section help then bail? which sections? (`dwell_ms`, `section`) |
 | `recap_recorder` | `friends` (Friend Pod) | record the week's 5 answers by voice — do they start and give up? which question do they quit on? (`dwell_ms`) |
-| `recap_player` | `friends` (Friend Pod) | full-page weekly podcast — play, speed, filter, jump voices, react; do they bail? (`dwell_ms`) |
+| `recap_player` | `friends` (Friend Pod) | full-page weekly podcast — play, speed, filter, week strip, jump voices, react, this week's questions; do they open earlier weeks or bail? (`dwell_ms`) |
+| `onboarding_info_note` | `onboarding` | ⓘ claim-and-proof note on New info screens — open then bail? (`dwell_ms`) |
 | `add_bucket_sheet` | `profile` (own Bucket list tab) | add a want — do they open then bail? |
 | `edit_bucket_sheet` | `profile` (own Bucket list tab) | edit / delete a want — do they open then bail? |
 | `profile_intro` | `profile` (own, first visit) | mandatory one-time black welcome before fill (Events/Discover vibe) |
@@ -91,9 +116,10 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 
 | Flow | Steps (order tracked) |
 |---|---|
-| `onboarding` | New: first-name → last-name → photo → birthday → why → privacy → groups → coop story → product → selected branches. Old (demo): confirm profile → … → coop |
-| `post_story` | open composer → capture (method photo\|video\|roll) → layout_picked → caption (method text\|voice) → audience → post (server-confirmed) → (add another "+"?) |
-| `add_friend` | open sheet → choose method (qr/link/scan) → send/confirm |
+| `welcome` | first-open CRT intro: open → each typed screen (cue + `method` tap\|auto + `page_index`) → complete. Typing is not skippable. Reduce Motion has no auto-advance. |
+| `onboarding` | New: name → photo → birthday → why → privacy → product picks → selected features → coop story → welcome-in. Old (demo): confirm profile → … → coop |
+| `post_story` | open composer → capture (method photo\|video\|roll) → just_shot → (optional editor) → audience (editor Next) or Done (last audience) → post (server-confirmed) |
+| `add_friend` | open sheet → choose method (contacts/qr/link/scan) → send/confirm |
 | `customize_profile` | open → each change → save (with total `dwell_ms`) |
 | `profile_intro` | open (mandatory once) → continue |
 | `touch_grass_send` | open sheet → who → when → why → send |
@@ -101,6 +127,10 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `reveal` | how-you-met → orbs (strongest) → also-got (quiz scores + commonalities) → see profile |
 | `create_event` | details → invite → extras → preview (then `event_created`) |
 | `take_quiz` | each question (+ explanation, order tracked) → result → pairs with the `quiz_*` product events (§3b) |
+| `connect_circle` | confirm influencer → visibility tier → platforms/handles → create (`circle_connected`) |
+| `influencer_join` | pick plan → pay → confirmed (`influencer_joined`) |
+| `create_version_quiz` | versions → questions → weights → preview → publish (`version_quiz_published`) |
+| `send_event_note` | compose → pick audience → send (`event_host_note_sent`) |
 | `behind_the_scenes` | intro cards → conditions → (other label?) → impact per item → match weight → close; pairs with `quiz_*` for `quiz_id=disclosure` (never note/custom-label text) |
 | `your_vibe` | intro → each question (multi-select + optional explain) → result; pairs with `quiz_*` for `quiz_id=personality` (never explain text) |
 | `the_friend_zone` | intro → each question (multi-select + optional explain) → result; pairs with `quiz_*` for `quiz_id=attachment` (never explain text) |
@@ -123,8 +153,8 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `quiz_question_skipped` | a question is skipped | `question_id` |
 | `quiz_adapted` | moderator rewords/inserts (per `QUIZ-ENGINE.md`) | `reason` (low_confidence/select_all/contradiction) |
 | `quiz_abandoned` | left before finishing | `last_question_id`, `percent_complete`, `time_spent_ms` |
-| `quiz_completed` | finished | `quiz_id`, `time_to_complete_ms`, `questions_answered` |
-| `quiz_shared` | shared a result | `quiz_id`, `method` (image / link / save_image) — never the result name or card text |
+| `quiz_completed` | finished | `quiz_id`, `time_to_complete_ms`, `questions_answered`, `method` (`tap` first finish / `retake` fun run). Fun retakes do not overwrite the server result. |
+| `quiz_shared` | shared a result | `quiz_id`, `method` (image / link / save_image / copy) — never the result name, card text, or URL |
 | `module_started` / `module_completed` | a profile module (basics, hobbies, this-or-that, places, bucket_list, discover_me) | `module`, `items_added`, `time_to_complete_ms` |
 | `module_item_added` | one item added (a hobby, a bucket-list item) | `module`, `friend_tagged` (bool), `visibility` |
 | `place_favorited` | a travel place is starred FAV (onboarding seed or later toggle) | `—` (never place names) |
@@ -138,11 +168,13 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `friend_note_added` | a private note / date / check-in is saved on a friend | `kind` (`text`\|`date`\|`check_in`), `cadence` (check_in only) — **never note text** |
 | `friend_note_deleted` | a private note is removed | `—` |
 | `friend_check_in_reminded` | a soft check-in nudge fires for the author | `cadence` — **never note text** |
-| `story_posted` | a new Scrapbook page posts (server-confirmed) | `method` (photo/video), `media_count`, `layout_id`, `layout_family`, `has_words`, `words_method` (text\|voice\|both\|none), `source_mix` (live\|roll\|mixed), `audience` (only_me\|close\|friend\|everyone\|group), `is_coop`, optional `event_id` |
+| `story_posted` | a new Collage page posts (server-confirmed) | `method` (photo/video), `media_count`, `layout_id`, `layout_family`, `has_words`, `words_method` (text\|voice\|both\|none), `source_mix` (live\|roll\|mixed), `audience` (only_me\|close\|friend\|everyone\|group), `is_coop`, optional `event_id` |
 | `scrapbook_page_updated` | a page posted earlier today changed (photo added, layout, caption, audience, merge, split) and the server confirmed | `revision`, `media_count`, `layout_family`, `added_via` (camera\|roll\|merge\|split) — never captions or images |
 | `layout_changed` | tapped a different layout thumbnail | `from_layout_id`, `to_layout_id`, `layout_family`, `method` (tap) |
 | `media_imported` | camera-roll import finished (files chosen, not the picker opening) | `count`, `kinds` (photo\|video\|mixed) |
 | `scrapbook_page_deleted` | author deleted a page (merge emptied it) | `—` |
+| `collage_audio_transcribed` | a voice note was transcribed (server confirmed) | `has_text` (bool). Never the transcript |
+| `collage_friend_tagged` | a posted page tagged friends (server confirmed) | `tag_count`. Never person ids or names |
 | `party_capture_prompt_sent` | mid-party capture nudge fires (`story_prompt` on, under daily cap) | `event_id` |
 | `response_posted` | a reaction/reply posts | `method` (video/comment/sticker/custom_sticker/reaction), `duration_seconds` on video |
 | `stories_caught_up` | finished every update in the tray (or a lone author) and the end screen showed | `—` |
@@ -151,7 +183,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `touch_grass_answered` | someone says I'm in | `—` |
 | `touch_grass_declined` | someone quietly declines a signal | `parent_screen` |
 | `recap_posted` | a weekly recap is posted | `answers` (count), `audience` — **never the audio** |
-| `recap_played` | the weekly podcast is played | `voices` (count), `questions` (count) |
+| `recap_played` | the weekly podcast is played | `voices` (count), `questions` (count), `is_current` (bool). Never a week label |
 | `recap_reaction_sent` | sticker/emoji reaction on a recap | `method` (sticker) — **never the emoji** |
 | `recap_question_submitted` | a question is suggested for a future week | `—` (never the question text) |
 | `recap_question_voted` | a submitted question is upvoted | `—` |
@@ -164,8 +196,23 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `event_shared` | OS reports the event was shared, or web copied the link when Share was unavailable | `method` (`share_sheet` \| `copy_link`) |
 | `event_introduction_notified` | introduction pings sent for an event | `count` (people notified — never names) |
 | `event_guest_invited` | a person was added to an event invite list (confirmed server/demo write) | `via` (`host` \| `attendee`) — **never names** |
+| `event_host_note_sent` | host/co-host note is stored and delivered | `audience` (`going`\|`invited`\|`both`), `has_photo` (bool) — never text |
+| `event_reminder_sent` | scheduled 2d / 2h reminder worker fires | `offset` (`two_days`\|`two_hours`) |
+| `event_album_saved` | OS/browser confirmed save or download of an album photo | `method` (`photos`\|`download`) — never the image |
+| `event_album_uploaded` | guest album upload stored | `method` (`camera`\|`roll`) — never the image |
+| `event_album_quota_hit` | upload blocked because the event pool is full | `—` |
+| `event_album_storage_started` | host album add-on purchase confirms | `method` (apple/google/card/soft) — never receipt |
+| `circle_connected` | Circle edge is created | `visibility_tier`, `platform_count` — never handles |
+| `circle_disconnected` | edge hard-deleted | `—` |
+| `circle_visibility_changed` | fan changed the Influencer's visibility tier | `from_tier`, `to_tier` |
+| `circle_paused` / `circle_resumed` | fan paused or resumed the edge | `—` |
+| `influencer_joined` | Influencer entitlement confirms | `method` (apple/google/card/soft/admin) — never receipt |
+| `circle_event_created` | Event created with `audience_kind=circle` | `has_segment` (bool) — never member names |
+| `version_quiz_published` | user quiz goes live (share token minted) | `version_count`, `question_count` — never labels/text |
+| `version_quiz_completed` | friend finish scored on the server | `quiz_id` (`version_of_me`), `author_ref` — never version label |
+| `version_quiz_shared` | OS share or save-image of a version result | `method` (image / link / save_image) |
 | `rsvp_going` / `rsvp_cant` | RSVP actions | `—` |
-| `inside_joke_posted` | a note is posted | `tagged_people`, `tagged_event` (bool) |
+| `inside_joke_posted` | a note is posted | `tagged_people`, `tagged_event` (bool), `has_photo` (bool) — never joke text, names, or the image |
 | `bucket_item_checked` | an item is completed | `—` |
 | `bucket_item_updated` | an item's text / friends / privacy is saved | `friend_tagged` (bool), `visibility` |
 | `bucket_item_deleted` | an item is removed | `method` (`swipe` / `edit_mode` / `sheet`) |
@@ -190,6 +237,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `membership_interests_selected` | New onboarding Co-op 6 saved | `count` (opaque ids only) |
 | `help_interests_selected` | New onboarding Product 2 saved | `count` (opaque ids only) |
 | `pending_person_merged` | server merged pending contact cards into a new phone account | `count` (never phones / names) |
+| `pending_person_saved` | you saved a private card for someone not on Bridger yet | `already_had` (bool, demo) — never phones / names |
 | `demo_mode_left` | person leaves runtime demo from Settings | `method` (`settings`) |
 | `screen_not_found` | unmatched route or broken connection path shows the 404 dialog | `missing_path`, `path_trail` (joined routes, no PII), `reason` (`unmatched_route`\|`connection_error`\|`runtime_error`) |
 | `assistant_enabled` / `assistant_disabled` | Settings toggle | `method` (`setting`) |
@@ -252,7 +300,7 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 ### `auth`
 | section | elements |
 |---|---|
-| `welcome` | first-open CRT intro (surface `auth`, parent `welcome`): non-interactive, no skip (must be watched); emits `surface_opened` / `surface_dismissed` with `dwell_ms` only. Legacy text-beat ids kept so old events parse: **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead)** |
+| `welcome` | `next` (appears after typing; `method=tap`), **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead, fill is painted on `next`)**. Typing is not skippable. Wait-out uses `welcome` flow_step `method=auto` (no click). Reduce Motion: `next` only, no auto-advance. Surface `auth`, parent `welcome`. |
 | `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `phone`, `send_code`, `otp_code`, `verify`, `resend_otp`, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` (**retired**: Create account merged into Sign in OAuth) |
 | `sign_up` | **retired surface** (route redirects to `sign_in`); IDs kept for historical events only |
 | `sign_up` | **`page_title` (dead)**, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `confirm_password`, `submit`, `switch_to_sign_in` |
@@ -263,14 +311,14 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | `tab_bar` | `tab_home`, `tab_friends`, `tab_events`, `tab_discover` (globe/"www" icon), `tab_news` (Lucide Newspaper), `profile_icon` (single-person line icon on the far-right of the pill — opens Profile; selected = ink pill like the other tabs; moved here from the header, replaces `*.top_nav.profile_icon`); **`tab_messages` retired from the pill** — Messages now opens from the header (`*.top_nav.messages_icon`) |
 
 ### `onboarding`
-**New flow (ships 2026-09):** first-name → last-name → photo → birthday → why (2) → privacy (birthday Groups example, one audience save) → groups (3) → custom-groups bridge → co-op story (6) → optional route/join/invite → product-2 → only selected branches → Home. Progress bar counts only the four profile fields. Co-op is optional. Copy: `onboarding-new-copy.ts`.
+**New flow (preview `onboard`):** name → photo → birthday → why (2) → privacy (claim, two profiles, birthday Groups including Only Me) → product picks (10 features) → one screen per pick → co-op story → welcome-in → Home. Progress bar counts the six required actions. Co-op is optional. There is no join / invite fork. Copy: `onboarding-new-copy.ts`.
 
 **Old flow (demo `onboardold`):** confirm profile → birthday → [feed stat] → contacts → [isolation stat] → friends of friends → [retention stat] → notifications → taste intro → right now → obsession → social battery → color → places → privacy circles → privacy & control → [screentime stat] → [co-op intro] → co-op. The four stat interstitials and the co-op intro splash do not count in the progress bar. Finishing Co-op completes onboarding and lands on Home, which plays the one-time welcome fireworks (own surface `welcome_celebration`). The old "You're in" screen (`welcome_in`) was removed 2026-08-28. The onboarding Recap voice step is archived; weekly recaps stay on Friend Pod.
 
 | section | elements |
 |---|---|
-| `chrome` | `continue`, `skip`, `back`, `progress_bar`, **`step_title` (dead)** |
-| `confirm_profile` | `first_input`, `last_input`, `photo_square` (opens system Take / Upload sheet), `take`, `upload`, `retake`, `filter_pop_art`, `filter_x_ray`, `filter_comic`, `filter_sepia`, `local_processing_badge` (dead — shown when filter preview runs on-device), `photo_skip` (New: "Add one later") |
+| `chrome` | `continue`, `skip`, `back`, `progress_bar`, **`step_title` (dead)**, `info_note` (opens surface `onboarding_info_note`) |
+| `confirm_profile` | `first_input`, `last_input`, `photo_square` (opens system Take / Upload sheet), `take`, `upload`, `retake`, `filter_pop_art`, `filter_x_ray`, `filter_comic`, `filter_sepia`, `local_processing_badge` (dead — shown for Pop art, Comic, Sepia, and X-ray while the on-device preview is up), `photo_skip` (New: "Add one later") |
 | `name` | `first_input`, `last_input`, `first_next`, `last_next`, `birthday_next` |
 | `why` | `next_1`, `next_2`, **`visual` (dead)** |
 | `privacy` | `acknowledge` (legacy), `next_1`, `next_2`, `save_audience`, `group_option`, `next_4`, `next_5`, `next_7`, **`visual` (dead)** |
@@ -278,22 +326,23 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | `custom_groups` | `to_coop`, `member_interest`, **`visual` (dead)** |
 | `route` | `custom_groups_join`, `custom_groups_free`, `vote_join`, `vote_later`, `no_ads_join`, `no_ads_invite`, **`visual` (dead)** |
 | `free` | `choose_friends`, `continue`, `skip`, **`visual` (dead)** |
-| `product` | `next_1`, `save_help`, `option`, **`visual` (dead)** |
+| `product` | `next_1`, `save_help`, `option`, **`visual` (dead)**, `feature_next`, `see_more` |
 | `plans` | `next_1`, `next_2`, `branch_next`, **`visual` (dead)** |
 | `friendsb` | `next_1`, `next_2`, `branch_next`, **`visual` (dead)** |
 | `memories` | `next_1`, `next_2`, `next_3`, `branch_next`, `option`, **`visual` (dead)** |
 | `discover` | `next_1`, `next_2`, `branch_suggest`, `branch_browse`, **`visual` (dead)** |
 | `basics` | `answer` (birthday) |
 | `stat` | `info` (opens sources sheet from the "i" beside "A quick reality check", `variant`), `bridge` ("Let's try again", `variant`), `advance` (screentime only: tap to the next life-story beat, `page_index`), `band` (screentime only: tap a filled year-band to open/close its years accordion, `page_index`), **`adjust` (deprecated — hours picker removed)**, **`visual` (dead — animated art)**, **`headline` (dead — display-font title)**, **`caption` (dead — changing "you'll spend X years" line)** |
-| `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, **`awesome_banner` (dead — "AWESOME! We'll notify you when friends join.")**, `skip` |
+| `contacts` | `sync`, `invite` (legacy single-button), `invite_slot` (`slot` 1\|2\|3), `contact_row` (sheet pick), `contacts_cancel`, `contact_search` (focus search in invite sheet; never query text), **`awesome_banner` (dead — "AWESOME! We'll notify you when friends join.")**, `skip` |
 | `friends_of_friends` | `style` (opaque key via `style`: `workout`\|`go_out`\|`creative`\|`industry`\|`travel`\|`nearby`\|`gets_me`), `all` ("All of the above"), `skip` |
 | `notifications` | `pref` (`pref`: `birthdays`\|`life_updates`\|`meet`\|`activities`\|`messages`\|`reconnect`; method `on`\|`off` via Toggle), `all` ("All of the above") |
-| `taste` | `start`, **`preview_list` (dead — excited headline)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `song_search` / `song_result` / `song_search_cancel` (post-connect picker sheet; never query/title), `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `color_slider` (`color`, method=`slider` — saturation fine-tune under the spectrum), `hometown_input`, `current_town_input`, `favorite_place_input`, `place_search` (focus favorite-place search; never logs query text), **`place_pick_hint` (dead — "Tap a place to pin it")**, `place_result` (confirmed pick; never place names), **`recap_record` / `recap_play` / `recap_type` (archived — onboarding Recap step removed; Friend Pod keeps live recap)**, `skip` |
+| `taste` | `start`, **`preview_list` (dead — excited headline)**, `current_input`, `dream_input`, `spotify`, `apple`, `song_input`, `song_search` / `song_result` / `song_search_cancel` (post-connect picker sheet; never query/title), `nights_option` (`nights`), `color_swatch` (`color`, method=`spectrum`), `color_slider` (`color`, method=`slider` — saturation fine-tune under the spectrum), `hometown_input`, `hometown_privacy` (method=`private`\|`close`), `current_town_input`, `current_town_privacy` (method=`private`\|`close`), `favorite_place_input`, `favorite_place_privacy` (method=`private`\|`close`), `place_search` (focus favorite-place search; never logs query text), **`place_pick_hint` (dead — "Tap a place to pin it")**, `place_result` (confirmed pick; never place names), **`recap_record` / `recap_play` / `recap_type` (archived — onboarding Recap step removed; Friend Pod keeps live recap)**, `skip` |
 | `circles` | **`lock` (dead — animated padlock)**, **`tier_card` (dead — Close / Friends / Acquaintances meaning + Free Lite caps)** |
 | `review` | `row_audience` (`field`, `tier`), `set_all` (`tier`), `row_edit` / `row_edit_save` / `row_edit_cancel` (`field`; never content), `terms`, `privacy_policy` |
 | `coop_intro` | `continue` (green "See what you get" → join page), **`body` (dead — the "what a co-op is" explainer paragraphs)** |
-| `coop` | `invite_free` (Option A; props `invites_sent` 0–2; 3rd invite finishes Old onboarding → Home), `join_paid` (Option B; opens the join sheet; long-press 10s reveals auth link), `apple_pay` / `google_pay` (In-App Purchase method in the join sheet; not the Apple Pay / Google Pay marks), `card` (Stripe Checkout method; web / Android only), `plan_monthly` / `plan_yearly` (pick billing period in the join sheet, then pay), `use_free` (when 3 invites already filled from Contacts: "Continue with free access"), `see_more` (expand/collapse the Free vs Co-op table; prop `expanded`), `redeem_open` (hidden until 10s hold on Join; redeem finishes → Home), `redeem_input`, `redeem_submit`, **`plan_compare` (dead — Free vs Co-op comparison table body)**, **`perks_grid` (dead — legacy member perk bullet list)**, `next_1`…`next_5`, `save_interests`, `interest_option`, `skip_to_product`, **`visual` (dead)** |
-| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `photo.*`, `meet.*`, onboarding `recap` step (`taste.recap_*`), `welcome_in.*` (You're in screen — replaced by the Home `welcome_celebration` surface) |
+| `coop` | `invite_free` (Option A; props `invites_sent` 0–2; 3rd invite finishes Old onboarding → Home), `join_paid` (Option B; opens the join sheet; long-press 10s reveals auth link), `apple_pay` / `google_pay` (In-App Purchase method in the join sheet; not the Apple Pay / Google Pay marks), `card` (Stripe Checkout method; web / Android only), `plan_monthly` / `plan_yearly` (pick billing period in the join sheet, then pay), `use_free` (when 3 invites already filled from Contacts: "Continue with free access"), `see_more` (expand/collapse the Free vs Co-op table; prop `expanded`), `redeem_open` (hidden until 10s hold on Join; redeem finishes → Home), `redeem_input`, `redeem_submit`, **`plan_compare` (dead — Free vs Co-op comparison table body)**, **`perks_grid` (dead — legacy member perk bullet list)**, `next_1`…`next_5`, `save_interests`, `interest_option`, `skip_to_product`, **`visual` (dead)**, `see_more_benefits`, `benefit_support`, `benefit_early` |
+| `welcome_in` | `lets_go`, **`next_cards` (dead)** — archived. New flow ends on `onboarding.coop` join / invite. Home plays `welcome_celebration`. |
+| _legacy (retired screens, ids kept so old events parse)_ | `privacy.acknowledge`, `photo.*`, `meet.*`, onboarding `recap` step (`taste.recap_*`), older New keys (`first-name`, `last-name`, `product-2`, groups / route / free) |
 
 Flow tracking uses `flow_started` / `flow_step` / `flow_completed` with `flow='onboarding'`. Each screen emits `flow_step` with the step key. The screentime stat also emits `flow_step` with `flow_step=stat-screentime` and `page_index` for each life-story beat (0 life, 1 sleep, 2 upkeep, 3 devices, 4 social, 5 cta). Co-op emits `flow_step` with `step=coop` and `method` for the button tapped; confirmed outcome emits `onboarding_tier_chosen` (`coop`\|`free_lite`) and, when membership actually starts, `coop_joined`. Friends-of-friends confirmed save emits `connection_style_set` with the opaque keys only. New onboarding confirmed chips emit `membership_interests_selected` / `help_interests_selected`.
 
@@ -341,32 +390,57 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 |---|---|
 | `actions` | `im_in`, `quietly_decline`, `dismiss` |
 
-### `post_composer` *(surface — Scrapbook capture + compose, two screens)*
+### `post_composer` *(surface — Collage capture + compose, two screens)*
 | section | elements |
 |---|---|
-| `capture` | `photo`, `hold_video`, `switch_camera`, `flash` (`flash_mode` off\|on\|auto), `roll` (opens OS picker; `media_imported` fires on files chosen), `today_page_thumb` (opens a page you made today), `prompts_tray_open`, **`count_pill` (dead — the "1/4")** |
+| `capture` | `photo`, `hold_video`, `switch_camera` (`method` button\|double_tap; double-tap on the preview flips the camera), `flash` (`flash_mode` off\|on\|auto), `roll` (opens OS picker; `media_imported` fires on files chosen), `today_page_thumb` (opens a page you made today), `zoom` (`zoom_factor` 0.5\|1\|2\|4; only chips the phone supports), **`count_pill` (dead — "2 photos", not step progress)**. Retired: `prompts_tray_open` |
 | `caption` | `type`, `voice_to_text`, `done` |
 | `page` | **`canvas` (dead — paper with nothing under the finger)**, `photo_slot` (`element_type`), `caption_slot`, `stamp`, `replace`, `remove`, `move_to_page` |
 | `layouts` | `thumb` (`method` tap\|swipe, `page_index`, `carousel_depth`, `layout_id`, `layout_family`) |
 | `pages` | `page_thumb` (another page from today), `new_page` (split a photo onto a new page) |
-| `suggested` | `suggested_prompt` (**do they ever use these?**), `random_nudges_toggle`, **`random_nudges_label` (dead)**, `event_tag_label` (dead), `event_tag_clear` |
-| `audience` | `chip` (opens `audience_sheet`), `only_me`, `close`, `friends`, `everyone`, `group` |
-| `actions` | `post`, `add_another`, `discard`, `add` (opens `add_media_sheet`), `add_camera`, `add_roll`, `customize` (opens `customize_tray`), `background_swatch` (`paper`), `undo`, `back`, `info` (opens `section_info_tooltip`), `info_dismiss`, **`info_body` (dead)** |
+| `suggested` | **retired from capture:** `suggested_prompt`, `random_nudges_toggle`, **`random_nudges_label` (dead)**. Still used if present: `event_tag_label` (dead), `event_tag_clear` |
+| `audience` | `chip` (legacy; compose now uses Next → sheet), `only_me`, `close`, `friends`, `everyone`, `group` |
+| `actions` | `next` (opens `audience_sheet` to choose who), `post` (confirm "Post to Friends" / Close / Only me / Everyone inside the sheet), `done` (just-shot: post with last audience), `make_collage`, `retake`, `save_roll`, `add_another`, `discard`, `add` (opens `add_media_sheet`), `add_camera`, `add_roll`, `customize` (opens `customize_tray`), `background_swatch` (`paper`), `undo`, `back`, `info` (opens `section_info_tooltip`), `info_dismiss`, **`info_body` (dead)** |
+| `just_shot` | **`on_page` (dead)**, `photo` |
+
+### `collage_editor` *(surface — optional canvas after just-shot or today's-page thumb)*
+| section | elements |
+|---|---|
+| `chrome` | `close`, `undo`, `redo`, `menu`, `next`, **`title` (dead)** |
+| `menu` | `save_roll`, `learn`, `change_pack`, `clear`, `delete_page` |
+| `page` | **`canvas` (dead)**, `piece` (`element_type`), `bin` |
+| `rail` | `delete`, `duplicate`, `edit`, `rotate`, `bring_front` |
+| `toolbar` | `text`, `add`, `camera`, `packs`, `voice` |
+
+### `collage_hub` / `collage_paper` / `collage_text` / `collage_voice` / `collage_people` / `collage_cutout` / `collage_layer` / `collage_exit` / `collage_finish` / `collage_packs` / `collage_layouts` *(surfaces, parent `collage_editor` or `post_composer`)*
+| surface | elements |
+|---|---|
+| `collage_hub` | `grid.text` / `camera` / `roll` / `voice` / `people` / `layout` / `paper` / `cutout` / `sticker`, **`chrome.title` (dead)**, `chrome.dismiss` |
+| `collage_paper` | `swatch.paper` (`paper`), `swatch.pack` (`pack_id`), `swatch.spectrum` (open custom color), `chrome.done`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_text` | `field.type` (never log text), `tools.size` / `font` / `color` / `spectrum` (open custom color) / `box`, `chrome.done`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_voice` | `capture.record` / `stop` / `play` / `transcribe` / `add` / `permission_prompt`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_people` | `list.friend`, **`list.empty` (dead)**, `chrome.done`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_cutout` | `tools.subject` / `shape` (`clip`) / `add`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_layer` | `tabs.more` / `tilt` / `colour` / `frame`, `pick.option` / `swap` / `duplicate` / `delete`, `chrome.done`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_exit` | `actions.discard` / `save`, **`chrome.title` (dead)**, **`chrome.body` (dead)** |
+| `collage_finish` | `actions.save_roll` / `share` / `done`, **`chrome.title` (dead)**, **`chrome.page` (dead)** |
+| `collage_packs` | `list.use` (`pack_id`), `list.card`, `chrome.dismiss`, **`chrome.title` (dead)** |
+| `collage_layouts` | `list.thumb`, `chrome.done`, `chrome.dismiss`, **`chrome.title` (dead)** |
 
 ### `prompts_tray` / `caption_sheet` / `audience_sheet` / `add_media_sheet` / `customize_tray` *(surfaces, parent `post_composer`)*
 | surface | elements |
 |---|---|
-| `prompts_tray` | `tray.dismiss` (+ the `post_composer.suggested.*` ids above fire inside it) |
+| `prompts_tray` | **retired** (`tray.dismiss` historical only) |
 | `caption_sheet` | `tabs.type`, `tabs.record` (Phase 2), `actions.done`, `actions.dismiss` |
 | `audience_sheet` | `actions.dismiss` (+ `post_composer.audience.*` fire inside it) |
 | `add_media_sheet` | `actions.dismiss` (+ `post_composer.actions.add_camera` / `add_roll`) |
 | `customize_tray` | `actions.dismiss` (+ `post_composer.actions.background_swatch` / `undo`) |
 
-### `add_inside_joke_sheet` *(surface — Add an Inside Joke)*
+### `add_inside_joke_sheet` *(surface — Add an Inside Joke, full screen)*
 | section | elements |
 |---|---|
-| `form` | `quote_input`, `who_chip`, **`who_empty` (dead)**, `where_input`, `where_event_chip` |
-| `actions` | `post` (product `inside_joke_posted`), `never_mind` |
+| `form` | `sticky_note` (square; photo starts quote ↔ photo flip, not an event), `quote_input`, **`color_header` (dead)**, `color_swatch` (`option` = accent key), `photo_add` / `photo_remove` / `photo_locked`, **`who_header` (dead)**, `who_search`, `who_chip`, **`who_empty` (dead)**, **`event_header` (dead)**, `event_search`, `where_input` (kept; free-text place retired), `where_event_chip` |
+| `actions` | `post` (product `inside_joke_posted` after save: `tagged_people`, `tagged_event`, `has_photo`), `never_mind` |
 | `chrome` | `close` |
 
 ### `ask_sheet` *(surface)*
@@ -383,18 +457,18 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | `people_to_meet` | `suggestion_card`, `add`, `dismiss`, `spotlight_card`, **`shared_thread_headline` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `local_map` | **`section_header` (dead)**, **`teaser_card` (dead)** (coming-soon friend-radar preview), `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `discover_me` | `answer`, `image_option`, `continue` |
-| `connect_over` | **`section_header` (dead)**, `module_tile` (opens a private module; `module` id), `see_more` (opens `connect_over` screen), `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `connect_over` | **`section_header` (dead)** (user-facing title: Personality quizzes), `module_tile` (opens a private quiz; `module` id), `see_more` (opens `connect_over` screen), `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) — connection detail overlaps before Accept/Add |
 | `maps` | `node`, `map_toggle` (swipe/dropdown) |
-| `gate` | **`body` (dead)**, `get_started` |
+| `gate` | **`body` (dead)**, `get_started`, **`cta_loading` (dead)** (charging bar shown for the first 15 cumulative seconds before `get_started` unlocks) |
 | `settings_sheet` | `discoverable_toggle`, `source_toggle`, `about_me_toggle` (per category), `dismiss` (surface=`discover_settings_sheet`) |
 
-### `connect_over` (full list of private modules)
+### `connect_over` (full Personality quizzes list; user-facing name only)
 | section | elements |
 |---|---|
 | `list` | **`page_title` (dead)**, `back`, `module_tile` (opens a private module; `module` id) |
 
-### `behind_the_scenes` (disclosure pre-quiz — own surface)
+### `behind_the_scenes` (disclosure pre-quiz — archived from Discover list; IDs kept)
 | section | elements |
 |---|---|
 | `chrome` | `back`, `skip`, **`progress` (dead)** |
@@ -441,16 +515,17 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | section | elements |
 |---|---|
 | `main` | **`body` (dead)**, `invite_button` |
-| `contacts_sheet` | `contact_row`, `cancel` |
+| `contacts_sheet` | `contact_row`, `cancel`, `contact_search` (focus; never query text) |
 
 ### `friends`
 | section | elements |
 |---|---|
-| `top_nav` | `settings_icon`, `search`, `messages_icon`, **`page_title` (dead)**, `profile_icon`, `add`, `edit` |
-| `roster` | `row`, `drag_handle`, **`tier_header` (dead)**, `birthday_row`, `info` (opens `section_info_tooltip`, method=hover\|tap; `tier` prop) |
-| `add_sheet` | `invite_link` (method=link), `qr` (method=qr), `scan` (method=scan, camera viewfinder / demo sample), `scan_enable` (turn-on-camera / Open Settings when permission is off) |
-| `inside_jokes` | `note` (tap → meta), `add`, **`note_body` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
-| `pod` | `play` (opens `recap_player`), `record` (opens `recap_recorder`), `submit_question`, `vote_question`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `top_nav` | `settings_icon`, `search` (retired in UI; search now lives under Your circle as `roster.search`), `messages_icon`, **`page_title` (dead)**, `profile_icon`, `add` (labeled "Add friend"), `edit` (retired in UI; Edit now lives beside Your circle as `roster.edit`) |
+| `roster` | `row`, `drag_handle`, **`tier_header` (dead)**, `birthday_row`, `info` (opens `section_info_tooltip`, method=hover\|tap; `tier` prop), `add` (same Add friend control beside Your circle), `edit` (Edit / Done beside Your circle), `pending_row`, `pending_header` (info on Not on Bridger yet), `search` (under Your circle; never logs query text) |
+| `add_sheet` | `invite_link` (method=link), `qr` (method=qr), `scan` (method=scan, camera viewfinder / demo sample), `scan_enable` (turn-on-camera / Open Settings when permission is off), `connect_contacts` (method=contacts), `contact_row`, `contacts_cancel` |
+| `cold_start` | **`body` (dead)**, `connect_contacts` (method=contacts), `cta` (method=link\|qr\|scan) |
+| `inside_jokes` | `note` (tap → next face; `page_index` 0 quote / 1 photo / 2 credits; auto flip is not an event), `add`, **`note_body` (dead)**, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
+| `pod` | `play` (opens `recap_player` and starts audio), `open` (chevron / card: opens `recap_player` paused), `record` (opens `recap_recorder`), `submit_question`, `vote_question`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 
 ### `profile` (own)
 | section | elements |
@@ -461,10 +536,10 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `hobby_search` (focus search; never logs query text), **`hobby_category` (dead)**, `hobby_add_own`, `hobby_custom_name`, `hobby_custom_emoji`, `hobby_custom_save`, `hobby_custom_remove`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
 | `intro` *(surface `profile_intro`)* | **`body` (dead)**, `continue` (visible label: Hell yeah; dismisses once forever) |
 | `stories_calendar` | `day` (opens story), `month_nav`, `storage_bar` |
-| `inside_jokes` | `note` (tap → meta), `add`, `filter`, **`note_body` (dead)** |
+| `inside_jokes` | `note` (tap → next face; `page_index` 0 quote / 1 photo / 2 credits; auto flip is not an event), `add`, `filter`, **`note_body` (dead)** |
 | `bucket_list` | `item`, `add`, `check_off`, `edit` (Edit/Done toggle), `edit_item` (open edit sheet), `delete` (method=`swipe`\|`edit_mode`\|`sheet`), `save` |
-| `quizzes` | `untaken_row`, **`section_header` (dead)** |
-| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `notifications` (opens `notification_prefs`), `account`, `delete_account`, `analytics_toggle` (**removed from Settings UI**; product analytics is on by default while signed in), `log_out`, `appearance`, `blocked_people`, `storage_plan`, `always_original`, `connect_spotify`, `disconnect_spotify`, `connect_apple_music`, `disconnect_apple_music`, `assistant_toggle`, `assistant_open`, **`billy_status` (dead)**, `billy_plus_cta`, `billy_plus_cancel`, **`surprises_header` (dead)**, `play_emoji_bomb`, `preview_emoji_rain`, `leave_demo` |
+| `quizzes` | `untaken_row`, **`section_header` (dead)**, **`taken_row` (dead — finished quiz card body)**, `see_result`, `share`, `retake`, **`share_url` (dead)**, `copy_link`, `preview_link` |
+| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `circles` (opens `circles_settings`; planned), `notifications` (opens `notification_prefs`), `account`, `delete_account`, `analytics_toggle` (**removed from Settings UI**; product analytics is on by default while signed in), `log_out`, `appearance`, `blocked_people`, `storage_plan`, `always_original`, `connect_spotify`, `disconnect_spotify`, `connect_apple_music`, `disconnect_apple_music`, `assistant_toggle`, `assistant_open`, **`billy_status` (dead)**, `billy_plus_cta`, `billy_plus_cancel`, **`surprises_header` (dead)**, `play_emoji_bomb`, `preview_emoji_rain`, `leave_demo` |
 | `music` | `preview_play`, `preview_pause`, `open_spotify`, `open_apple_music`, `add_playlist`, `track_search` (never logs query text), `track_result`, `pick_save` |
 | `top_nav` | **`page_title` (dead)**, `edit`, `back`, `search` (searches this profile's visible fields; never logs query text) |
 
@@ -487,7 +562,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 |---|---|
 | `tabs` | `about_them`, `in_common`, `inside_jokes`, `bucket_list` (their list, read-only — rows reuse `profile.bucket_list.item` as a **dead** target), `notes` (opens your private Notes & reminders) |
 | `about_them` | `about_me` (**dead** — do they tap it expecting more?), `this_or_that_row` (**dead**), `hobbies_widget`, `places_map` (swipe/list on a friend's map) |
-| `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `mutual_row` (opens that mutual's profile) |
+| `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `mutual_row` (opens that mutual's profile), **`empty_body` (dead)**, `personality_quizzes` (opens `connect_over`; click only) |
 | `actions` | `message` (the "Message <name>" pill in the header — there is no separate button any more), `emoji_bomb` (opens `send_delight`), `how_you_met`, `private_note`, `overflow` (opens `friend_options_sheet`) |
 | `notes_reminders` | **`section_header` (dead)**, `kind` (Note\|Date\|Check in), `cadence` (week\|biweek\|month), `add`, `delete` — never log note body text |
 
@@ -501,9 +576,9 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | section | elements |
 |---|---|
 | `list` | `tab`, `event_card` (opens `events.detail`), **`page_title` (dead)**, `create` (opens `create_event`), `messages_icon` (header shortcut), `profile_icon` |
-| `gate` | **`headline` (dead)**, **`body` (dead)**, **`idea_wall` (dead)**, **`idea_chip` (dead)**, **`touch_grass_mark` (dead)**, `explore` (dismisses gate into Events list). `create` retired |
-| `detail` | `back`, `share` (header only; native share sheet, web falls back to copy link; method=`share_sheet`\|`copy_link`), `going`, `cant`, `going_count`, `to_meet_count`, `meet_row`, `map`, `add_to_calendar`, `assignment_row`, `assign_name`, **`title_body` (dead)**, **`date_chip` (dead)**, **`countdown` (dead)**, **`details_body` (dead)**, **`cover_image` (dead)**. `copy_link` element id retired as a separate button |
-| `host` | `edit`, `going_count`, `invited_count`, `add_cohost`, `chip_in_edit`, `reminders_toggle`, **`reminders_header` (dead)**, `introduction_row`, **`introductions_header` (dead)**. `brought_count` retired (attribution lives in `event_people_sheet`) |
+| `gate` | **`headline` (dead)**, **`body` (dead)**, **`idea_wall` (dead)**, **`idea_chip` (dead)**, **`touch_grass_mark` (dead)**, `explore` (dismisses gate into Events list), **`cta_loading` (dead)** (charging bar shown for the first 15 cumulative seconds before `explore` unlocks). `create` retired |
+| `detail` | `back`, `share` (header only; native share sheet, web falls back to copy link; method=`share_sheet`\|`copy_link`), `going`, `cant`, `going_count`, `to_meet_count`, `meet_row`, `map`, `add_to_calendar`, `assignment_row`, `assign_name`, `album_open`, `album_save`, `album_upload`, **`album_title` (dead)**, **`host_note_body` (dead)**, **`title_body` (dead)**, **`date_chip` (dead)**, **`countdown` (dead)**, **`details_body` (dead)**, **`cover_image` (dead)**. `copy_link` element id retired as a separate button |
+| `host` | `edit`, `going_count`, `invited_count`, `add_cohost`, `chip_in_edit`, `reminders_toggle`, **`reminders_header` (dead)**, `introduction_row`, **`introductions_header` (dead)**, `host_note_compose`, `album_storage_add`. `brought_count` retired (attribution lives in `event_people_sheet`) |
 | `touch_grass` | `send` (opens `touch_grass_sheet`, parent=events), `end` (ends your live signal; button stays the big green control), `featured_signal`, `signal_row`, **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `hosting` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
 | `going` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap) |
@@ -516,6 +591,20 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | `tabs` | `going`, `invited` |
 | `list` | `row` (**dead** — names not logged; when friends-can-invite is on, row may show attribution copy in UI only) |
 | `actions` | `dismiss` |
+
+### `event_host_note_sheet` *(surface — parent `events.detail`)*
+One-way host note composer. Pairs with `send_event_note` + `event_host_note_sent`.
+
+| section | elements |
+|---|---|
+| `compose` | **`title` (dead)**, `text_input` (never log text), `add_photo`, `audience`, `send`, `cancel` |
+
+### `event_album` *(surface — parent `events.detail`)*
+Full-screen album viewer. Pairs with `event_album_saved` / `event_album_uploaded`.
+
+| section | elements |
+|---|---|
+| `viewer` | `photo`, `save`, `close`, `upload`, **`empty_body` (dead)** |
 
 ### `create_event` *(surface — 4-step wizard, parent=`events`)*
 | section | elements |
@@ -553,28 +642,43 @@ The 10-second round video reply.
 |---|---|
 | `capture` | `record` (method=video), `stop`, `retake`, `send`, `switch_camera`, `permission_prompt`, `dismiss` |
 
-### `recap_recorder` *(surface — parent `friends`)*
-Record the week's 5 recap answers by voice, then pick who hears it. Pairs with the `take_recap` flow (§3) and the `recap_posted` product event (§3b). Never put audio in analytics.
+### `pending_profile` *(screen — parent `friends`)*
+Card you made for someone not on Bridger yet. Notes reuse `profile.notes_reminders.*`. Never log phones or note text.
 
 | section | elements |
 |---|---|
-| `question` | **`body` (dead)**, **`list` (dead — full preview before recording)** |
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `header` | **`name` (dead)**, **`status` (dead)** |
+| `notes` | **`section_header` (dead)** |
+| `actions` | `invite` |
+
+### `recap_recorder` *(surface — parent `friends`)*
+Record the week's 5 recap answers by voice, then pick who hears it. Pairs with the `take_recap` flow (§3) and the `recap_posted` product event (§3b). Never put audio in analytics.
+
+Now a three-phase flow: **record → review → posted**. The five questions are a swipeable deck (skipping is expected); each take can be heard back (`record.play`/`pause`) or redone before Review. The posted confirmation stays put and closes only on `actions.done`.
+
+| section | elements |
+|---|---|
+| `question` | **`body` (dead)**, **`list` (dead — full preview before recording)**, `segment` (jump to a question in the deck; method=`tap`\|`swipe`, `page_index`) |
 | `record` | `start` (method=voice), `stop`, `play`, `pause`, `rerecord`, `next` |
-| `audience` | `close`, `friends`, `everyone` |
-| `actions` | `start` (preview → Q1), `post`, `dismiss` |
+| `audience` | `close`, `friends`, `everyone` (chip label is Acquaintances; id stays `everyone`) |
+| `actions` | `start` (preview → Q1), `review` (record → review), `back` (review → questions), `post`, `done` (close the confirmation), `dismiss` |
 
 ### `recap_player` *(surface — parent `friends` / `home`; full page, not a sheet)*
 Play the stitched weekly podcast. Pairs with `recap_played` + `recap_reaction_sent` (§3b).
 
 | section | elements |
 |---|---|
-| `transport` | `play`, `pause`, `back`, `skip`, `scrub`, `speed` (method=`1`\|`1.3`\|`1.5`\|`2`) |
+| `transport` | `play`, `pause`, `back`, `skip`, `scrub`, `speed` (a pill that opens a slider; method=the chosen rate `1`–`2.5`; saved on device as the default for every listen and next week) |
 | `filter` | `chip` (method=`close`\|`friend`\|`acquaintance`; default Close) |
+| `weeks` | **`body` (dead)**, `row` (method=`current`\|`past`; never the week label), `join` (Free Lite → co-op) |
 | `speaker` | **`body` (dead)** |
 | `expiry` | **`label` (dead)** — days left until that person's clips expire |
 | `in_this_week` | **`body` (dead)**, `voice` (tap to jump / relisten) |
 | `react` | `open`, `emoji` (method=`sticker`) |
-| `actions` | `dismiss` |
+| `questions` | **`body` (dead)**, **`row` (dead)** — this week's five questions on the page |
+| `suggest` | `input` (focus; never question text), `send`, `vote` |
+| `actions` | `record` ("Add your recap" → opens `recap_recorder`), `record_another` (posted panel), `dismiss` |
 
 ### `catch_up` *(surface)*
 | section | elements |
@@ -643,6 +747,7 @@ Settings: `profile.settings.assistant_toggle`, `profile.settings.assistant_open`
 | `flow` | `how_you_met_choice`, `record_place_toggle`, `tier_choice`, `meet_note`, `meet_note_toggle`, `continue`, `see_profile`, `tap_next` (story forward), `tap_prev` (story back), `close` (X → new connection's profile), **`progress` (dead)**, **`orbs` (dead)**, **`venn` (dead, legacy)** |
 | `quiz_matches` | `info` (opens `section_info_tooltip`, method=hover\|tap — "From the quizzes you both took") |
 | `suggestions` | **`title` (dead)** ("People you might click with"), **`card` (dead)** (FoF card body), `add` (Add FoF), `optin_toggle` (Turn on Discover) |
+| `thin` | **`body` (dead)** ("Nothing to line up yet"), `personality_quizzes` (opens `connect_over`; click only. `quiz_completed` later) |
 
 Pairs with product events `connection_revealed` (beat 0 commit) and `connect_requested` (Screen 3 Add, confirmed POST only).
 
@@ -662,9 +767,17 @@ Pairs with product events `connection_revealed` (beat 0 commit) and `connect_req
 | section | elements |
 |---|---|
 | `take` | `option`, `explain`, `next`, `back`, **`progress` (dead)**, **`question` (dead)**, **`commentary` (dead)** |
-| `result` | **`label` (dead)**, `share`, `who_got_who`, `see_more`, `done` |
+| `result` | **`label` (dead)**, `share`, `who_got_who`, `see_more`, `done`, **`connect_header` (dead)**, **`connect_body` (dead)**, `share_link`, `share_story`, `save_image`, `view_first`, `view_fun`, `retake`, **`fun_note` (dead)**, **`empty_board` (dead)**, `invite_friends`, **`duo_card` (dead)**, `make_account`, `add_friend`, **`share_url` (dead)**, `copy_link`, `preview_link` |
 
-Pairs with product events `quiz_started` / `quiz_question_answered` / `quiz_adapted` / `quiz_abandoned` / `quiz_completed` (§3b). Never put explanation text in analytics. `quiz.take.back` is the X on every take and commentary screen (no back arrow). It opens `end_quiz_sheet` while a take is in progress. `quiz_abandoned` fires only if they confirm End quiz.
+Pairs with product events `quiz_started` / `quiz_question_answered` / `quiz_adapted` / `quiz_abandoned` / `quiz_completed` (§3b). Never put explanation text in analytics. `quiz.take.back` is the X on every take and commentary screen (no back arrow). It opens `end_quiz_sheet` while a take is in progress. `quiz_abandoned` fires only if they confirm End quiz. First J-name finish is `method=tap` and writes the server result. A later run is `quiz_started` / `quiz_completed` with `method=retake` and stays on-device. `view_first` / `view_fun` record flipping between those two cards. A logged-out take from a share link can finish without an account (`make_account` is the CTA). `quiz_shared.method=copy` is a confirmed clipboard write of the invite URL (never the URL itself). `friend_added` with `method=link` fires only after the server confirms the quiz-share friendship.
+
+### `quiz_share` *(surface — public `/q/<token>` page; `parent_screen` = `quiz`)*
+| section | elements |
+|---|---|
+| `body` | **`headline` (dead)**, **`card` (dead)**, **`note` (dead)** |
+| `actions` | `take`, `make_account`, `add_friend` |
+
+No-account take is allowed. `friend_added` waits for server confirm on `add_friend` or signup resolve. Never log the token or URL.
 
 ### `end_quiz_sheet` *(surface)*
 | section | elements |
@@ -690,6 +803,45 @@ Pairs with product events `delight_gifted` / `delight_played` (`delight_slug` on
 | `chrome` | `dismiss` (title-bar X) |
 | `dialog` | **`body` (dead)** ("You're invited to suffer"), `ok` (visible label: OK) |
 
+### `circle_connect` *(surface — Influencer share link / QR)*
+| section | elements |
+|---|---|
+| `confirm` | **`name_body` (dead)**, **`not_a_friend_note` (dead)**, `continue` |
+| `visibility` | `tier` (`acquaintance`\|`friend`\|`close`), `continue` |
+| `handles` | `platform`, `handle_input` (never log values), `skip`, `continue` |
+| `actions` | `connect` (outcome `circle_connected`), `cancel` |
+
+### `circles_settings` *(surface — parent `profile`)*
+| section | elements |
+|---|---|
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `list` | `row`, `visibility`, `edit_handles`, `pause`, `disconnect`, **`empty_body` (dead)** |
+
+### `influencer_portal` *(surface)*
+| section | elements |
+|---|---|
+| `top_nav` | **`page_title` (dead)**, `back` |
+| `query` | `filter`, `run` (never log filter values), **`count_body` (dead — private size)** |
+| `members` | `row` |
+| `actions` | `create_event` |
+
+### `influencer_join` *(surface)*
+| section | elements |
+|---|---|
+| `plan` | `monthly`, `yearly`, `join` (outcome `influencer_joined`) |
+
+### `version_quiz_author` *(surface)*
+| section | elements |
+|---|---|
+| `versions` | `add`, `photo`, `label_input` (never log text), `continue` |
+| `questions` | `add`, `option`, `continue` |
+| `weights` | `weight`, `continue` |
+| `preview` | `take`, `continue` |
+| `actions` | `publish` (outcome `version_quiz_published`), `save_draft` |
+
+### `version_quiz_take` / `version_quiz_result` *(surfaces)*
+Reuse `quiz.take` / `quiz.result` element names. `quiz_id=version_of_me`. Result share uses `quiz.result.share` / `save_image`.
+
 ### `admin` (operator console)
 | section | elements |
 |---|---|
@@ -709,6 +861,11 @@ The high-value "what did they *expect*" signals. Tag every one so a tap logs `de
 - **This-or-That row bodies** (`profile.*.this_or_that_row` body).
 - **Card bodies / whitespace** (suggestion cards, event cover, profile header bg).
 - **Empty-state graphics & illustrations.**
+- **Thin reveal / In common empty copy** (`reveal.thin.body`, `profile.in_common.empty_body`).
+- **J-name result extras** (`quiz.result.connect_header`, `quiz.result.connect_body`, `quiz.result.fun_note`, `quiz.result.empty_board`, `quiz.result.duo_card`, `quiz.result.share_url`, `profile.quizzes.taken_row`, `profile.quizzes.share_url`, `quiz_share.body.headline` / `card` / `note`).
+- **Circles empty list** (`circles_settings.list.empty_body`) and **not-a-friend note** (`circle_connect.confirm.not_a_friend_note`).
+- **Event album title** and **host note body** (`events.detail.album_title`, `events.detail.host_note_body`).
+- **Influencer portal private count** (`influencer_portal.query.count_body`).
 - **New onboarding VisualSlot pictures** (`onboarding.why.visual`, `privacy.visual`, `groups.visual`, `custom_groups.visual`, `route.visual`, `free.visual`, `coop.visual`, `product.visual`, `plans.visual`, `friendsb.visual`, `memories.visual`, `discover.visual`) — placeholders until Magic Patterns art ships.
 
 Keep to **semantic regions**, not every pixel — enough to learn intent without noise.
@@ -719,7 +876,10 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Where | `method` values | Answers |
 |---|---|---|
+| `quiz` product events | `tap` · `retake` | first J-name finish vs a later fun run |
 | `friends.add_sheet` | `qr` · `link` · `scan` | "QR vs link when adding friends?" |
+| `circle_connect` | `link` · `qr` | how fans add an Influencer (v1) |
+| `event_album` | `camera` · `roll` · `photos` · `download` | upload source vs save path |
 | `post_composer` | `photo` · `video` · `roll` · `text` · `voice` | what people post most; live capture vs camera roll |
 | `post_composer.layouts.thumb` | `tap` · `swipe` | do they swipe the layout row or take what is on screen? |
 | `story.reaction_rail` | `video` · `comment` · `sticker` · `reaction` | **"videos vs comments vs reactions?"** |
@@ -727,6 +887,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | `onboarding.desire.option` | `frequency` · `depth` · `plans` · `commonality` | which desire leads? |
 | `onboarding.coop` / `onboarding_tier_chosen` | `coop` · `free_lite` | **"do people pick Free Lite or co-op?"** |
 | `*.*.info` (section titles) | `hover` · `tap` | do people discover help by hovering (web) or tapping? |
+| `auth.welcome.next` / `welcome` flow | `tap` · `auto` | do people tap Next or wait out the five-second fill? |
 
 > **Note on `hover`:** the `hover` method exists only on web. iOS/Android have no hover state, so `*.*.info` on native emits only `tap`. Don't compare hover rates across platforms — treat `hover` as a web-only discovery signal.
 
@@ -745,7 +906,7 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 - **"Do people touch the headers?"** → `action=dead_click`, `element` ends in `page_title`/`section_header`, group by `screen`.
 - **"Do they tap sticky notes?"** → `id=*.inside_jokes*.note*`, split `click` vs `dead_click`.
-- **"Do they use the suggested buttons when posting?"** → `id=post_composer.suggested.suggested_prompt`, `action=click` vs post-composer completions.
+- **"Do they use the suggested buttons when posting?"** → retired 2026-09-09 (themed OOTD / Hot take squares removed from capture).
 - **"Do they get the '+' after posting?"** → `home.stories_row.add_after_post` click rate.
 - **"Is the touch-grass sheet its own thing?"** → yes: `surface=touch_grass_sheet`, split by `parent_screen` (home vs events); `surface_dismissed` dwell = opened-then-bailed.
 - **"Do they customize, and how long?"** → `flow=customize_profile` completion rate + `customize` `dwell_ms`.
@@ -772,6 +933,18 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Date | Old ID | New ID | Reason |
 |---|---|---|---|
+| 2026-09-09 | — | `*.inside_jokes.note` tap may send `page_index` (0 quote / 1 photo / 2 credits) | Square notes; photo notes auto-flip quote ↔ photo (not an event) |
+| 2026-09-09 | `friends.top_nav.edit` | `friends.roster.edit` (beside Your circle). `top_nav.edit` kept for history | Edit sits with the roster it changes, not the page header |
+| 2026-09-09 | — | `add_inside_joke_sheet.form.sticky_note` / `color_header` / `color_swatch` / `photo_add` / `photo_remove` / `photo_locked` / `who_header` / `who_search` / `event_header` / `event_search`; `inside_joke_posted.has_photo` | Full-screen Inside Joke composer (note, color, friend/event search, co-op photo). Never joke text. |
+| 2026-09-09 | — | `friends.pod.open` | Friend Pod card: arrow opens player paused; `play` starts audio |
+| 2026-09-09 | — | `recap_player.weeks.body` / `row` / `join`; `recap_played.is_current` | Friend Pod earlier weeks (co-op). `row.method` is current\|past, never the week label |
+| 2026-09-09 | — | `recap_recorder.question.segment`; `recap_recorder.actions.review` / `back` / `done` | Recorder is now record → review → posted with a swipeable question deck; `speed` is a slider up to 2.5x saved on device (method = the rate) |
+| 2026-09-09 | `friends.pod.record` / `submit_question` (rows removed from the widget; ids kept for history) | `recap_player.actions.record` / `record_another` | "Add your recap" + suggest-a-question moved onto the recap page; the Friends widget is now just the play card |
+| 2026-09-09 | New `welcome_in` arrival | archived again; New last step is `coop-join` (`onboarding.coop.*`) | Join / invite finishes → Home `welcome_celebration` |
+| 2026-09-09 | — | `onboarding.chrome.info_note`; `onboarding.product.feature_next` / `see_more`; `onboarding.coop.see_more_benefits` / `benefit_support` / `benefit_early`; surface `onboarding_info_note`; `recap_player.questions.*` / `recap_player.suggest.*` | Magic Patterns New onboarding + Friend Pod questions on the page |
+| 2026-09-09 | — | `quiz.result.connect_header` / `connect_body` / `share_link` / `share_story` / `save_image` / `view_first` / `view_fun` / `retake` / `fun_note` / `empty_board` / `invite_friends`; `profile.quizzes.taken_row` / `see_result` / `share` / `retake` | J-name dual result + first/fun flip + Profile lasting quiz card |
+| 2026-09-09 | — | `quiz_share` surface; `quiz.result.duo_card` / `make_account` / `add_friend` / `share_url` / `copy_link` / `preview_link`; `profile.quizzes.share_url` / `copy_link` / `preview_link`; `quiz_shared.method` adds `copy` | Guest J-name take (no account) + visible invite URL + signup adds the sharer as a friend |
+| 2026-09-09 | — | `reveal.thin.body` / `reveal.thin.personality_quizzes`; `profile.in_common.empty_body` / `profile.in_common.personality_quizzes` | Thin reveal + In common empty: Personality quizzes CTA (click only). User-facing "Connect Over" → Personality quizzes; analytics ids stay `connect_over`. Behind the Scenes archived from Discover list (IDs kept). |
 | 2026-09-08 | — | `auth.sign_in.phone` / `send_code` / `otp_code` / `verify` / `resend_otp`; New onboarding `why.*` `privacy.*` `groups.next_*` `custom_groups.*` `route.*` `free.*` `product.*` `plans.*` `friendsb.*` `memories.*` `discover.*`; `membership_interests_selected` / `help_interests_selected` / `pending_person_merged` | Phone OTP + New onboarding education flow |
 | 2026-08-30 | — | `add_inside_joke_sheet.*` | Inside Joke composer: Who said it + where text field |
 | 2026-08-30 | — | `activity.grid.text_note`, `activity_capture.chrome.blurb_input` | Text Side Quests (Notes App Discovery) |
@@ -871,5 +1044,16 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-08-30 | — | `reveal.quiz_matches.info` | i-tip on "How you line up": "From the quizzes you both took" (footer line removed) |
 | 2026-08-30 | Reveal close 🎉 emoji + bottom "Tap right…" hint | fireworks backdrop behind close; no tap hint | Same story tap zones; close feels like welcome party |
 | 2026-08-30 | — | `profile.header.filter_*` / `photo_look_save` / `photo_look_dismiss` + surface `photo_look_sheet` + `profile_photo_filter_updated` | Edit opens Photo look sheet to switch among the four baked looks |
-| 2026-09-08 | `post_composer` was one screen (camera + caption + audience) | Scrapbooks: `post_composer.capture.flash` / `roll` / `today_page_thumb` / `prompts_tray_open` / `count_pill` (dead); `page.*`; `layouts.thumb`; `pages.*`; `audience.chip` / `only_me`; `actions.add` / `add_camera` / `add_roll` / `customize` / `background_swatch` / `undo` / `back` / `info*`; surfaces `prompts_tray`, `caption_sheet`, `audience_sheet`, `add_media_sheet`, `customize_tray`; product `scrapbook_page_updated`, `layout_changed`, `media_imported`, `scrapbook_page_deleted`; `story_posted` gains page props; `permission_result.permission = photos` | Updates become Scrapbook pages (8.5 x 11, 1 to 4 pages a day, 4 photos/videos across them, camera roll allowed, Only me audience). `post_story` flow steps renamed |
-|
+| 2026-09-08 | `post_composer` was one screen (camera + caption + audience) | Scrapbooks: `post_composer.capture.flash` / `roll` / `today_page_thumb` / `prompts_tray_open` / `count_pill` (dead); `page.*`; `layouts.thumb`; `pages.*`; `audience.chip` / `only_me`; `actions.add` / `add_camera` / `add_roll` / `customize` / `background_swatch` / `undo` / `back` / `info*`; surfaces `prompts_tray`, `caption_sheet`, `audience_sheet`, `add_media_sheet`, `customize_tray`; product `scrapbook_page_updated`, `layout_changed`, `media_imported`, `scrapbook_page_deleted`; `story_posted` gains page props; `permission_result.permission = photos` | Updates become Collage pages (8.5 x 11, 1 to 4 pages a day, 4 photos/videos across them, camera roll allowed, Only me audience). `post_story` flow steps renamed |
+| 2026-09-09 | Compose `Post` + top audience chip; count `2/4`; sparkle prompts; no zoom | `actions.next` opens who-sees; confirm is `actions.post` labeled "Post to Friends"; count pill says "2 photos"; prompts use lightbulb; `capture.zoom` (`zoom_factor`) | Clarity: who you post to, photos not steps, prompts ≠ AI, device zoom chips |
+| 2026-09-09 | User-facing Scrapbook | Collage (tile, tab, Home title, empty states). Product events / tables still `scrapbook_*` | Founder rename |
+| 2026-09-09 | Capture lightbulb + OOTD / Hot take / Take 0.5 tray | Themed suggested posts removed from capture; `prompts_tray` / `suggested_prompt` / `prompts_tray_open` retired (IDs kept for history) | Founder: suggested posts are not good |
+| 2026-09-09 | — | Circles / event album / version-of-me stubs: flows `connect_circle`, `influencer_join`, `create_version_quiz`, `send_event_note`; surfaces `circle_connect`, `circles_settings`, `influencer_portal`, `influencer_join`, `event_host_note_sheet`, `event_album`, `version_quiz_author`; product events `circle_*`, `influencer_joined`, `event_host_note_sent`, `event_album_*`, `version_quiz_*` | Docs only. Never log handles, note text, quiz copy, or photos. |
+| 2026-09-09 | `friends.top_nav.add` as ink `+` circle only | labeled "Add friend" in header + `friends.roster.add` beside Your circle; `friends.top_nav.search` live (roster name/handle filter) | Same sheet; search never logs query text |
+| 2026-09-09 | `friends.top_nav.search` at the top of Friends | `friends.roster.search` directly under Your circle (`top_nav.search` kept for history) | Search filters the roster, not Friend Pod / Inside Jokes |
+| 2026-09-09 | — | `friends.add_sheet.connect_contacts` / `contact_row` / `contacts_cancel`; `friends.cold_start.*`; `friends.roster.pending_row` / `pending_header`; surfaces `friends_contacts_sheet`, `pending_profile`; product `pending_person_saved` | Friends is where you connect contacts and make a private card; merge still never logs phones |
+| 2026-09-09 | — | `onboarding.contacts.contact_search` + `invite_access.contacts_sheet.contact_search` | Search in invite contacts sheet (never logs query / names / phones) |
+| 2026-09-09 | Capture went straight to compose | Camera-first: `just_shot` + `actions.done` / `make_collage` / `retake` / `save_roll`; surfaces `collage_editor`, `collage_hub`, `collage_paper`, `collage_text`, `collage_voice`, `collage_people`, `collage_cutout`, `collage_layer`, `collage_exit`, `collage_finish`, `collage_packs`, `collage_layouts`; product `collage_audio_transcribed`, `collage_friend_tagged`; notify kind `collage_tag` | Camera is the front door. Collage tools are optional. Camera roll stays allowed. Never log captions, transcripts, or tagged names |
+| 2026-09-09 | CRT welcome auto-advanced after typing (no button) | `auth.welcome.next` + flow `welcome` (`method` tap\|auto, `page_index`) | People could not finish reading each typed screen |
+| 2026-09-09 | Collage editing was thin (basic colors, one font, no move/resize for text) | `collage_editor.rail.rotate`; `collage_text.tools.spectrum`; `collage_paper.swatch.spectrum` (full spectrum color picker, real fonts, drag/pinch to move/resize/rotate any piece incl. text) | Never log the mixed hex as content; color is a style choice, no PII |
+

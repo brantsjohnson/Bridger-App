@@ -4,26 +4,47 @@
 // backdrop. It runs on every screen; Discover gets the boldest version. Still
 // atmospheric enough that text on top of it stays easy to read.
 // ACCESSIBILITY: when Reduce Motion is on, the grid stays still.
+// Dark mode bumps line opacity so the grid still reads on a near-black canvas.
 // ============================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet, useColorScheme, View } from 'react-native';
 
 const ROWS = 14;
 const COLS = 16;
 
-// Purple lines (same idea as Magic Patterns). Fixed rgba so dark mode
-// never turns the grid into a bright white stripe via themed `ink`.
-// Personal onboarding color overrides this via the `color` prop.
-const DEFAULT_LINE = 'rgba(127, 119, 221, 0.5)';
+// Purple lines (same idea as Magic Patterns). Fixed rgba so themed `ink`
+// never turns the grid into a bright white stripe. Personal onboarding color
+// overrides this via the `color` prop.
+const DEFAULT_LINE_LIGHT = 'rgba(127, 119, 221, 0.5)';
+const DEFAULT_LINE_DARK = 'rgba(167, 160, 255, 0.72)';
 
 /**
  * How loud the grid is. 'normal' is the everyday backdrop; 'bold' is Discover,
  * where the grid is part of the point.
  */
 const STRENGTH = {
-  normal: { opacity: 0.85 },
-  bold: { opacity: 1 }
+  normal: { opacity: 0.85, darkOpacity: 1 },
+  bold: { opacity: 1, darkOpacity: 1 }
 };
+
+/**
+ * THIS SECTION DOES: make a line color louder on a dark canvas so people can
+ * still see the grid (Places onboarding feedback: "didn't notice the grid").
+ */
+function lineForScheme(line: string, isDark: boolean): string {
+  if (!isDark) return line;
+  const m = line.match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i
+  );
+  if (!m) return line;
+  const r = Number(m[1]);
+  const g = Number(m[2]);
+  const b = Number(m[3]);
+  const a = Math.min(0.92, Math.max(0.65, (Number(m[4] ?? '0.5') || 0.5) * 1.55));
+  // Slight lift toward lavender so thin lines read on #0E0E0E.
+  const lift = (c: number) => Math.min(255, Math.round(c + (255 - c) * 0.18));
+  return `rgba(${lift(r)}, ${lift(g)}, ${lift(b)}, ${a})`;
+}
 
 export function SynthGrid({
   strength = 'normal',
@@ -33,8 +54,16 @@ export function SynthGrid({
   /** Optional personal line tint from onboarding (rgba or hex). */
   color?: string;
 }) {
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const level = STRENGTH[strength];
-  const line = color?.trim() ? color : DEFAULT_LINE;
+  const baseLine = color?.trim()
+    ? color
+    : isDark
+      ? DEFAULT_LINE_DARK
+      : DEFAULT_LINE_LIGHT;
+  const line = lineForScheme(baseLine, isDark);
+  const gridOpacity = isDark ? level.darkOpacity : level.opacity;
   const drift = useRef(new Animated.Value(0)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -65,13 +94,14 @@ export function SynthGrid({
   });
 
   // Mild perspective fade — still visible under the title, never a hard cutoff.
+  // Dark mode starts a bit louder so the top rows are not invisible.
   const rows = useMemo(
     () =>
       Array.from({ length: ROWS }, (_, i) => ({
         key: `r${i}`,
-        opacity: 0.45 + (i / ROWS) * 0.45
+        opacity: (isDark ? 0.55 : 0.45) + (i / ROWS) * (isDark ? 0.4 : 0.45)
       })),
-    []
+    [isDark]
   );
 
   return (
@@ -84,7 +114,7 @@ export function SynthGrid({
     */
     <View
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, { opacity: level.opacity, overflow: 'hidden' }]}
+      style={[StyleSheet.absoluteFill, { opacity: gridOpacity, overflow: 'hidden' }]}
       accessible={false}
     >
       {/*
@@ -118,7 +148,7 @@ export function SynthGrid({
           <View
             key={`c${i}`}
             style={{
-              opacity: 0.45 + (Math.abs(i - COLS / 2) / (COLS / 2)) * 0.35,
+              opacity: (isDark ? 0.55 : 0.45) + (Math.abs(i - COLS / 2) / (COLS / 2)) * 0.35,
               height: '100%',
               width: StyleSheet.hairlineWidth,
               backgroundColor: line

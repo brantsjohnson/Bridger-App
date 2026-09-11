@@ -2,8 +2,10 @@
 // WHAT THIS FILE DOES (plain English):
 // The Connection Reveal — a full-screen dark story that plays right after you
 // connect with someone. Screen 0 asks how you met (+ optional coarse place),
-// then three story screens: strongest link (Venn), "you've also got", and
-// "You two should click." Same content lives forever under their In common tab.
+// then three story screens: strongest link (or a Personality quizzes hint
+// when profiles are thin), "you've also got", and "You two should click."
+// Same content lives forever under their In common tab. Adding a friend
+// is never blocked on quizzes.
 //
 // Stays dark even when the app is in dark mode (theme tokens flip otherwise).
 // Copy is exact from REVEAL.md. Analytics surface = reveal.
@@ -33,17 +35,18 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { CommonalityList } from '../../components/discover/CommonalityList';
+import { RevealThinOverlapBody } from '../../components/discover/ThinOverlapHint';
 import { HowYouMetStep } from '../../components/reveal/HowYouMetStep';
 import { QuizMatchList } from '../../components/reveal/QuizMatchList';
 import { RevealClose } from '../../components/reveal/RevealClose';
 import { RevealOrbs } from '../../components/reveal/RevealOrbs';
-import { RevealProgressBars } from '../../components/reveal/RevealProgressBars';
+import { RevealProgressBars, REVEAL_CARD_MS } from '../../components/reveal/RevealProgressBars';
 import { useReveal } from '../../hooks/useReveal';
 import {
   connectFromReveal,
   setDiscoverable
 } from '../../data/discover';
-import { personExists } from '../../data/people';
+import { personExists, personById } from '../../data/people';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { reportNotFoundHit } from '../../lib/route-trail';
 
@@ -107,6 +110,22 @@ export default function RevealRoute() {
     router.replace(`/person/${personId}`);
   };
 
+  // THIS SECTION DOES: on the last black card, open their profile after one
+  // beat so the screen never feels frozen for minutes.
+  useEffect(() => {
+    if (frame !== 'close') return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      if (cancelled) return;
+      trackFlowCompleted('reveal', Date.now() - startedAt);
+      router.replace(`/person/${personId}`);
+    }, REVEAL_CARD_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [frame, personId, router, startedAt]);
+
   const advance = async () => {
     if (frame === 'met') {
       if (!canContinue) return;
@@ -116,8 +135,11 @@ export default function RevealRoute() {
       return;
     }
     if (frame === 'strongest') {
-      // Thin overlap: skip "others" when there is nothing else to show
-      if ((payload?.others.length ?? 0) === 0) {
+      // Skip "others" only when there are no extras and no shared quizzes.
+      const hasOthersBeat =
+        (payload?.others.length ?? 0) > 0 ||
+        (payload?.quizMatches.length ?? 0) > 0;
+      if (!hasOthersBeat) {
         trackFlowStep('reveal', 'close');
         setFrame('close');
         return;
@@ -129,15 +151,22 @@ export default function RevealRoute() {
     if (frame === 'others') {
       trackFlowStep('reveal', 'close');
       setFrame('close');
+      return;
     }
-    // On 'close' a right-tap does nothing — it holds until "See profile".
+    // On 'close', right-tap opens their profile (no more frozen black wait).
+    if (frame === 'close') {
+      goSeeProfile();
+    }
   };
 
   // Tap the left half to step back through the story. You can never tap back
   // past the first story card (that would feel like closing) — use the X.
   const goBack = () => {
     if (frame === 'close') {
-      if ((payload?.others.length ?? 0) === 0) {
+      const hasOthersBeat =
+        (payload?.others.length ?? 0) > 0 ||
+        (payload?.quizMatches.length ?? 0) > 0;
+      if (!hasOthersBeat) {
         setFrame('strongest');
       } else {
         setFrame('others');
@@ -162,14 +191,33 @@ export default function RevealRoute() {
   }
 
   if (loading || !payload) {
+    // THIS SECTION DOES: show a calm loading beat (not a blank black jump-scare).
+    // Prefer a cached face when the roster already knows this person.
+    const peek = personExists(personId) ? personById(personId) : null;
     return (
       <Screen tone="plain" className="bg-[#0E0E0E]">
         <View
-          className="flex-1 items-center justify-center"
+          className="flex-1 items-center justify-center gap-4 px-8"
           style={{ paddingTop: insets.top }}
         >
-          <Text className="font-sans-sb text-[14px]" style={{ color: REVEAL_MUTE }}>
-            Loading…
+          {peek ? (
+            <Avatar
+              name={peek.name}
+              emoji={peek.emoji}
+              accent={peek.accent}
+              personId={personId}
+              photo={avatarPhotoFor(personId, peek.avatarUrl)}
+              size="xl"
+            />
+          ) : null}
+          <Text className="font-pixel text-[22px]" style={{ color: REVEAL_FG }}>
+            {peek?.name?.split(' ')[0] ?? 'One sec'}
+          </Text>
+          <Text
+            className="text-center font-sans-sb text-[14px]"
+            style={{ color: REVEAL_MUTE }}
+          >
+            Getting your connection ready…
           </Text>
         </View>
       </Screen>
@@ -237,7 +285,7 @@ export default function RevealRoute() {
                 {payload.person.name}
               </Text>
             </View>
-          ) : frame !== 'strongest' ? (
+          ) : frame !== 'strongest' || !payload.strongest ? (
             <View className="items-center">
               <Avatar
                 name={payload.person.name}
@@ -298,6 +346,13 @@ export default function RevealRoute() {
                 {payload.strongest.label}
               </Text>
             </View>
+          ) : null}
+
+          {frame === 'strongest' && !payload.strongest ? (
+            <RevealThinOverlapBody
+              firstName={first}
+              bodyAnalyticsId={REVEAL.thin.body}
+            />
           ) : null}
 
           {frame === 'others' ? (
@@ -404,8 +459,17 @@ export default function RevealRoute() {
             >
               {`See ${first}'s profile`}
             </ButtonPrimary>
+          ) : frame === 'strongest' && !payload.strongest ? (
+            <ButtonPrimary
+              full
+              analyticsId={REVEAL.thin.personality_quizzes}
+              onPress={() => router.push('/discover/connect-over')}
+              accessibilityLabel="Go to personality quizzes on Discover"
+            >
+              Personality quizzes
+            </ButtonPrimary>
           ) : (
-            // Story cards move on left/right tap zones — no bottom hint copy.
+            // Story cards with overlap move on left/right tap zones.
             null
           )}
         </View>

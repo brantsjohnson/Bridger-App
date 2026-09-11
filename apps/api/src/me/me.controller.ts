@@ -15,9 +15,11 @@
 // its admin connection to write on your behalf after the guard proves it's you.
 // ============================================
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  InternalServerErrorException,
   Patch,
   Post,
   UseGuards
@@ -249,12 +251,34 @@ export class MeController {
           .from('user_identity')
           .update(fields)
           .eq('user_id', user.id);
-        if (error) throw error;
+        if (error) {
+          // Missing avatar filter columns (migration 0051) or other DB issues
+          // used to surface as a bare gateway 502 with no hint.
+          const msg = `${error.message ?? ''} ${error.details ?? ''}`;
+          if (/avatar_filter|avatar_original|column .* does not exist/i.test(msg)) {
+            throw new BadRequestException(
+              'Photo looks are not ready on this server yet. Try again without a filter, or update later.'
+            );
+          }
+          throw new InternalServerErrorException(
+            'Could not save your profile. Please try again.'
+          );
+        }
       } else {
         const { error } = await this.supabase.admin
           .from('user_identity')
           .insert(identityPatch);
-        if (error) throw error;
+        if (error) {
+          const msg = `${error.message ?? ''} ${error.details ?? ''}`;
+          if (/avatar_filter|avatar_original|column .* does not exist/i.test(msg)) {
+            throw new BadRequestException(
+              'Photo looks are not ready on this server yet. Try again without a filter, or update later.'
+            );
+          }
+          throw new InternalServerErrorException(
+            'Could not save your profile. Please try again.'
+          );
+        }
       }
     }
 

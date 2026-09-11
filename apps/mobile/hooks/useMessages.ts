@@ -5,16 +5,23 @@
 // ============================================
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { listThreads, type ThreadRow } from '../data/messages';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+const SNAP_KEY = 'messages';
 
 export function useMessages() {
-  const [threads, setThreads] = useState<ThreadRow[]>([]);
+  const cached = getTabSnapshot<ThreadRow[]>(SNAP_KEY);
+  const [threads, setThreads] = useState<ThreadRow[]>(cached ?? []);
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<ThreadRow[]>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     try {
-      setThreads(await listThreads());
+      const next = await listThreads();
+      setThreads(next);
+      setTabSnapshot(SNAP_KEY, next);
     } finally {
       setLoading(false);
     }

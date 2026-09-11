@@ -1,6 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// "Don't be the product, join the co-op." The LAST onboarding step. Ways in:
+// "Don't be the product, join the co-op." The LAST onboarding step (Old and
+// New). New uses a simpler layout because they already heard the co-op story.
+// Ways in:
 //   Option A, invite 3 friends and get free access (progress shows if they
 //             already invited some during contacts). Each tap opens contacts
 //             (to text) or the system share sheet with a real Bridger invite
@@ -359,7 +361,8 @@ export function CoopStep({
   onRedeem,
   onBack,
   inviteMode = 'required',
-  onContinueFree
+  onContinueFree,
+  layout = 'full'
 }: {
   step: number;
   total: number;
@@ -380,10 +383,16 @@ export function CoopStep({
   /** Redeem an auth code for a free year. Resolves on success, throws on bad code. */
   onRedeem: (code: string) => Promise<void>;
   onBack: () => void;
-  /** required = Old (invite 3). hidden = New join screen (pay / skip to product). */
+  /** required = invite 3 for Free Lite. hidden = pay or skip (unused now). */
   inviteMode?: 'required' | 'hidden';
-  /** New: skip membership and keep walking the product tour. */
+  /** Unused skip path. Kept so older call sites still type-check. */
   onContinueFree?: () => void;
+  /**
+   * full = Old join (price + Free vs Co-op table).
+   * simple = New last screen. They already learned the co-op, so just join
+   * or invite friends.
+   */
+  layout?: 'full' | 'simple';
 }) {
   // Auth-code panel: hidden until asked for. Join opens our own join sheet.
   const [showRedeem, setShowRedeem] = useState(false);
@@ -647,8 +656,16 @@ export function CoopStep({
       <OnboardingStep
         step={step}
         total={total}
-        purpose="A tool for you, not an ad machine."
-        ask="Don't be the product, join the co-op"
+        purpose={
+          layout === 'simple'
+            ? 'You already know what the co-op is.'
+            : 'A tool for you, not an ad machine.'
+        }
+        ask={
+          layout === 'simple'
+            ? 'Join the co-op and don\'t be the product'
+            : 'Don\'t be the product, join the co-op'
+        }
         smallAsk
         scrollBody
         onBack={onBack}
@@ -711,7 +728,9 @@ export function CoopStep({
                 className="font-sans-sb text-[13.5px]"
                 style={{ flex: 1, lineHeight: 20, color: OB.onColor, minWidth: 0 }}
               >
-                Members get perks and share the profits.
+                {layout === 'simple'
+                  ? 'Monthly or yearly. Apple Pay, Google Pay, or a card.'
+                  : 'Members get perks and share the profits.'}
                 {inviteMode === 'hidden'
                   ? ' You can also keep using Bridger for free.'
                   : ` Free access unlocks when you invite ${INVITE_GOAL} friends.`}
@@ -726,12 +745,14 @@ export function CoopStep({
             ) : null}
           </View>
 
-          {/* THE COMPARISON: headline reasons side by side, "See more" for the
-              rest, so free vs co-op is clear at a glance. */}
-          <PlanCompare
-            showAll={showAllPerks}
-            onToggle={() => setShowAllPerks((v) => !v)}
-          />
+          {/* THE COMPARISON: Old join still shows Free vs Co-op. New skip it
+              because the co-op story already covered the perks. */}
+          {layout === 'simple' ? null : (
+            <PlanCompare
+              showAll={showAllPerks}
+              onToggle={() => setShowAllPerks((v) => !v)}
+            />
+          )}
         </View>
       </OnboardingStep>
 

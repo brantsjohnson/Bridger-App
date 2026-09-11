@@ -299,8 +299,14 @@ export class TouchGrassService {
       note: row.why ?? undefined,
       what: row.why ?? undefined,
       audience: row.audience_tier,
-      // Who's in is only ever populated for the author's own signals.
-      inIds: row.author_id === userId ? inIds ?? [] : undefined,
+      // Who's in: author sees everyone who joined; a joiner always sees
+      // themselves so "I'm in" updates Who's in on their phone right away.
+      inIds:
+        row.author_id === userId
+          ? inIds ?? []
+          : (inIds ?? []).includes(userId)
+            ? [userId]
+            : undefined,
       expiresAt: row.expires_at ?? undefined,
       mine: row.author_id === userId
     };

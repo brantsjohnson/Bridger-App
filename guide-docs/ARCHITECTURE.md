@@ -103,7 +103,9 @@ packages/shared/src/
 │   ├── quiz.ts                 # quiz definition + result
 │   ├── suggestion.ts           # friend suggestion + the "why"
 │   ├── connection.ts           # an edge between two people + how it was made
-│   └── commonality.ts          # the "what you have in common" payload
+│   ├── commonality.ts          # the "what you have in common" payload
+│   ├── circle.ts               # PLANNED: Circle edge + Influencer portal shapes (CIRCLES.md)
+│   └── user-quiz.ts            # PLANNED: version-of-me author/take/result (VERSION-OF-ME.md)
 ├── dto/                        # request/response shapes per surface
 │   ├── onboarding.dto.ts       # the ESSENTIAL layer only
 │   ├── friend-card.dto.ts      # facts filtered by viewer tier
@@ -164,20 +166,22 @@ apps/api/src/
 ├── feed/                       # assembles the Home hub (the conditional top strip)
 ├── discovery/                  # opt-in gate; 1st/2nd-degree suggestions + "why"; network map; approvals live here (see DISCOVER.md)
 ├── matching/                   # RAG matchmaker over de-identified facts + embeddings (opaque IDs, no PII); see DATA.md
-├── events/                     # create, friends' events, community placeholder, who-should-meet
+├── events/                     # create, friends' events, community placeholder, who-should-meet; host notes + album saves/quota (EVENTS.md §6–7, planned)
+├── circles/                    # PLANNED: Influencer entitlement + circle_edges + portal query (CIRCLES.md). Not friends. Not coop portal.
+├── user-quizzes/               # PLANNED: user-authored version-of-me quizzes (VERSION-OF-ME.md). Not quiz_registry.
 ├── polls/                      # create + vote; poster-set duration (max 1 week); answered items sink in the Catch-Up
 ├── touchgrass/                 # the "I'm free / I'm bored" bat-signal
 ├── quizzes/                    # quiz engine: versioned defs (dimensions + rubric), deterministic scoring, AI moderator (confidence + adaptation), per-quiz instructions — see QUIZ-ENGINE.md; plugins isolated per ADMIN.md
-├── recap/                      # weekly recap podcast: 5 audio Q&A, stitched playback with speaker photos (see RECAP-PODCAST.md)
-├── quotes/                     # Inside Jokes wall (module `quotes`): sticky notes + photo tags; quote + tag people/event; shares to tagged + event attendees; cross-posts; feeds Home
-├── payments/                   # processed payments: event-cap expansion, add-storage (chip-in handles are NOT processed here)
+├── recap/                      # weekly recap podcast: Monday self-lock (rose/thorn/bud + votes + fill-ins), 5 audio Q&A, stitched playback, GET /recap/weeks + playlist?weekId= for co-op past weeks (see RECAP-PODCAST.md)
+├── quotes/                     # Inside Jokes (module `quotes`): GET/POST /quotes. Sticky note + color; search-tag a friend and optional event; co-op may attach one photo. Newest first on Friends + both walls.
+├── payments/                   # processed: coop_dues, billy_plus, influencer entitlement, event_album_storage (chip-in handles are NOT processed here)
 ├── apps/api/src/coop/          # Nest: membership + portal (ideas, beta, mission, economics, roles, cost); public reads / member writes — see complete/COOP-PORTAL.md
 ├── notifications/              # tier-aware push + Home notifications preview → Notifications page (replies, mutual-connection, requests, touch-grass); also birthday + custom-date reminders (1wk + day-of) for the "Coming up" card in Home's announcements carousel
 └── messages/                   # intentionally-limited chat: 5/day per conversation, share-number + make-a-plan actions (see MESSAGES.md)
 ```
 
 Two rules enforced at this layer, by design, so they can never leak into a screen:
-- **No public follower counts.** There is no endpoint that returns a follower total to anyone but the owner.
+- **No public follower counts.** There is no endpoint that returns a follower total to anyone but the owner. Influencer portal may return a **private** Circle size to that Influencer only (`CIRCLES.md`).
 - **No story view counts to others.** View data, if stored at all, is owner-only and has no shared-read route.
 
 ---
@@ -205,7 +209,7 @@ apps/mobile/
 │   │   ├── coop.tsx            # 8 · last step: join / invite 3 → Home (sets onboardingComplete)
 │   │   └── welcome-in.tsx      # ARCHIVED · was "You're in"; Home fireworks replace it
 │   ├── (tabs)/                 # the main app shell + FLOATING pill tab bar (detached, dynamic — see DESIGN.md)
-│   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; Profile opened from header avatar (pill hidden on Profile)
+│   │   ├── _layout.tsx         # defines the 5 tabs + floating nav; tabs stay mounted and paint from a last-seen snapshot
 │   │   ├── home.tsx            # hub: announcements carousel, stories+responses, touch grass, ask-the-group, this-week (see HOME.md)
 │   │   ├── friends.tsx         # contact list + drag-drop tiering
 │   │   ├── messages.tsx        # capped inbox (5/day); share contact card + double-tap heart (see MESSAGES.md)
@@ -216,6 +220,7 @@ apps/mobile/
 │   ├── # QrBlock for invite+QR; Discover "Wants to connect" for accept/decline.
 │   ├── reveal/[id].tsx         # reveal: "how did you meet" opener (+ record where) → 3-screen "in common" (Venn → list → close); see REVEAL.md
 │   ├── person/[id].tsx         # friend profile = same shared card, tier-filtered; tabs: About them | In common | Inside Jokes | Bucket List | Notes (private NotesReminders)
+│   ├── pending/[id].tsx        # card YOU made for someone not on Bridger yet (notes stay after merge)
 │   ├── story/[id].tsx          # full-screen story viewer + week-summary peek
 │   ├── notifications/index.tsx # notifications page (feed preview links here); replies, mutual-connection, requests
 │   ├── messages/               # Messages list + conversation; 5/day cap, share-number + make-a-plan (see MESSAGES.md)
@@ -345,9 +350,12 @@ The load-bearing edges: `shared` feeds everyone, `permissions` is imported by **
 | Friend suggestions + "why" | `discovery` | `discover.tsx`, `person/[id]` |
 | Matchmaker | `matching` | `discover.tsx` |
 | Events + community placeholder | `events` | `events.tsx` |
+| Host notes + shared album | `events` | event detail (EVENTS.md §6–7; planned) |
 | Polls | `polls` | `home.tsx` |
 | Touch-grass bat-signal | `touchgrass` | `TouchGrassButton`, `home.tsx` |
 | Quizzes + rankings/graphs | `quizzes` | `home.tsx`, `discover.tsx` |
+| What version of me (user-authored) | `user-quizzes` | take/share routes; **home TBD** (`VERSION-OF-ME.md`) |
+| Circles / Influencer portal | `circles` | `circles_settings`, `influencer_portal` (planned; not Friends, not coop portal) |
 | Co-op portal | `coop` | `coop/index.tsx`, `coop/portal/*` (hub, mission, model, ideas, vote, cost, manage) |
 
 ---
@@ -361,5 +369,6 @@ The load-bearing edges: `shared` feeds everyone, `permissions` is imported by **
 5. `stories` + `reactions` + `feed` → the social loop.
 6. `discovery` (incl. `FriendNetworkGraph`) + `quizzes` → the connective tissue.
 7. `events`, `polls`, `touchgrass`, `coop` → the extras.
+8. Later (docs first, 2026-09-09): event host notes + album → `user-quizzes` → `circles`.
 
 Everything after step 2 plugs into the same spine, so each feature is additive — no re-architecting.

@@ -13,15 +13,22 @@ import {
   updateBucketItem,
   type AddBucketInput
 } from '../data/profile';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+const SNAP_KEY = 'bucket';
 
 export function useBucketList() {
-  const [items, setItems] = useState<BucketItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getTabSnapshot<BucketItem[]>(SNAP_KEY);
+  const [items, setItems] = useState<BucketItem[]>(cached ?? []);
+  const [loading, setLoading] = useState(!cached);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<BucketItem[]>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     try {
-      setItems(await listBucket());
+      const next = await listBucket();
+      setItems(next);
+      setTabSnapshot(SNAP_KEY, next);
     } finally {
       setLoading(false);
     }
@@ -31,25 +38,31 @@ export function useBucketList() {
     void refresh();
   }, [refresh]);
 
+  const replace = useCallback(async () => {
+    const next = await listBucket();
+    setItems(next);
+    setTabSnapshot(SNAP_KEY, next);
+  }, []);
+
   const onAdd = useCallback(async (input: AddBucketInput) => {
     await addBucketItem(input);
-    setItems(await listBucket());
-  }, []);
+    await replace();
+  }, [replace]);
 
   const onToggle = useCallback(async (id: string) => {
     await toggleBucketItem(id);
-    setItems(await listBucket());
-  }, []);
+    await replace();
+  }, [replace]);
 
   const onUpdate = useCallback(async (id: string, input: AddBucketInput) => {
     await updateBucketItem(id, input);
-    setItems(await listBucket());
-  }, []);
+    await replace();
+  }, [replace]);
 
   const onDelete = useCallback(async (id: string) => {
     await deleteBucketItem(id);
-    setItems(await listBucket());
-  }, []);
+    await replace();
+  }, [replace]);
 
   return { items, loading, refresh, onAdd, onToggle, onUpdate, onDelete };
 }

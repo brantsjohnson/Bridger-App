@@ -25,6 +25,8 @@ export type MatchingFeature = (typeof MATCHING_FEATURES)[number];
 export const MATCHING_LABEL_WEIGHTS = {
   impressed: 0,
   close: 1.0,
+  /** Placed in Friends (weaker gold than Close; still a real bond). */
+  friend: 0.55,
   added: 0.3,
   approved: 0.3,
   reveal_plan: 0.4,
@@ -37,6 +39,25 @@ export const MATCHING_LABEL_WEIGHTS = {
 } as const;
 
 export type MatchingOutcome = keyof typeof MATCHING_LABEL_WEIGHTS;
+
+/** Outcomes that mean "this pair worked" (used to lift feature weights). */
+export const MATCHING_LEARN_POSITIVE: readonly MatchingOutcome[] = [
+  'close',
+  'friend',
+  'added',
+  'approved',
+  'reveal_plan',
+  'event_attended'
+];
+
+/** Outcomes that mean "this pair did not work." */
+export const MATCHING_LEARN_NEGATIVE: readonly MatchingOutcome[] = [
+  'dismissed',
+  'dont_suggest',
+  'demoted',
+  'removed',
+  'blocked'
+];
 
 /** Discover quiz internal ids (marketing titles live on quiz_registry.title). */
 export const DISCOVER_QUIZ_IDS = [

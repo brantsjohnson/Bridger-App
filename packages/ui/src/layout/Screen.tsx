@@ -25,6 +25,7 @@ import { AnalyticsRegion, withAnalyticsPress } from '../lib/analytics';
 import { useProfileLink } from './ProfileLink';
 import { useGridColor } from './GridColor';
 import { SynthGrid } from './SynthGrid';
+import { useResponsiveLayout } from './responsive';
 
 type ScreenTone = 'canvas' | 'color' | 'synth' | 'plain' | 'intro';
 
@@ -128,6 +129,9 @@ export function Screen({
   const [headerChrome, setHeaderChrome] = useState<React.ReactNode>(null);
   // Personal grid tint from onboarding (defaults to classic purple).
   const { gridColor } = useGridColor();
+  // THIS SECTION DOES: ask "are we on a big screen (web / unfolded foldable)?"
+  // so the page can sit in a centered comfortable column instead of stretching.
+  const { contentMaxWidth } = useResponsiveLayout();
 
   // THIS SECTION DOES: update header props without remounting when nothing
   // meaningful changed (same trailing node identity = same + / Edit buttons).
@@ -209,7 +213,23 @@ export function Screen({
             color={gridColor}
           />
         )}
-        <View className="relative z-10 flex-1" style={{ backgroundColor: 'transparent' }}>
+        {/*
+          The drifting grid above stays full-bleed (it fills the whole window),
+          but the actual page content sits in a centered column on big screens.
+          On a phone contentMaxWidth is undefined, so this is width:100% with no
+          cap — exactly the old behavior. On web / an unfolded foldable it caps
+          at the comfortable middle width and centers, so nothing stretches.
+        */}
+        <View
+          className="relative z-10 flex-1"
+          style={{
+            backgroundColor: 'transparent',
+            width: '100%',
+            ...(contentMaxWidth
+              ? { maxWidth: contentMaxWidth, alignSelf: 'center' }
+              : null)
+          }}
+        >
           {children}
         </View>
       </View>
@@ -400,6 +420,10 @@ export function ScreenBody({
   className?: string;
 }) {
   const { headerProps, headerChrome, hasHeader } = React.useContext(ScreenContext);
+  const insets = useSafeAreaInsets();
+  // Floating pill (~56) + its bottom gap + home-indicator + a little air so
+  // Coming up / last widgets are not clipped under the bar (Home screenshot).
+  const tabPad = 72 + Math.max(insets.bottom, 12) + 28;
 
   return (
     <ScrollView
@@ -422,7 +446,7 @@ export function ScreenBody({
         paddingTop: hasHeader ? 0 : 8,
         // Tab pill clearance only (not keyboard height). Sheets / opt-in
         // adjustKeyboardInsets handle typing space.
-        paddingBottom: tabBarInset ? 108 : 32
+        paddingBottom: tabBarInset ? tabPad : 32
       }}
     >
       {/* Title row scrolls away with the page; zIndex keeps + taps on the header. */}

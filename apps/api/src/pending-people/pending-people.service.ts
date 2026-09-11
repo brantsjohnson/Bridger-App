@@ -13,6 +13,27 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 const E164 = /^\+[1-9]\d{7,14}$/;
 
+export type PendingPersonDto = {
+  id: string;
+  phoneE164: string;
+  displayName: string | null;
+  mergedUserId: string | null;
+};
+
+function toDto(row: {
+  id: string;
+  phone_e164: string;
+  display_name: string | null;
+  merged_user_id: string | null;
+}): PendingPersonDto {
+  return {
+    id: row.id,
+    phoneE164: row.phone_e164,
+    displayName: row.display_name,
+    mergedUserId: row.merged_user_id
+  };
+}
+
 @Injectable()
 export class PendingPeopleService {
   constructor(
@@ -21,15 +42,36 @@ export class PendingPeopleService {
   ) {}
 
   // THIS SECTION DOES: create or update your private card for this phone.
+  // THIS SECTION DOES: list the cards you still own (not merged yet).
+  async list(authorId: string): Promise<PendingPersonDto[]> {
+    const { data, error } = await this.supabase.admin
+      .from('pending_people')
+      .select('id, phone_e164, display_name, merged_user_id')
+      .eq('author_id', authorId)
+      .is('merged_user_id', null)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map(toDto);
+  }
+
+  // THIS SECTION DOES: open one of your cards, even after it merged (so we
+  // can send you to their real profile).
+  async getById(authorId: string, id: string): Promise<PendingPersonDto | null> {
+    const { data, error } = await this.supabase.admin
+      .from('pending_people')
+      .select('id, phone_e164, display_name, merged_user_id')
+      .eq('author_id', authorId)
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? toDto(data) : null;
+  }
+
+  // THIS SECTION DOES: create or update your private card for this phone.
   async upsert(
     authorId: string,
     body: { phoneE164: string; displayName?: string | null }
-  ): Promise<{
-    id: string;
-    phoneE164: string;
-    displayName: string | null;
-    mergedUserId: string | null;
-  }> {
+  ): Promise<PendingPersonDto> {
     const phoneE164 = (body.phoneE164 ?? '').trim();
     if (!E164.test(phoneE164)) {
       throw new BadRequestException('phoneE164 must be an E.164 number');

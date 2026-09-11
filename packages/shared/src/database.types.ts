@@ -2856,30 +2856,36 @@ export type Database = {
       }
       quips: {
         Row: {
+          accent: string
           author_id: string
           context_event_id: string | null
           created_at: string
           id: string
+          photo_media_id: string | null
           place: string | null
           quoted_person_id: string | null
           text: string
           visible_to_tier: Database["public"]["Enums"]["tier"]
         }
         Insert: {
+          accent?: string
           author_id: string
           context_event_id?: string | null
           created_at?: string
           id?: string
+          photo_media_id?: string | null
           place?: string | null
           quoted_person_id?: string | null
           text: string
           visible_to_tier?: Database["public"]["Enums"]["tier"]
         }
         Update: {
+          accent?: string
           author_id?: string
           context_event_id?: string | null
           created_at?: string
           id?: string
+          photo_media_id?: string | null
           place?: string | null
           quoted_person_id?: string | null
           text?: string
@@ -2898,6 +2904,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quips_photo_media_id_fkey"
+            columns: ["photo_media_id"]
+            isOneToOne: false
+            referencedRelation: "media"
             referencedColumns: ["id"]
           },
           {
@@ -3536,19 +3549,25 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
+          origin: string
           week_of: string
+          week_start: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
           id?: string
+          origin?: string
           week_of: string
+          week_start?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
           id?: string
+          origin?: string
           week_of?: string
+          week_start?: string | null
         }
         Relationships: []
       }

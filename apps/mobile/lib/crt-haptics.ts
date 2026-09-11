@@ -264,7 +264,8 @@ function spaceOut(pulses: CrtPulse[], reduced: boolean): CrtPulse[] {
 
 // THIS SECTION DOES: the public "player". You start it once (optionally a little
 // way into the piece if the intro was already running), it schedules every tap,
-// and you stop it on unmount / skip so no stray buzzes fire later.
+// and you stop it on unmount or during a reading pause so no stray buzzes fire.
+// After Next (or the five-second fill) we start again from the next scene.
 export class CrtHapticRunner {
   private timers: ReturnType<typeof setTimeout>[] = [];
   private pulses: CrtPulse[];
@@ -287,9 +288,12 @@ export class CrtHapticRunner {
     }
   }
 
-  // Cancel any taps that have not fired yet.
+  // Cancel any taps that have not fired yet. After a reading pause we call
+  // start() again from a later time, so this also clears the "already started"
+  // latch.
   stop(): void {
     this.timers.forEach(clearTimeout);
     this.timers = [];
+    this.started = false;
   }
 }

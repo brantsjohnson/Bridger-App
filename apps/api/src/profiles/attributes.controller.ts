@@ -158,16 +158,23 @@ export class AttributesController {
       .select('id, key, value, layer, visible_to_tier, matchable, updated_at');
     if (error) throw error;
 
-    // AI: re-embed + refresh person summary when matchable facts change.
-    await this.enqueueMatchableAi(user.id);
+    // THIS SECTION DOES: kick off AI in the background. Never await it on the
+    // HTTP response — a slow/hung job used to time out the phone and show
+    // "Could not save" even though hometown already wrote (TestFlight bug).
+    void this.enqueueMatchableAi(user.id).catch((err) => {
+      console.warn('[attributes] enqueueMatchableAi failed after save', err);
+    });
 
-    // Optional Discover-module notes when a whole category was replaced.
     if (typeof body?.replacePrefix === 'string' && body.replacePrefix) {
-      await this.aiJobs.enqueueModuleNotes({
-        userId: user.id,
-        moduleKey: body.replacePrefix.replace(/:$/, ''),
-        answers: rows.map((r) => ({ key: r.key, value: r.value }))
-      });
+      void this.aiJobs
+        .enqueueModuleNotes({
+          userId: user.id,
+          moduleKey: body.replacePrefix.replace(/:$/, ''),
+          answers: rows.map((r) => ({ key: r.key, value: r.value }))
+        })
+        .catch((err) => {
+          console.warn('[attributes] enqueueModuleNotes failed after save', err);
+        });
     }
 
     return (data ?? []).map(toDto);
@@ -195,7 +202,10 @@ export class AttributesController {
       .select('id, key, value, layer, visible_to_tier, matchable, updated_at')
       .maybeSingle();
     if (error) throw error;
-    await this.enqueueMatchableAi(user.id);
+    // Background AI only — never block the successful write response.
+    void this.enqueueMatchableAi(user.id).catch((err) => {
+      console.warn('[attributes] enqueueMatchableAi failed after patch', err);
+    });
     return data ? toDto(data) : null;
   }
 
@@ -208,7 +218,9 @@ export class AttributesController {
       .eq('id', id)
       .eq('owner_id', user.id);
     if (error) throw error;
-    await this.enqueueMatchableAi(user.id);
+    void this.enqueueMatchableAi(user.id).catch((err) => {
+      console.warn('[attributes] enqueueMatchableAi failed after delete', err);
+    });
     return { ok: true };
   }
 

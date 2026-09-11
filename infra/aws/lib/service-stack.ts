@@ -81,6 +81,13 @@ export class BridgerServiceStack extends cdk.Stack {
         asset: apiImage,
         imageConfiguration: {
           port: 3000,
+          // THIS SECTION DOES: tell Nest which vault to read at boot so every
+          // JSON field (Stripe, MusicKit .p8, RevenueCat) is used, not just the
+          // short inject list below.
+          environmentVariables: {
+            BRIDGER_SERVER_SECRET_NAME: props.serverSecretName,
+            AWS_REGION: this.region
+          },
           // Inject each secret field as an environment variable at runtime.
           environmentSecrets: {
             SUPABASE_URL: apprunner.Secret.fromSecretsManager(serverSecret, 'SUPABASE_URL'),

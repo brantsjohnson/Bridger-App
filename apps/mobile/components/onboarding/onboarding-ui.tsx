@@ -11,10 +11,10 @@
 //   OBHeading    - the giant blue all-caps question (app pixel font)
 //   OBBody       - the sentence under the question
 //   OBKicker     - the small pink all-caps hint ("Pick any that apply")
-//   OBField      - a white box you type in, with a hard navy outline
+//   OBField      - a white box you type in (Old: navy outline; New: rounded, no outline)
 //   OBTile       - a tappable white row: plain, with a checkbox, or with a switch
 //   OBNote       - the quiet white panel used for privacy / reassurance copy
-//   OBCTA        - the hot pink Continue button (square, no hard shadow)
+//   OBCTA        - the hot pink Continue button (never the gray Windows metallic)
 //   OBSkipLink   - the underlined "Skip for now" under the button
 //   OBProgress   - the segmented step bar with "3/14" beside it
 //
@@ -44,7 +44,8 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { fireEmojiBurstHaptics } from '../../lib/celebration-haptics';
-import { OB, OB_BORDER, OB_HEADING, OB_HEADING_SM, OB_SHADOW_OFFSET } from './onboarding-theme';
+import { useOnboardingBurst, useOnboardingLook } from './onboarding-chrome';
+import { OB, OB_BORDER, OB_HEADING, OB_HEADING_SM, OB_RADIUS, OB_SHADOW_OFFSET } from './onboarding-theme';
 
 /** Party mix for Continue / Let's try again taps in onboarding. */
 const ONBOARDING_BURST_EMOJIS = ['🎉', '🎊', '🎈'];
@@ -151,8 +152,17 @@ export function OBHardShadow({
 // THE WHY: a small amber tag above the question.
 // ============================================
 export function OBChip({ children }: { children: React.ReactNode }) {
+  const { dressed } = useOnboardingLook();
   return (
-    <View style={{ alignSelf: 'flex-start', backgroundColor: OB.amber, paddingHorizontal: 10, paddingVertical: 6 }}>
+    <View
+      style={{
+        alignSelf: 'flex-start',
+        backgroundColor: OB.amber,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: dressed ? OB_RADIUS : 0
+      }}
+    >
       <Text style={{ letterSpacing: 0.6, color: OB.ink }} className="font-sans-sb text-[12px]">
         {children}
       </Text>
@@ -246,7 +256,8 @@ export function OBField({
   onFocusExtra,
   returnKeyType,
   onSubmitEditing,
-  inputRef
+  inputRef,
+  blurOnSubmit
 }: {
   label?: string;
   value: string;
@@ -275,11 +286,17 @@ export function OBField({
   onSubmitEditing?: () => void;
   /** Let the parent focus this box (e.g. Enter on the field above). */
   inputRef?: React.Ref<TextInput>;
+  /**
+   * False keeps the keyboard up when Enter moves to the next box.
+   * Default: blur when Enter is meant to continue.
+   */
+  blurOnSubmit?: boolean;
 }) {
   // THIS SECTION DOES: remember how tall the typing box needs to be when words wrap.
   const [growHeight, setGrowHeight] = useState(OB_FIELD_LINE_MIN);
   // Label sits on the page canvas, so it must follow light/dark ink (boxes stay white).
   const theme = useThemeColors();
+  const { dressed } = useOnboardingLook();
   // Outer box we measure so the page can scroll this field above the keyboard.
   const wrapRef = useRef<View>(null);
   // Enter should advance (next field / continue), not insert a blank paragraph line.
@@ -320,7 +337,7 @@ export function OBField({
         scrollEnabled={multiline ? false : undefined}
         // Enter moves to the next field or continues; long answers still wrap.
         returnKeyType={returnKeyType ?? (enterAdvances ? 'next' : undefined)}
-        blurOnSubmit={enterAdvances ? true : undefined}
+        blurOnSubmit={blurOnSubmit ?? (enterAdvances ? true : undefined)}
         submitBehavior={enterAdvances ? 'blurAndSubmit' : multiline ? 'newline' : undefined}
         onSubmitEditing={onSubmitEditing}
         accessibilityLabel={accessibilityLabel ?? (required && label ? `${label}, required` : label)}
@@ -353,8 +370,10 @@ export function OBField({
         }
         style={{
           backgroundColor: OB.paper,
-          borderWidth: OB_BORDER,
-          borderColor: OB.navy,
+          // New: rounded, no outline. Old: square navy box.
+          borderWidth: dressed ? 0 : OB_BORDER,
+          borderColor: dressed ? 'transparent' : OB.navy,
+          borderRadius: dressed ? OB_RADIUS : 0,
           paddingHorizontal: 14,
           paddingVertical: OB_FIELD_PAD_Y,
           fontSize: 17,
@@ -564,10 +583,10 @@ function OBSwitchMark({ on }: { on: boolean }) {
 
 // ============================================
 // THE BUTTON: hot pink by default, all-caps, same clean bold sans as every
-// other Bridger button (not the pixel header, not Big Shoulders). Square
-// corners like every other onboarding box, with a trailing arrow. No pill
-// rounding. Reality-check screens pass tone="green" so the blue page is not
-// capped with another pink bar.
+// other Bridger button (not the pixel header, not Big Shoulders, not the
+// gray Windows metallic). Old stays square. New is rounded like app cards.
+// Reality-check screens pass tone="green" so the blue page is not capped
+// with another pink bar.
 // ============================================
 export function OBCTA({
   label,
@@ -609,6 +628,8 @@ export function OBCTA({
   celebrate?: boolean;
 }) {
   const reduce = useReduceMotion();
+  const { dressed } = useOnboardingLook();
+  const burstHost = useOnboardingBurst();
   const btnRef = useRef<View>(null);
   // Blocks a second tap from firing onPress twice while the burst plays.
   const advancing = useRef(false);
@@ -618,6 +639,8 @@ export function OBCTA({
   const fill = tone === 'green' ? OB.green : OB.pink;
   const shower =
     burstEmojis && burstEmojis.length > 0 ? burstEmojis : ONBOARDING_BURST_EMOJIS;
+  // Copy already has the arrow on New screens ("Save name →"). Do not add a second one.
+  const labelHasArrow = /→\s*$/.test(label);
 
   // THIS SECTION DOES: advance on the finger-down (pressIn), not press-up.
   // When a text field still has focus, iOS often uses the first press-up to
@@ -642,9 +665,14 @@ export function OBCTA({
     }
 
     btnRef.current?.measureInWindow((x, y, width, height) => {
+      const origin = { x: x + width / 2, y: y + height / 2 };
+      if (burstHost) {
+        burstHost.playBurst({ origin, emoji: shower, count: 22 });
+        return;
+      }
       setBurst({
         key: Date.now(),
-        origin: { x: x + width / 2, y: y + height / 2 }
+        origin
       });
     });
     setTimeout(() => {
@@ -698,8 +726,8 @@ export function OBCTA({
           gap: 12,
           paddingVertical: 14,
           paddingHorizontal: 22,
-          // Square like every other onboarding box (fields, tiles, progress).
-          borderRadius: 0,
+          // New: rounded pink. Old: square pink. Never the gray Windows CTA.
+          borderRadius: dressed ? OB_RADIUS : 0,
           backgroundColor: fill,
           opacity: disabled ? 0.5 : 1
         }}
@@ -716,9 +744,11 @@ export function OBCTA({
         >
           {label}
         </Text>
-        <Text className="font-sans-b text-[19px]" style={{ color: OB.onColor }} accessible={false}>
-          →
-        </Text>
+        {labelHasArrow ? null : (
+          <Text className="font-sans-b text-[19px]" style={{ color: OB.onColor }} accessible={false}>
+            →
+          </Text>
+        )}
       </Pressable>
     </View>
   );
@@ -807,12 +837,9 @@ export function OBProgress({
           style={{ letterSpacing: 0.4, color: theme.ink }}
           accessibilityLabel={`Step ${done} of ${total}`}
         >
-          {/* Early steps: skip "1/14" so the total does not overwhelm people. */}
-          {done <= 2
-            ? 'Getting started'
-            : done >= total - 1
-              ? 'Almost done'
-              : `${done}/${total}`}
+          {/* Step count only. Phase name ("Getting started") lives in conceptLabel
+              beside the bar, so we do not print the same words twice. */}
+          {`${done}/${total}`}
         </Text>
       </View>
     </AnalyticsRegion>

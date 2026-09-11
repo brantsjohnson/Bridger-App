@@ -28,6 +28,10 @@ export function pathForNotification(n: AppNotification): NotificationHref {
       return t.eventId
         ? `/story/capture?eventId=${encodeURIComponent(t.eventId)}`
         : '/story/capture';
+    case 'collage_tag': {
+      const author = t.authorId ?? n.personId;
+      return author ? `/story/${author}` : '/notifications';
+    }
     case 'connect_request':
       return '/(tabs)/discover';
     case 'mutual_connection': {

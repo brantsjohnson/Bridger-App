@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Weekly Recap routes the app calls: this week's summary, the playlist to
-// play, posting your 5 recorded answers, reacting to a clip, and submitting /
-// upvoting questions.
+// The Weekly Recap routes the app calls: this week's summary, the week list
+// (this week for everyone; earlier weeks for co-op), the playlist to play
+// (optional weekId), posting your 5 recorded answers, reacting to a clip,
+// and submitting / upvoting questions.
 // ============================================
 import {
   Body,
@@ -10,6 +11,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards
 } from '@nestjs/common';
 import type { RecapAudience } from '@bridger/shared';
@@ -27,9 +29,17 @@ export class RecapController {
     return this.recap.getWeek(user.id);
   }
 
+  @Get('weeks')
+  listWeeks(@CurrentUser() user: AuthUser) {
+    return this.recap.listWeeks(user.id);
+  }
+
   @Get('playlist')
-  getPlaylist(@CurrentUser() user: AuthUser) {
-    return this.recap.getPlaylist(user.id);
+  getPlaylist(
+    @CurrentUser() user: AuthUser,
+    @Query('weekId') weekId?: string
+  ) {
+    return this.recap.getPlaylist(user.id, weekId);
   }
 
   @Post('answers')

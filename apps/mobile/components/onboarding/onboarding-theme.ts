@@ -5,8 +5,8 @@
 // palette as the rest of the app (THEME + ACCENT_HEX in packages/ui). That way
 // the handoff into Home never feels like a different brand.
 //
-// Shape and layout stay onboarding-only (hard 2px outlines, no radius). Color
-// does not: if a brand hex changes in tokens, onboarding picks it up here.
+// Old screens stay square with outlines. New screens (tone set) use the same
+// rounded cards as the rest of the app. Color always comes from tokens.
 // ============================================
 import { ACCENT_HEX, THEME } from '@bridger/ui';
 
@@ -73,8 +73,11 @@ export const OB = {
 /** Kept for older hard-shadow call sites (mic, confirm panel). Not used on Continue. */
 export const OB_SHADOW_OFFSET = 5;
 
-/** Outline thickness on every white box, so they all match. */
+/** Outline thickness on Old white boxes, so they all match. */
 export const OB_BORDER = 2;
+
+/** Card corners on New onboarding. Same 20 as the main app. Progress bar stays square. */
+export const OB_RADIUS = 20;
 
 /** Big heading: FeloniaPixel (the app header font), all caps, tight and blue.
  *  Big Shoulders Display stays only on the four reality-check screens.

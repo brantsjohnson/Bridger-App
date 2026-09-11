@@ -12,18 +12,31 @@ import {
   type RecapSummary,
   type SubmittedQuestion
 } from '../data/pod';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+type PodSnap = {
+  recap: RecapSummary | null;
+  questions: SubmittedQuestion[];
+};
+
+const SNAP_KEY = 'pod';
 
 export function useFriendPod() {
-  const [recap, setRecap] = useState<RecapSummary | null>(null);
-  const [questions, setQuestions] = useState<SubmittedQuestion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getTabSnapshot<PodSnap>(SNAP_KEY);
+  const [recap, setRecap] = useState<RecapSummary | null>(cached?.recap ?? null);
+  const [questions, setQuestions] = useState<SubmittedQuestion[]>(
+    cached?.questions ?? []
+  );
+  const [loading, setLoading] = useState(!cached);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<PodSnap>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     try {
       const [week, qs] = await Promise.all([getRecapWeek(), listSubmittedQuestions()]);
       setRecap(week);
       setQuestions(qs);
+      setTabSnapshot<PodSnap>(SNAP_KEY, { recap: week, questions: qs });
     } finally {
       setLoading(false);
     }
@@ -35,13 +48,19 @@ export function useFriendPod() {
 
   const onSubmitQuestion = useCallback(async (text: string) => {
     await submitQuestion({ text });
-    setQuestions(await listSubmittedQuestions());
-  }, []);
+    const qs = await listSubmittedQuestions();
+    setQuestions(qs);
+    const prev = getTabSnapshot<PodSnap>(SNAP_KEY);
+    setTabSnapshot<PodSnap>(SNAP_KEY, { recap: prev?.recap ?? recap, questions: qs });
+  }, [recap]);
 
   const onVoteQuestion = useCallback(async (id: string) => {
     await voteQuestion(id);
-    setQuestions(await listSubmittedQuestions());
-  }, []);
+    const qs = await listSubmittedQuestions();
+    setQuestions(qs);
+    const prev = getTabSnapshot<PodSnap>(SNAP_KEY);
+    setTabSnapshot<PodSnap>(SNAP_KEY, { recap: prev?.recap ?? recap, questions: qs });
+  }, [recap]);
 
   return { recap, questions, loading, refresh, onSubmitQuestion, onVoteQuestion };
 }

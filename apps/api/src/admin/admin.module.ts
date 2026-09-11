@@ -11,6 +11,7 @@ import { CoopModule } from '../coop/coop.module';
 import { MatchingModule } from '../matching/matching.module';
 import { PhotoFiltersModule } from '../photo-filters/photo-filters.module';
 import { PosthogModule } from '../posthog/posthog.module';
+import { RecapModule } from '../recap/recap.module';
 import { TelemetryModule } from '../telemetry/telemetry.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -25,7 +26,8 @@ import { IntegrationsHealthService } from './integrations-health.service';
     AssistantModule,
     MatchingModule,
     PosthogModule,
-    PhotoFiltersModule
+    PhotoFiltersModule,
+    RecapModule
   ],
   controllers: [AdminController],
   providers: [AdminService, IntegrationsHealthService],

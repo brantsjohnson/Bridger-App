@@ -48,6 +48,8 @@ export type AnalyticsMethod =
   | 'hover'
   | 'tap'
   | 'double_tap'
+  /** A timed hold finished and the screen moved on by itself (welcome CRT). */
+  | 'auto'
   /** Media came from the phone's camera roll (scrapbook pages only). */
   | 'roll'
   /** Camera-roll photo vs live capture mixed on one page. */
@@ -56,7 +58,9 @@ export type AnalyticsMethod =
   | 'google'
   | 'apple'
   | 'email'
-  | 'phone';
+  | 'phone'
+  /** A later run of a quiz that already has a first (canonical) result. */
+  | 'retake';
 
 /** Named product outcomes from ANALYTICS-TAXONOMY.md §3b. */
 export type AnalyticsProductEvent =
@@ -66,7 +70,7 @@ export type AnalyticsProductEvent =
   | 'quiz_adapted'
   | 'quiz_abandoned'
   | 'quiz_completed'
-  /** Shared a quiz result: method = image | link | save_image (never result text) */
+  /** Shared a quiz result: method = image | link | save_image | copy (never result text or URL) */
   | 'quiz_shared'
   | 'delight_gifted'
   | 'delight_played'
@@ -120,6 +124,16 @@ export type AnalyticsProductEvent =
   | 'media_imported'
   /** A page was deleted by its author (only_me drafts included). */
   | 'scrapbook_page_deleted'
+  /**
+   * A voice note on a collage page was transcribed (server confirmed).
+   * Props: has_text (bool). Never the transcript.
+   */
+  | 'collage_audio_transcribed'
+  /**
+   * A friend was tagged on a posted collage page (server confirmed).
+   * Props: tag_count. Never person ids or names.
+   */
+  | 'collage_friend_tagged'
   /** Mid-party capture nudge fired (story_prompt pref on, under daily cap). */
   | 'party_capture_prompt_sent'
   | 'response_posted'
@@ -192,12 +206,16 @@ export type AnalyticsProductEvent =
   | 'coop_cancel_scheduled'
   | 'auth_signed_in'
   | 'auth_signed_up'
+  /** Join screen confirmed: paid membership or Free Lite via invites. Never a sheet open. */
+  | 'onboarding_tier_chosen'
   /** Confirmed membership interest chips saved during New onboarding. Opaque ids only. */
   | 'membership_interests_selected'
   /** Confirmed "what would help" chips saved during New onboarding. Opaque ids only. */
   | 'help_interests_selected'
   /** Server matched a pending contact card to a new phone account. */
   | 'pending_person_merged'
+  /** You saved a private card for someone not on Bridger yet (never phone/name). */
+  | 'pending_person_saved'
   /** Confirmed Log out from Profile Settings (not a mere tap on the button). */
   | 'auth_signed_out'
   /** Runtime demo unlocked (logo long-press confirmed). */

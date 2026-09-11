@@ -31,6 +31,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   DAILY_SCRAPBOOK_MEDIA_LIMIT,
   legacyStoryToScrapbookPage,
+  taggedPersonIds,
   type BackgroundConfig,
   type Json,
   type LayoutFamily,
@@ -42,6 +43,8 @@ import {
   type TablesInsert,
   type Tier
 } from '@bridger/shared';
+import { runJob } from '@bridger/ai';
+import { NestAiConfigStore } from '../ai/ai-config.store';
 
 /** One element row ready to insert (page_id added at insert time). */
 type ElementInsert = Omit<TablesInsert<'scrapbook_elements'>, 'page_id'>;
@@ -120,7 +123,8 @@ export class StoriesService {
     private readonly config: ConfigService,
     private readonly coop: CoopService,
     private readonly aiJobs: AiJobsService,
-    private readonly notifications: NotificationsService
+    private readonly notifications: NotificationsService,
+    private readonly aiConfig: NestAiConfigStore
   ) {
     this.mediaBucket =
       this.config.get<string>('SUPABASE_MEDIA_BUCKET') ?? 'media';
@@ -172,12 +176,14 @@ export class StoriesService {
   /**
    * How many photos + videos this person has used today, across every page.
    * Pages count their photo/video elements; a legacy post (no page) counts 1.
+   * Half-built posts (story row with no page yet) do NOT count — a failed
+   * create used to leave orphans that burned the daily quota.
    * `excludeStoryId` lets an edit re-count without the page being changed.
    */
   private async countToday(authorId: string, excludeStoryId?: string): Promise<number> {
     const { data: rows, error } = await this.supabase.admin
       .from('stories')
-      .select('id, page_id')
+      .select('id, page_id, media_id')
       .eq('author_id', authorId)
       .gte('created_at', this.utcDayStart());
     if (error) throw error;
@@ -185,8 +191,13 @@ export class StoriesService {
     const pageIds: string[] = [];
     for (const r of rows ?? []) {
       if (excludeStoryId && r.id === excludeStoryId) continue;
-      if (r.page_id) pageIds.push(r.page_id);
-      else used += 1;
+      if (r.page_id) {
+        pageIds.push(r.page_id);
+      } else if (r.media_id) {
+        // Legacy single-media post (never used scrapbook pages).
+        used += 1;
+      }
+      // else: orphan story mid-create (no page, no media) — ignore for quota.
     }
     if (pageIds.length) {
       const { count, error: cErr } = await this.supabase.admin
@@ -327,6 +338,53 @@ export class StoriesService {
   }
 
   /**
+   * Drop phone-only fields before a page is saved. Friend names and local
+   * file paths never belong in the database.
+   */
+  private sanitizeElementData(raw: Record<string, unknown>): Json {
+    const data = { ...raw };
+    delete data.uri;
+    delete data.displayNames;
+    const mask = data.maskUri;
+    if (typeof mask === 'string' && /^(file:|content:|ph:|data:)/i.test(mask)) {
+      delete data.maskUri;
+    }
+    return data as Json;
+  }
+
+  /**
+   * Words for the day summary: typed lines plus voice transcripts.
+   * Photos never go in. Empty strings mean "nothing to summarize".
+   */
+  private wordsFromPage(
+    page: PageInputDto,
+    caption?: string | null
+  ): { caption: string; transcript: string } {
+    const texts: string[] = [];
+    const transcripts: string[] = [];
+    for (const el of page.elements ?? []) {
+      const data =
+        el.data && typeof el.data === 'object' && !Array.isArray(el.data)
+          ? (el.data as Record<string, unknown>)
+          : {};
+      if (el.type === 'text' && typeof data.text === 'string' && data.text.trim()) {
+        texts.push(data.text.trim());
+      }
+      if (
+        el.type === 'voice' &&
+        typeof data.transcript === 'string' &&
+        data.transcript.trim()
+      ) {
+        transcripts.push(data.transcript.trim());
+      }
+    }
+    return {
+      caption: (caption ?? '').trim() || texts.join('\n'),
+      transcript: transcripts.join('\n')
+    };
+  }
+
+  /**
    * Check a page's elements: known types, sane numbers, media rows owned by
    * this person, video only for co-op. Returns the cleaned rows to insert.
    */
@@ -356,12 +414,19 @@ export class StoriesService {
       if (!ELEMENT_TYPES.includes(el.type)) {
         throw new BadRequestException(`Unknown element type ${String(el.type)}`);
       }
-      const isMedia = el.type === 'photo' || el.type === 'video';
-      if (isMedia) {
+      const isCapMedia = el.type === 'photo' || el.type === 'video';
+      const needsUpload =
+        el.type === 'photo' ||
+        el.type === 'video' ||
+        el.type === 'voice' ||
+        el.type === 'cutout';
+      if (isCapMedia) {
         mediaCount += 1;
         if (el.type === 'video') hasVideo = true;
+      }
+      if (needsUpload) {
         if (!el.mediaId) {
-          throw new BadRequestException('Photo or video element is missing its upload');
+          throw new BadRequestException('That piece is missing its upload');
         }
         const { data: media, error } = await this.supabase.admin
           .from('media')
@@ -375,15 +440,19 @@ export class StoriesService {
         if (el.type === 'video' && media.kind !== 'video') {
           throw new BadRequestException('Media kind mismatch');
         }
-        if (el.type === 'photo' && media.kind !== 'photo') {
+        if ((el.type === 'photo' || el.type === 'cutout') && media.kind !== 'photo') {
+          throw new BadRequestException('Media kind mismatch');
+        }
+        if (el.type === 'voice' && media.kind !== 'audio') {
           throw new BadRequestException('Media kind mismatch');
         }
       }
-      // Never persist a local file uri; the client rebuilds it from the signed URL.
-      const data: Json =
+      // Never persist a local file uri or friend names; the phone rebuilds those.
+      const data = this.sanitizeElementData(
         el.data && typeof el.data === 'object' && !Array.isArray(el.data)
-          ? (el.data as unknown as Json)
-          : {};
+          ? (el.data as Record<string, unknown>)
+          : {}
+      );
       rows.push({
         type: el.type,
         x: clamp(el.x, -0.5, 1.5, 0),
@@ -399,7 +468,7 @@ export class StoriesService {
           el.source && (MEDIA_SOURCES as ReadonlyArray<string>).includes(el.source)
             ? el.source
             : null,
-        media_id: isMedia ? (el.mediaId ?? null) : null,
+        media_id: needsUpload ? (el.mediaId ?? null) : null,
         data
       });
     }
@@ -592,57 +661,81 @@ export class StoriesService {
       .single();
     if (sErr) this.throwDb(sErr);
 
-    const { data: page, error: pErr } = await this.supabase.admin
-      .from('scrapbook_pages')
-      .insert({
-        author_id: userId,
-        story_id: story.id,
-        background: this.backgroundJson(body.page.background),
-        layout_id: body.page.layoutId ?? null,
-        layout_family: body.page.layoutFamily ?? null,
-        revision: 1
-      })
-      .select('id')
-      .single();
-    if (pErr) this.throwDb(pErr);
+    // THIS SECTION DOES: finish the page + elements, or undo the story row.
+    // A half-built post used to burn the daily quota even when the client saw
+    // "Internal server error" (orphan story with no page still counted).
+    try {
+      const { data: page, error: pErr } = await this.supabase.admin
+        .from('scrapbook_pages')
+        .insert({
+          author_id: userId,
+          story_id: story.id,
+          background: this.backgroundJson(body.page.background),
+          layout_id: body.page.layoutId ?? null,
+          layout_family: body.page.layoutFamily ?? null,
+          revision: 1
+        })
+        .select('id')
+        .single();
+      if (pErr) this.throwDb(pErr);
 
-    const { error: eErr } = await this.supabase.admin
-      .from('scrapbook_elements')
-      .insert(rows.map((r) => ({ ...r, page_id: page.id })));
-    if (eErr) this.throwDb(eErr);
+      try {
+        const { error: eErr } = await this.supabase.admin
+          .from('scrapbook_elements')
+          .insert(rows.map((r) => ({ ...r, page_id: page.id })));
+        if (eErr) this.throwDb(eErr);
 
-    const { data: linked, error: lErr } = await this.supabase.admin
-      .from('stories')
-      .update({ page_id: page.id })
-      .eq('id', story.id)
-      .select(this.postColumns)
-      .single();
-    if (lErr) this.throwDb(lErr);
+        const { data: linked, error: lErr } = await this.supabase.admin
+          .from('stories')
+          .update({ page_id: page.id })
+          .eq('id', story.id)
+          .select(this.postColumns)
+          .single();
+        if (lErr) this.throwDb(lErr);
 
-    // Keep every media file's retention in step with the post (free tier).
-    const mediaIds = rows
-      .map((r) => r.media_id ?? null)
-      .filter((id): id is string => !!id)
-      .concat(body.mediaId ? [body.mediaId] : []);
-    if (mediaIds.length) {
+        // Keep every media file's retention in step with the post (free tier).
+        const mediaIds = rows
+          .map((r) => r.media_id ?? null)
+          .filter((id): id is string => !!id)
+          .concat(body.mediaId ? [body.mediaId] : []);
+        if (mediaIds.length) {
+          await this.supabase.admin
+            .from('media')
+            .update({ expires_at: expires })
+            .in('id', mediaIds)
+            .eq('owner_id', userId);
+        }
+
+        // PRIVACY / AI: day summary from words only, never photos.
+        const words = this.wordsFromPage(body.page, caption);
+        if (words.caption || words.transcript) {
+          await this.aiJobs.enqueueDaySummary({
+            authorId: userId,
+            date: new Date().toISOString().slice(0, 10),
+            caption: words.caption,
+            transcript: words.transcript
+          });
+        }
+
+        await this.notifyTaggedFriends(userId, linked.id, body.page.elements);
+        return this.toPostDto(linked);
+      } catch (inner) {
+        // Page row without elements still blocks a clean retry; remove it.
+        await this.supabase.admin
+          .from('scrapbook_pages')
+          .delete()
+          .eq('id', page.id)
+          .eq('author_id', userId);
+        throw inner;
+      }
+    } catch (err) {
       await this.supabase.admin
-        .from('media')
-        .update({ expires_at: expires })
-        .in('id', mediaIds)
-        .eq('owner_id', userId);
+        .from('stories')
+        .delete()
+        .eq('id', story.id)
+        .eq('author_id', userId);
+      throw err;
     }
-
-    // PRIVACY / AI: day summary from words only, never photos.
-    if (caption) {
-      await this.aiJobs.enqueueDaySummary({
-        authorId: userId,
-        date: new Date().toISOString().slice(0, 10),
-        caption,
-        transcript: ''
-      });
-    }
-
-    return this.toPostDto(linked);
   }
 
   // --- Update a page you posted (same day adds, layout changes, caption, audience) ---
@@ -770,17 +863,93 @@ export class StoriesService {
         .eq('owner_id', userId);
     }
 
-    // PRIVACY / AI: re-run the day summary only when the words changed.
-    if (caption && caption !== story.update_text) {
+    // PRIVACY / AI: re-run the day summary from the latest words.
+    const words = this.wordsFromPage(body.page, caption);
+    if (words.caption || words.transcript) {
       await this.aiJobs.enqueueDaySummary({
         authorId: userId,
         date: new Date(story.created_at).toISOString().slice(0, 10),
-        caption,
-        transcript: ''
+        caption: words.caption,
+        transcript: words.transcript
       });
     }
 
+    await this.notifyTaggedFriends(userId, storyId, body.page.elements);
     return this.toPostDto(updated);
+  }
+
+  /**
+   * Turn a voice note into words. Uses the same on-server speech-to-text as
+   * other Bridger audio. The words are returned to the phone so they can sit
+   * on the page. We never write the words to analytics.
+   */
+  async transcribeVoice(
+    userId: string,
+    audioBase64: string,
+    filename?: string
+  ): Promise<{ text: string }> {
+    if (!audioBase64 || audioBase64.length > 12_000_000) {
+      throw new BadRequestException('That recording is too long to transcribe');
+    }
+    const stt = await runJob(
+      {
+        job: 'transcription',
+        subjectRef: userId,
+        principalId: userId,
+        payload: {
+          subject_ref: userId,
+          audio_base64: audioBase64,
+          filename: filename ?? 'voice.m4a'
+        }
+      },
+      {
+        configStore: this.aiConfig,
+        secrets: {
+          anthropicApiKey: this.config.get<string>('ANTHROPIC_API_KEY'),
+          openaiApiKey: this.config.get<string>('OPENAI_API_KEY')
+        }
+      }
+    );
+    if (stt.status !== 'ok') {
+      throw new ServiceUnavailableException(
+        'Could not hear that clearly. Try again in a moment.'
+      );
+    }
+    const text = String((stt.value as { text?: string } | undefined)?.text ?? '').trim();
+    return { text };
+  }
+
+  /**
+   * After a page is saved, tell each tagged friend. Only accepted connections.
+   * Payload is opaque ids. Copy is built later on the feed. Never the page.
+   */
+  private async notifyTaggedFriends(
+    authorId: string,
+    storyId: string,
+    elements: PageInputDto['elements']
+  ): Promise<void> {
+    const ids = taggedPersonIds({ elements: elements as ScrapbookElement[] });
+    for (const friendId of ids) {
+      if (friendId === authorId) continue;
+      const { data: conn } = await this.supabase.admin
+        .from('connections')
+        .select('id, status')
+        .or(
+          `and(user_a.eq.${authorId},user_b.eq.${friendId}),and(user_a.eq.${friendId},user_b.eq.${authorId})`
+        )
+        .eq('status', 'accepted')
+        .maybeSingle();
+      if (!conn) continue;
+      try {
+        await this.notifications.notifyIfAllowed({
+          userId: friendId,
+          kind: 'collage_tag',
+          payload: { from: authorId, post_id: storyId, story_id: storyId } as never
+        });
+      } catch {
+        // One failed notify must not undo a successful post.
+      }
+    }
   }
 
   // --- Delete a page you posted (used when merging two pages into one) ---

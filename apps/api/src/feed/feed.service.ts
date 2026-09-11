@@ -310,6 +310,7 @@ function mapNotificationKind(kind: string): AppNotification['kind'] {
     case 'activity_live':
     case 'delight_gift':
     case 'friend_joined':
+    case 'collage_tag':
       return kind;
     default:
       return 'story_reply';
@@ -368,6 +369,8 @@ function labelForKind(kind: string, payload: Record<string, string>): string {
         : 'Reacted to your recap';
     case 'friend_joined':
       return 'Someone you know joined Bridger';
+    case 'collage_tag':
+      return 'Tagged you on a collage';
     default:
       return payload.text || 'New notification';
   }

@@ -1,11 +1,11 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The four small sheets that slide up over the Scrapbook compose screen. Each
+// The four small sheets that slide up over the Collage compose screen. Each
 // one is its own analytics surface (opened / dismissed / how long) so we can
 // tell "opened the caption sheet and gave up" from "never opened it".
 //
 //   CaptionSheet   - type the words that go on the page (Record arrives Phase 2)
-//   AudienceSheet  - who sees this page: Only me / Close / Friends / Everyone (+ groups)
+//   AudienceSheet  - who sees this page; when posting, footer is "Post to Friends"
 //   AddMediaSheet  - "+": Camera or Camera roll
 //   CustomizeTray  - pencil: paper color swatches + Undo (grows in Phase 3)
 //
@@ -116,7 +116,14 @@ export function AudienceSheet({
   onChange,
   groups = [],
   group = null,
-  onGroupChange
+  onGroupChange,
+  /**
+   * When set, picking a row does not post yet. A metallic "Post to Friends"
+   * (or Close / Only me / Everyone) button in the footer does the real post.
+   */
+  confirmLabel,
+  onConfirm,
+  confirming = false
 }: {
   open: boolean;
   onClose: () => void;
@@ -125,7 +132,11 @@ export function AudienceSheet({
   groups?: string[];
   group?: string | null;
   onGroupChange?: (g: string | null) => void;
+  confirmLabel?: string;
+  onConfirm?: () => void;
+  confirming?: boolean;
 }) {
+  const waitForConfirm = Boolean(confirmLabel && onConfirm);
   return (
     <Sheet
       open={open}
@@ -134,19 +145,56 @@ export function AudienceSheet({
       surface="audience_sheet"
       parentScreen="post_composer"
       dismissAnalyticsId={AUDIENCE_SHEET.actions.dismiss}
+      footer={
+        waitForConfirm ? (
+          <AudiencePostConfirm
+            label={confirmLabel!}
+            loading={confirming}
+            onConfirm={onConfirm!}
+          />
+        ) : undefined
+      }
     >
       {/* PRIVACY: Only me maps to tier `none`; nobody else can ever read it. */}
       <AudienceInner
         value={value}
         onChange={(v) => {
           onChange(v);
-          onClose();
+          // Post flow: stay open so they can tap "Post to …". Quick-edit: close.
+          if (!waitForConfirm) onClose();
         }}
         groups={groups}
         group={group}
         onGroupChange={onGroupChange}
       />
     </Sheet>
+  );
+}
+
+/** The final "Post to Friends" button under the who-sees list. */
+function AudiencePostConfirm({
+  label,
+  loading,
+  onConfirm
+}: {
+  label: string;
+  loading: boolean;
+  onConfirm: () => void;
+}) {
+  const { markActed } = useSurfaceAct();
+  return (
+    <ButtonPrimary
+      full
+      loading={loading}
+      analyticsId={POST_COMPOSER.actions.post}
+      accessibilityLabel={label}
+      onPress={() => {
+        markActed();
+        onConfirm();
+      }}
+    >
+      {label}
+    </ButtonPrimary>
   );
 }
 

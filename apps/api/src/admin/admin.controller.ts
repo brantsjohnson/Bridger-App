@@ -36,6 +36,8 @@ import { PromoService } from '../coop/promo.service';
 import { MatchingConfigService } from '../matching/matching-config.service';
 import { MatchingCronService } from '../matching/matching-cron.service';
 import { MatchingFeedbackService } from '../matching/matching-feedback.service';
+import { MatchingLearnService } from '../matching/matching-learn.service';
+import { RecapService } from '../recap/recap.service';
 import { AdminService } from './admin.service';
 import { IntegrationsHealthService } from './integrations-health.service';
 import { TelemetryService } from '../telemetry/telemetry.service';
@@ -55,9 +57,11 @@ export class AdminController {
     private readonly matchingConfig: MatchingConfigService,
     private readonly matchingFeedback: MatchingFeedbackService,
     private readonly matchingCron: MatchingCronService,
+    private readonly matchingLearn: MatchingLearnService,
     private readonly integrationsHealthSvc: IntegrationsHealthService,
     private readonly promo: PromoService,
-    private readonly demoWeek: DemoWeekService
+    private readonly demoWeek: DemoWeekService,
+    private readonly recap: RecapService
   ) {}
 
   // --- Home defaults + themed prompts + live quiz ---
@@ -352,8 +356,15 @@ export class AdminController {
   }
 
   @Post('recap/weeks')
-  createRecapWeek(@Body() body: { weekOf: string; questions: string[] }) {
+  createRecapWeek(
+    @Body() body: { weekOf: string; questions: string[]; makeLive?: boolean }
+  ) {
     return this.admin.createRecapWeek(body);
+  }
+
+  @Post('recap/rollover')
+  rolloverRecap() {
+    return this.recap.rolloverNow();
   }
 
   @Patch('recap/weeks/:id')
@@ -499,5 +510,16 @@ export class AdminController {
   @Post('matching/nightly')
   matchingNightly() {
     return this.matchingCron.runNightly();
+  }
+
+  // THIS SECTION DOES: show (or apply) weights learned from Close / Friends.
+  @Get('matching/learn')
+  matchingLearnPreview() {
+    return this.matchingLearn.preview();
+  }
+
+  @Post('matching/learn')
+  matchingLearnRun(@Body() body: { apply?: boolean }) {
+    return this.matchingLearn.runNightly({ apply: body?.apply === true });
   }
 }

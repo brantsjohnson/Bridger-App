@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Fake story posts, Catch-Up items, week days, themed capture prompts, and
-// poll-result percentages used only in demo mode. Screens never import this —
+// Fake story posts, Catch-Up items, week days, and poll-result percentages
+// used only in demo mode. Themed OOTD rows stay for the admin preview only;
+// capture no longer shows them. Screens never import this file directly —
 // they go through data/stories.ts so the live API can replace it later.
 // ============================================
 import type {
@@ -73,7 +74,7 @@ export const POLL_RESULTS: Record<string, number[]> = {
   c1: [62, 38]
 };
 
-/** Capture screen themed-post squares. */
+/** Demo themed-prompt rows (admin still edits these; capture no longer shows them). */
 export const THEMED_PROMPTS: ThemedPrompt[] = [
   { slug: 'ootd', label: 'OOTD', icon: '👕' },
   { slug: 'take-05', label: 'Take 0.5', icon: '🤳' },
@@ -90,7 +91,6 @@ export const STORY_POSTS: StoryPost[] = [
     accent: 'amber',
     overlayText: 'made it out',
     caption: 'Walked the long way home.',
-    themeSlug: 'take-05',
     createdAt: '2h'
   },
   {

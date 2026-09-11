@@ -19,6 +19,7 @@ import {
 } from 'react';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { signInWithApple as oauthApple, signInWithGoogle as oauthGoogle } from '../lib/oauth';
+import { clearSessionCaches } from '../lib/session-caches';
 
 // --- The shape of what every screen can use ---
 type AuthContextValue = {
@@ -54,7 +55,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // --- Then keep listening for login/logout/refresh for the app's lifetime ---
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // PRIVACY: only wipe on a real sign-out (not the boot "no session yet" event).
+      if (event === 'SIGNED_OUT') {
+        void clearSessionCaches();
+      }
       setSession(newSession);
     });
 
@@ -120,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // --- Log out and clear the saved session ---
       signOut: async () => {
         await supabase.auth.signOut();
+        await clearSessionCaches();
       }
     }),
     [session, loading]

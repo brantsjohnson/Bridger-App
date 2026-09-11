@@ -38,9 +38,18 @@ module.exports = ({ config }) => ({
       NSPrivacyTrackingDomains: [],
       NSPrivacyCollectedDataTypes: [
         // Photos / videos the person puts in Bridger (profile picture, live
-        // captures, camera-roll picks for a Scrapbook page). Never for tracking.
+        // captures, camera-roll picks for a Collage page, co-op Inside Joke
+        // photo). Never for tracking.
         {
           NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality'
+          ]
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeAudioData',
           NSPrivacyCollectedDataTypeLinked: true,
           NSPrivacyCollectedDataTypeTracking: false,
           NSPrivacyCollectedDataTypePurposes: [
@@ -132,9 +141,9 @@ module.exports = ({ config }) => ({
       'expo-camera',
       {
         cameraPermission:
-          "Bridger uses your camera so you can add a photo or video to your scrapbook page, send a 10 second video reply to a friend, and scan a friend's QR code to add each other.",
+          "Bridger uses your camera so you can add a photo or video to your collage page, send a 10 second video reply to a friend, and scan a friend's QR code to add each other.",
         microphonePermission:
-          'Bridger uses your microphone so your video replies have sound, and so you can ask the Assistant by voice.',
+          'Bridger uses your microphone so your video replies have sound, so you can add a voice note to a collage page, and so you can ask the Assistant by voice.',
         recordAudioAndroid: true
       }
     ],
@@ -148,7 +157,7 @@ module.exports = ({ config }) => ({
         enableBackgroundPlayback: true,
         enableBackgroundRecording: false,
         microphonePermission:
-          'Bridger uses your microphone so your video replies have sound, so you can record your weekly recap answer, and so you can ask the Assistant by voice.'
+          'Bridger uses your microphone so your video replies have sound, so you can add a voice note to a collage page, so you can record your weekly recap answer, and so you can ask the Assistant by voice.'
       }
     ],
     [
@@ -162,7 +171,7 @@ module.exports = ({ config }) => ({
       'expo-contacts',
       {
         contactsPermission:
-          'Bridger reads your contacts only when you tap Connect contacts or pick someone for an invite link, so you can text your personal invite. We never upload your contact list.'
+          'Bridger reads your contacts only when you tap Connect your contacts on Friends (or an invite slot), so you can pick one person, save that number on a private card, and text an invite. We never upload your contact list.'
       }
     ],
     // Saving a quiz result card to the camera roll (opt-in, in context, only
@@ -171,23 +180,22 @@ module.exports = ({ config }) => ({
       'expo-media-library',
       {
         photosPermission:
-          'Bridger saves your quiz result card to your photos so you can post it to your story.',
+          'Bridger saves a photo or a finished collage page to your photos when you tap Save, and can save a quiz result card too.',
         savePhotosPermission:
-          'Bridger saves your quiz result card to your photos so you can post it to your story.',
+          'Bridger saves a photo or a finished collage page to your photos when you tap Save, and can save a quiz result card too.',
         isAccessMediaLocationEnabled: false
       }
     ],
-    // Choosing existing photos: your profile picture, and photos or short
-    // videos to add to a Scrapbook page (approved 2026-09-08; replies and
-    // stickers stay capture-only). Asked in context, only when you tap Upload
-    // on the confirm-profile step or the camera-roll button while making a page.
+    // Choosing existing photos: profile picture, Collage page media, and
+    // (co-op) one Inside Joke photo. Replies and stickers stay capture-only.
+    // Asked in context, only the picked item is read.
     [
       'expo-image-picker',
       {
         photosPermission:
-          'Bridger opens your photos only when you tap Upload or the camera roll button, so you can choose a profile picture or add pictures to a scrapbook page.',
+          'Bridger opens your photos only when you tap Upload or the camera roll button, so you can choose a profile picture, add pictures to a collage page, or (if you are in the co-op) put one photo on an Inside Joke.',
         cameraPermission:
-          'Bridger uses your camera so you can take a profile picture during setup.'
+          'Bridger uses your camera so you can take a profile picture, or (if you are in the co-op) a photo for an Inside Joke.'
       }
     ],
     // Local reminders you opted into during onboarding (birthdays, life updates,

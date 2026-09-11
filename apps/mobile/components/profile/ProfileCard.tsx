@@ -62,6 +62,23 @@ import { PROFILE_HEADER_TO_TABS } from './profileSpacing';
 /** Re-export header block under the old name so friend screens keep working. */
 export { ProfileHeaderBlock as ProfileHeader };
 
+/**
+ * PRIVACY: can this viewing circle see a field at `itemTier`?
+ * `none` is owner-only and only on your full own view (not View as).
+ */
+function visibleToViewer(
+  itemTier: Tier | undefined,
+  asTier: Tier,
+  own: boolean,
+  fallback: Tier = 'friend'
+): boolean {
+  const tier = itemTier ?? fallback;
+  if (tier === 'none') return own && asTier === 'close';
+  const rank = TIER_RANK[tier];
+  if (rank == null) return own && asTier === 'close';
+  return rank <= TIER_RANK[asTier];
+}
+
 export function ProfileCard({
   person,
   header,
@@ -129,11 +146,20 @@ export function ProfileCard({
   onAddStory?: () => void;
   onOpenEvent?: (id: string) => void;
 }) {
-  // PRIVACY: only fields shared at or below the viewing tier are shown
+  // THIS SECTION DOES: only your full own profile shows "Add …" empty cards.
+  // View as Friends / Everyone (and friend pages) hide empty sections entirely.
+  const showEmptyCtas = Boolean(own && asTier === 'close' && !empty);
+
+  // PRIVACY: only fields shared at or below the viewing tier are shown.
+  // Missing tier used to make TIER_RANK[undefined] fail the compare, so saved
+  // hometown/work/birthday vanished and "Add details" came back (TestFlight).
   const visibleAbout: AboutFieldView[] = empty
     ? []
     : about
-        .filter((f) => TIER_RANK[f.tier] <= TIER_RANK[asTier])
+        .filter((f) => {
+          if (!f.value || typeof f.value !== 'string' || !f.value.trim()) return false;
+          return visibleToViewer(f.tier, asTier, own);
+        })
         .map((f) => ({
           attributeId: f.id,
           key: f.key,
@@ -143,16 +169,30 @@ export function ProfileCard({
 
   const visibleTop5 = empty
     ? []
-    : top5.filter((t) => TIER_RANK[t.visibleToTier] <= TIER_RANK[asTier]);
+    : top5.filter((t) => visibleToViewer(t.visibleToTier, asTier, own));
   const visibleObsession = empty
     ? []
-    : obsession.filter((o) => TIER_RANK[o.visibleToTier] <= TIER_RANK[asTier]);
+    : obsession.filter((o) => visibleToViewer(o.visibleToTier, asTier, own));
   const visibleGreatestHits = empty
     ? []
-    : greatestHits.filter((p) => TIER_RANK[p.visibleToTier] <= TIER_RANK[asTier]);
+    : greatestHits.filter((p) => visibleToViewer(p.visibleToTier, asTier, own));
+  const visibleHobbies = empty
+    ? []
+    : hobbies.filter((h) => visibleToViewer(h.tier, asTier, own));
+  const visiblePlaces = empty
+    ? []
+    : places.filter((p) => visibleToViewer(p.tier, asTier, own));
+  const visibleThisOrThat = empty
+    ? []
+    : thisOrThat.filter((t) => visibleToViewer(t.tier, asTier, own));
 
   const favModules = useMemo(() => {
-    if (favorites) return favorites;
+    if (favorites) {
+      // View-as / friend: drop empty "to start" tiles so Favorites does not
+      // hint at modules the viewer is not meant to know about.
+      if (!showEmptyCtas) return favorites.filter((m) => !m.empty);
+      return favorites;
+    }
     // Fallback from fav groups when caller did not pass composed modules.
     return (empty ? [] : favs).map((g) => ({
       id: g.group.toLowerCase(),
@@ -161,13 +201,25 @@ export function ProfileCard({
       answeredCount: g.total,
       empty: g.total === 0
     }));
-  }, [favorites, favs, empty]);
+  }, [favorites, favs, empty, showEmptyCtas]);
 
   const [module, setModule] = useState<ProfileModuleId | null>(null);
   /** Friend view: which Favorites album answers sheet is open. */
   const [viewFavoriteId, setViewFavoriteId] = useState<string | null>(null);
   const activeModule = PROFILE_MODULES.find((m) => m.id === module);
   const moduleStartedAt = useRef<number | null>(null);
+
+  // THIS SECTION DOES: prefill ModuleFlow from About Me rows already saved
+  // (birthday, hometown, …) so people are not asked to type them again.
+  const moduleInitialAnswers = useMemo(() => {
+    if (!activeModule) return undefined;
+    const next: Record<string, ModuleAnswer> = {};
+    for (const q of activeModule.questions) {
+      const field = about.find((f) => f.id === q.id);
+      if (field?.value?.trim()) next[q.id] = field.value.trim();
+    }
+    return Object.keys(next).length > 0 ? next : undefined;
+  }, [activeModule, about]);
 
   const openModule = (id: ProfileModuleId | string) => {
     // SECURITY: only the owner fills modules; friends only view answers.
@@ -312,6 +364,7 @@ export function ProfileCard({
       <ProfilePageShell
         own={own}
         editable={editable}
+        showEmptyCtas={showEmptyCtas}
         personName={person.name}
         personPhoto={aboutPhoto}
         personEmoji={person.emoji}
@@ -323,10 +376,10 @@ export function ProfileCard({
         upcoming={upcoming}
         obsession={visibleObsession}
         favorites={favModules}
-        hobbies={empty ? [] : hobbies}
+        hobbies={visibleHobbies}
         hobbyFollowUps={hobbyFollowUps}
-        places={empty ? [] : places}
-        thisOrThat={empty ? [] : thisOrThat}
+        places={visiblePlaces}
+        thisOrThat={visibleThisOrThat}
         whereMet={whereMet}
         greatestHits={visibleGreatestHits}
         onOpenMutuals={onOpenMutuals}
@@ -366,7 +419,7 @@ export function ProfileCard({
         moduleId={viewFavoriteId}
         moduleLabel={viewFavoriteLabel}
         favs={empty ? [] : favs}
-        thisOrThat={empty ? [] : thisOrThat}
+        thisOrThat={visibleThisOrThat}
         theirName={person.name.split(' ')[0] ?? person.name}
         onClose={() => setViewFavoriteId(null)}
       />
@@ -386,12 +439,21 @@ export function ProfileCard({
         placeSearchAnalyticsId={PROFILE.module.place_search}
         placeResultAnalyticsId={PROFILE.module.place_result}
         onBurstStart={fireEmojiBurstHaptics}
+        initialAnswers={moduleInitialAnswers}
         onClose={() => {
           moduleStartedAt.current = null;
           setModule(null);
         }}
         onDone={(answers, visibility, matchable) => {
-          void finishModule(answers, visibility, matchable);
+          void finishModule(answers, visibility, matchable).catch((e) => {
+            const raw = e instanceof Error ? e.message : '';
+            Alert.alert(
+              'Could not save',
+              /internal server error/i.test(raw) || !raw
+                ? 'Something went wrong. Try again in a moment.'
+                : raw
+            );
+          });
         }}
       />
     </View>

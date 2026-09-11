@@ -1,13 +1,18 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Computes the six named matching features for one pair. Missing data → 0
-// (zero-by-absence), never a disabled phase.
+// (zero-by-absence), never a disabled phase. Quiz fit uses each quiz's
+// own rule (same humor, opposite assertiveness, Friend Zone style chart).
 //
 // B1: shared_attributes uses Everyone+matchable only (can be shown as evidence).
 // quiz_alignment + embeddings may use silent none+matchable / Zone C; never as titles.
 // ============================================
 import { Injectable } from '@nestjs/common';
-import { DISCOVER_QUIZ_IDS, type MatchingFeature } from '@bridger/shared';
+import {
+  DISCOVER_QUIZ_IDS,
+  sharedQuizAlignment,
+  type MatchingFeature
+} from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MatchingIdfService } from './matching-idf.service';
 import type {
@@ -72,6 +77,27 @@ export class MatchingFeaturesService {
     return { features, details };
   }
 
+  /**
+   * Snapshot for a pair who became Friends/Close without a Discover card
+   * (you already knew them). Same six features; mutual path is unknown → 0.
+   */
+  async computeOrganic(
+    userA: string,
+    userB: string,
+    cfg: ActiveMatchingConfig
+  ): Promise<FeatureBundle> {
+    return this.compute(
+      userA,
+      {
+        candidateId: userB,
+        viaFriendId: '',
+        viaTier: 'acquaintance'
+      },
+      cfg,
+      { surface: 'discover' }
+    );
+  }
+
   // --- quiz_alignment: intersection of completed matchable quizzes ---
   private async quizAlignment(
     a: string,
@@ -114,24 +140,15 @@ export class MatchingFeaturesService {
       const br = bMap.get(quizId);
       if (!ar || !br) continue;
       sharedQuizIds.push(slug);
-      const dims = new Set([
-        ...Object.keys(ar.scores),
-        ...Object.keys(br.scores)
-      ]);
-      let sum = 0;
-      let n = 0;
-      for (const d of dims) {
-        const ca = Number(ar.conf[d] ?? 1);
-        const cb = Number(br.conf[d] ?? 1);
-        if (ca < cfg.confidenceFloor || cb < cfg.confidenceFloor) continue;
-        const sa = Number(ar.scores[d] ?? 0);
-        const sb = Number(br.scores[d] ?? 0);
-        const sim = 1 - Math.min(1, Math.abs(sa - sb));
-        const w = Math.min(ca, cb);
-        sum += sim * w;
-        n += w;
-      }
-      if (n > 0) quizScores.push(sum / n);
+      const aligned = sharedQuizAlignment({
+        quizSlug: slug,
+        scoresA: ar.scores,
+        scoresB: br.scores,
+        confA: ar.conf,
+        confB: br.conf,
+        confidenceFloor: cfg.confidenceFloor
+      });
+      if (aligned != null) quizScores.push(aligned);
     }
 
     if (!quizScores.length) return { value: 0, sharedQuizIds };

@@ -8,21 +8,24 @@
 // Analytics: surface=profile.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+// #region agent log
+import { debugScreenMount } from '../../lib/debug-instrumentation';
+// #endregion
+import { View } from 'react-native';
 import { type Href, useRouter } from 'expo-router';
 import type { Tier } from '@bridger/shared';
 import { openSurface, PROFILE } from '@bridger/shared';
 import {
   Screen,
   ScreenBody,
-  SegmentedTabs,
-  withAnalyticsPress
+  SegmentedTabs
 } from '@bridger/ui';
 import { useProfile } from '../../hooks/useProfile';
 import { useBucketList } from '../../hooks/useBucketList';
 import { useStoryArchive } from '../../hooks/useStoryArchive';
-import { listArchivedQuizzes } from '../../data/quiz';
+import { getCachedPerson } from '../../lib/people-cache';
 import { ProfileCard } from '../../components/profile/ProfileCard';
+import { ProfileQuizzes } from '../../components/profile/ProfileQuizzes';
 import { ProfileHeaderBlock } from '../../components/profile/ProfileHeaderBlock';
 import { ProfileIntro } from '../../components/profile/ProfileIntro';
 import { PhotoLookSheet } from '../../components/profile/PhotoLookSheet';
@@ -31,7 +34,7 @@ import {
   type ProfileSearchHit
 } from '../../components/profile/ProfileSearchSheet';
 import type { PhotoFilterKey } from '../../components/onboarding/PhotoFilterPicker';
-import { StoryCalendar } from '../../components/profile/StoryCalendar';
+import { StoryCalendar, currentArchiveMonth } from '../../components/profile/StoryCalendar';
 import { BucketList } from '../../components/profile/BucketList';
 import { ProfileSettings } from '../../components/profile/ProfileSettings';
 import { InsideJokesWall } from '../../components/friends/InsideJokesWall';
@@ -40,14 +43,14 @@ import {
   PROFILE_TABS_TO_CONTENT
 } from '../../components/profile/profileSpacing';
 
-// User-facing label is Scrapbook; the analytics id stays `tabs.stories` (code name).
-const TABS = ['Profile', 'Scrapbook', 'Inside jokes', 'Bucket list'];
+// User-facing label is Collage; the analytics id stays `tabs.stories` (code name).
+const TABS = ['Profile', 'Collage', 'Inside jokes', 'Bucket list'];
 
 function profileTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
     case 'Profile':
       return PROFILE.tabs.profile;
-    case 'Scrapbook':
+    case 'Collage':
       return PROFILE.tabs.stories;
     case 'Inside jokes':
       return PROFILE.tabs.inside_jokes;
@@ -59,12 +62,23 @@ function profileTabAnalyticsId(tab: string): string | undefined {
 }
 
 export default function ProfileScreen() {
+  // #region agent log
+  useEffect(() => debugScreenMount('profile'), []);
+  // #endregion
   const router = useRouter();
   const profile = useProfile();
   const bucket = useBucketList();
   const archive = useStoryArchive();
 
   const [tab, setTab] = useState('Profile');
+  // Stories calendar month (YYYY-MM). Starts on the real current month.
+  const [archiveMonth, setArchiveMonth] = useState(currentArchiveMonth);
+
+  // THIS SECTION DOES: reload day dots whenever the month arrows change.
+  useEffect(() => {
+    void archive.refresh(archiveMonth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-fetch on month change
+  }, [archiveMonth]);
   // Settings is a gear on the photo, not a tab. When open, hide tab content.
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -78,26 +92,9 @@ export default function ProfileScreen() {
   } | null>(null);
   const [asTier, setAsTier] = useState<Tier>('close');
   const [searchOpen, setSearchOpen] = useState(false);
-  const [untakenQuizzes, setUntakenQuizzes] = useState<
-    Array<{ slug: string; title: string; friendsTakenCount: number }>
-  >([]);
 
   useEffect(() => {
     openSurface('profile');
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    listArchivedQuizzes()
-      .then((rows) => {
-        if (!cancelled) setUntakenQuizzes(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setUntakenQuizzes([]);
-      });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const searchHits: ProfileSearchHit[] = useMemo(() => {
@@ -232,8 +229,19 @@ export default function ProfileScreen() {
             (headerWithCity?.avatarFilter as PhotoFilterKey | null | undefined) ??
             null
           }
-          avatarUrl={headerWithCity?.avatarUrl ?? null}
-          originalUrl={headerWithCity?.avatarOriginalUrl ?? null}
+          avatarUrl={
+            headerWithCity?.avatarUrl?.trim() ||
+            profile.me.avatarUrl?.trim() ||
+            getCachedPerson(profile.me.id)?.avatarUrl?.trim() ||
+            null
+          }
+          originalUrl={
+            headerWithCity?.avatarOriginalUrl?.trim() ||
+            headerWithCity?.avatarUrl?.trim() ||
+            profile.me.avatarUrl?.trim() ||
+            getCachedPerson(profile.me.id)?.avatarUrl?.trim() ||
+            null
+          }
           onPreviewChange={setPhotoLookPreview}
         />
 
@@ -284,45 +292,23 @@ export default function ProfileScreen() {
               onOpenEvent={(id) => router.push(`/event/${id}` as Href)}
             />
 
-            {untakenQuizzes.length > 0 ? (
-              <View className="mt-6 px-4">
-                <Text className="mb-2 font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
-                  Quizzes to catch up on
-                </Text>
-                <View className="gap-2">
-                  {untakenQuizzes.map((q) => (
-                    <Pressable
-                      key={q.slug}
-                      onPress={withAnalyticsPress(PROFILE.quizzes.untaken_row, () =>
-                        router.push(`/quiz/${q.slug}` as Href)
-                      )}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${q.title}. ${q.friendsTakenCount} friends took this`}
-                      className="min-h-[52px] flex-row items-center justify-between rounded-card border border-ink-line bg-surface px-4 py-3 active:opacity-90"
-                    >
-                      <Text
-                        className="min-w-0 flex-1 font-sans-b text-[14px] text-ink"
-                        numberOfLines={1}
-                      >
-                        {q.title}
-                      </Text>
-                      <Text className="ml-3 font-sans-sb text-[12px] text-ink-mute">
-                        {q.friendsTakenCount} friends
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            ) : null}
+            {/* Lasting home for quizzes you already took (Home may rotate). */}
+            <ProfileQuizzes />
           </View>
         ) : null}
 
-        {!settingsOpen && tab === 'Scrapbook' ? (
+        {!settingsOpen && tab === 'Collage' ? (
           <View className="mt-5 px-4">
             <StoryCalendar
               days={archive.days}
               storage={archive.storage}
-              onOpenStory={() => router.push('/story/me?catchup=1&from=profile')}
+              monthYm={archiveMonth}
+              onMonthChange={setArchiveMonth}
+              onOpenStory={(day) =>
+                router.push(
+                  `/story/me?catchup=1&from=profile&day=${day}&month=${archiveMonth}`
+                )
+              }
             />
           </View>
         ) : null}
@@ -330,6 +316,7 @@ export default function ProfileScreen() {
         {!settingsOpen && tab === 'Inside jokes' ? (
           <View className="mt-5 px-4">
             <InsideJokesWall
+              personId="me"
               analyticsIds={{
                 note: PROFILE.inside_jokes.note,
                 add: PROFILE.inside_jokes.add,

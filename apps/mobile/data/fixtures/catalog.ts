@@ -533,13 +533,26 @@ export type RecapAnswer = {
 
 export const RECAP_WEEK: RecapWeek = {
   id: 'w31',
-  weekOf: 'Week of 27 Jul',
+  weekOf: 'Week of 7 Sep',
   questions: [
-    'High of the week?',
-    'Best thing this week?',
-    'What are you stuck on?',
-    'Who did you see?',
-    'Next week, one plan?'
+    'Your rose: something good that happened',
+    'Your thorn: something that sucked',
+    'Your bud: something you are looking forward to',
+    'What made you laugh this week?',
+    'Best thing you ate?'
+  ]
+};
+
+/** An older locked week so demo co-op can page back. */
+export const RECAP_WEEK_PREVIOUS: RecapWeek = {
+  id: 'w30',
+  weekOf: 'Week of 31 Aug',
+  questions: [
+    'Your rose: something good that happened',
+    'Your thorn: something that sucked',
+    'Your bud: something you are looking forward to',
+    'Who did you spend time with?',
+    'What did you learn this week?'
   ]
 };
 
@@ -556,6 +569,18 @@ export const RECAP_ANSWERS: RecapAnswer[] = RECAP_WEEK.questions.flatMap((_, qi)
     visibleToTier: (si === 4 ? 'close' : 'friend') as Tier
   }))
 );
+
+export const RECAP_ANSWERS_PREVIOUS: RecapAnswer[] =
+  RECAP_WEEK_PREVIOUS.questions.flatMap((_, qi) =>
+    RECAP_SPEAKERS.slice(0, 3).map((authorId, si) => ({
+      weekId: RECAP_WEEK_PREVIOUS.id,
+      authorId,
+      questionIndex: qi,
+      audioUrl: `bridger://recap/${RECAP_WEEK_PREVIOUS.id}/${authorId}/${qi}`,
+      duration: 24 + ((si * 5 + qi * 4) % 16),
+      visibleToTier: 'friend' as Tier
+    }))
+  );
 
 /** Questions friends suggested for a future Friend Pod week. */
 export const SUBMITTED_QUESTIONS = [

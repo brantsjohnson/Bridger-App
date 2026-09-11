@@ -16,14 +16,41 @@
 
 import { Platform, Share, type View } from 'react-native';
 
-// THIS SECTION DOES: build the link people share. The "who invited you"
-// attribution (?from=...) lives here so one place owns the URL shape.
-const WEB_BASE = 'https://bridger.app/q/what-j-name';
+// THIS SECTION DOES: turn a share token into the URL a friend actually opens.
+// On Expo web we use this browser's origin so you can copy localhost and
+// verify the guest take in another window. On the phone we use the server URL.
+export function visibleShareUrl(token: string, serverUrl?: string): string {
+  if (
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    window.location?.origin
+  ) {
+    return `${window.location.origin}/q/${token}`;
+  }
+  if (serverUrl) return serverUrl;
+  return `https://bridger.app/q/${token}`;
+}
 
-export function buildResultLink(jName: string, fromRef?: string): string {
-  const params = new URLSearchParams({ r: jName });
-  if (fromRef) params.set('from', fromRef);
-  return `${WEB_BASE}?${params.toString()}`;
+// THIS SECTION DOES: copy the invite URL so you can paste it to a friend
+// (or into a logged-out browser) without hunting through the share sheet.
+export async function copyShareUrl(url: string): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    try {
+      const clip = (
+        globalThis as {
+          navigator?: { clipboard?: { writeText?: (t: string) => Promise<void> } };
+        }
+      ).navigator?.clipboard;
+      if (!clip?.writeText) return false;
+      await clip.writeText(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  // Native: no clipboard package in this build. The URL on screen is selectable
+  // so they can long-press Copy. Share link still opens the OS share sheet.
+  return false;
 }
 
 // THIS SECTION DOES: snapshot the result card View into a PNG file and hand
@@ -63,7 +90,14 @@ export async function saveImageToPhotos(uri: string): Promise<boolean> {
     const MediaLibrary = await import('expo-media-library');
     // Ask only for "add to library" so we never request read access to photos.
     const perm = await MediaLibrary.requestPermissionsAsync(true);
-    if (!perm.granted) return false;
+    if (!perm.granted) {
+      // Open Settings when they previously denied, so Download PNG can work.
+      if (perm.canAskAgain === false) {
+        const { Linking } = await import('react-native');
+        await Linking.openSettings().catch(() => undefined);
+      }
+      return false;
+    }
     await MediaLibrary.saveToLibraryAsync(uri);
     return true;
   } catch {

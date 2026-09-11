@@ -289,7 +289,18 @@ export async function listAboutFields(): Promise<AboutField[]> {
     return rows;
   }
   const rows = await fetchAttributes<AboutField>('about');
-  return rows.map((r) => r.value);
+  // Prefer the tier stored inside the value; fall back to the row's
+  // visible_to_tier so old / partial writes still show on your own profile.
+  return rows.map((r) => {
+    const v = r.value ?? ({} as AboutField);
+    return {
+      ...v,
+      id: v.id || String((r.value as { id?: string } | null)?.id ?? r.id),
+      key: v.key || 'Detail',
+      value: typeof v.value === 'string' ? v.value : String(v.value ?? ''),
+      tier: v.tier ?? r.visibleToTier ?? 'friend'
+    };
+  });
 }
 
 /**
@@ -319,10 +330,32 @@ export async function reorderAboutFields(ordered: AboutField[]): Promise<AboutFi
   return listAboutFields();
 }
 
+/** In-memory follow-ups loaded with the last listHobbies() live fetch. */
+let liveHobbyFollowUps: Record<string, HobbyFollowUp> = {};
+
 export async function listHobbies(): Promise<Interest[]> {
   if (isDemoMode()) return demoHobbies.map((h) => ({ ...h }));
-  const rows = await fetchAttributes<Interest>('hobby');
-  return rows.map((r) => r.value);
+  const rows = await fetchAttributes<Interest & { followUp?: HobbyFollowUp }>('hobby');
+  // Rebuild follow-up lookup from each hobby row (live saves tuck it on the value).
+  const followUps: Record<string, HobbyFollowUp> = {};
+  const hobbies: Interest[] = [];
+  for (const r of rows) {
+    const v = r.value;
+    if (!v?.id) continue;
+    if (v.followUp?.question) {
+      followUps[v.id] = {
+        question: v.followUp.question,
+        answer: v.followUp.answer ?? ''
+      };
+    }
+    const { followUp: _fu, ...interest } = v;
+    hobbies.push({
+      ...interest,
+      tier: interest.tier ?? r.visibleToTier ?? 'friend'
+    });
+  }
+  liveHobbyFollowUps = followUps;
+  return hobbies;
 }
 
 /** Follow-up Q&A keyed by hobby id — what the hobbies widget peeks at. */
@@ -332,7 +365,8 @@ export function getHobbyFollowUps(): Record<string, HobbyFollowUp> {
       Object.entries(demoHobbyFollowUps).map(([k, v]) => [k, { ...v }])
     );
   }
-  return {};
+  // Live: filled when listHobbies runs (was always {} before, so Answers looked empty).
+  return { ...liveHobbyFollowUps };
 }
 
 /** Back-compat export used by HobbiesWidget. */
@@ -879,6 +913,11 @@ export async function savePlaces(
   const parsed = parsePlaceWhere(answers['place-where']);
   const note = typeof answers['place-note'] === 'string' ? answers['place-note'].trim() : '';
   if (!parsed) {
+    // Plain typed text used to be dropped with no error (TestFlight: pin gone).
+    const raw = answers['place-where'];
+    if (typeof raw === 'string' && raw.trim()) {
+      throw new Error('Pick a place from the search list so we can pin it on your map.');
+    }
     return listTravelPlaces();
   }
 
@@ -1351,16 +1390,17 @@ export async function getStorageState(): Promise<StorageState> {
       };
     }
     const meter = buildStorageMeter({
-      usedBytes: FREE_STORY_STORAGE_BYTES,
+      // Demo free: nearly empty (one sample post), not "month already full".
+      usedBytes: Math.round(FREE_STORY_STORAGE_BYTES * 0.02),
       includedBytes: FREE_STORY_STORAGE_BYTES
     });
     return {
       plan: 'free',
-      usedPct: 100,
+      usedPct: storageUsedPct(meter),
       usedBytes: meter.usedBytes,
       includedBytes: meter.includedBytes,
       overageBytes: 0,
-      label: 'Your free month is full. Older posts will roll off.',
+      label: `${formatStorageBytes(meter.usedBytes)} of ${formatStorageBytes(meter.includedBytes)} this month`,
       overagePriceLabel: null
     };
   }

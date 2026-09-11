@@ -581,84 +581,99 @@ export default function SignInScreen() {
         </KeyboardAvoidingView>
       </View>
 
-      {/* THIS SECTION DOES: the demo password sheet. On web, Pressable with
-          accessibilityRole="button" becomes a real <button>, so the dimmed
-          backdrop cannot wrap the sheet (that nested Enter/Cancel buttons
-          inside another button). Backdrop and sheet are siblings instead. */}
+      {/* THIS SECTION DOES: the demo password sheet. KeyboardAvoidingView keeps
+          the field + Enter button above the keyboard so it cannot hide the sheet.
+          Backdrop and sheet stay siblings (web cannot nest buttons in a button). */}
       <Modal
         visible={demoOpen}
         transparent
         animationType="fade"
         onRequestClose={() => setDemoOpen(false)}
       >
-        <View className="flex-1 justify-end bg-ink/40">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss demo password"
-            onPress={() => setDemoOpen(false)}
-            style={StyleSheet.absoluteFill}
-          />
-          <View
-            className="rounded-t-3xl bg-canvas px-5 pt-5"
-            style={{
-              // Sit above the full-screen dismiss backdrop so taps hit the sheet.
-              zIndex: 1,
-              paddingBottom: Math.max(insets.bottom, 16) + 8
-            }}
-          >
-            <Text className="font-pixel text-[20px] text-ink">Demo mode</Text>
-            <Text className="mt-1 font-sans-sb text-[13px] text-ink-mute">
-              "demomode" walks the finished app. "onboard" runs the new onboarding
-              demo. "onboardold" runs the old onboarding demo. No real account is
-              created.
-            </Text>
-            <View className="mt-4">
-              <TextField
-                label="Password"
-                value={demoPassword}
-                onChange={(v) => {
-                  setDemoPassword(v);
-                  setDemoPasswordError(null);
-                }}
-                type="password"
-                placeholder="Demo password"
-                autoComplete="off"
-                analyticsId={AUTH.sign_in.password}
-              />
-            </View>
-            {demoPasswordError ? (
-              <Text
-                className="mt-2 font-sans-sb text-[13px] text-coral"
-                accessibilityLiveRegion="polite"
+        <KeyboardAvoidingView
+          className="flex-1 bg-ink/40"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          // Modal is already full-screen; no extra nav offset needed.
+          keyboardVerticalOffset={0}
+        >
+          <View className="flex-1 justify-end">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss demo password"
+              onPress={() => setDemoOpen(false)}
+              style={StyleSheet.absoluteFill}
+            />
+            <View
+              className="rounded-t-3xl bg-canvas px-5 pt-5"
+              style={{
+                // Sit above the full-screen dismiss backdrop so taps hit the sheet.
+                zIndex: 1,
+                maxHeight: '92%',
+                paddingBottom: Math.max(insets.bottom, 16) + 8
+              }}
+            >
+              {/* Scroll so short phones can still reach Enter while typing. */}
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                bounces={false}
               >
-                {demoPasswordError}
-              </Text>
-            ) : null}
-            <View className="mt-5 gap-2.5">
-              <ButtonPrimary
-                full
-                size="lg"
-                onPress={onDemoSubmit}
-                disabled={busy !== null || !demoPassword.trim()}
-                loading={busy === 'demo'}
-                accessibilityLabel="Enter demo"
-                analyticsId={AUTH.sign_in.submit}
-                analyticsProps={{ method: 'demo_password' }}
-              >
-                Enter demo
-              </ButtonPrimary>
-              <ButtonSecondary
-                full
-                tone="ghost"
-                onPress={() => setDemoOpen(false)}
-                disabled={busy === 'demo'}
-                accessibilityLabel="Cancel"
-              >
-                Cancel
-              </ButtonSecondary>
+                <Text className="font-pixel text-[20px] text-ink">Demo mode</Text>
+                <Text className="mt-1 font-sans-sb text-[13px] text-ink-mute">
+                  "demomode" walks the finished app. "onboard" runs the new onboarding
+                  demo. "onboardold" runs the old onboarding demo. No real account is
+                  created.
+                </Text>
+                <View className="mt-4">
+                  <TextField
+                    label="Password"
+                    value={demoPassword}
+                    onChange={(v) => {
+                      setDemoPassword(v);
+                      setDemoPasswordError(null);
+                    }}
+                    type="password"
+                    placeholder="Demo password"
+                    autoComplete="off"
+                    analyticsId={AUTH.sign_in.password}
+                    onSubmitEditing={onDemoSubmit}
+                  />
+                </View>
+                {demoPasswordError ? (
+                  <Text
+                    className="mt-2 font-sans-sb text-[13px] text-coral"
+                    accessibilityLiveRegion="polite"
+                  >
+                    {demoPasswordError}
+                  </Text>
+                ) : null}
+                <View className="mt-5 gap-2.5">
+                  <ButtonPrimary
+                    full
+                    size="lg"
+                    onPress={onDemoSubmit}
+                    disabled={busy !== null || !demoPassword.trim()}
+                    loading={busy === 'demo'}
+                    accessibilityLabel="Enter demo"
+                    analyticsId={AUTH.sign_in.submit}
+                    analyticsProps={{ method: 'demo_password' }}
+                  >
+                    Enter demo
+                  </ButtonPrimary>
+                  <ButtonSecondary
+                    full
+                    tone="ghost"
+                    onPress={() => setDemoOpen(false)}
+                    disabled={busy === 'demo'}
+                    accessibilityLabel="Cancel"
+                  >
+                    Cancel
+                  </ButtonSecondary>
+                </View>
+              </ScrollView>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </Screen>
   );

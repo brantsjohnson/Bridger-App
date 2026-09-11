@@ -126,12 +126,7 @@ export function QuizTakeShell({
     Array<{ key: number; emoji: string; origin: HobbyBurstOrigin }>
   >([]);
 
-  // THIS SECTION DOES: keep the type box ready whenever a question is showing.
-  useEffect(() => {
-    if (phase !== 'take' || !open) return;
-    const t = setTimeout(() => inputRef.current?.focus(), 180);
-    return () => clearTimeout(t);
-  }, [phase, open, prompt]);
+  // Type box stays optional: do NOT auto-focus (keyboard up by default annoyed testers).
 
   const handleToggle = (opt: QuizTileOption, origin: HobbyBurstOrigin) => {
     const turningOn = !selected.includes(opt.id);
@@ -140,8 +135,6 @@ export function QuizTakeShell({
       const key = Date.now() + Math.random();
       setBursts((prev) => [...prev, { key, emoji: opt.emoji, origin }]);
     }
-    // Keep typing available after a tap.
-    inputRef.current?.focus();
   };
 
   const tryAdvance = () => {

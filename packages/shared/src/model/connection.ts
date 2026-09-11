@@ -211,6 +211,12 @@ export interface InsideJoke {
   taggedIds?: string[];
   /** the event it happened at; everyone who was there sees it */
   eventName?: string;
+  /** Event id when we tagged a real event (not just a typed place). */
+  eventId?: string;
+  /** When it was posted (ms). Newest notes sort first. */
+  createdAt?: number;
+  /** Optional photo on the note (co-op). Signed URL or a local preview. */
+  photoUri?: string;
 }
 
 /**

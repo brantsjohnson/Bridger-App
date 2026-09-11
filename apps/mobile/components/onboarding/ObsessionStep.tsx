@@ -162,6 +162,9 @@ export function ObsessionStep({
         total={total}
         purpose="Everyone has one right now."
         ask="What song is on repeat?"
+        // KEYBOARD: scroll the body so "Song and artist" stays above the keys
+        // (ensureVisible no-ops without scrollBody).
+        scrollBody
         onContinue={onNext}
         onSkip={onSkip}
         onBack={onBack}

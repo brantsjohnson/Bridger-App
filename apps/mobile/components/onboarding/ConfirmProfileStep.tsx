@@ -2,28 +2,31 @@
 // WHAT THIS FILE DOES (plain English):
 // Step 1 - "Confirm your details." One screen that gathers the three things a
 // friend needs to recognize you: first name, last name, and a profile photo.
-// Name is required (Continue stays off until both are filled); the photo can be
-// taken in-app or uploaded (the one upload exception, stories stay capture-only)
-// and is skippable. Tapping the big photo square opens the system action sheet
-// (Take a photo / Upload), so permission is only asked in context, never at
-// launch; the picked photo previews right here.
+// Name is required (Continue stays off until both are filled). A profile photo
+// is required too (no "Add one later"): take in-app or upload (the one upload
+// exception; stories stay capture-only). Tapping the big photo square opens the
+// system action sheet (Take a photo / Upload), so permission is only asked in
+// context, never at launch; the picked photo previews right here.
 //
 // LOOK: one big photo square up top (plain white box with a clear plus when
 // empty), a filter picker row right under it (Pop art / X-ray / Comic / Sepia),
 // then the two typing boxes. All the paint comes from the shared onboarding parts.
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, Text, View } from 'react-native';
-import { ONBOARDING, trackUi } from '@bridger/shared';
+import { ActionSheetIOS, Alert, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { ONBOARDING, trackUi, type Accent } from '@bridger/shared';
 import { withAnalyticsPress } from '@bridger/ui';
 import { OnboardingStep, useOnboardingBodyScroll } from './OnboardingStep';
 import { PhotoFilterPicker, type PhotoFilterKey } from './PhotoFilterPicker';
 import { FilteredPhoto, isServerPhotoFilter } from './photo-filters/FilteredPhoto';
-import { OB, OB_BORDER } from './onboarding-theme';
+import { OB, OB_BORDER, OB_RADIUS } from './onboarding-theme';
 import { OBField } from './onboarding-ui';
 import { isDemoMode } from '../../lib/demo';
 import { bakeClientPhotoFilter } from '../../lib/client-photo-filters';
 import { bakeServerPhotoFilter } from '../../lib/photo-filters';
+// #region agent log
+import { debugFilterEvent } from '../../lib/debug-instrumentation';
+// #endregion
 import type { PhotoSource } from '../../data/onboarding';
 
 export function ConfirmProfileStep({
@@ -47,7 +50,10 @@ export function ConfirmProfileStep({
   blurb,
   cta,
   skipLabel,
-  onSkip
+  onSkip,
+  tone,
+  accent,
+  conceptLabel
 }: {
   step: number;
   total: number;
@@ -80,9 +86,14 @@ export function ConfirmProfileStep({
   cta?: string;
   skipLabel?: string;
   onSkip?: () => void;
+  tone?: 'action' | 'info';
+  accent?: Accent;
+  conceptLabel?: string;
 }) {
   // THIS SECTION DOES: slide name fields up when the keyboard covers them.
   const { ensureVisible } = useOnboardingBodyScroll();
+  const lastRef = useRef<TextInput>(null);
+  const dressed = tone === 'action' || tone === 'info';
 
   // THIS SECTION DOES: server-baked looks (Pop art, Comic, X-ray, Sepia). We
   // cache each result per photo + filter so switching pills does not re-run
@@ -97,15 +108,17 @@ export function ConfirmProfileStep({
   const reportRef = useRef(onFilteredBakeChange);
   reportRef.current = onFilteredBakeChange;
 
-  // THIS SECTION DOES: decide if we can move on. Name + photo are required.
-  // Server looks may still be baking in the background; Continue stays on so a
+  // THIS SECTION DOES: decide if we can move on. The New photo step needs a
+  // real picture (not emoji, not skip). Old full layout still allows emoji.
+  // Server looks may still bake in the background; Continue stays on so a
   // slow filter never traps anyone (we finish the bake on Continue if needed).
-  const hasPhoto = Boolean(photoUri || photoEmoji);
+  const hasRealPhoto = Boolean(photoUri);
+  const hasPhoto = hasRealPhoto || Boolean(photoEmoji);
   const ready =
     layout === 'photo'
-      ? true
+      ? hasRealPhoto
       : first.trim().length > 0 && last.trim().length > 0 && hasPhoto;
-  const cameraLabel = photoSource === 'camera' && hasPhoto ? 'Retake' : 'Take a photo';
+  const cameraLabel = photoSource === 'camera' && hasRealPhoto ? 'Retake' : 'Take a photo';
 
   // THIS SECTION DOES: when a server look is picked, bake it. Live users hit the
   // API; demo web (localhost:8090) paints in the browser instead.
@@ -132,8 +145,11 @@ export function ConfirmProfileStep({
     }
 
     let cancelled = false;
-    setBakedLoading(true);
+    // Drop the previous look's bake so we never show Comic while Sepia is
+    // selected (felt like "stuck on Pop art" / filter taps doing nothing).
     setBakedUrl(null);
+    reportRef.current(null);
+    setBakedLoading(true);
 
     const finish = (
       url: string | null,
@@ -165,11 +181,24 @@ export function ConfirmProfileStep({
 
     // THIS SECTION DOES: never leave Comic / X-ray spinning forever. A hung
     // upload or slow ImageMagick used to trap the preview on a spinner.
-    const BAKE_TIMEOUT_MS = 20000;
+    // Instant LiveFilterPreview already shows the look. Match the server's
+    // ImageMagick window (~25s) so Comic is not killed mid-bake at 8s.
+    const BAKE_TIMEOUT_MS = 45000;
+    // #region agent log
+    const bakeStartedAt = Date.now();
+    debugFilterEvent('bake start (ConfirmProfileStep)', {
+      filter: serverFilter,
+      demo: isDemoMode(),
+      platform: Platform.OS
+    });
+    // #endregion
     const timeoutId = setTimeout(() => {
       if (__DEV__) {
         console.warn('[photo-filter] bake timed out', serverFilter);
       }
+      // #region agent log
+      debugFilterEvent('bake TIMEOUT at 45s', { filter: serverFilter });
+      // #endregion
       finish(null, null, null);
     }, BAKE_TIMEOUT_MS);
 
@@ -186,10 +215,23 @@ export function ConfirmProfileStep({
       if (Platform.OS !== 'web') {
         // Native demo: try the live API when signed in; otherwise clear spinner.
         bakeServerPhotoFilter(photoUri, serverFilter)
-          .then((res) => finishOnce(res.url, res.mediaId, res.originalMediaId))
-          .catch(() => {
+          .then((res) => {
+            // #region agent log
+            debugFilterEvent('server bake OK (native demo)', { filter: serverFilter, ms: Date.now() - bakeStartedAt });
+            // #endregion
+            finishOnce(res.url, res.mediaId, res.originalMediaId);
+          })
+          .catch((err) => {
+            // #region agent log
+            debugFilterEvent('server bake FAILED (native demo)', { filter: serverFilter, ms: Date.now() - bakeStartedAt, error: String(err).slice(0, 200) });
+            // #endregion
             bakeClientPhotoFilter(photoUri, serverFilter)
-              .then((url) => finishOnce(url, null, null))
+              .then((url) => {
+                // #region agent log
+                debugFilterEvent('client bake result (native demo)', { filter: serverFilter, gotUrl: !!url, ms: Date.now() - bakeStartedAt });
+                // #endregion
+                finishOnce(url, null, null);
+              })
               .catch(() => finishOnce(null, null, null));
           });
         return () => {
@@ -198,8 +240,18 @@ export function ConfirmProfileStep({
         };
       }
       bakeClientPhotoFilter(photoUri, serverFilter)
-        .then((url) => finishOnce(url, null, null))
-        .catch(() => finishOnce(null, null, null));
+        .then((url) => {
+          // #region agent log
+          debugFilterEvent('client bake result (web demo)', { filter: serverFilter, gotUrl: !!url, ms: Date.now() - bakeStartedAt });
+          // #endregion
+          finishOnce(url, null, null);
+        })
+        .catch((err) => {
+          // #region agent log
+          debugFilterEvent('client bake FAILED (web demo)', { filter: serverFilter, ms: Date.now() - bakeStartedAt, error: String(err).slice(0, 200) });
+          // #endregion
+          finishOnce(null, null, null);
+        });
       return () => {
         cancelled = true;
         clearTimeout(timeoutId);
@@ -209,11 +261,14 @@ export function ConfirmProfileStep({
     bakeServerPhotoFilter(photoUri, serverFilter)
       .then((res) => finishOnce(res.url, res.mediaId, res.originalMediaId))
       .catch((err) => {
-        // Surface a quiet failure so a missing API never looks like a broken filter.
+        // Live bake failed: still try an on-device preview so the pill they
+        // tapped is not a no-op (Sepia/Comic/X-ray used to leave a plain photo).
         if (__DEV__) {
-          console.warn('[photo-filter] bake failed', serverFilter, err);
+          console.warn('[photo-filter] bake failed; trying client preview', serverFilter, err);
         }
-        finishOnce(null, null, null);
+        bakeClientPhotoFilter(photoUri, serverFilter)
+          .then((url) => finishOnce(url, null, null))
+          .catch(() => finishOnce(null, null, null));
       });
 
     return () => {
@@ -279,44 +334,37 @@ export function ConfirmProfileStep({
       cta={cta ?? 'Continue'}
       ctaDisabled={!ready}
       scrollBody
+      tone={tone}
+      accent={accent}
+      conceptLabel={conceptLabel}
+      sentenceCase={layout === 'photo'}
       continueAnalyticsId={
         layout === 'photo' ? ONBOARDING.confirm_profile.photo_square : undefined
       }
       onContinue={() => {
-        if (layout === 'photo' && !hasPhoto) {
+        if (layout === 'photo' && !hasRealPhoto) {
           openPhotoSheet();
           return;
         }
         onNext();
       }}
-      skipLabel={skipLabel}
-      skipAnalyticsId={
-        layout === 'photo' ? ONBOARDING.confirm_profile.photo_skip : undefined
-      }
-      onSkip={onSkip}
+      skipLabel={layout === 'photo' ? undefined : skipLabel}
+      onSkip={layout === 'photo' ? undefined : onSkip}
       onBack={onBack}
     >
       <View style={{ gap: 28 }}>
-        {/* THIS SECTION DOES: photo square (with a required * in New) plus looks. */}
+        {/* THIS SECTION DOES: photo square + filter pills. Heading already says
+            "Add a profile pic", so no extra "Profile photo *" label. */}
         <View style={{ gap: 12, alignSelf: 'stretch' }}>
-          {layout === 'photo' ? (
-            <Text
-              className="font-sans-sb text-[13px]"
-              style={{ color: OB.navy }}
-              accessibilityLabel="Profile photo, required"
-            >
-              Profile photo *
-            </Text>
-          ) : null}
           <Pressable
             onPress={withAnalyticsPress(ONBOARDING.confirm_profile.photo_square, openPhotoSheet)}
             accessibilityRole="button"
             accessibilityLabel={
-              hasPhoto
+              hasRealPhoto
                 ? 'Change profile photo, required'
                 : 'Add a profile photo, required'
             }
-            accessibilityHint="Required. You can add one later with the skip link."
+            accessibilityHint="Required. Take a photo or upload one to continue."
             style={{
               alignSelf: 'stretch',
               aspectRatio: 1,
@@ -324,8 +372,9 @@ export function ConfirmProfileStep({
               justifyContent: 'center',
               overflow: 'hidden',
               backgroundColor: OB.paper,
-              borderWidth: OB_BORDER,
-              borderColor: OB.navy
+              borderWidth: dressed ? 0 : OB_BORDER,
+              borderColor: dressed ? 'transparent' : OB.navy,
+              borderRadius: dressed ? OB_RADIUS : 0
             }}
           >
             {photoUri ? (
@@ -364,6 +413,9 @@ export function ConfirmProfileStep({
               autoCapitalize="words"
               analyticsId={ONBOARDING.confirm_profile.first_input}
               onFocusExtra={(anchor) => ensureVisible(anchor)}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => lastRef.current?.focus()}
             />
             <OBField
               label="Last name"
@@ -374,6 +426,11 @@ export function ConfirmProfileStep({
               autoCapitalize="words"
               analyticsId={ONBOARDING.confirm_profile.last_input}
               onFocusExtra={(anchor) => ensureVisible(anchor)}
+              inputRef={lastRef}
+              returnKeyType="go"
+              onSubmitEditing={() => {
+                if (ready) onNext();
+              }}
             />
           </View>
         )}

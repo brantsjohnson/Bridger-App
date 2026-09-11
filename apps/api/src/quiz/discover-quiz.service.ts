@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Saves a finished Discover "Connect Over" quiz (Your Funny Bone, Your Vibe,
+// Saves a finished Discover personality quiz (Your Funny Bone, Your Vibe,
 // What Gets You Going, The Friend Zone). The phone already scored the answers
 // on-device; this just stores the 0–1 dimension numbers + confidence, mirrors
 // them into private matchable attributes, and queues embedding / summary jobs.
@@ -31,7 +31,7 @@ export class DiscoverQuizService {
   ) {}
 
   /**
-   * Which Connect Over quizzes this person already finished.
+   * Which personality quizzes this person already finished.
    * PRIVACY: only returns internal slugs (humor, personality, …), never scores.
    */
   async listCompleted(userId: string): Promise<{ completed: string[] }> {

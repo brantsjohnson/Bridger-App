@@ -90,6 +90,18 @@ export class StoriesController {
     return this.stories.deletePost(user.id, postId);
   }
 
+  /**
+   * Turn a voice note into words. Body is base64 audio only. The transcript
+   * comes back so the phone can show it on the page. Never logged.
+   */
+  @Post('transcribe')
+  transcribe(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { audioBase64?: string; filename?: string }
+  ) {
+    return this.stories.transcribeVoice(user.id, body.audioBase64 ?? '', body.filename);
+  }
+
   // Static-ish paths before :authorId so Nest does not swallow them.
   @Get('posts/:postId/replies')
   listReplies(

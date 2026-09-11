@@ -165,9 +165,12 @@ export function FriendsRoster({
     [onOpenMove]
   );
 
+  // First visible tier sits tight under Your circle / search. Later ones keep air.
+  const firstVisible = sections.findIndex((s) => s.people.length > 0 || editing);
+
   return (
     <View>
-      {sections.map((section) => {
+      {sections.map((section, index) => {
         if (section.people.length === 0 && !editing) return null;
         const isOver = editing && overTier === section.tier;
 
@@ -183,7 +186,8 @@ export function FriendsRoster({
               });
             }}
             className={cn(
-              'mt-7 rounded-2xl',
+              'rounded-2xl',
+              index === firstVisible ? 'mt-1' : 'mt-7',
               editing && 'border border-dashed border-ink/20 p-3',
               isOver && 'border-solid border-purple bg-purple/10'
             )}

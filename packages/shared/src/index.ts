@@ -9,6 +9,7 @@ export * from './model/story';
 // Scrapbook pages: the 8.5 x 11 page model + layout templates behind Updates.
 export * from './model/scrapbook';
 export * from './scrapbook/layouts';
+export * from './scrapbook/collage-style';
 export * from './model/event';
 export * from './model/event-recurrence';
 export * from './model/connection';
@@ -31,6 +32,7 @@ export * from './model/demo-week';
 export * from './model/assistant';
 export * from './model/billy';
 export * from './model/matching';
+export * from './model/quiz-match';
 export * from './model/recap';
 export * from './model/not-found-hit';
 export * from './model/notification';
@@ -59,6 +61,7 @@ export {
   THE_FRIEND_ZONE,
   WHAT_GETS_YOU_GOING,
   FRIENDS,
+  PENDING_PROFILE,
   RECAP_RECORDER,
   RECAP_PLAYER,
   PROFILE,
@@ -72,6 +75,18 @@ export {
   CIRCLE_RECORDER,
   CATCH_UP,
   POST_COMPOSER,
+  COLLAGE_EDITOR,
+  COLLAGE_HUB,
+  COLLAGE_PAPER,
+  COLLAGE_TEXT,
+  COLLAGE_VOICE,
+  COLLAGE_PEOPLE,
+  COLLAGE_CUTOUT,
+  COLLAGE_LAYER,
+  COLLAGE_EXIT,
+  COLLAGE_FINISH,
+  COLLAGE_PACK_BROWSER,
+  COLLAGE_LAYOUTS,
   PROMPTS_TRAY,
   CAPTION_SHEET,
   AUDIENCE_SHEET,
@@ -81,6 +96,7 @@ export {
   NEW_MESSAGE_SHEET,
   REVEAL,
   QUIZ,
+  QUIZ_SHARE,
   END_QUIZ_SHEET,
   ACTIVITY,
   ACTIVITY_CAPTURE,

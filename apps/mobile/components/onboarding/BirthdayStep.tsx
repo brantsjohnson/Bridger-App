@@ -12,7 +12,7 @@
 // ============================================
 import React from 'react';
 import { View } from 'react-native';
-import { ONBOARDING } from '@bridger/shared';
+import { ONBOARDING, type Accent } from '@bridger/shared';
 import { OnboardingStep } from './OnboardingStep';
 import { BirthdayPicker } from './BirthdayPicker';
 
@@ -26,7 +26,11 @@ export function BirthdayStep({
   ask,
   blurb,
   cta,
-  continueAnalyticsId
+  continueAnalyticsId,
+  purpose,
+  tone,
+  accent,
+  conceptLabel
 }: {
   step: number;
   total: number;
@@ -38,18 +42,26 @@ export function BirthdayStep({
   blurb?: string;
   cta?: string;
   continueAnalyticsId?: string;
+  purpose?: string;
+  tone?: 'action' | 'info';
+  accent?: Accent;
+  conceptLabel?: string;
 }) {
   return (
     <OnboardingStep
       step={step}
       total={total}
-      purpose={ask ? undefined : 'Friends love a heads-up.'}
-      ask={`${ask ?? "When's your birthday?"} *`}
+      purpose={purpose ?? (ask ? undefined : 'Friends love a heads-up.')}
+      ask={ask ?? "When's your birthday?"}
       blurb={blurb}
       fillBody
       scrollBody
       hideFooter
       onBack={onBack}
+      tone={tone}
+      accent={accent}
+      conceptLabel={conceptLabel}
+      sentenceCase={Boolean(tone)}
     >
       <View style={{ flex: 1, minHeight: 0 }}>
         <BirthdayPicker

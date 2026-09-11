@@ -87,8 +87,8 @@ Reuse existing Bridger chrome where it is cheap and true: nested group language,
 ## 3. Locked product rules (do not "improve" these away)
 
 1. **One idea per screen.** Copy is already written that way. Do not merge screens to shorten the run.
-2. **Progress bar counts only** first name, last name, photo, birthday. Education screens are not ticks.
-3. **Required \*** on those four fields. Photo has an explicit "Add one later".
+2. **Progress bar counts the six required actions** (name, photo, birthday, birthday audience, feature picks, what matters). Information screens hide the bar.
+3. **Name** is first + last on one screen. Photo has an explicit "Add one later".
 4. User-facing word is **Groups** (Close Friends / Friends / Acquaintances). Never "circles" or "tiers" in UI copy.
 5. Co-op is optional. No paywall. Free Lite is a valid end.
 6. Branch tours are educational. Do not open live sheets (Touch Grass, notes, capture) mid-flow. Deep links happen after Home.
@@ -123,7 +123,7 @@ Replace the placeholder in `VisualSlot` (and/or inline chrome) for:
 | `touch-grass` | plans-3 | Touch Grass (use real button chrome, non-interactive) |
 | `friend-notes` | friends-1..3 | Private notes on a friend |
 | `scattered-memories` | memories-1 | Memories stuck in other apps |
-| `scrapbook-page` | memories-2, memories-3 | A page from your life (user-facing: page / scrapbook, never "stories") |
+| `scrapbook-page` | memories-2, memories-3 | A page from your life (user-facing: page / collage, never "stories") |
 | `friends-of-friends` | discover-1..3 | Friends of friends, not strangers |
 
 Field screens (first-name, last-name, photo, birthday) already use real inputs. Tighten hierarchy and Required\* only. Do not turn them into explainers.

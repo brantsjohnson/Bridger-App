@@ -99,19 +99,28 @@ export function RecapPulse({ size, playing }: { size: number; playing: boolean }
           ? 0.35
           : v.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.5, 0] });
         return (
-          <Animated.View
+          <View
             key={i}
             style={{
               position: 'absolute',
               width: size,
               height: size,
-              borderRadius: size / 2,
-              borderWidth: 2,
-              borderColor: RING_COLOR,
-              opacity,
-              transform: [{ scale }]
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
-          />
+          >
+            <Animated.View style={{ opacity, transform: [{ scale }] }}>
+              <View
+                style={{
+                  width: size,
+                  height: size,
+                  borderRadius: size / 2,
+                  borderWidth: 2,
+                  borderColor: RING_COLOR
+                }}
+              />
+            </Animated.View>
+          </View>
         );
       })}
     </View>
