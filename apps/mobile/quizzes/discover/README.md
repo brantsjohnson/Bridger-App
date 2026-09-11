@@ -1,4 +1,4 @@
-# Discover matching quizzes (Connect Over)
+# Discover matching quizzes (Personality quizzes)
 
 These are the **only Discover modules live right now**. They are AI-guided
 (quiz moderator from `QUIZ-ENGINE.md`): the authored rubric scores answers;
@@ -13,7 +13,7 @@ all may* flags false). ML may tune floors later from `quiz_adapted` outcomes.
 
 | Internal id (code, matching, analytics) | Bridger module title (user-facing) | Role |
 | --- | --- | --- |
-| `disclosure` | **Behind the Scenes** | Pre-quiz. Optional. Softest name. Shapes how the other quizzes read the person. Shown once (first quiz run), not a medical-style form. **Live.** |
+| `disclosure` | **Behind the Scenes** | Pre-quiz. Optional. Softest name. Shapes how the other quizzes read the person. **Archived from the Discover list** (code + tables stay). |
 | `humor` | **Your Funny Bone** | Humor **taste** (5 axes + breadth) · similarity (**live**) |
 | `values` | **What Gets You Going** | Values measurement (**live** — Schwartz forced-choice → similarity dials) |
 | `personality` | **Your Vibe** | Personality measurement (**live** — Big Five + assertiveness) |
@@ -107,7 +107,7 @@ discover/
 
 ## Wire-up notes
 
-- Connect Over lists all five; all five have custom live flows.
+- Personality quizzes lists the four measurement quizzes; disclosure is archived from that list.
 - Tables: `disclosure_profiles`, `disclosure_items` (migration `0040`).
 - `DISCOVER_QUIZ_IDS` includes personality / values / humor / attachment.
 - Disclosure stays intake / additive-affinity, never reveal evidence.

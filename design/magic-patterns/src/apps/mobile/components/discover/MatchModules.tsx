@@ -26,7 +26,7 @@ export function MatchModules({ compact = false }: {compact?: boolean;}) {
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <PixelHeading size="md">Know me better</PixelHeading>
+        <PixelHeading size="md">Personality quizzes</PixelHeading>
         <span className="text-[12px] font-bold text-ink-mute">
           {done}/{all} done
         </span>

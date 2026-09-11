@@ -9,27 +9,42 @@
 // Part 4. Then it reveals your percentage and J-name. Scoring is engine.ts
 // (no AI, same taps always score the same).
 //
-// RE-ENTRY: if you already took it this session, opening it again shows your
-// saved result with a quiet "Retake for fun" link, so your real result stays
-// the one that counts.
+// RE-ENTRY: if you already finished once, opening it again shows your first
+// (canonical) result. Home and Profile say "See your result." A quiet
+// "Retake for fun" starts a second run that stays on this phone only and
+// never overwrites friend matching. You can flip First / Fun on the result.
+// SHARE LINK: a friend can take this with no account. Their first result stays
+// on the phone until they sign up. Signup adds the sharer as a friend so both
+// can see the duo result.
 // Analytics: quiz_started / quiz_question_answered / quiz_completed /
-// quiz_abandoned (never the answer text). Full element-level taxonomy ids are a
-// follow-up pass (see ANALYTICS-TAXONOMY.md).
+// quiz_abandoned (never the answer text).
 // ============================================
 
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { QUIZ as QUIZ_IDS, trackProduct } from '@bridger/shared';
+import { BackHandler, Platform, Pressable, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { jnameCompatibilityPercent, QUIZ as QUIZ_IDS, trackProduct } from '@bridger/shared';
 import {
+  AnalyticsRegion,
   ButtonPrimary,
   ButtonSecondary,
   Screen,
+  ScreenBody,
   ScreenHeader,
+  SegmentedTabs,
   withAnalyticsPress
 } from '@bridger/ui';
 import { EndQuizSheet } from '../_shared/EndQuizSheet';
 import { MANIFEST } from './manifest';
+import { clearJnameDraft, loadJnameDraft, saveJnameDraft } from './draft';
+import { loadJnameFunResult, saveJnameFunResult } from './fun-result';
+import {
+  loadJnameGuestResult,
+  saveJnameGuestResult
+} from './guest-result';
+import { useAuth } from '../../providers/auth-provider';
+import { getAnonRef, peekPendingReferral, setPendingReferral } from '../../lib/jname-referral';
+import { loadPeople } from '../../lib/people-cache';
 import {
   BrutalistLoading,
   BrutalistMessage,
@@ -38,7 +53,11 @@ import {
   EmojiBurstLayer,
   type LiveBurst
 } from './BrutalistTake';
-import { __demoSetQuizResult } from '../../data/quiz';
+import {
+  __demoSetQuizResult,
+  getCanonicalJnamePreview,
+  setLiveJnameSessionResult
+} from '../../data/quiz';
 import quizRaw from './quiz.json';
 import { scoreRun, topJNames, type QuizRun } from './engine';
 import { ResultCardStage } from './ResultCardStage';
@@ -46,8 +65,16 @@ import { JnameLeaderboard } from './JnameLeaderboard';
 import { QUIZ_OPTION_IMAGES } from './images';
 import { StrokeText } from './StrokeText';
 import { POSTER, POSTER_FONT } from './result-theme';
-import { buildResultLink, captureCard, saveImageToPhotos, shareImage, shareLink } from './share';
-import { fetchJnameLeaderboard, fetchJnameMyResult, getJnameShareLink, saveJnameResult } from '../../lib/jname-api';
+import { ShareInviteLink } from './ShareInviteLink';
+import { captureCard, saveImageToPhotos, shareLink, visibleShareUrl } from './share';
+import {
+  fetchJnameLeaderboard,
+  fetchJnameMyResult,
+  fetchJnameSharedView,
+  getJnameShareLink,
+  resolveJnameReferral,
+  saveJnameResult
+} from '../../lib/jname-api';
 import { QUIZ as DEMO_QUIZ } from '../../data/fixtures/catalog';
 import { isDemoMode } from '../../lib/demo';
 import type { LeaderboardBucket } from './JnameLeaderboard';
@@ -91,9 +118,9 @@ const FLOW = QUIZ.flow;
 const FLOW_IDS = FLOW.map((f) => f.id);
 const FIRST_Q = FLOW.find((f) => f.type === 'question');
 
-// THIS SECTION DOES: remember this session's result so re-opening the quiz
-// shows it (with a quiet retake) instead of starting over.
-let sessionResult: { jName: string; percent: number } | null = null;
+// THIS SECTION DOES: remember the first (canonical) result this session so
+// re-opening jumps to the result, not a new take.
+let sessionCanonical: { jName: string; percent: number } | null = null;
 
 type Phase =
   | 'intro'
@@ -108,23 +135,53 @@ type Phase =
   | 'reveal'
   | 'result';
 
+type ShareFriend = {
+  token: string;
+  jName: string;
+  percent: number;
+  firstName?: string;
+};
+
 export default function WhatJNameQuiz() {
   const router = useRouter();
+  const { session } = useAuth();
+  const signedIn = Boolean(session?.user?.id);
+  const params = useLocalSearchParams<{
+    retake?: string | string[];
+    share?: string | string[];
+  }>();
+  const wantRetake =
+    (Array.isArray(params.retake) ? params.retake[0] : params.retake) === '1';
+  const shareFromRoute = Array.isArray(params.share) ? params.share[0] : params.share;
   const startedAt = useRef(Date.now());
   const completedRef = useRef(false);
+  // True while this take is a fun retake (do not write the server result).
+  const funRunRef = useRef(false);
+  const retakeFromRouteRef = useRef(false);
   // The card View we snapshot into a PNG for saving / story sharing.
   const cardRef = useRef<View>(null);
 
   // THIS SECTION DOES: hold every answer we collect, in the engine's shape.
   const runRef = useRef<QuizRun>({ part1: [], rapidFire: [], selectedBestFriends: [], part4: [] });
 
-  const [phase, setPhase] = useState<Phase>(sessionResult ? 'result' : 'intro');
+  const [phase, setPhase] = useState<Phase>(sessionCanonical ? 'result' : 'intro');
   const [currentQId, setCurrentQId] = useState<string>(FIRST_Q?.id ?? '');
   const [rapidIndex, setRapidIndex] = useState(0);
   const [part4Index, setPart4Index] = useState(0);
   const [picks, setPicks] = useState<string[]>([]);
   const [revealStep, setRevealStep] = useState(0);
-  const [result, setResult] = useState(sessionResult);
+  const [result, setResult] = useState(sessionCanonical);
+  const [canonicalResult, setCanonicalResult] = useState(sessionCanonical);
+  const [funResult, setFunResult] = useState<{ jName: string; percent: number } | null>(
+    null
+  );
+  const [viewing, setViewing] = useState<'first' | 'fun'>('first');
+  const [shareFriend, setShareFriend] = useState<ShareFriend | null>(null);
+  const [addingFriend, setAddingFriend] = useState(false);
+  const [addedFriend, setAddedFriend] = useState(false);
+  const [shareInvite, setShareInvite] = useState<{ token: string; url: string } | null>(
+    null
+  );
   const [board, setBoard] = useState<LeaderboardBucket[]>([]);
   // Where the "Download PNG" button is up to, so we can say if it worked.
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
@@ -134,7 +191,7 @@ export default function WhatJNameQuiz() {
   // Emoji showers live here so they keep falling after we leave the tile screen.
   const [bursts, setBursts] = useState<LiveBurst[]>([]);
   // True while we check Supabase for a prior result on cold open.
-  const [hydrating, setHydrating] = useState(!sessionResult && !isDemoMode());
+  const [hydrating, setHydrating] = useState(!sessionCanonical);
 
   function spawnBurst(emojis: readonly string[], origin: { x: number; y: number }) {
     setBursts((prev) => [
@@ -143,36 +200,148 @@ export default function WhatJNameQuiz() {
     ]);
   }
 
-  // THIS SECTION DOES: on open, load a saved result from the server so a cold
-  // start still shows your card (not just this JS session's memory).
+  // THIS SECTION DOES: if they log out in this tab, forget the in-memory first
+  // result so a friend using the same browser is not shown someone else's card.
   useEffect(() => {
-    if (sessionResult || isDemoMode()) {
-      setHydrating(false);
-      return;
-    }
+    if (!signedIn) sessionCanonical = null;
+  }, [signedIn]);
+
+  // THIS SECTION DOES: on open, load the first result (session / server / demo)
+  // and any fun retake on this phone. Resume a mid-take draft after that so a
+  // fun retake never gets mistaken for a first finish.
+  useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const saved = await fetchJnameMyResult();
+      const fun = await loadJnameFunResult();
       if (cancelled) return;
-      if (saved?.jName) {
-        const res = { jName: saved.jName, percent: saved.percent };
-        sessionResult = res;
-        setResult(res);
+      if (fun) setFunResult({ jName: fun.jName, percent: fun.percent });
+
+      let canonical = sessionCanonical;
+      if (!canonical) {
+        if (isDemoMode()) canonical = getCanonicalJnamePreview();
+        else if (signedIn) {
+          const saved = await fetchJnameMyResult();
+          if (cancelled) return;
+          if (saved?.jName) canonical = { jName: saved.jName, percent: saved.percent };
+        }
+      }
+      if (!canonical) {
+        const guest = await loadJnameGuestResult();
+        if (cancelled) return;
+        if (guest?.jName) canonical = { jName: guest.jName, percent: guest.percent };
+      }
+      if (canonical) {
+        sessionCanonical = canonical;
+        setCanonicalResult(canonical);
+      }
+
+      const draft = await loadJnameDraft();
+      if (cancelled) return;
+      if (draft && draft.phase !== 'result' && draft.phase !== 'reveal') {
+        if (canonical) funRunRef.current = true;
+        runRef.current = draft.run;
+        setCurrentQId(draft.currentQId || FIRST_Q?.id || '');
+        setRapidIndex(draft.rapidIndex || 0);
+        setPart4Index(draft.part4Index || 0);
+        setPicks(draft.picks || []);
+        setPhase(draft.phase as Phase);
+        startedAt.current = draft.startedAt || Date.now();
+        setHydrating(false);
+        return;
+      }
+
+      if (canonical) {
+        setResult(canonical);
         setPhase('result');
-        const live = await fetchJnameLeaderboard();
-        if (!cancelled && live?.buckets) setBoard(live.buckets);
+        if (!isDemoMode()) {
+          const live = await fetchJnameLeaderboard();
+          if (!cancelled && live?.buckets) setBoard(live.buckets);
+        }
       }
       setHydrating(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [signedIn]);
+
+  // THIS SECTION DOES: remember the friend who shared the link, so a guest
+  // take can show the duo teaser (you vs them) before an account exists.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const guest = await loadJnameGuestResult();
+      const token =
+        shareFromRoute || (await peekPendingReferral()) || guest?.shareToken;
+      if (!token) return;
+      await setPendingReferral(token);
+      const anon = signedIn ? undefined : await getAnonRef();
+      const view = await fetchJnameSharedView(token, anon);
+      if (cancelled || !view) {
+        if (!cancelled && guest?.sharerJName) {
+          setShareFriend({
+            token,
+            jName: guest.sharerJName,
+            percent: guest.sharerPercent ?? 0,
+            firstName: guest.sharerFirstName
+          });
+        }
+        return;
+      }
+      setShareFriend({
+        token,
+        jName: view.jName,
+        percent: view.percent,
+        firstName: view.sharerFirstName
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [shareFromRoute, signedIn]);
+
+  // THIS SECTION DOES: keep a local draft while they are mid-take.
+  useEffect(() => {
+    if (hydrating || completedRef.current) return;
+    if (phase === 'result' || phase === 'reveal' || phase === 'intro') return;
+    void saveJnameDraft({
+      phase,
+      currentQId,
+      rapidIndex,
+      part4Index,
+      picks,
+      run: runRef.current,
+      startedAt: startedAt.current
+    });
+  }, [phase, currentQId, rapidIndex, part4Index, picks, hydrating]);
+
+  // THIS SECTION DOES: load the real invite URL once a first result exists, so
+  // you can see / copy / preview the same link a friend would open.
+  useEffect(() => {
+    if (!signedIn || hydrating) return;
+    if (!canonicalResult && !sessionCanonical) return;
+    let cancelled = false;
+    void (async () => {
+      let server = await getJnameShareLink();
+      if (!server?.token) {
+        await new Promise((r) => setTimeout(r, 500));
+        server = await getJnameShareLink();
+      }
+      if (cancelled || !server?.token) return;
+      setShareInvite({
+        token: server.token,
+        url: visibleShareUrl(server.token, server.url)
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn, hydrating, canonicalResult]);
 
   // THIS SECTION DOES: load the friend board whenever we land on a saved result
   // (re-opening the quiz) so "your versions" is ready without re-taking.
   useEffect(() => {
-    if (!sessionResult) return;
+    if (!sessionCanonical) return;
     void (async () => {
       if (isDemoMode()) {
         setBoard(
@@ -199,14 +368,19 @@ export default function WhatJNameQuiz() {
   // --- START + ABANDON tracking ---
   useEffect(() => {
     if (hydrating) return;
-    if (!sessionResult) {
-      trackProduct('quiz_started', { surface: 'quiz', method: 'tap' });
+    if (!sessionCanonical) {
+      trackProduct('quiz_started', {
+        surface: 'quiz',
+        quiz_id: 'what-j-name',
+        method: 'tap'
+      });
       startedAt.current = Date.now();
     }
     return () => {
-      if (!completedRef.current && !sessionResult) {
+      if (!completedRef.current && !sessionCanonical) {
         trackProduct('quiz_abandoned', {
           surface: 'quiz',
+          quiz_id: 'what-j-name',
           time_to_complete_ms: Date.now() - startedAt.current,
           count: runRef.current.part1.length + runRef.current.part4.length
         });
@@ -215,6 +389,12 @@ export default function WhatJNameQuiz() {
   }, [hydrating]);
 
   function close() {
+    if (!signedIn) {
+      const token = shareFriend?.token || shareFromRoute;
+      if (token) void setPendingReferral(token);
+      router.replace('/sign-in');
+      return;
+    }
     if (router.canGoBack()) router.back();
     else router.replace('/home');
   }
@@ -234,6 +414,18 @@ export default function WhatJNameQuiz() {
 
   function endQuiz() {
     setLeaveOpen(false);
+    // Save progress so they can resume instead of starting over.
+    if (!completedRef.current && phase !== 'intro') {
+      void saveJnameDraft({
+        phase,
+        currentQId,
+        rapidIndex,
+        part4Index,
+        picks,
+        run: runRef.current,
+        startedAt: startedAt.current
+      });
+    }
     close();
   }
 
@@ -263,7 +455,12 @@ export default function WhatJNameQuiz() {
           bursts={bursts}
           onDone={(key) => setBursts((prev) => prev.filter((b) => b.key !== key))}
         />
-        <EndQuizSheet open={leaveOpen} onStay={stayInQuiz} onEnd={endQuiz} />
+        <EndQuizSheet
+          open={leaveOpen}
+          onStay={stayInQuiz}
+          onEnd={endQuiz}
+          canSaveDraft={phase !== 'intro' && !completedRef.current}
+        />
       </View>
     );
   }
@@ -321,22 +518,8 @@ export default function WhatJNameQuiz() {
     else finish();
   }
 
-  // THIS SECTION DOES: score everything and move into the reveal.
-  function finish() {
-    const out = scoreRun(runRef.current);
-    const tops = topJNames(out.j_name_scores, 3);
-    const res = { jName: out.j_name, percent: out.j_percentage };
-    setResult(res);
-    sessionResult = res;
-    __demoSetQuizResult(out.j_name);
-    // Save the result to the server (skipped in demo) so it can power sharing,
-    // the leaderboard, and notifications. Fire-and-forget; never blocks the UI.
-    void saveJnameResult({
-      jName: out.j_name,
-      percent: out.j_percentage,
-      topNames: tops
-    });
-    // Load the "your version of X" board (demo uses fixture friend buckets).
+  // THIS SECTION DOES: load the friend board for the first result only.
+  function loadBoard() {
     void (async () => {
       if (isDemoMode()) {
         setBoard(
@@ -358,26 +541,99 @@ export default function WhatJNameQuiz() {
       const live = await fetchJnameLeaderboard();
       if (live?.buckets) setBoard(live.buckets);
     })();
+  }
+
+  // THIS SECTION DOES: score the run. The first finish is the real result
+  // (saved for friends). A later finish is fun-only and stays on this phone.
+  function finish() {
+    const out = scoreRun(runRef.current);
+    const tops = topJNames(out.j_name_scores, 3);
+    const res = { jName: out.j_name, percent: out.j_percentage };
+    const isFun = funRunRef.current || Boolean(sessionCanonical || canonicalResult);
+    setResult(res);
     completedRef.current = true;
+    void clearJnameDraft();
     trackProduct('quiz_completed', {
       surface: 'quiz',
+      quiz_id: 'what-j-name',
+      method: isFun ? 'retake' : 'tap',
       time_to_complete_ms: Date.now() - startedAt.current
     });
+    if (isFun) {
+      setFunResult(res);
+      setViewing('fun');
+      void saveJnameFunResult(res);
+    } else {
+      sessionCanonical = res;
+      setCanonicalResult(res);
+      setViewing('first');
+      __demoSetQuizResult(out.j_name);
+      setLiveJnameSessionResult(res);
+      if (signedIn) {
+        void saveJnameResult({
+          jName: out.j_name,
+          percent: out.j_percentage,
+          topNames: tops
+        });
+        loadBoard();
+        const linkToken = shareFriend?.token || shareFromRoute;
+        if (linkToken) {
+          void (async () => {
+            const linked = await resolveJnameReferral({ token: linkToken });
+            if (linked.connected) {
+              trackProduct('friend_added', { method: 'link' });
+              if (!isDemoMode()) await loadPeople();
+              setAddedFriend(true);
+              loadBoard();
+            } else if (linked.alreadyFriends) {
+              setAddedFriend(true);
+            }
+          })();
+        }
+      } else {
+        const guestToken = shareFriend?.token || shareFromRoute;
+        void saveJnameGuestResult({
+          jName: out.j_name,
+          percent: out.j_percentage,
+          topNames: tops,
+          shareToken: guestToken,
+          sharerFirstName: shareFriend?.firstName,
+          sharerJName: shareFriend?.jName,
+          sharerPercent: shareFriend?.percent
+        });
+        if (guestToken) void setPendingReferral(guestToken);
+      }
+    }
     setRevealStep(0);
     setPhase('reveal');
   }
 
   function retake() {
+    funRunRef.current = true;
     runRef.current = { part1: [], rapidFire: [], selectedBestFriends: [], part4: [] };
     setPicks([]);
     setRapidIndex(0);
     setPart4Index(0);
     setCurrentQId(FIRST_Q?.id ?? '');
     setPhase('intro');
-    trackProduct('quiz_started', { surface: 'quiz', method: 'retake' });
+    void clearJnameDraft();
+    trackProduct('quiz_started', {
+      surface: 'quiz',
+      quiz_id: 'what-j-name',
+      method: 'retake'
+    });
     startedAt.current = Date.now();
     completedRef.current = false;
   }
+
+  // THIS SECTION DOES: Profile can open this screen already asking for a fun retake.
+  useEffect(() => {
+    if (hydrating || retakeFromRouteRef.current || !wantRetake) return;
+    if (sessionCanonical || canonicalResult) {
+      retakeFromRouteRef.current = true;
+      retake();
+    }
+  }, [hydrating, wantRetake]);
 
   // ============================================
   // RENDER
@@ -617,11 +873,43 @@ export default function WhatJNameQuiz() {
     );
   }
 
-  // --- RESULT: the big card (+ share tools + quiet retake) ---
-  if (phase === 'result' && result) {
+  // --- RESULT: poster + connect-with-friends (first) or fun-only card ---
+  const shownResult =
+    viewing === 'fun' && funResult ? funResult : canonicalResult ?? result;
+  if (phase === 'result' && shownResult) {
+    const isFunView = viewing === 'fun' && Boolean(funResult);
+    const shareName = canonicalResult?.jName ?? shownResult.jName;
+    const friendName = shareFriend?.firstName || 'your friend';
+    const duoPercent =
+      shareFriend && !isFunView
+        ? jnameCompatibilityPercent(shownResult, {
+            jName: shareFriend.jName,
+            percent: shareFriend.percent
+          })
+        : null;
+
+    async function addShareFriend() {
+      if (!shareFriend?.token || addingFriend) return;
+      setAddingFriend(true);
+      const linked = await resolveJnameReferral({ token: shareFriend.token });
+      if (linked.connected) {
+        trackProduct('friend_added', { method: 'link' });
+        if (!isDemoMode()) await loadPeople();
+        loadBoard();
+      }
+      if (linked.personId || linked.alreadyFriends || linked.connected) {
+        setAddedFriend(true);
+      }
+      setAddingFriend(false);
+    }
+
+    function goMakeAccount() {
+      if (shareFriend?.token) void setPendingReferral(shareFriend.token);
+      router.replace('/sign-in');
+    }
+
     // DOWNLOAD PNG: snapshot the poster exactly as it looks, then write that
     // picture into the phone's photo library so it can be posted anywhere.
-    // We say out loud whether it worked, because saving is silent otherwise.
     const onSaveImage = async () => {
       setSaveState('saving');
       const uri = await captureCard(cardRef);
@@ -631,59 +919,210 @@ export default function WhatJNameQuiz() {
       }
       const ok = await saveImageToPhotos(uri);
       setSaveState(ok ? 'saved' : 'failed');
-      if (ok) trackProduct('quiz_shared', { surface: 'quiz', method: 'save_image' });
+      if (ok) {
+        trackProduct('quiz_shared', {
+          surface: 'quiz',
+          quiz_id: 'what-j-name',
+          method: 'save_image'
+        });
+      }
     };
-    // Snapshot the card, then open the share sheet (Instagram/Snap/Messages).
-    const onShareImage = async () => {
+    // Snapshot the card, then open Bridger's collage composer with that PNG.
+    const onShareToStory = async () => {
       const uri = await captureCard(cardRef);
       if (!uri) return;
-      const ok = await shareImage(uri);
-      if (ok) trackProduct('quiz_shared', { surface: 'quiz', method: 'image' });
+      trackProduct('quiz_shared', {
+        surface: 'quiz',
+        quiz_id: 'what-j-name',
+        method: 'story'
+      });
+      router.push({
+        pathname: '/story/capture',
+        params: { photoUri: uri }
+      });
     };
-    // Share just the link so a friend can take it and find their version of you.
-    // Prefer the server's stable link (remembers who shared it); if that isn't
-    // available (demo / offline) fall back to a plain link.
+    // Share the first-result invite link so friends take it and land on your board.
     const onShareLink = async () => {
       const server = await getJnameShareLink();
-      const url = server?.url ?? buildResultLink(result.jName);
-      const ok = await shareLink(url, `I'm ${result.jName} on Bridger. Which J are you?`);
-      if (ok) trackProduct('quiz_shared', { surface: 'quiz', method: 'link' });
+      const url = server?.token
+        ? visibleShareUrl(server.token, server.url)
+        : shareInvite?.url;
+      if (!url) return;
+      if (server?.token) setShareInvite({ token: server.token, url });
+      const ok = await shareLink(url, `I'm ${shareName} on Bridger. Which J are you?`);
+      if (ok) {
+        trackProduct('quiz_shared', {
+          surface: 'quiz',
+          quiz_id: 'what-j-name',
+          method: 'link'
+        });
+      }
     };
 
     return (
       <Screen tone="plain" className="bg-white">
         <ScreenHeader title="Your result" onBack={close} />
-        <ScrollView contentContainerClassName="px-5 pb-10">
+        {/* ScreenBody paints the header with status-bar padding. A raw ScrollView
+            left the poster under the clock (TestFlight overlap). */}
+        <ScreenBody tabBarInset={false} padded className="px-5">
+          {funResult ? (
+            <View className="mt-1 mb-3">
+              <SegmentedTabs
+                tabs={['Your result', 'Fun retake']}
+                value={isFunView ? 'Fun retake' : 'Your result'}
+                onChange={(tab) => setViewing(tab === 'Fun retake' ? 'fun' : 'first')}
+                analyticsIdForTab={(tab) =>
+                  tab === 'Fun retake' ? QUIZ_IDS.result.view_fun : QUIZ_IDS.result.view_first
+                }
+              />
+            </View>
+          ) : null}
+
           {/* The poster. The stage shrinks it to fit the phone but hands us the
               real, full-size view underneath so the saved PNG stays crisp. */}
           <View className="mt-2">
             <ResultCardStage
-              jName={result.jName}
-              percent={result.percent}
+              jName={shownResult.jName}
+              percent={shownResult.percent}
               captureRef={cardRef}
             />
           </View>
 
-          {/* Save the picture, share it to a story, or share the link. */}
+          {isFunView ? (
+            <AnalyticsRegion
+              analyticsId={QUIZ_IDS.result.fun_note}
+              interactive={false}
+              accessibilityLabel="This retake is just for fun. Friend matching still uses your first result."
+              className="mt-4 rounded-card border border-ink-line bg-surface px-4 py-3"
+            >
+              <Text className="text-center font-sans-sb text-[13px] text-ink-mute">
+                Just for fun. Friend matching still uses your first result.
+              </Text>
+            </AnalyticsRegion>
+          ) : shareFriend ? (
+            <AnalyticsRegion
+              analyticsId={QUIZ_IDS.result.duo_card}
+              interactive={false}
+              accessibilityLabel={`You are ${shownResult.jName}. ${friendName} is ${shareFriend.jName}. You two are ${duoPercent} percent compatible.`}
+              className="mt-6 rounded-card border border-ink-line bg-surface px-4 py-4"
+            >
+              <Text className="text-center font-sans-b text-[15px] text-ink">You and {friendName}</Text>
+              <Text className="mt-1 text-center font-sans-sb text-[13px] text-ink-mute">
+                You are {shownResult.jName}. {friendName} is {shareFriend.jName}.
+              </Text>
+              {duoPercent != null ? (
+                <Text className="mt-2 text-center font-pixel text-[28px] text-ink">
+                  {duoPercent}% compatible
+                </Text>
+              ) : null}
+            </AnalyticsRegion>
+          ) : (
+            <View className="mt-6">
+              <AnalyticsRegion
+                analyticsId={QUIZ_IDS.result.connect_header}
+                interactive={false}
+                accessibilityRole="header"
+              >
+                <Text className="font-sans-b text-[15px] text-ink">Connect with friends</Text>
+              </AnalyticsRegion>
+              <AnalyticsRegion
+                analyticsId={QUIZ_IDS.result.connect_body}
+                interactive={false}
+                accessibilityLabel="Share this quiz so friends can take it and see how you line up."
+              >
+                <Text className="mt-1 font-sans-sb text-[13px] text-ink-mute">
+                  Send this quiz to friends. When they finish, you see their J-name
+                  and how compatible you two are.
+                </Text>
+              </AnalyticsRegion>
+            </View>
+          )}
+
+          {!isFunView && signedIn && shareInvite ? (
+            <ShareInviteLink
+              url={shareInvite.url}
+              token={shareInvite.token}
+              urlAnalyticsId={QUIZ_IDS.result.share_url}
+              copyAnalyticsId={QUIZ_IDS.result.copy_link}
+              previewAnalyticsId={QUIZ_IDS.result.preview_link}
+              onCopied={() =>
+                trackProduct('quiz_shared', {
+                  surface: 'quiz',
+                  quiz_id: 'what-j-name',
+                  method: 'copy'
+                })
+              }
+            />
+          ) : null}
+
+          {/* Share the picture, a Bridger collage, or (first result) the invite link. */}
           <View className="mt-5 gap-2.5">
-            <ButtonPrimary full onPress={() => void onShareImage()} accessibilityLabel="Share to a story">
-              Share to story
-            </ButtonPrimary>
+            {!isFunView && !signedIn ? (
+              <ButtonPrimary
+                full
+                onPress={goMakeAccount}
+                analyticsId={QUIZ_IDS.result.make_account}
+                accessibilityLabel={
+                  shareFriend
+                    ? `Make an account to add ${friendName}`
+                    : 'Make an account to save your result'
+                }
+              >
+                {shareFriend
+                  ? `Make an account to add ${friendName}`
+                  : 'Make an account to save this'}
+              </ButtonPrimary>
+            ) : !isFunView && shareFriend && !addedFriend ? (
+              <ButtonPrimary
+                full
+                onPress={() => void addShareFriend()}
+                analyticsId={QUIZ_IDS.result.add_friend}
+                accessibilityLabel={`Add ${friendName}`}
+              >
+                {addingFriend ? 'Adding…' : `Add ${friendName}`}
+              </ButtonPrimary>
+            ) : isFunView ? (
+              <ButtonPrimary
+                full
+                onPress={() => void onShareToStory()}
+                analyticsId={QUIZ_IDS.result.share_story}
+                accessibilityLabel="Share to your Bridger collage"
+              >
+                Share to story
+              </ButtonPrimary>
+            ) : (
+              <ButtonPrimary
+                full
+                onPress={() => void onShareLink()}
+                analyticsId={QUIZ_IDS.result.share_link}
+                accessibilityLabel="Share the quiz link with friends"
+              >
+                Share link
+              </ButtonPrimary>
+            )}
             <View className="flex-row gap-2.5">
               <View className="flex-1">
                 <ButtonSecondary
                   full
                   onPress={() => void onSaveImage()}
+                  analyticsId={QUIZ_IDS.result.save_image}
                   accessibilityLabel="Download this card as a PNG to your photos"
                 >
                   {saveState === 'saving' ? 'Saving…' : 'Download PNG'}
                 </ButtonSecondary>
               </View>
-              <View className="flex-1">
-                <ButtonSecondary full onPress={() => void onShareLink()} accessibilityLabel="Share the quiz link">
-                  Share link
-                </ButtonSecondary>
-              </View>
+              {!isFunView && signedIn ? (
+                <View className="flex-1">
+                  <ButtonSecondary
+                    full
+                    onPress={() => void onShareToStory()}
+                    analyticsId={QUIZ_IDS.result.share_story}
+                    accessibilityLabel="Share to your Bridger collage"
+                  >
+                    Share to story
+                  </ButtonSecondary>
+                </View>
+              ) : null}
             </View>
             {/* ACCESSIBILITY: say what happened out loud, since a silent save
                 looks like a broken button to anyone using a screen reader. */}
@@ -700,22 +1139,33 @@ export default function WhatJNameQuiz() {
             ) : null}
           </View>
 
-          {/* Friends grouped by the J-name they got ("your version of Jake"). */}
-          <View className="mt-8">
-            <JnameLeaderboard buckets={board} />
-          </View>
+          {!isFunView && signedIn ? (
+            <View className="mt-8">
+              <JnameLeaderboard buckets={board} onInvite={() => void onShareLink()} />
+            </View>
+          ) : null}
 
           <View className="mt-5">
-            <ButtonSecondary full onPress={close} accessibilityLabel="Done">
+            <ButtonSecondary
+              full
+              onPress={close}
+              analyticsId={QUIZ_IDS.result.done}
+              accessibilityLabel="Done"
+            >
               Done
             </ButtonSecondary>
           </View>
 
-          {/* Quiet, on purpose: the real result above stays the one that counts. */}
-          <Pressable onPress={retake} accessibilityRole="button" className="mt-4 self-center py-2">
+          {/* Quiet, on purpose: the first result above stays the one that counts. */}
+          <Pressable
+            onPress={withAnalyticsPress(QUIZ_IDS.result.retake, retake)}
+            accessibilityRole="button"
+            accessibilityLabel="Retake this quiz for fun"
+            className="mt-4 min-h-[44px] self-center justify-center py-2"
+          >
             <Text className="font-sans-sb text-[12px] text-ink-mute underline">Retake for fun</Text>
           </Pressable>
-        </ScrollView>
+        </ScreenBody>
       </Screen>
     );
   }

@@ -6,7 +6,10 @@
 // Analytics: surface=profile (friend view).
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+// #region agent log
+import { debugScreenMount } from '../../lib/debug-instrumentation';
+// #endregion
+import { Alert, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SendIcon } from 'lucide-react-native';
 import type {
@@ -16,7 +19,7 @@ import type {
   Top5Item,
   WhereMetView
 } from '@bridger/shared';
-import { openSurface, PROFILE, type BucketItem } from '@bridger/shared';
+import { openSurface, PROFILE, trackProduct, type BucketItem, type Tier } from '@bridger/shared';
 // Friend Favorites tiles are built from their fav groups (never the viewer's).
 import {
   Screen,
@@ -26,6 +29,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { CommonalityList } from '../../components/discover/CommonalityList';
+import { InCommonThinOverlap } from '../../components/discover/ThinOverlapHint';
 import { InsideJokesWall } from '../../components/friends/InsideJokesWall';
 import { BucketList } from '../../components/profile/BucketList';
 import { HowYouMetCard } from '../../components/profile/HowYouMetCard';
@@ -48,6 +52,7 @@ import {
 import type { Commonality } from '../../data/discover';
 import { resolveEmojiBombId } from '../../data/delight';
 import { listUpcomingForProfile } from '../../data/events';
+import { moveTier } from '../../data/friends';
 import { startThreadWith } from '../../data/messages';
 import { mutualFriendsWith, personById } from '../../data/people';
 import type {
@@ -113,18 +118,27 @@ function friendTabAnalyticsId(tab: string): string | undefined {
 }
 
 export default function PersonScreen() {
+  // #region agent log
+  useEffect(() => debugScreenMount('person'), []);
+  // #endregion
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const personId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : 'maya';
-  const person = personById(personId);
+  // Local copy so a retier updates the tier pill without leaving the screen.
+  const [person, setPerson] = useState(() => personById(personId));
   const first = person.name.split(' ')[0];
+
+  useEffect(() => {
+    setPerson(personById(personId));
+  }, [personId]);
 
   const [tab, setTab] = useState('About them');
   const [searchOpen, setSearchOpen] = useState(false);
   const [commonalities, setCommonalities] = useState<Commonality[]>([]);
 
   const [header, setHeader] = useState<MyProfileHeader>({
-    city: person.label || 'Somewhere',
+    // Empty city: never invent "Somewhere" (that looked like a broken load).
+    city: person.label || '',
     bio: '',
     song: { title: '', artist: '' }
   });
@@ -171,7 +185,7 @@ export default function PersonScreen() {
     void getPersonProfile(personId).then((p) => {
       if (!p) {
         setHeader({
-          city: person.label || 'Somewhere',
+          city: person.label || '',
           bio: '',
           song: { title: '', artist: '' }
         });
@@ -231,8 +245,41 @@ export default function PersonScreen() {
   }, [header, about, top5]);
 
   const openMessage = async () => {
-    const threadId = await startThreadWith(personId);
-    router.push(`/messages/${threadId}`);
+    try {
+      const threadId = await startThreadWith(personId);
+      router.push(`/messages/${threadId}`);
+    } catch (e) {
+      Alert.alert(
+        'Messaging coming soon',
+        e instanceof Error
+          ? e.message
+          : 'Messaging is not available in this build yet.'
+      );
+    }
+  };
+
+  // THIS SECTION DOES: save a new circle, update the pill, fire the product event.
+  const handleRetier = async (tier: Tier) => {
+    const from = person.tier ?? 'friend';
+    if (tier === from) return;
+    try {
+      const result = await moveTier(personId, tier);
+      setPerson((p) => ({ ...p, tier: result.landedIn }));
+      if (result.landedIn !== from) {
+        trackProduct('friend_retiered', {
+          from_tier: from,
+          to_tier: result.landedIn
+        });
+      }
+      if (result.upsell) {
+        Alert.alert(
+          'Circle is full',
+          'Your free Close / Friends spots are full. They landed in Acquaintances. Co-op raises the caps.'
+        );
+      }
+    } catch {
+      Alert.alert('Could not update', 'Try again in a moment.');
+    }
   };
 
   return (
@@ -247,6 +294,7 @@ export default function PersonScreen() {
           onBack={() => router.back()}
           onOpenStory={() => router.push(`/story/${personId}?from=profile`)}
           onSearch={() => setSearchOpen(true)}
+          onRetier={(t) => void handleRetier(t)}
           heroTrailing={
             <View className="flex-row items-center gap-2">
               {emojiBombId ? (
@@ -329,12 +377,12 @@ export default function PersonScreen() {
             {commonalities.length > 0 ? (
               <CommonalityList items={commonalities} theirName={first} />
             ) : (
-              <View className="rounded-2xl border border-dashed border-ink-line bg-surface px-4 py-8">
-                <Text className="text-center font-sans-sb text-[14px] leading-snug text-ink-mute">
-                  What you share with {first} shows up here after you connect -
-                  the same commonalities from the reveal.
-                </Text>
-              </View>
+              <InCommonThinOverlap
+                firstName={first}
+                bodyAnalyticsId={PROFILE.in_common.empty_body}
+                ctaAnalyticsId={PROFILE.in_common.personality_quizzes}
+                onOpenQuizzes={() => router.push('/discover/connect-over')}
+              />
             )}
             <InCommonAnswers
               theirName={first}
@@ -368,6 +416,7 @@ export default function PersonScreen() {
           <View className="mt-5 px-4">
             <InsideJokesWall
               ownerFirstName={first}
+              personId={personId}
               analyticsIds={{
                 note: PROFILE.inside_jokes.note,
                 add: PROFILE.inside_jokes.add,

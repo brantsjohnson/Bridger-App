@@ -45,6 +45,8 @@ export function validateJobOutput(
       return validateFreshness(parsed);
     case 'agent_query':
       return validateAgentQuery(parsed);
+    case 'recap_week_fill':
+      return validateRecapWeekFill(parsed);
     default:
       return { ok: false, reason: `unknown_schema:${schemaId}` };
   }
@@ -132,6 +134,22 @@ function validateFreshness(parsed: unknown): ValidateResult {
     return { ok: false, reason: 'freshness_missing_fields' };
   }
   return { ok: true, value: obj };
+}
+
+function validateRecapWeekFill(parsed: unknown): ValidateResult {
+  if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { ok: false, reason: 'recap_week_fill_not_object' };
+  }
+  const questions = (parsed as { questions?: unknown }).questions;
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return { ok: false, reason: 'recap_week_fill_missing_questions' };
+  }
+  for (const q of questions) {
+    if (typeof q !== 'string' || !q.trim() || q.trim().length > 120) {
+      return { ok: false, reason: 'recap_week_fill_bad_question' };
+    }
+  }
+  return { ok: true, value: { questions: questions.map((q) => q.trim()) } };
 }
 
 function validateAgentQuery(parsed: unknown): ValidateResult {

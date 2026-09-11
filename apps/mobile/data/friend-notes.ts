@@ -94,18 +94,29 @@ function firstName(personId: string): string {
   return personById(personId).name.split(' ')[0] ?? 'them';
 }
 
-/** List your private notes for one friend. */
-export async function listFriendNotes(personId: string): Promise<FriendNote[]> {
+/** List your private notes for one friend, or for a card you made. */
+export async function listFriendNotes(opts: {
+  personId?: string;
+  pendingPersonId?: string;
+}): Promise<FriendNote[]> {
+  const personId = opts.personId;
+  const pendingPersonId = opts.pendingPersonId;
   if (isDemoMode()) {
-    return store().filter((n) => n.personId === personId);
+    return store().filter((n) =>
+      pendingPersonId
+        ? n.pendingPersonId === pendingPersonId
+        : n.personId === personId
+    );
   }
-  return apiFetch<FriendNote[]>(
-    `/me/notes?personId=${encodeURIComponent(personId)}`
-  );
+  const q = pendingPersonId
+    ? `pendingPersonId=${encodeURIComponent(pendingPersonId)}`
+    : `personId=${encodeURIComponent(personId ?? '')}`;
+  return apiFetch<FriendNote[]>(`/me/notes?${q}`);
 }
 
 export type AddFriendNoteInput = {
-  personId: string;
+  personId?: string;
+  pendingPersonId?: string;
   kind: FriendNote['kind'];
   body: string;
   date?: string;
@@ -116,11 +127,15 @@ export type AddFriendNoteInput = {
 export async function addFriendNote(input: AddFriendNoteInput): Promise<FriendNote> {
   const body = input.body.trim();
   if (!body) throw new Error('Note text is required');
+  if (!input.personId && !input.pendingPersonId) {
+    throw new Error('personId or pendingPersonId is required');
+  }
 
   if (isDemoMode()) {
     const note: FriendNote = {
       id: `n-${Date.now()}`,
-      personId: input.personId,
+      personId: input.personId ?? '',
+      pendingPersonId: input.pendingPersonId,
       kind: input.kind,
       body,
       date: input.kind === 'date' ? input.date?.trim() || body : undefined,
@@ -140,6 +155,7 @@ export async function addFriendNote(input: AddFriendNoteInput): Promise<FriendNo
     method: 'POST',
     body: JSON.stringify({
       personId: input.personId,
+      pendingPersonId: input.pendingPersonId,
       kind: input.kind,
       text: body,
       date: input.kind === 'date' ? input.date?.trim() || body : undefined,

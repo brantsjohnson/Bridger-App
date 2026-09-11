@@ -4,7 +4,8 @@
 // Pop art leads with an instant on-device Warhol preview; all four looks
 // (Pop art, Comic, Sepia, X-ray) bake on Bridger servers so the filtered face
 // is the saved avatar everywhere. Tap one and the pink pill highlight moves.
-// Under the row a badge says Pop art ran on the phone (not AI).
+// Under the row a badge says the look ran on the phone (not AI). It stays
+// up for Pop art, Comic, Sepia, and X-ray.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -61,10 +62,8 @@ export function PhotoFilterPicker({
    */
   analyticsIds?: Partial<Record<PhotoFilterKey, string>>;
 }) {
-  // Pop art previews on the phone; every look (including Pop art) saves via
-  // Bridger servers so the filtered face is what friends see as your avatar.
-  // Badge only shows for Pop art. Other looks skip the line so people just continue.
-  const isPopArtPreview = value === 'pop_art';
+  // All four looks paint on the phone first. The badge stays on whichever
+  // pill is picked so Comic / Sepia / X-ray never look like they went to AI.
 
   return (
     <View style={{ gap: 8 }}>
@@ -121,8 +120,8 @@ export function PhotoFilterPicker({
         })}
       </View>
 
-      {/* THIS SECTION DOES: Pop art only. Says the look ran on the phone, not AI. */}
-      {isPopArtPreview ? (
+      {/* THIS SECTION DOES: says the look ran on the phone, not AI. */}
+      {value ? (
         <AnalyticsRegion
           analyticsId={ONBOARDING.confirm_profile.local_processing_badge}
           interactive={false}

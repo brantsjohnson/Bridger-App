@@ -10,6 +10,7 @@ import {
   loadAppleMusicPrivateKey,
   mintAppleMusicDeveloperToken
 } from '../music/apple-music-jwt';
+import { readVaultLoadStatus } from '../load-server-secret';
 import { PhotoFiltersService } from '../photo-filters/photo-filters.service';
 import { PosthogService } from '../posthog/posthog.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -49,6 +50,7 @@ export class IntegrationsHealthService {
     const checks: IntegrationCheck[] = [];
 
     checks.push(this.selfCheck(checkedAt));
+    checks.push(this.vaultCheck(checkedAt));
     checks.push(await this.supabaseCheck(checkedAt));
     checks.push(await this.spotifyCheck(checkedAt));
     checks.push(await this.appleMusicCheck(checkedAt));
@@ -75,9 +77,52 @@ export class IntegrationsHealthService {
       )
     );
     checks.push(this.stripeCheck(checkedAt));
+    checks.push(this.twilioCheck(checkedAt));
 
     const overall = rollup(checks);
     return { checkedAt, overall, checks };
+  }
+
+  // THIS SECTION DOES: say whether boot read the AWS vault (key names only).
+  private vaultCheck(checkedAt: string): IntegrationCheck {
+    const status = readVaultLoadStatus();
+    if (!status || !status.attempted) {
+      return {
+        id: 'secret_vault',
+        label: 'AWS secret vault',
+        status: 'warn',
+        detail:
+          'This process did not load bridger/api/server. Local .env is in use, or BRIDGER_SERVER_SECRET_NAME is unset.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!status.loaded) {
+      return {
+        id: 'secret_vault',
+        label: 'AWS secret vault',
+        status: 'error',
+        detail: `Vault load failed (${status.error ?? 'unknown'}). Stripe / MusicKit keys in the vault are unused.`,
+        kind: 'config',
+        checkedAt
+      };
+    }
+    const interesting = [
+      'APPLE_MUSIC_PRIVATE_KEY',
+      'SPOTIFY_CLIENT_SECRET',
+      'STRIPE_SECRET_KEY',
+      'REVENUECAT_WEBHOOK_SECRET'
+    ];
+    const filledHit = interesting.filter((k) => status.filled.includes(k) || status.skippedExisting.includes(k));
+    const emptyHit = interesting.filter((k) => status.empty.includes(k));
+    return {
+      id: 'secret_vault',
+      label: 'AWS secret vault',
+      status: emptyHit.length ? 'warn' : 'ok',
+      detail: `Loaded. copied=${status.filled.length} kept=${status.skippedExisting.length} empty=${status.empty.length}. music/pay filled: ${filledHit.join(', ') || 'none'}. still empty: ${emptyHit.join(', ') || 'none'}.`,
+      kind: 'live',
+      checkedAt
+    };
   }
 
   // THIS SECTION DOES: confirm this Nest process itself answered.
@@ -234,10 +279,10 @@ export class IntegrationsHealthService {
 
   // THIS SECTION DOES: Apple MusicKit keys present + developer JWT mint probe.
   private async appleMusicCheck(checkedAt: string): Promise<IntegrationCheck> {
-    const teamId = this.config.get<string>('APPLE_MUSIC_TEAM_ID');
-    const keyId = this.config.get<string>('APPLE_MUSIC_KEY_ID');
-    const path = this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY_PATH');
-    const inline = this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY');
+    const teamId = this.config.get<string>('APPLE_MUSIC_TEAM_ID')?.trim();
+    const keyId = this.config.get<string>('APPLE_MUSIC_KEY_ID')?.trim();
+    const path = this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY_PATH')?.trim();
+    const inline = this.config.get<string>('APPLE_MUSIC_PRIVATE_KEY')?.trim();
     if (!teamId || !keyId) {
       return {
         id: 'apple_music',
@@ -409,6 +454,46 @@ export class IntegrationsHealthService {
       label: 'Stripe (card membership)',
       status: 'ok',
       detail: 'STRIPE_SECRET_KEY, price id(s), and STRIPE_WEBHOOK_SECRET are set.',
+      kind: 'config',
+      checkedAt
+    };
+  }
+
+  // THIS SECTION DOES: confirm Twilio is configured for phone OTP (never echo tokens).
+  private twilioCheck(checkedAt: string): IntegrationCheck {
+    const sid = this.config.get<string>('TWILIO_ACCOUNT_SID');
+    const token =
+      this.config.get<string>('TWILIO_AUTH_TOKEN') ||
+      this.config.get<string>('SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN');
+    const from =
+      this.config.get<string>('TWILIO_MESSAGE_SERVICE_SID') ||
+      this.config.get<string>('TWILIO_FROM_NUMBER');
+    if (!sid || !token) {
+      return {
+        id: 'twilio_sms',
+        label: 'Twilio SMS (phone sign-in)',
+        status: 'warn',
+        detail:
+          'TWILIO_ACCOUNT_SID or auth token is missing. Phone OTP will fail until Twilio is configured in Supabase Auth.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    if (!from) {
+      return {
+        id: 'twilio_sms',
+        label: 'Twilio SMS (phone sign-in)',
+        status: 'warn',
+        detail: 'Account is set; add TWILIO_MESSAGE_SERVICE_SID or TWILIO_FROM_NUMBER.',
+        kind: 'config',
+        checkedAt
+      };
+    }
+    return {
+      id: 'twilio_sms',
+      label: 'Twilio SMS (phone sign-in)',
+      status: 'ok',
+      detail: 'Twilio account + sender are set. Auth token is not shown.',
       kind: 'config',
       checkedAt
     };

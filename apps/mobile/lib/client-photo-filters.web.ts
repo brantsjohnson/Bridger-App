@@ -10,7 +10,8 @@
 // ============================================
 import type { ServerPhotoFilter } from './photo-filters';
 
-const MAX_SIDE = 1000;
+/** 200% of the older 1000 cap so local demo bakes match the server sharpness. */
+const MAX_SIDE = 2000;
 
 /** Bold posterized bands (matches server Color Levels 4). */
 const COMIC_COLOR_LEVELS = 4;
@@ -216,7 +217,14 @@ export async function bakeClientPhotoFilter(
   uri: string,
   filter: ServerPhotoFilter
 ): Promise<string | null> {
+  // #region agent log
+  const t0 = Date.now();
+  const { debugFilterEvent } = await import('./debug-instrumentation');
+  // #endregion
   const img = await loadImage(uri);
+  // #region agent log
+  debugFilterEvent('web canvas: image loaded', { filter, ms: Date.now() - t0, w: img.width, h: img.height });
+  // #endregion
   const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
   const w = Math.max(1, Math.round(img.width * scale));
   const h = Math.max(1, Math.round(img.height * scale));
@@ -242,5 +250,8 @@ export async function bakeClientPhotoFilter(
   }
 
   ctx.putImageData(imageData, 0, 0);
+  // #region agent log
+  debugFilterEvent('web canvas: bake done', { filter, totalMs: Date.now() - t0 });
+  // #endregion
   return canvas.toDataURL('image/jpeg', 0.9);
 }

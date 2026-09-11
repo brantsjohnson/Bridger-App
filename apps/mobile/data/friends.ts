@@ -55,6 +55,14 @@ function countInTier(tier: Tier): number {
 }
 
 /**
+ * Demo: the circle this friend is in right now (Edit / profile retier).
+ * Used by personById so the profile pill matches the Friends roster.
+ */
+export function demoTierFor(personId: string): Tier | undefined {
+  return demoTiers[personId];
+}
+
+/**
  * Load the Friends roster grouped by tier (closest first).
  * Empty tiers are omitted unless includeEmpty is true (Edit mode shows drop zones).
  */
@@ -126,11 +134,11 @@ export async function moveTier(personId: string, target: Tier): Promise<MoveTier
     { method: 'PATCH', body: JSON.stringify({ tier: target }) }
   );
   // Keep the people cache's tier in sync so personById stays accurate.
-  await loadPeople();
+  await loadPeople({ force: true });
   return result;
 }
 
-/** Stub for the dormant search bar — ready when searchEnabled flips on. */
+/** Stub kept for callers that want an async list; Friends filters client-side. */
 export async function searchFriends(query: string): Promise<FriendRow[]> {
   const all = await listFriends();
   const q = query.trim().toLowerCase();

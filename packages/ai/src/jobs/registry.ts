@@ -129,6 +129,19 @@ export const JOB_REGISTRY: Record<JobName, JobRegistryEntry> = {
     defaultEnabled: true,
     noLlm: true
   },
+  // Job 14: leftover weekly recap prompts. Never sees friend-submitted text.
+  recap_week_fill: {
+    job: 'recap_week_fill',
+    lane: 'deidentified',
+    modelTier: 'fast',
+    temperature: 0.4,
+    maxTokens: 250,
+    timeoutMs: 8_000,
+    output: 'json',
+    schemaId: 'recap_week_fill',
+    monthlyBudgetUsd: 10,
+    defaultEnabled: true
+  },
   // Jobs 11–13: personal_agent lane. Disabled until AGENT plan.
   agent_reasoning: {
     job: 'agent_reasoning',

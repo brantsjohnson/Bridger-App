@@ -1,11 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Home tab — ported from Magic Patterns. Announcements (including friend
-// Touch Grass signals you can answer), stories, and editable widgets. Touch
-// Grass *send* lives on Events; the Friend Pod lives on the Friends tab.
+// The Home tab — ported from Magic Patterns. Announcements (friend Touch Grass
+// signals you can answer), the big Touch Grass send button above Collages,
+// stories, and editable widgets. The Friend Pod lives on the Friends tab.
 // Analytics: home surface; child components carry HOME.* ids.
 // ============================================
 import React, { useEffect, useState } from 'react';
+// #region agent log
+import { debugScreenMount } from '../../lib/debug-instrumentation';
+// #endregion
 import { Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { type Href, useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -28,6 +31,8 @@ import { AddStoryTile, StoryTile } from '../../components/StoryTile';
 import { FreeSignalCard } from '../../components/FreeSignalCard';
 import { ColdStart } from '../../components/ColdStart';
 import { GrassSignalSheet } from '../../components/GrassSignalSheet';
+import { TouchGrassButton } from '../../components/TouchGrassButton';
+import { TouchGrassSheet } from '../../components/TouchGrassSheet';
 import { hrefForCoopAnnouncement } from '../../lib/coop-links';
 import { pathForNotification } from '../../lib/notification-routes';
 import {
@@ -72,7 +77,9 @@ import {
   type HomePlaceholderSection
 } from '../../lib/home-placeholders';
 import { isDemoMode } from '../../lib/demo';
-import { loadPeople } from '../../lib/people-cache';
+import { consumePendingDeepLink } from '../../lib/pending-deep-link';
+import { isPeopleFresh, loadPeople } from '../../lib/people-cache';
+import { getTabSnapshot, setTabSnapshot, skipTabEnterAnimation } from '../../lib/tab-snapshots';
 import {
   consumeWelcomeCelebration,
   subscribeWelcomeCelebration
@@ -167,21 +174,28 @@ const STANDING_JNAME_QUIZ = {
 };
 
 export default function HomeScreen() {
+  // #region agent log
+  useEffect(() => debugScreenMount('home'), []);
+  // #endregion
   const router = useRouter();
   const feed = useHomeFeed();
   const { events } = useEventsFeed();
-  // Answer path only — send button stays on Events.
-  const { signals, onJoin, onDismiss } = useTouchGrass();
+  // Answer + send path — green card lives above Collages on Home too.
+  const { signals, myLive, onSend, onJoin, onDismiss, onEndMine } = useTouchGrass();
   // THIS SECTION DOES: section title dots after the Home nav-bar badge clears.
   const { sectionDots } = useTabAttention('home');
   const homeDot = TAB_COLOR.home;
 
   const { empty, member } = feed;
   const [dismissed, setDismissed] = useState<string[]>([]);
-  const visibleSignals = (empty ? [] : signals).filter((s) => !dismissed.includes(s.id));
-  /** Home shows the newest one only; Events carries the whole list */
+  // Never show your own signal as a "Friend touched grass" card.
+  const visibleSignals = (empty ? [] : signals).filter(
+    (s) => !s.mine && !dismissed.includes(s.id)
+  );
+  /** Home shows the newest friend signal only; Events carries the whole list */
   const signal = visibleSignals[0] ?? null;
   const [openSignal, setOpenSignal] = useState<GrassSignal | null>(null);
+  const [grassOpen, setGrassOpen] = useState(false);
   // Demo only: seed a sample quick-check so designers can swipe the strip.
   // Live never shows a fake freshness ask — real prompts come from the model later.
   const [showQuickCheck, setShowQuickCheck] = useState(() => isDemoMode());
@@ -195,7 +209,10 @@ export default function HomeScreen() {
   // Empty Coming up teach card: hide the whole section after X until real items.
   const [comingUpEmptyGone, setComingUpEmptyGone] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [layout, setLayout] = useState<WidgetState[]>(DEFAULT_LAYOUT);
+  const [layout, setLayout] = useState<WidgetState[]>(() => {
+    const saved = getTabSnapshot<WidgetState[]>('homeLayout');
+    return saved?.length ? toWidgetState(saved) : DEFAULT_LAYOUT;
+  });
   const [ask, setAsk] = useState<'poll' | 'question' | null>(null);
   // THIS SECTION DOES: show the Bridge widget under Stories only when opted in.
   const [assistantOn, setAssistantOn] = useState(false);
@@ -208,13 +225,33 @@ export default function HomeScreen() {
   // Home still wakes up when onboarding marks the flag. consume latches, so a
   // later remount (e.g. closing the post composer) can never replay the party.
   const [celebrate, setCelebrate] = useState(false);
+  // Hold feature-tour deep links until the splash is gone so Home stays under it.
+  const [holdDeepLink, setHoldDeepLink] = useState(false);
   useEffect(() => {
     const tryShow = () => {
-      if (consumeWelcomeCelebration()) setCelebrate(true);
+      if (consumeWelcomeCelebration()) {
+        setHoldDeepLink(true);
+        setCelebrate(true);
+      }
     };
     tryShow();
     return subscribeWelcomeCelebration(tryShow);
   }, []);
+
+  // THIS SECTION DOES: open a one-shot route stashed at the end of New
+  // onboarding (Events, Friends, Discover, or capture). Wait until the
+  // congratulations splash is gone so it does not cover an empty Home.
+  useEffect(() => {
+    if (celebrate || holdDeepLink) return;
+    let cancelled = false;
+    void consumePendingDeepLink().then((route) => {
+      if (cancelled || !route) return;
+      router.push(route as Href);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [celebrate, holdDeepLink, router]);
 
   // THIS SECTION DOES: decide whether to show the one-time Announcements intro
   // and whether the empty Coming up teach card was already closed (live only).
@@ -254,8 +291,9 @@ export default function HomeScreen() {
       void loadPlaceholderDismissals().then((flags) => {
         if (!cancelled) setPlaceholderGone(flags);
       });
-      // Refresh your face URL so the header never sticks on a demo/stale photo.
-      if (!isDemoMode()) void loadPeople();
+      // Refresh your face URL only when the people book is stale (keeps
+      // signed photo links stable so faces do not "reload" on every tap).
+      if (!isDemoMode() && !isPeopleFresh()) void loadPeople();
       return () => {
         cancelled = true;
       };
@@ -278,7 +316,9 @@ export default function HomeScreen() {
         const rows = await getHomeLayout();
         if (!cancelled) {
           const mapped = toWidgetState(rows);
-          setLayout(mapped.length ? mapped : DEFAULT_LAYOUT);
+          const next = mapped.length ? mapped : DEFAULT_LAYOUT;
+          setLayout(next);
+          setTabSnapshot('homeLayout', next);
         }
       } catch {
         if (!cancelled) setLayout(DEFAULT_LAYOUT);
@@ -409,9 +449,13 @@ export default function HomeScreen() {
   }
 
   function toggleSize(index: number) {
-    setLayout((prev) =>
-      prev.map((w, i) => (i === index ? { ...w, size: w.size === 'full' ? 'half' : 'full' } : w))
-    );
+    setLayout((prev) => {
+      const next: WidgetState[] = prev.map((w, i) =>
+        i === index ? { ...w, size: w.size === 'full' ? 'half' : 'full' } : w
+      );
+      setTabSnapshot('homeLayout', next);
+      return next;
+    });
   }
 
   function moveWidget(index: number, dir: -1 | 1) {
@@ -421,6 +465,7 @@ export default function HomeScreen() {
       if (target < 0 || target >= next.length) return prev;
       const [moved] = next.splice(index, 1);
       next.splice(target, 0, moved);
+      setTabSnapshot('homeLayout', next);
       return next;
     });
   }
@@ -515,9 +560,8 @@ export default function HomeScreen() {
         ) : null;
       case 'quiz': {
         // THIS SECTION DOES: always show Which J name are you (live quiz or
-        // standing prompt). Never leave an empty Quiz shell. Completed state
-        // comes from jname_results (resultId / myResultLabel), even when the
-        // standing fallback card is used.
+        // standing prompt). Never leave an empty Quiz shell. After the first
+        // finish the CTA is See your result (from jname_results / myResultLabel).
         const quiz = feed.quiz ?? STANDING_JNAME_QUIZ;
         const standing = !feed.quiz;
         const completedId =
@@ -579,11 +623,22 @@ export default function HomeScreen() {
 
         {announcements.length > 0 ? <AnnouncementsCarousel items={announcements} /> : null}
 
+        {/* THIS SECTION DOES: Touch Grass send sits above Collages on Home. */}
+        <View className="mb-5">
+          <TouchGrassButton
+            live={!!myLive}
+            inIds={myLive?.inIds ?? []}
+            analyticsId={HOME.touch_grass_button.send}
+            onOpen={() => setGrassOpen(true)}
+            onEnd={myLive ? () => void onEndMine() : undefined}
+          />
+        </View>
+
         <View>
           {/* Stories title: dashed underline + short "what is this?" bubble */}
           <SectionTitle
-            title="Stories"
-            description="Quick updates your friends post about their week. Tap one to watch, or add your own."
+            title="Collages"
+            description="Pages your friends make about their day. Tap one to look, or start your own."
             infoAnalyticsId={HOME.stories_row.info}
             parentScreen="home"
             section="stories_row"
@@ -643,7 +698,7 @@ export default function HomeScreen() {
           </ScrollView>
           {empty ? (
             <Text className="mt-2.5 font-sans-sb text-[13px] text-ink-mute">
-              Post a story! Your friends see it when they join.
+              Start your collage! Your friends see it when they join.
             </Text>
           ) : (
             <StoryRepliesRow
@@ -688,6 +743,7 @@ export default function HomeScreen() {
               section={INFO[widget.key].section}
               size={widget.size}
               editing={editing}
+              instant={skipTabEnterAnimation('home')}
               index={i}
               canMoveUp={i > 0}
               canMoveDown={i < visibleLayout.length - 1}
@@ -704,6 +760,15 @@ export default function HomeScreen() {
       </ScreenBody>
 
       <AskSheet open={ask !== null} kind={ask ?? 'poll'} onClose={() => setAsk(null)} />
+      <TouchGrassSheet
+        open={grassOpen}
+        parentScreen="home"
+        onClose={() => setGrassOpen(false)}
+        onSend={(input) => {
+          void onSend(input);
+          setGrassOpen(false);
+        }}
+      />
       <GrassSignalSheet
         signal={openSignal}
         parentScreen="home"
@@ -732,9 +797,16 @@ export default function HomeScreen() {
         }}
       />
 
-      {/* THE PARTY: black see-through overlay with fireworks + "You did it!",
+      {/* THE PARTY: black see-through overlay with fireworks + congratulations,
           shown once right after onboarding, tap anywhere to continue. */}
-      {celebrate ? <WelcomeCelebration onDone={() => setCelebrate(false)} /> : null}
+      {celebrate ? (
+        <WelcomeCelebration
+          onDone={() => {
+            setCelebrate(false);
+            setHoldDeepLink(false);
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

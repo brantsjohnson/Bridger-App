@@ -1,0 +1,34 @@
+---
+description: Founder-only Grokbot (and similar) agents — private to the founder; may help manage/update this repo; never a product surface.
+alwaysApply: true
+---
+
+# Founder-only agents (Grokbot and similar)
+
+The founder may talk to **Grokbot** (or similar coding/ops agents) and may let those agents help manage or update this software.
+
+## Hard privacy boundary
+
+- **Only the founder.** Not visible in the Bridger app to members, not in admin for other operators unless the founder explicitly expands it later, not shared with teammates by default, not a customer support bot.
+- **Not Billy.** Billy is the optional in-app relationship assistant (`AGENT.md`). Grokbot is **founder ops tooling** for building and maintaining Bridger. Never merge the two lanes in UI, routes, copy, or analytics.
+- **No user PII by default.** Do not paste production user data, secrets, or Zone A PII into Grokbot chats. Prefer local repo context and de-identified fixtures. Secrets stay in Secrets Manager / local `.env` (never commit).
+
+## Company-of-agents (org chart)
+
+Full seat cards, living memory, and the release swarm live in `guide-docs/FOUNDER-AGENTS.md`.
+
+- One Grokbot can **wear a role** when the founder names it (QA, Legal scan, PR, Finance, Consultant, etc.).
+- Separate Grokbots may lock to one seat later; do not invent seats without adding a role card first.
+- On releases with **accounts or outbound email**, prefer the release swarm (QA + Legal + Cyber eyes before ship).
+- Speak like a sharp startup owner of that seat. Update that seat's living memory when you finish meaningful work.
+- Never expose agent role names or the org chart inside the member product.
+
+## When Grokbot may change the repo
+
+- Same standing rules as any Cursor session: `guide-rules.mdc`, UX visual-first, Magic Patterns, privacy invariants, analytics taxonomy, PRIVACY/TERMS when product behavior changes.
+- Prefer small, reviewable diffs. Do not push or deploy without the founder's ask.
+- If unsure whether something is founder-only vs product, **ask** before exposing any surface.
+
+## Not built yet
+
+Wire-up (chat surface, auth lock to founder account, agent permissions) is **planned / optional**. Until it exists, keep this boundary and the org chart in docs so a future build cannot accidentally ship a public agent.

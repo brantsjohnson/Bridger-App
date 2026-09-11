@@ -1,9 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Name tag for the Discover pre-quiz. Soft title on purpose: "Behind the
-// Scenes." Internal id stays `disclosure` for code and analytics. Optional;
-// first-time offer when someone starts a Discover quiz, and always in Connect
-// Over / Settings. AI adaptation is off (see moderator.ts).
+// Name tag for the archived Discover pre-quiz. Soft title: "Behind the
+// Scenes." Internal id stays `disclosure` for code and analytics. Not shown
+// on the live Personality quizzes list. AI adaptation is off (see moderator.ts).
 // ============================================
 
 import {

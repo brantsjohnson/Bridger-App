@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The "Popular tracks" slot: up to 5 numbered things anyone who knows you
-// well should know. Optional emoji/image per row. Own profile can empty-state
-// into the Top 5 module.
+// well should know. Optional emoji/image per row. Own full profile can
+// empty-state into the Top 5 module. Friend / View-as previews hide this
+// section entirely when nothing is visible (no header, no "nothing shared").
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -20,6 +21,7 @@ export function Top5Section({
   items,
   editable,
   own,
+  showEmptyCtas,
   onAdd,
   onPressRow
 }: {
@@ -27,13 +29,20 @@ export function Top5Section({
   editable?: boolean;
   /** Own profile can always add/fill, even when not in rearrange (Edit) mode. */
   own?: boolean;
+  /**
+   * When false (friend view or View as Friends/Everyone), an empty Top 5
+   * disappears completely so it does not hint that something is missing.
+   */
+  showEmptyCtas?: boolean;
   onAdd?: () => void;
   onPressRow?: (item: Top5Item) => void;
 }) {
   const ordered = [...items].sort((a, b) => a.order - b.order).slice(0, 5);
-  // THIS SECTION DOES: show the "Add" button whenever it's your own profile,
-  // not only while the layout Edit toggle is on.
-  const canAdd = editable || own;
+  // THIS SECTION DOES: show the "Add" button on your full own profile only.
+  const canAdd = showEmptyCtas ?? Boolean(editable || own);
+
+  // PRIVACY / UX: no empty header for viewers. The section simply is not there.
+  if (ordered.length === 0 && !canAdd) return null;
 
   return (
     <View>
@@ -51,19 +60,15 @@ export function Top5Section({
 
       <View style={{ marginTop: PROFILE_TITLE_TO_BODY, gap: PROFILE_ROW_GAP }}>
         {ordered.length === 0 ? (
-          canAdd ? (
-            <ProfileAddCard
-              label="Add your Top 5"
-              helper="5 things anyone who knows you should know."
-              emoji="⭐"
-              accent="amber"
-              analyticsId={PROFILE.card.add_details}
-              accessibilityLabel="Add your Top 5"
-              onPress={() => onAdd?.()}
-            />
-          ) : (
-            <Text className="font-sans-sb text-[14px] text-ink-mute">Nothing shared yet.</Text>
-          )
+          <ProfileAddCard
+            label="Add your Top 5"
+            helper="5 things anyone who knows you should know."
+            emoji="⭐"
+            accent="amber"
+            analyticsId={PROFILE.card.add_details}
+            accessibilityLabel="Add your Top 5"
+            onPress={() => onAdd?.()}
+          />
         ) : (
           ordered.map((item, i) => (
             <Pressable

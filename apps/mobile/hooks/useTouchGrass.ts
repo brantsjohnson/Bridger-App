@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // React hook for Touch Grass on Home and Events: who's free, send your signal,
-// join / dismiss, and whether your own signal is live.
+// join / dismiss, and whether your own signal is live. Keeps the last list
+// on screen and quietly refreshes.
 // ============================================
 import { useCallback, useEffect, useState } from 'react';
 import type { GrassSignal } from '@bridger/shared';
@@ -14,18 +15,31 @@ import {
   sendSignal,
   type SendSignalInput
 } from '../data/touchgrass';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+type TouchGrassSnap = {
+  signals: GrassSignal[];
+  myLive: { when: string; inIds: string[] } | null;
+};
+
+const SNAP_KEY = 'touchgrass';
 
 export function useTouchGrass() {
-  const [signals, setSignals] = useState<GrassSignal[]>([]);
-  const [myLive, setMyLive] = useState<{ when: string; inIds: string[] } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = getTabSnapshot<TouchGrassSnap>(SNAP_KEY);
+  const [signals, setSignals] = useState<GrassSignal[]>(cached?.signals ?? []);
+  const [myLive, setMyLive] = useState<{ when: string; inIds: string[] } | null>(
+    cached?.myLive ?? null
+  );
+  const [loading, setLoading] = useState(!cached);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<TouchGrassSnap>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     try {
       const [list, live] = await Promise.all([listSignals(), getMyLiveSignal()]);
       setSignals(list);
       setMyLive(live);
+      setTabSnapshot<TouchGrassSnap>(SNAP_KEY, { signals: list, myLive: live });
     } finally {
       setLoading(false);
     }

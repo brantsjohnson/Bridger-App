@@ -6,7 +6,7 @@
 // free month is, with the co-op prompt only when it's actually full.
 // Analytics: day / month_nav / storage_bar use PROFILE.stories_calendar.*.
 // ============================================
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react-native';
@@ -23,34 +23,82 @@ import {
 import type { StorageState } from '../../data/profile';
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+];
+
+/** Build YYYY-MM for "this month" in local time. */
+export function currentArchiveMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function shiftMonth(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y!, (m! - 1) + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function labelForMonth(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MONTH_NAMES[(m! - 1) % 12] ?? 'Month'} ${y}`;
+}
+
+function daysInMonth(ym: string): number {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y!, m!, 0).getDate();
+}
+
+function startWeekday(ym: string): number {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y!, m! - 1, 1).getDay();
+}
 
 export function StoryCalendar({
   days,
   storage,
   empty = false,
+  monthYm,
+  onMonthChange,
   onOpenStory
 }: {
   /** day of month -> story thumbnail emoji */
   days: Record<number, string>;
   storage: StorageState;
   empty?: boolean;
+  /** Active month as YYYY-MM (drives arrows + day grid). */
+  monthYm: string;
+  /** Called when the person taps previous / next month. */
+  onMonthChange?: (ym: string) => void;
   /** a posted day opens that day's story */
   onOpenStory?: (day: number) => void;
 }) {
   const router = useRouter();
   const c = useThemeColors();
-  // Month paging is visual-only until the archive API lands.
-  const [month, setMonth] = useState('July 2026');
   const usedPct = empty ? 0 : storage.usedPct;
+  const monthLabel = useMemo(() => labelForMonth(monthYm), [monthYm]);
+  const totalDays = useMemo(() => daysInMonth(monthYm), [monthYm]);
+  const padStart = useMemo(() => startWeekday(monthYm), [monthYm]);
 
   if (empty) {
     return (
       <EmptyState
         emoji="📸"
-        line="No stories yet. Your posts land here as a monthly archive."
+        line="No pages yet. Your collage pages land here as a monthly archive."
         action={
           <ButtonSecondary size="sm" tone="solid">
-            Post a story
+            Start your collage
           </ButtonSecondary>
         }
       />
@@ -64,7 +112,7 @@ export function StoryCalendar({
       return;
     }
     // Fallback: open the catch-up story player for this archive day.
-    router.push(`/story/me?catchup=1&from=profile&day=${day}`);
+    router.push(`/story/me?catchup=1&from=profile&day=${day}&month=${monthYm}`);
   };
 
   return (
@@ -75,18 +123,18 @@ export function StoryCalendar({
             accessibilityRole="button"
             accessibilityLabel="Previous month"
             onPress={withAnalyticsPress(PROFILE.stories_calendar.month_nav, () =>
-              setMonth('June 2026')
+              onMonthChange?.(shiftMonth(monthYm, -1))
             )}
             className="h-8 w-8 items-center justify-center rounded-full active:bg-[#F1ECFF]"
           >
             <ChevronLeftIcon size={16} color={c.ink} strokeWidth={2.6} />
           </Pressable>
-          <Text className="font-pixel text-[16px] text-ink">{month}</Text>
+          <Text className="font-pixel text-[16px] text-ink">{monthLabel}</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Next month"
             onPress={withAnalyticsPress(PROFILE.stories_calendar.month_nav, () =>
-              setMonth('July 2026')
+              onMonthChange?.(shiftMonth(monthYm, 1))
             )}
             className="h-8 w-8 items-center justify-center rounded-full active:bg-[#F1ECFF]"
           >
@@ -98,14 +146,17 @@ export function StoryCalendar({
           Tap a day to watch that story again.
         </Text>
 
-        {/* 7-column grid: weekday labels, then the 31 days */}
+        {/* 7-column grid: weekday labels, then real days for this month */}
         <View className="mt-3 flex-row flex-wrap">
           {DAY_LABELS.map((d, i) => (
             <View key={`${d}-${i}`} style={{ width: `${100 / 7}%` }} className="pb-1.5">
               <Text className="text-center font-sans-b text-[10px] text-ink-mute">{d}</Text>
             </View>
           ))}
-          {Array.from({ length: 31 }).map((_, i) => {
+          {Array.from({ length: padStart }).map((_, i) => (
+            <View key={`pad-${i}`} style={{ width: `${100 / 7}%` }} className="p-[3px]" />
+          ))}
+          {Array.from({ length: totalDays }).map((_, i) => {
             const day = i + 1;
             const thumb = days[day];
             return (
@@ -119,22 +170,21 @@ export function StoryCalendar({
                   }
                   accessibilityRole={thumb ? 'button' : 'text'}
                   accessibilityLabel={
-                    thumb
-                      ? `Open story from ${month.split(' ')[0]} ${day}`
-                      : `${month.split(' ')[0]} ${day}, no story`
+                    thumb ? `Open story from day ${day}` : `Day ${day}, no story`
                   }
                   className={cn(
-                    'aspect-square items-center justify-center rounded-md',
-                    thumb ? 'bg-purple/15 active:bg-purple/25' : 'border border-ink-line bg-surface'
+                    'h-10 items-center justify-center rounded-md',
+                    thumb ? 'bg-purple/15 active:opacity-80' : 'bg-transparent'
                   )}
                 >
-                  {thumb ? (
-                    <Text accessible={false} className="text-[15px]">
-                      {thumb}
-                    </Text>
-                  ) : (
-                    <Text className="font-sans-sb text-[10px] text-ink-mute">{day}</Text>
-                  )}
+                  <Text
+                    className={cn(
+                      'font-sans-b text-[12px]',
+                      thumb ? 'text-ink' : 'text-ink-mute'
+                    )}
+                  >
+                    {thumb ?? day}
+                  </Text>
                 </Pressable>
               </View>
             );
@@ -142,7 +192,7 @@ export function StoryCalendar({
         </View>
       </View>
 
-      {/* Storage — free plan shows the bar; co-op members keep everything. */}
+      {/* THIS SECTION DOES: how full story storage is this month. */}
       <AnalyticsRegion
         analyticsId={PROFILE.stories_calendar.storage_bar}
         interactive={false}

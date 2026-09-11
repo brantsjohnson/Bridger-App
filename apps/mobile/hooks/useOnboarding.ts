@@ -1,29 +1,21 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The brain of the onboarding run. It holds every draft answer across the
-// screens, moves forward / back / skips through the ordered steps, kicks off
-// each step's save as you leave (UI moves first; only confirm-profile waits
-// on the network), and when Co-op (the last step) finishes it marks
-// onboarding complete. The screen components stay simple because all the
-// state lives here.
+// The brain of the onboarding run. It holds every draft answer, moves through
+// the screens, and saves as you leave. New accounts walk the New story flow
+// (profile, then education, then optional feature tours). Demo can still run
+// the Old 19-step flow. Finishing marks onboarding complete and lands on Home.
 //
-// The run mixes two kinds of screens:
-//  - FORM steps (questions) — these show the progress bar.
-//  - STAT interstitials — full-screen moments that are NOT counted in the
-//    progress bar (so progress reflects real questions answered).
+// New flow: name → photo → birthday → why → privacy → what would help →
+// only the feature screens they picked → co-op story → join / invite → Home.
+// Home plays the congratulations splash. Joining stays skippable via invite 3.
 //
-// Order (from the new flow doc): confirm profile → birthday → [feed stat] →
-// contacts → [isolation stat] → friends of friends → [retention stat] →
-// notifications → taste intro → right now → obsession → social battery → color
-// → places → privacy circles → privacy & control → [screentime stat] → co-op.
-// Finishing Co-op completes onboarding and lands on Home, which plays the
-// welcome fireworks (the old "You're in" screen was removed 2026-08-28).
-// (Recap voice step archived 2026-08-28; Friend Pod still records weekly recaps.)
+// Old flow (demo): confirm profile through Co-op, same as before.
 // ============================================
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { trackFlowCompleted, trackFlowStep, type Tier } from '@bridger/shared';
 import { clearDevPreview, getDemoOnboardSeed, isDemoMode } from '../lib/demo';
+import { setPendingDeepLink } from '../lib/pending-deep-link';
 import type { GeocodeHit } from '../lib/geocode';
 import { getOAuthProfilePrefill } from '../lib/oauth';
 import { supabase } from '../lib/supabase';
@@ -34,8 +26,11 @@ import {
   loadOnboardingProgress,
   persistOnboardingProgressLocal,
   saveBirthday,
+  saveBirthdayAudience,
   saveColor,
   saveConnectionStyle,
+  saveHelpInterests,
+  saveMembershipInterests,
   saveName,
   saveNotifications,
   saveObsessionSong,
@@ -51,8 +46,24 @@ import {
   type VisibilityRow
 } from '../data/onboarding';
 import type { PhotoFilterKey } from '../components/onboarding/PhotoFilterPicker';
+import {
+  BRANCH_DEEP_LINK,
+  BRANCH_START,
+  NEW_ONBOARDING_ORDER,
+  ROUTING_ONLY_STEPS,
+  STEP_BRANCH,
+  type CtaAction,
+  type NewOnboardingStepKey
+} from '../components/onboarding/onboarding-new-copy';
+import {
+  FEATURE_IDS,
+  LEGACY_HELP_INTEREST,
+  RESUME_ALIASES
+} from '../components/onboarding/onboarding-new-flow';
 
-export type OnboardingStepKey =
+export type FlowVariant = 'new' | 'old';
+
+export type OldOnboardingStepKey =
   | 'confirm-profile'
   | 'birthday'
   | 'stat-feed'
@@ -73,7 +84,9 @@ export type OnboardingStepKey =
   | 'coop-intro'
   | 'coop';
 
-export const ONBOARDING_ORDER: OnboardingStepKey[] = [
+export type OnboardingStepKey = OldOnboardingStepKey | NewOnboardingStepKey;
+
+export const OLD_ONBOARDING_ORDER: OldOnboardingStepKey[] = [
   'confirm-profile',
   'birthday',
   'stat-feed',
@@ -95,18 +108,29 @@ export const ONBOARDING_ORDER: OnboardingStepKey[] = [
   'coop'
 ];
 
-/** Screens that do NOT count toward the progress bar (moments, not questions). */
-const NON_FORM: OnboardingStepKey[] = [
+/** @deprecated Use OLD_ONBOARDING_ORDER. Kept so older imports still compile. */
+export const ONBOARDING_ORDER = OLD_ONBOARDING_ORDER;
+
+const OLD_NON_FORM: OldOnboardingStepKey[] = [
   'stat-feed',
   'stat-isolation',
   'stat-retention',
   'stat-screentime',
-  // The blue "what a co-op is" splash is a moment, like the stat screens.
   'coop-intro'
 ];
 
-/** Just the question screens, in order — used to number the progress bar. */
-const FORM_STEPS = ONBOARDING_ORDER.filter((s) => !NON_FORM.includes(s));
+const OLD_FORM_STEPS = OLD_ONBOARDING_ORDER.filter((s) => !OLD_NON_FORM.includes(s));
+
+const NEW_FORM_STEPS: NewOnboardingStepKey[] = [
+  'name',
+  'photo',
+  'birthday',
+  'privacy-birthday',
+  'product-picks',
+  'coop-matters'
+];
+
+const ROUTING_SET = new Set<string>(ROUTING_ONLY_STEPS);
 
 /** The whole run's draft. The only required answers are first + last name. */
 type Draft = {
@@ -146,7 +170,19 @@ type Draft = {
   favoritePlace: string;
   /** Geocoded pick for the favorite trip (map pin). Null until they search and pick. */
   favoritePlaceHit: GeocodeHit | null;
+  /** Places step: Private (none) or Close friends only (close). */
+  hometownPrivacy: 'none' | 'close';
+  currentTownPrivacy: 'none' | 'close';
+  favoritePlacePrivacy: 'none' | 'close';
   visibility: VisibilityRow[];
+  /** New: who can see the birthday (Groups). */
+  birthdayTier: Tier | null;
+  membershipInterests: string[];
+  helpInterests: string[];
+  pageAuthoring: 'auto' | 'manual' | 'assist' | null;
+  branchQueue: string[];
+  branchIndex: number;
+  pendingDeepLink: string | null;
 };
 
 const EMPTY_DRAFT: Draft = {
@@ -181,11 +217,29 @@ const EMPTY_DRAFT: Draft = {
   currentTown: '',
   favoritePlace: '',
   favoritePlaceHit: null,
-  visibility: []
+  // Default: Private until they widen it. Close friends is one tap away.
+  hometownPrivacy: 'none',
+  currentTownPrivacy: 'none',
+  favoritePlacePrivacy: 'close',
+  visibility: [],
+  birthdayTier: null,
+  membershipInterests: [],
+  helpInterests: [],
+  pageAuthoring: null,
+  branchQueue: [],
+  branchIndex: 0,
+  pendingDeepLink: null
 };
 
-export function useOnboarding(onDone: () => void) {
-  const [step, setStep] = useState<OnboardingStepKey>('confirm-profile');
+export function useOnboarding(
+  onDone: () => void,
+  variant: FlowVariant = 'old'
+) {
+  const order: OnboardingStepKey[] =
+    variant === 'old' ? OLD_ONBOARDING_ORDER : NEW_ONBOARDING_ORDER;
+  const startStep: OnboardingStepKey =
+    variant === 'old' ? 'confirm-profile' : 'name';
+  const [step, setStep] = useState<OnboardingStepKey>(startStep);
   // Start empty, unless we entered via the "onboard" demo bypass — then pre-fill
   // the first + last name and an emoji avatar so it feels already set up.
   const [draft, setDraft] = useState<Draft>(() => {
@@ -199,6 +253,9 @@ export function useOnboarding(onDone: () => void) {
     };
   });
   const [startedAt] = useState(() => Date.now());
+  // Blocks double-taps on Continue while a required save is still running
+  // (comic bake + PATCH /me). Stops stacked "Could not save" alerts.
+  const savingRef = useRef(false);
 
   // THIS SECTION DOES: track whether we have finished checking for a saved
   // resume point yet. The screen waits on this so it never flashes screen one
@@ -220,13 +277,19 @@ export function useOnboarding(onDone: () => void) {
     void (async () => {
       try {
         const saved = await loadOnboardingProgress();
-        if (
-          !cancelled &&
-          saved &&
-          ONBOARDING_ORDER.includes(saved.step as OnboardingStepKey)
-        ) {
-          setDraft((d) => ({ ...d, ...(saved.draft as Partial<Draft>) }));
-          setStep(saved.step as OnboardingStepKey);
+        if (!cancelled && saved) {
+          const rawStep = saved.step as string;
+          const mappedStep = (RESUME_ALIASES[rawStep] ?? rawStep) as OnboardingStepKey;
+          const savedDraft = { ...(saved.draft as Partial<Draft>) };
+          if (Array.isArray(savedDraft.helpInterests)) {
+            savedDraft.helpInterests = savedDraft.helpInterests.map(
+              (id) => LEGACY_HELP_INTEREST[id] ?? id
+            );
+          }
+          setDraft((d) => ({ ...d, ...savedDraft }));
+          if (order.includes(mappedStep)) {
+            setStep(mappedStep);
+          }
         }
       } catch {
         // No resume point / read failed: start at the beginning.
@@ -237,7 +300,7 @@ export function useOnboarding(onDone: () => void) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [order]);
 
   // THIS SECTION DOES: quietly keep a DEVICE copy of the current screen + answers
   // as they change (short debounce), so even mid-typing progress survives a
@@ -298,107 +361,252 @@ export function useOnboarding(onDone: () => void) {
   // knows whether to come in from the right (forward) or the left (back).
   const [dir, setDir] = useState<1 | -1>(1);
 
-  const index = ONBOARDING_ORDER.indexOf(step);
+  const index = order.indexOf(step);
   const patch = useCallback(
     (next: Partial<Draft>) => setDraft((d) => ({ ...d, ...next })),
     []
   );
 
-  /** Move to the next screen (or finish), logging a flow step as we go. */
-  const advance = useCallback(() => {
-    const nextIndex = index + 1;
-    if (nextIndex < ONBOARDING_ORDER.length) {
-      const nextStep = ONBOARDING_ORDER[nextIndex];
+  const historyRef = useRef<OnboardingStepKey[]>([]);
+
+  /** True if linear advance is allowed to land on this screen. */
+  const isReachable = useCallback(
+    (key: OnboardingStepKey, d: Draft): boolean => {
+      if (variant === 'old') return true;
+      if (ROUTING_SET.has(key)) return false;
+      const branch = STEP_BRANCH[key as NewOnboardingStepKey];
+      if (branch && !d.helpInterests.includes(branch)) return false;
+      return true;
+    },
+    [variant]
+  );
+
+  const jumpTo = useCallback(
+    (nextStep: OnboardingStepKey, from = step) => {
+      if (from !== nextStep) historyRef.current.push(from);
       trackFlowStep('onboarding', nextStep);
       setDir(1);
       setStep(nextStep);
-      // Record the new resume point (device + Supabase) as we move forward.
       void saveOnboardingProgress(nextStep, draftRef.current as Record<string, unknown>);
+    },
+    [step]
+  );
+
+  /** Move to the next reachable screen (or finish). */
+  const advance = useCallback(() => {
+    const i = order.indexOf(step);
+    for (let j = i + 1; j < order.length; j++) {
+      const nextStep = order[j]!;
+      if (!isReachable(nextStep, draftRef.current)) continue;
+      jumpTo(nextStep);
+      return;
     }
-  }, [index]);
+    // No more screens: New flow finishes. Old flow stays on Co-op until complete().
+    if (variant === 'new') {
+      void completeRef.current();
+    }
+  }, [order, step, isReachable, jumpTo, variant]);
+
+  const goto = useCallback(
+    (nextStep: OnboardingStepKey) => {
+      jumpTo(nextStep);
+    },
+    [jumpTo]
+  );
+
+  // Filled after complete() exists so nextBranch can finish the run.
+  const completeRef = useRef<() => Promise<void>>(async () => undefined);
+
+  const nextBranch = useCallback(() => {
+    const d = draftRef.current;
+    const currentBranch = STEP_BRANCH[step as NewOnboardingStepKey];
+    if (currentBranch && BRANCH_DEEP_LINK[currentBranch]) {
+      const route = BRANCH_DEEP_LINK[currentBranch]!;
+      draftRef.current = { ...d, pendingDeepLink: route };
+      setDraft((prev) => ({ ...prev, pendingDeepLink: route }));
+    }
+    const nextIndex = (currentBranch ? d.branchIndex + 1 : d.branchIndex);
+    const queue = d.branchQueue;
+    if (nextIndex < queue.length) {
+      const nextKey = BRANCH_START[queue[nextIndex]!];
+      setDraft((prev) => ({ ...prev, branchIndex: nextIndex }));
+      draftRef.current = { ...draftRef.current, branchIndex: nextIndex };
+      if (nextKey) jumpTo(nextKey);
+      else advance();
+      return;
+    }
+    // Tours done: keep walking into the co-op story and the join screen.
+    advance();
+  }, [advance, jumpTo, step]);
+
+  const finishOpen = useCallback((route: string) => {
+    draftRef.current = { ...draftRef.current, pendingDeepLink: route };
+    setDraft((prev) => ({ ...prev, pendingDeepLink: route }));
+    void completeRef.current();
+  }, []);
 
   /**
    * Leave this step: move the UI first, save in the background.
    *
-   * IMPORTANT: Continue should feel instant. We only wait on the network for
-   * confirm-profile (name + photo must land before Home). Every other step
-   * advances immediately and finishes its save quietly; a failed save never
-   * traps someone on the screen.
+   * IMPORTANT: Continue waits on the network for every step that writes
+   * profile data (name, photo, birthday, places, song, privacy, …). Quiet
+   * background saves used to drop answers when the API blipped.
    */
   const goNext = useCallback(async () => {
-    // Snapshot what we're leaving so a background save still has the answers.
+    if (savingRef.current) return;
     const leaving = step;
     const snapshot = draft;
+
+    // Wait for the network on any step that writes profile data. Quiet
+    // background saves used to drop places / song / privacy when the API
+    // blipped, and people landed on Profile empty (TestFlight).
+    const waitOn =
+      leaving === 'confirm-profile' ||
+      leaving === 'name' ||
+      leaving === 'photo' ||
+      leaving === 'birthday' ||
+      leaving === 'privacy-birthday' ||
+      leaving === 'right-now' ||
+      leaving === 'obsession' ||
+      leaving === 'places' ||
+      leaving === 'privacy-control' ||
+      leaving === 'friends-of-friends' ||
+      leaving === 'notifications' ||
+      leaving === 'coop-matters' ||
+      leaving === 'product-picks' ||
+      leaving === 'social-battery' ||
+      leaving === 'color';
+
+    if (waitOn) savingRef.current = true;
+
+    const bakePhoto = async () => {
+      let filteredMediaId = snapshot.filteredMediaId;
+      let originalMediaId = snapshot.originalMediaId;
+      let bakedPhotoUri = snapshot.bakedPhotoUri;
+
+      if (
+        snapshot.photoUri &&
+        snapshot.photoFilter &&
+        !filteredMediaId &&
+        !isDemoMode()
+      ) {
+        try {
+          const { bakeServerPhotoFilter } = await import('../lib/photo-filters');
+          const baked = await bakeServerPhotoFilter(
+            snapshot.photoUri,
+            snapshot.photoFilter
+          );
+          filteredMediaId = baked.mediaId;
+          originalMediaId = baked.originalMediaId;
+          bakedPhotoUri = baked.url;
+        } catch (err) {
+          console.warn('[onboarding] late filter bake failed; saving plain', err);
+        }
+      }
+
+      if (
+        isDemoMode() &&
+        snapshot.photoUri &&
+        snapshot.photoFilter &&
+        !bakedPhotoUri
+      ) {
+        // Web demo can paint looks in-canvas. Native demo has no canvas bake;
+        // skip so Continue never hangs or crashes on a missing native painter.
+        try {
+          const { bakeClientPhotoFilter } = await import(
+            '../lib/client-photo-filters'
+          );
+          const url = await bakeClientPhotoFilter(
+            snapshot.photoUri,
+            snapshot.photoFilter
+          );
+          if (url) bakedPhotoUri = url;
+        } catch {
+          // Plain photo is fine for demo.
+        }
+      }
+
+      return { filteredMediaId, originalMediaId, bakedPhotoUri };
+    };
 
     const runSave = async () => {
       switch (leaving) {
         case 'confirm-profile': {
-          // REQUIRED: name + photo must reach the server before we advance.
-          // If a look was picked but the bake has not finished yet, finish it
-          // here so the profile avatar is the filtered face, not the plain one.
           await saveName(`${snapshot.firstName} ${snapshot.lastName}`.trim());
-          let filteredMediaId = snapshot.filteredMediaId;
-          let originalMediaId = snapshot.originalMediaId;
-          let bakedPhotoUri = snapshot.bakedPhotoUri;
-
-          if (
-            snapshot.photoUri &&
-            snapshot.photoFilter &&
-            !filteredMediaId &&
-            !isDemoMode()
-          ) {
-            try {
-              const { bakeServerPhotoFilter } = await import('../lib/photo-filters');
-              const baked = await bakeServerPhotoFilter(
-                snapshot.photoUri,
-                snapshot.photoFilter
-              );
-              filteredMediaId = baked.mediaId;
-              originalMediaId = baked.originalMediaId;
-              bakedPhotoUri = baked.url;
-            } catch (err) {
-              console.warn('[onboarding] late filter bake failed; saving plain', err);
-            }
-          }
-
-          if (
-            isDemoMode() &&
-            snapshot.photoUri &&
-            snapshot.photoFilter &&
-            !bakedPhotoUri
-          ) {
-            try {
-              const { bakeClientPhotoFilter } = await import(
-                '../lib/client-photo-filters'
-              );
-              const url = await bakeClientPhotoFilter(
-                snapshot.photoUri,
-                snapshot.photoFilter
-              );
-              if (url) bakedPhotoUri = url;
-            } catch {
-              // Native demo may not paint looks; plain photo is fine.
-            }
-          }
-
-          if (snapshot.photoUri || filteredMediaId || bakedPhotoUri) {
+          const baked = await bakePhoto();
+          if (snapshot.photoUri || baked.filteredMediaId || baked.bakedPhotoUri) {
             await savePhoto({
               source: snapshot.photoSource,
-              uri: bakedPhotoUri ?? snapshot.photoUri ?? undefined,
-              filteredMediaId,
-              originalMediaId,
+              uri: baked.bakedPhotoUri ?? snapshot.photoUri ?? undefined,
+              filteredMediaId: baked.filteredMediaId,
+              originalMediaId: baked.originalMediaId,
               filter: snapshot.photoFilter,
               originalUri: snapshot.photoUri
             });
           } else if (!snapshot.photoEmoji) {
-            // Live requires a real photo; demo may use an emoji stand-in.
             throw new Error('Add a profile photo to continue.');
           }
           break;
         }
-        case 'birthday':
-          if (snapshot.birthday) await saveBirthday(snapshot.birthday);
+        case 'name':
+          await saveName(`${snapshot.firstName} ${snapshot.lastName}`.trim());
           break;
+        case 'photo': {
+          // THIS SECTION DOES: save the picked face. Never crash the run if a
+          // filter bake or upload fails; keep the plain photo and move on.
+          const baked = await bakePhoto();
+          if (!snapshot.photoUri && !baked.filteredMediaId && !baked.bakedPhotoUri) {
+            throw new Error('Add a profile photo to continue.');
+          }
+          try {
+            await savePhoto({
+              source: snapshot.photoSource,
+              uri: baked.bakedPhotoUri ?? snapshot.photoUri ?? undefined,
+              filteredMediaId: baked.filteredMediaId,
+              originalMediaId: baked.originalMediaId,
+              filter: snapshot.photoFilter,
+              originalUri: snapshot.photoUri
+            });
+          } catch (err) {
+            // Demo / offline: still keep a local preview so the run continues.
+            if (isDemoMode() && snapshot.photoUri) {
+              console.warn('[onboarding] demo photo save failed; keeping local', err);
+              try {
+                await savePhoto({
+                  source: snapshot.photoSource,
+                  uri: snapshot.photoUri,
+                  filter: snapshot.photoFilter,
+                  originalUri: snapshot.photoUri
+                });
+              } catch (err2) {
+                console.warn('[onboarding] demo plain photo save failed', err2);
+              }
+              break;
+            }
+            throw err;
+          }
+          break;
+        }
+        case 'birthday':
+          if (snapshot.birthday) {
+            await saveBirthday(snapshot.birthday, snapshot.birthdayTier ?? 'friend');
+          }
+          break;
+        case 'privacy-birthday':
+          if (snapshot.birthdayTier) {
+            await saveBirthdayAudience(snapshot.birthday, snapshot.birthdayTier);
+          }
+          break;
+        case 'coop-matters':
+          await saveMembershipInterests(snapshot.membershipInterests);
+          break;
+        case 'product-picks': {
+          const ordered = FEATURE_IDS.filter((id) =>
+            snapshot.helpInterests.includes(id)
+          );
+          await saveHelpInterests(ordered);
+          break;
+        }
         case 'friends-of-friends':
           await saveConnectionStyle(snapshot.connectStyles);
           break;
@@ -425,58 +633,131 @@ export function useOnboarding(onDone: () => void) {
             hometown: snapshot.hometown,
             currentTown: snapshot.currentTown,
             favoritePlace: snapshot.favoritePlace,
-            favoritePlaceHit: snapshot.favoritePlaceHit
+            favoritePlaceHit: snapshot.favoritePlaceHit,
+            hometownTier: snapshot.hometownPrivacy,
+            currentTownTier: snapshot.currentTownPrivacy,
+            favoritePlaceTier: snapshot.favoritePlacePrivacy
           });
           break;
         case 'privacy-control':
           await saveVisibility(snapshot.visibility);
           break;
-        // stat screens, taste-intro, contacts, and co-op save inside their screens.
         default:
           break;
       }
     };
 
-    // confirm-profile: must succeed before we leave, or Home is blank.
-    if (leaving === 'confirm-profile') {
+    if (waitOn) {
       try {
         await runSave();
       } catch (err) {
-        console.warn('Onboarding save failed on confirm-profile; staying put.', err);
-        Alert.alert(
-          'Could not save your profile',
-          err instanceof Error
-            ? err.message
-            : 'Check your connection and try Continue again.'
-        );
+        console.warn(`Onboarding save failed on ${leaving}; staying put.`, err);
+        const raw = err instanceof Error ? err.message : '';
+        const friendly =
+          /api 502|internal server error|gateway|not signed in/i.test(raw) || !raw
+            ? 'Something went wrong saving. Check your connection and try Continue again.'
+            : raw;
+        try {
+          Alert.alert('Could not save', friendly);
+        } catch {
+          // Alert unavailable (rare): still stay on this step.
+        }
         return;
+      } finally {
+        savingRef.current = false;
       }
-      advance();
+    }
+
+    // THIS SECTION DOES: remember the first picked feature so Home can open it.
+    if (leaving === 'product-picks') {
+      const ordered = FEATURE_IDS.filter((id) => snapshot.helpInterests.includes(id));
+      const first = ordered[0];
+      const route = first ? BRANCH_DEEP_LINK[first] : null;
+      if (route) {
+        draftRef.current = { ...snapshot, helpInterests: ordered, pendingDeepLink: route };
+        setDraft((prev) => ({ ...prev, helpInterests: ordered, pendingDeepLink: route }));
+      } else {
+        draftRef.current = { ...snapshot, helpInterests: ordered };
+        setDraft((prev) => ({ ...prev, helpInterests: ordered }));
+      }
+    }
+
+    if (waitOn) {
+      try {
+        advance();
+      } catch (err) {
+        console.warn(`Onboarding advance failed after ${leaving}`, err);
+      }
       return;
     }
 
-    // Everything else: flip the screen now, save while they look at the next step.
-    advance();
+    try {
+      advance();
+    } catch (err) {
+      console.warn(`Onboarding advance failed after ${leaving}`, err);
+    }
     void runSave().catch((err) => {
       console.warn(`Onboarding save failed on "${leaving}"; continuing.`, err);
     });
-  }, [step, draft, advance]);
+  }, [step, draft, advance, goto]);
+
+  const act = useCallback(
+    (action: CtaAction) => {
+      switch (action.kind) {
+        case 'next':
+          void goNext();
+          return;
+        case 'skip':
+          advance();
+          return;
+        case 'save-next':
+          void goNext();
+          return;
+        case 'goto':
+          goto(action.step);
+          return;
+        case 'next-branch':
+          nextBranch();
+          return;
+        case 'finish':
+          void completeRef.current();
+          return;
+        case 'finish-open':
+          finishOpen(action.route);
+          return;
+      }
+    },
+    [advance, finishOpen, goNext, goto, nextBranch]
+  );
 
   /** Skip a step: move on without saving its slice. */
   const goSkip = useCallback(() => advance(), [advance]);
 
   /** Step back to fix an earlier answer (no-op on the first screen). */
   const goBack = useCallback(() => {
+    const popped = historyRef.current.pop();
+    if (popped) {
+      setDir(-1);
+      setStep(popped);
+      void saveOnboardingProgress(popped, draftRef.current as Record<string, unknown>);
+      return;
+    }
     const prevIndex = index - 1;
     if (prevIndex >= 0) {
-      const prevStep = ONBOARDING_ORDER[prevIndex]!;
+      let prevStep = order[prevIndex]!;
+      for (let j = prevIndex; j >= 0; j--) {
+        const candidate = order[j]!;
+        if (isReachable(candidate, draftRef.current) || ROUTING_SET.has(candidate)) {
+          prevStep = candidate;
+          break;
+        }
+      }
       setDir(-1);
       setStep(prevStep);
-      // Stepping back updates the resume point too, so the last-known screen and
-      // any edited answers stay in sync (device + Supabase).
       void saveOnboardingProgress(prevStep, draftRef.current as Record<string, unknown>);
     }
-  }, [index]);
+  }, [index, order, isReachable]);
+
 
   // Stable handle so Co-op re-renders do not rebuild `complete` and risk a
   // second finish pass. Always call the latest onDone the parent passed in.
@@ -487,22 +768,39 @@ export function useOnboarding(onDone: () => void) {
   // Blocks a double Continue / Join from running the finish line twice.
   const completingRef = useRef(false);
 
-  /** The finish line — Co-op (the last step) calls this. Always leaves to Home. */
+  /** The finish line. New flow can call this from any last branch. Always leaves to Home. */
   const complete = useCallback(async () => {
     if (completingRef.current) return;
     completingRef.current = true;
-    // THIS SECTION DOES: one last pass so every draft answer is in Supabase,
-    // even if an earlier step's save failed quietly.
+    const d = draftRef.current;
+    // THIS SECTION DOES: if they never picked a birthday group, default to Friends.
+    if (!d.birthdayTier) {
+      d.birthdayTier = 'friend';
+      draftRef.current = { ...d, birthdayTier: 'friend' };
+    }
     try {
       await flushOnboardingDraft(draftRef.current);
     } catch (err) {
-      console.warn('Onboarding flush failed; continuing to Home.', err);
+      completingRef.current = false;
+      const raw = err instanceof Error ? err.message : '';
+      Alert.alert(
+        'Could not finish saving',
+        /api 502|internal server error|gateway/i.test(raw) || !raw
+          ? 'Check your connection and tap Continue again so your answers land on your profile.'
+          : raw
+      );
+      return;
+    }
+    try {
+      if (draftRef.current.pendingDeepLink) {
+        await setPendingDeepLink(draftRef.current.pendingDeepLink);
+      }
+    } catch {
+      // Home still works if the deep link write fails.
     }
     try {
       await setOnboardingComplete();
     } catch (err) {
-      // Local flag should already be set inside setOnboardingComplete; still
-      // never strand the person on the last onboarding step.
       console.warn('Onboarding complete save failed; continuing to Home.', err);
     }
     try {
@@ -510,12 +808,14 @@ export function useOnboarding(onDone: () => void) {
     } catch {
       // Analytics must never block the finish.
     }
-    // Finished for real: wipe the resume point (device + Supabase) so a later
-    // launch never tries to drop them back into a run they already completed.
     void clearOnboardingProgress();
     clearDevPreview();
     onDoneRef.current();
   }, [startedAt]);
+
+  useEffect(() => {
+    completeRef.current = complete;
+  }, [complete]);
 
   /** Build the Privacy & Control rows from the taste answers (no onboarding recap). */
   const initVisibility = useCallback(() => {
@@ -535,7 +835,10 @@ export function useOnboarding(onDone: () => void) {
           currentJob: d.currentJob,
           dreamJob: d.dreamJob,
           favoritePlace: d.favoritePlace,
-          song: d.song
+          song: d.song,
+          hometownTier: d.hometownPrivacy,
+          currentTownTier: d.currentTownPrivacy,
+          favoritePlaceTier: d.favoritePlacePrivacy
         })
       };
     });
@@ -563,7 +866,11 @@ export function useOnboarding(onDone: () => void) {
     const trimmed = value.trim();
     const display = trimmed || 'Not added';
 
-    // THIS SECTION DOES: mirror the edit into the matching draft fields.
+    // Write the server first. Only then mirror into the draft — otherwise a
+    // failed AI follow-up (or network blip) showed "Could not save" while the
+    // draft already looked updated (hometown edit bug).
+    await savePrivacyRowValue(rowId, trimmed);
+
     setDraft((d) => {
       const next = {
         ...d,
@@ -584,17 +891,19 @@ export function useOnboarding(onDone: () => void) {
       if (rowId === 'currently_song') next.song = trimmed;
       return next;
     });
-
-    await savePrivacyRowValue(rowId, trimmed);
   }, []);
 
   // Progress numbers: where we are among the question screens (stat + welcome
   // don't count). formStep is 0 on a non-form screen.
-  const formTotal = FORM_STEPS.length;
-  const formStep = FORM_STEPS.includes(step) ? FORM_STEPS.indexOf(step) + 1 : 0;
+  const formSteps = variant === 'old' ? OLD_FORM_STEPS : NEW_FORM_STEPS;
+  const formTotal = formSteps.length;
+  const formStep = formSteps.includes(step as never)
+    ? formSteps.indexOf(step as never) + 1
+    : 0;
 
   return useMemo(
     () => ({
+      variant,
       step,
       index,
       draft,
@@ -603,6 +912,10 @@ export function useOnboarding(onDone: () => void) {
       goNext,
       goSkip,
       goBack,
+      goto,
+      nextBranch,
+      finishOpen,
+      act,
       complete,
       initVisibility,
       setVisibilityTier,
@@ -613,6 +926,7 @@ export function useOnboarding(onDone: () => void) {
       dir
     }),
     [
+      variant,
       step,
       index,
       draft,
@@ -621,6 +935,10 @@ export function useOnboarding(onDone: () => void) {
       goNext,
       goSkip,
       goBack,
+      goto,
+      nextBranch,
+      finishOpen,
+      act,
       complete,
       initVisibility,
       setVisibilityTier,

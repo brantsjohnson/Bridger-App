@@ -4,13 +4,15 @@
 // ============================================
 import { Module } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
+import { AiModule } from '../ai/ai.module';
 import { CoopModule } from '../coop/coop.module';
 import { RecapController } from './recap.controller';
 import { RecapService } from './recap.service';
 
 @Module({
-  imports: [CoopModule],
+  imports: [CoopModule, AiModule],
   controllers: [RecapController],
-  providers: [RecapService, SupabaseAuthGuard]
+  providers: [RecapService, SupabaseAuthGuard],
+  exports: [RecapService]
 })
 export class RecapModule {}

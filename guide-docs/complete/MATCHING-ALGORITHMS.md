@@ -35,7 +35,7 @@ Same underlying comparison logic (find + rank shared things); different privacy 
 
 | Component | What it measures |
 |---|---|
-| `quiz_alignment` | Per shared matchable quiz: per-dimension similarity (or per-quiz-config complementarity), **weighted by both users' per-dimension confidence** from the AI moderator (`QUIZ-ENGINE.md`). Low-confidence dimensions are discounted; dimensions below `CONFIDENCE_FLOOR` (start: 0.4) are ignored. |
+| `quiz_alignment` | Per shared matchable quiz: per-dimension similarity, mild similarity, complementarity, or the Friend Zone style matrix (`MATCHING-PSYCHOLOGY.md` / `quiz-match.ts`), **weighted by both users' per-dimension confidence**. Low-confidence dimensions are discounted; dimensions below `CONFIDENCE_FLOOR` (start: 0.4) are ignored. Neuroticism is never a gate. |
 | `embedding_similarity` | Cosine similarity of precomputed person-embeddings (pgvector). Broad, cheap. |
 | `shared_attributes` | Matchable attribute overlap, **specificity-weighted by inverse frequency** — "both do aerial silks" ≫ "both like music". Everyone+matchable only for Mode 1 evidence. |
 | `moderator_notes_affinity` | Similarity of Discover-module moderator notes (Zone C; features only, never displayed). |
@@ -84,7 +84,8 @@ This is the user-visible payoff. When two people connect, the client runs the re
 - **"You've also got…"** = up to `REVEAL_EXTRAS_MAX` (3) next-strongest, excluding the headline. **If none remain, skip beat 2 entirely** (the built UI supports this).
 - Quiz-% lines render above the extras when present.
 - **In common tab** = the FULL ranked list (no 3-cap), + mutuals strip, + how-you-met card, + shared-place photos.
-- **Thin-overlap degradation (must return well-formed shapes):** rich → all beats; some → beat 1 + partial extras; minimal → beat 1 only; none (rare — connection may predate profile fill) → `strongest: null`, client shows the neutral close ("You two should click." still works) and In common shows its empty state. Never invent filler.
+- **Thin-overlap degradation (must return well-formed shapes):** rich → all beats; some → beat 1 + partial extras; minimal → beat 1 only; none (connection may predate profile fill) → `strongest: null`, client shows **Nothing to line up yet** + Personality quizzes CTA, then the close ("You two should click." still works). In common shows the same empty + CTA. Never invent filler. Adding a friend is never gated on quizzes.
+- **Asymmetric grants:** `viewerGranted` = the tier *they* set for *me* (filter *their* facts). `otherGranted` = the tier *I* set for *them* (filter *my* facts). We just met / Acquaintances use acquaintance-visible facts (Everyone layer). Friends / Close friends unlock more only on the side that granted that circle. Helper: `fieldVisibleAtGrantedTier` in `@bridger/shared`.
 
 ## Output contract
 

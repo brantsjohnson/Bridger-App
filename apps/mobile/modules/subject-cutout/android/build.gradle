@@ -1,0 +1,27 @@
+apply plugin: 'com.android.library'
+
+group = 'social.bridger.cutout'
+version = '1.0.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+if (expoModulesCorePlugin.exists()) {
+  apply from: expoModulesCorePlugin
+  applyKotlinExpoModulesCorePlugin()
+  useCoreDependencies()
+}
+
+android {
+  namespace "social.bridger.cutout"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // On-device subject lift (same family as Galaxy / Google Photos isolate).
+  implementation 'com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1'
+}

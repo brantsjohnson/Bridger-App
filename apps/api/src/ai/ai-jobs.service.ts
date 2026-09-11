@@ -34,16 +34,17 @@ export class AiJobsService {
   ): Promise<{ id: string | null; skipped: boolean }> {
     const hash = contentHash(payload);
 
-    // Skip if already done with this exact content.
-    const { data: done } = await this.supabase.admin
+    // Skip if already pending/running/done with this exact content.
+    const { data: existing } = await this.supabase.admin
       .from('ai_jobs')
       .select('id')
       .eq('job', job)
       .eq('subject_ref', subjectRef)
       .eq('content_hash', hash)
-      .eq('status', 'done')
+      .in('status', ['pending', 'running', 'done'])
+      .limit(1)
       .maybeSingle();
-    if (done) return { id: done.id, skipped: true };
+    if (existing) return { id: existing.id, skipped: true };
 
     const { data, error } = await this.supabase.admin
       .from('ai_jobs')

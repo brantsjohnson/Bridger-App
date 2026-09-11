@@ -24,6 +24,17 @@ import {
   type Commonality,
   type MatchModule
 } from '../data/discover';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+type DiscoverSnap = {
+  settings: DiscoverSettings;
+  suggestions: Suggestion[];
+  requests: ApprovalRequest[];
+  modules: MatchModule[];
+  completedModuleIds: string[];
+};
+
+const SNAP_KEY = 'discover';
 
 /** Fallback when settings cannot load: matching off so the splash can show. */
 const GATE_FALLBACK: DiscoverSettings = {
@@ -43,15 +54,23 @@ const GATE_FALLBACK: DiscoverSettings = {
 };
 
 export function useDiscover() {
-  const [settings, setSettings] = useState<DiscoverSettings | null>(null);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [requests, setRequests] = useState<ApprovalRequest[]>([]);
-  const [modules, setModules] = useState<MatchModule[]>([]);
-  const [completedModuleIds, setCompletedModuleIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getTabSnapshot<DiscoverSnap>(SNAP_KEY);
+  const [settings, setSettings] = useState<DiscoverSettings | null>(
+    cached?.settings ?? null
+  );
+  const [suggestions, setSuggestions] = useState<Suggestion[]>(
+    cached?.suggestions ?? []
+  );
+  const [requests, setRequests] = useState<ApprovalRequest[]>(cached?.requests ?? []);
+  const [modules, setModules] = useState<MatchModule[]>(cached?.modules ?? []);
+  const [completedModuleIds, setCompletedModuleIds] = useState<string[]>(
+    cached?.completedModuleIds ?? []
+  );
+  const [loading, setLoading] = useState(!cached);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<DiscoverSnap>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     // Settings first so the splash/gate can paint even if matching lists fail.
     let nextSettings: DiscoverSettings | null = null;
     try {
@@ -74,10 +93,17 @@ export function useDiscover() {
       setRequests(req);
       setModules(mods);
       setCompletedModuleIds(done);
+      if (nextSettings) {
+        setTabSnapshot<DiscoverSnap>(SNAP_KEY, {
+          settings: nextSettings,
+          suggestions: sug,
+          requests: req,
+          modules: mods,
+          completedModuleIds: done
+        });
+      }
     } catch {
       // Lists are optional for first paint; keep whatever we already have.
-      setSuggestions([]);
-      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -88,13 +114,21 @@ export function useDiscover() {
   }, [refresh]);
 
   const onSetDiscoverable = useCallback(async (on: boolean) => {
-    setSettings(await setDiscoverable(on));
-    setSuggestions(await listSuggestions());
+    const nextSettings = await setDiscoverable(on);
+    const sug = await listSuggestions();
+    setSettings(nextSettings);
+    setSuggestions(sug);
+    const prev = getTabSnapshot<DiscoverSnap>(SNAP_KEY);
+    if (prev) setTabSnapshot(SNAP_KEY, { ...prev, settings: nextSettings, suggestions: sug });
   }, []);
 
   const onSetSources = useCallback(async (patch: Partial<DiscoverSettings['sources']>) => {
-    setSettings(await setSources(patch));
-    setSuggestions(await listSuggestions());
+    const nextSettings = await setSources(patch);
+    const sug = await listSuggestions();
+    setSettings(nextSettings);
+    setSuggestions(sug);
+    const prev = getTabSnapshot<DiscoverSnap>(SNAP_KEY);
+    if (prev) setTabSnapshot(SNAP_KEY, { ...prev, settings: nextSettings, suggestions: sug });
   }, []);
 
   const onAcceptRequest = useCallback(async (id: string) => {

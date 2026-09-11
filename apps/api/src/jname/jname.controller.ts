@@ -65,7 +65,7 @@ export class JnameController {
     return this.jname.getSharedView(token, user?.id, anonRef);
   }
 
-  // --- Signed-in: connect a fresh signup to the friend who invited them. ---
+  // --- Signed-in: record the referral and add the friend who shared the quiz. ---
   @Post('referrals/resolve')
   @UseGuards(SupabaseAuthGuard)
   resolve(

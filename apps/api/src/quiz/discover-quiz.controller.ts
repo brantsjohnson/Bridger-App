@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// HTTP routes for Discover Connect Over quizzes. The phone can ask which ones
+// HTTP routes for Discover Personality quizzes. The phone can ask which ones
 // you finished (so the cards say Done), and posts scored 0–1 dimensions when
 // you finish one so matching can use them.
 // ============================================
@@ -14,7 +14,7 @@ import { DiscoverQuizService } from './discover-quiz.service';
 export class DiscoverQuizController {
   constructor(private readonly discoverQuizzes: DiscoverQuizService) {}
 
-  // THIS SECTION DOES: return which Connect Over quizzes this person finished.
+  // THIS SECTION DOES: return which personality quizzes this person finished.
   @Get('completed')
   listCompleted(@CurrentUser() user: AuthUser) {
     return this.discoverQuizzes.listCompleted(user.id);

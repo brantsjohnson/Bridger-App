@@ -34,6 +34,11 @@ export type CrtBlock = { cue: string; lines: CrtLine[] };
 // The whole haptic rhythm is tuned around this number, so change it with care.
 export const CRT_CPS = 32;
 
+// THIS SECTION DOES: how long we wait after a screen finishes typing, if nobody
+// taps Next. Five seconds is long enough to finish reading, short enough that
+// the movie still moves. Reduce Motion skips this timer and waits for a tap.
+export const CRT_HOLD_SEC = 5;
+
 // THIS SECTION DOES: the exact four lines that get the deep "landed" hit on
 // their FIRST character (a heavy hit, then silence so it sinks in).
 const BIG_IDEAS = new Set<string>([
@@ -197,6 +202,21 @@ function buildTimeline(): CrtTimeline {
 
 // THIS SECTION DOES: the one shared timeline everyone imports.
 export const CRT_TIMELINE: CrtTimeline = buildTimeline();
+
+// THIS SECTION DOES: the moment the last line of a screen has finished typing.
+// That is when Next pops up. The leftover pause in `dur` is replaced by the
+// Next button (or the five-second fill).
+export function crtBlockTypeEnd(block: CrtBlockTiming): number {
+  const last = block.lines[block.lines.length - 1];
+  return last?.typeEnd ?? block.end;
+}
+
+// THIS SECTION DOES: which typed screen is on right now, from the clock.
+export function crtActiveBlockIndex(t: number, blocks: CrtBlockTiming[]): number {
+  let idx = -1;
+  for (let i = 0; i < blocks.length; i++) if (t >= blocks[i].start) idx = i;
+  return idx;
+}
 
 // THIS SECTION DOES: a tiny repeatable "random" number (0..1) from a seed, so
 // the glitch looks chaotic but plays back the same every time (and the haptics

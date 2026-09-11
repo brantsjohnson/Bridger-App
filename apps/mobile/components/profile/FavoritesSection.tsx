@@ -25,19 +25,28 @@ const TO_START_ACCENTS: Accent[] = ['purple', 'coral', 'teal', 'amber', 'pink', 
 export function FavoritesSection({
   modules,
   own,
+  showEmptyCtas,
   onOpenModule
 }: {
   modules: FavoriteModule[];
   own: boolean;
+  /**
+   * When false (friend view or View as Friends/Everyone), hide empty "To
+   * start" tiles and the whole Favorites block if nothing is filled.
+   */
+  showEmptyCtas?: boolean;
   onOpenModule?: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const toStart = own ? modules.filter((m) => m.empty) : [];
+  // THIS SECTION DOES: only your full own profile sees unfilled "To start" tiles.
+  const showToStart = showEmptyCtas ?? own;
+  const toStart = showToStart ? modules.filter((m) => m.empty) : [];
   const filled = modules.filter((m) => !m.empty);
   const visibleFilled = expanded ? filled : filled.slice(0, 4);
   const hasMore = filled.length > 4;
 
-  if (!own && filled.length === 0) return null;
+  // PRIVACY / UX: no empty Favorites header for viewers.
+  if (!showToStart && filled.length === 0) return null;
 
   return (
     <View>
@@ -98,7 +107,7 @@ export function FavoritesSection({
 
       {filled.length > 0 ? (
         <View style={{ marginTop: toStart.length > 0 ? 20 : PROFILE_TITLE_TO_BODY }}>
-          {own && toStart.length > 0 ? (
+          {showToStart && toStart.length > 0 ? (
             <Text className="mb-2 font-sans-b text-[11px] uppercase tracking-wide text-ink-mute">
               Filled
             </Text>

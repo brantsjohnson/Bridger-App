@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// One place that lists the five Discover quizzes (Connect Over). Titles are
-// what people see; ids are what matching and analytics use.
+// One place that lists Discover personality quizzes. Titles are what people
+// see; ids are what matching and analytics use. Behind the Scenes stays
+// exported for history but is not in the live list.
 // ============================================
 
 import { MANIFEST as disclosure } from './disclosure/manifest';
@@ -24,9 +25,8 @@ export { scoreValues } from './values/score';
 export { VALUES_ADAPTATION_POLICY } from './values/moderator';
 export { DISCOVER_ADAPT_BELOW, adaptationPolicyFor } from './_shared/thresholds';
 
-/** The live Discover set: pre-quiz + four measurement quizzes. */
+/** The live Discover set: four measurement quizzes (disclosure is archived). */
 export const DISCOVER_QUIZ_MANIFESTS = [
-  disclosure,
   humor,
   values,
   personality,

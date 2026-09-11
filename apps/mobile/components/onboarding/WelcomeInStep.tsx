@@ -1,18 +1,14 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// ARCHIVED from the onboarding run (2026-08-28). Kept so old analytics ids
-// still make sense. Finishing Co-op (pay, invite 3, or auth code) now marks
-// onboarding complete and lands on Home, where the welcome fireworks play
-// instead of this "You're in" screen.
-//
-// Was: the finish line. Green tag, giant "You're in.", three next-step cards,
-// and "Let's go" that set onboardingComplete and dropped you on Home.
+// ARCHIVED arrival. New onboarding now ends on CoopStep (join / invite).
+// Home plays the congratulations splash. This file stays so old analytics
+// ids still parse. Nothing mounts it.
 // ============================================
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ONBOARDING } from '@bridger/shared';
-import { AnalyticsRegion, SynthGrid, useGridColor, useReduceMotion, useThemeColors } from '@bridger/ui';
+import { AnalyticsRegion, SynthGrid, useGridColor, useReduceMotion } from '@bridger/ui';
 import { OB, OB_BORDER } from './onboarding-theme';
 import { OBBody, OBCTA, OBHardShadow, OBHeading } from './onboarding-ui';
 
@@ -29,17 +25,15 @@ const PIECES = Array.from({ length: 28 }, (_, i) => ({
 }));
 
 /** What actually happens next, so "you're in" means something. */
-const NEXT: Array<{ label: string; line: string; edge: string }> = [
-  { label: 'Add your people', line: 'Bridger is empty until they are here', edge: OB.pink },
-  { label: 'Complete your profile', line: 'So friends know who they are talking to', edge: OB.amber },
-  { label: "Say when you're free", line: 'The whole point is seeing them', edge: OB.green }
+const NEXT: Array<{ label: string; line: string; edge: string; emoji: string }> = [
+  { label: 'Add your people', line: 'Bridger is empty until they are here', edge: OB.purple, emoji: '👋' },
+  { label: 'Post your first story', line: 'One photo, once a day', edge: OB.pink, emoji: '📷' },
+  { label: 'Say when you are free', line: 'The whole point is seeing them', edge: OB.green, emoji: '🌿' }
 ];
 
-/** @deprecated Not mounted in the live onboarding order. See file header. */
 export function WelcomeInStep({ onDone }: { onDone: () => void }) {
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
-  const theme = useThemeColors();
   const { gridColor } = useGridColor();
   // Guard so a double-tap (or burst + tap) cannot fire finish twice.
   const finishing = useRef(false);
@@ -53,13 +47,13 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
   return (
     // Same eggshell + SynthGrid backdrop as Home and every other onboarding step.
     <View
-      className="flex-1 bg-canvas"
+      className="flex-1"
       style={{
         flex: 1,
         width: '100%',
         alignSelf: 'stretch',
         height: '100%',
-        backgroundColor: theme.canvas,
+        backgroundColor: OB.amber,
         overflow: 'hidden'
       }}
     >
@@ -90,7 +84,15 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
               That is everything we need
             </Text>
           </View>
-          <OBHeading style={{ fontSize: 72, lineHeight: 64, letterSpacing: -2.6 }}>
+          <OBHeading
+            style={{
+              fontSize: 56,
+              lineHeight: 58,
+              letterSpacing: -1.4,
+              textTransform: 'none',
+              color: OB.navy
+            }}
+          >
             You're in.
           </OBHeading>
           <OBBody>No feed to scroll. Just the people you actually know.</OBBody>
@@ -111,8 +113,8 @@ export function WelcomeInStep({ onDone }: { onDone: () => void }) {
                 >
                   <View style={{ width: 5, backgroundColor: n.edge }} accessible={false} />
                   <View style={{ flex: 1, minWidth: 0, paddingHorizontal: 16, paddingVertical: 14 }}>
-                    <Text className="font-sans-b text-[17px]" style={{ color: OB.blue }}>
-                      {n.label}
+                    <Text className="font-sans-b text-[17px]" style={{ color: OB.navy }}>
+                      {n.emoji} {n.label}
                     </Text>
                     <Text className="text-[13px]" style={{ marginTop: 3, color: OB.inkSoft }}>
                       {n.line}

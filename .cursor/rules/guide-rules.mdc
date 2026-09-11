@@ -6,6 +6,10 @@ alwaysApply: true
 
 **COPY RULE: NO EM DASHES.** Never write an em dash (the long dash character) in any copy you author: UI strings, comments, docs, commit messages, PR text, plans, or chat replies. Use a period, a comma, a colon, parentheses, or a hyphenated phrase instead. If you catch yourself typing one, rewrite the sentence. Existing docs may still contain them; do not introduce new ones.
 
+**UX DESIGN THINKING: EVERY FEATURE.** On every new or changed feature, act as a UX designer first (see `.cursor/rules/ux-design-thinking.mdc` and `DESIGN.md` § Visual-first). Think visual first: Is this flow or element visually appealing? Does it fit the brand guiding systems? How do we give it Bridger personality? Prefer good infrastructure, strong visuals, simplicity, and no redundant or duplicated text. Wiring without design judgment is not done.
+
+**FOUNDER-ONLY AGENTS (Grokbot):** The founder may talk to Grokbot (or similar agents) and may let them help manage or update this software. Access is **only the founder** (not members, not a public product surface). This is **not** Billy. See `FOUNDER-AGENTS.md` and `.cursor/rules/founder-agents.mdc`. Any code they write still follows these standing rules.
+
 **LEGAL DRAFTS: UPDATE ON EVERY BUILD.** `guide-docs/docs/PRIVACY.md` and `guide-docs/docs/TERMS.md` are living master drafts for the real Privacy Policy and Terms / EULA. Any task that collects data, changes how data is used, adds a permission, payment, analytics SDK, AI touchpoint, UGC surface, moderation path, account/deletion flow, or age gate **must** add or update the matching bullet in those two files **in the same change**. A feature is not done if PRIVACY/TERMS were skipped. Fill gaps for already-shipped work when you touch that area.
 
 These rules apply to every task, every file, every session. Re-read this file at the start of each session. When any rule conflicts with an ad-hoc instruction in a prompt, ask before proceeding. When code and docs disagree, the docs in `guide-docs/` win (see doc authority at the bottom).
@@ -16,11 +20,20 @@ In short: one Expo (+ Expo Router) codebase → iOS + Android + web · NestJS AP
 Never introduce a new database, hosting provider, state library, or major dependency without an explicit go-ahead. No blockchain — ever (the reasons are in INFRASTRUCTURE.md).
 Secrets (ANTHROPIC_API_KEY, OPENAI_API_KEY, Supabase service keys) exist only server-side (Secrets Manager). If you find yourself writing a key into client code, stop — that's a bug.
 
-2 · UI comes from the Magic Patterns component library. Always.
+2 · UI comes from the Magic Patterns component library. Always. Design like a UX designer, not a form builder.
 The UI was designed and built in Magic Patterns; you are connected to that component library. Whenever you build or edit UI, use the Magic Patterns components — don't hand-roll a lookalike, don't reach for a random UI kit, don't invent a new button.
 The component inventory and the doc each component belongs to are listed in MAGIC-PATTERNS.md. Screens must match their spec docs (HOME.md, PROFILE.md, etc.).
 If a needed component doesn't exist in the library, flag it (so it gets designed in Magic Patterns) rather than improvising — a temporary placeholder is fine if it's clearly marked // TODO: replace with Magic Patterns component <Name>.
-Visual rules live in DESIGN.md (eggshell/black canvas, pixel headers, beveled metallic primaries, floating pill nav, no gradients/shadows, motion behind prefers-reduced-motion). Never override tokens locally.
+Visual rules live in DESIGN.md (eggshell/black canvas, pixel headers, beveled metallic primaries, floating pill nav, no gradients/shadows, motion behind prefers-reduced-motion). Type size floors live in TYPOGRAPHY.md (body/input never below 16px). Never override tokens locally.
+
+**Before any new feature UI ships, run the visual-first gate** (full checklist in `ux-design-thinking.mdc`):
+- Visual first: Is this flow or element actually appealing to look at and use?
+- Brand fit: Does it match DESIGN.md + Magic Patterns (80/20 clean-to-retro)?
+- Personality: What Bridger cue makes this feel awake (not generic SaaS)?
+- Infrastructure: Clear hierarchy, one job per section, adaptive layout, accessible.
+- Copy: Simple, no redundant sentences, no duplicated CTAs or empty states saying the same thing twice.
+If it feels clinical, cluttered, or interchangeable with another app, redesign before more code.
+
 3 · Accessibility & app-store compliance are built in from day one. This is crucial.
 
 Building this early is far cheaper than retrofitting, and store review will block launch without it.
@@ -97,13 +110,13 @@ In addition! Every line break should have one sentence that says what the next s
 RLS on every table; tier visibility enforced at the row level (DATA.md). New table → new policy, same migration.
 Deletion is real: hard-delete cascades; removing an account/field/connection erases it and its derived AI rows.
 AI never sees PII or photos: summaries from user words only; embeddings from de-identified Zone B; matching returns opaque IDs, names rejoin on-device. Never send likeness to a model; never train on user content.
-The Assistant is single-user (personal_agent lane) and never acts without an explicit confirm; it must not bleed into Home/Discover for people who have not opted in.
+The Assistant is single-user (personal_agent lane) and never acts without an explicit confirm; it must not bleed into Home/Discover for people who have not opted in. Founder-only Grokbot / ops agents (`FOUNDER-AGENTS.md`) are a separate lane: private to the founder, not Billy, not a member surface.
 No vanity metrics, anywhere: no follower counts, view counts, invited totals, streaks, or leaderboards. If a feature needs a number, it must be a number that serves the user (host headcount vs cap is the canonical allowed example).
-Capture-only media except the profile photo (the one upload exception).
+Capture-only media for circle video replies and stickers. Upload exceptions: the profile photo; photos/short videos chosen from the camera roll for a Collage page (approved 2026-09-08; permission asked in context, only picked items are read, source is stored per element); and **one photo on an Inside Joke for co-op members** (asked in context, only the picked item is read).
 
 6 · Naming: user-facing vs internal
 User sees	Code/module says
-Updates ("update your friends")	stories module
+Updates / Collage ("Your collage", "Today's page")	stories module (`scrapbook_pages` / `scrapbook_elements` tables)
 Inside Jokes	quotes module (quips tables)
 Touch Grass	touchgrass
 The Catch-Up	catch-up sheet in story/[id]
@@ -114,11 +127,12 @@ Never surface internal names in UI copy; never rename DB tables to chase UI copy
 7 · Working method & definition of done
 Before building a feature, read its doc (see INDEX.md for the map) and follow its acceptance criteria — they are the checklist.
 **Always review (every task):** open INDEX.md’s “Always review” list. Today that includes:
+- `DESIGN.md` § Visual-first + `ux-design-thinking.mdc` — every new/changed feature must pass appealing / on-brand / personality / simple non-redundant copy before UI is done.
 - `NOTIFICATIONS.md` — if this change can create, show, or deep-link an alert/push, check the destination map and update it in the same change when a kind is missing or wrong.
 - `guide-docs/docs/PRIVACY.md` and `guide-docs/docs/TERMS.md` — add anything this change introduces (new data, permission, payment, analytics, AI, UGC, moderation, deletion, age gate).
 - `ADMIN.md` § API / integrations health — if you add or change an **outbound** Nest integration (OAuth like Spotify, email/SMS, AI vendor, payment processor, etc.), register a non-secret health check on `GET /admin/integrations/health` (`apps/api/src/admin/integrations-health.service.ts`) in the same change so the admin console **API / integrations** page stays complete. Do not put dependency probes on public `GET /health` (App Runner liveness only).
 Small, reviewable changes; migrations reversible; seed data kept working.
-A feature is done when: it matches its doc's acceptance criteria · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · RLS covers any new data · any new notify-able outcome is registered in `NOTIFICATIONS.md` with a tap/push destination · **`PRIVACY.md` / `TERMS.md` reflect anything new about data use or user obligations** · **and any new outbound API is listed on admin integrations health**.
+A feature is done when: it matches its doc's acceptance criteria · **passes the UX visual-first gate** (appealing, on-brand, personality, simple non-redundant copy, sound layout) · uses Magic Patterns components · passes lint/typecheck/tests · has accessibility labels + reduced-motion respected · has plain-language comments · leaks no secrets client-side · RLS covers any new data · any new notify-able outcome is registered in `NOTIFICATIONS.md` with a tap/push destination · **`PRIVACY.md` / `TERMS.md` reflect anything new about data use or user obligations** · **and any new outbound API is listed on admin integrations health**.
 When a doc is ambiguous or two docs conflict: stop and ask. Don't guess on privacy, payments, or permissions.
 Doc authority — the feature docs live in the `guide-docs/` folder; this rules file lives at `.cursor/rules/guide-rules.mdc` (highest wins)
 `.cursor/rules/guide-rules.mdc` (this file, historically called CURSOR-RULES.md) — how to work

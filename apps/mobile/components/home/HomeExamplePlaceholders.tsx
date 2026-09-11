@@ -17,6 +17,7 @@ import {
   withAnalyticsPress
 } from '@bridger/ui';
 import { ExampleBadge } from './ExampleBadge';
+import { ToDoBadge } from './ToDoBadge';
 import type { WidgetSize } from './HomeWidget';
 import { EVENTS, ME, NOTIFICATIONS, PEOPLE } from '../../data/fixtures/catalog';
 import { getProfilePhoto } from '../../data/fixtures/demo-media';
@@ -77,6 +78,7 @@ export function EventExampleCard({
           </View>
           <View className="gap-2 p-4">
             <ExampleBadge analyticsId={HOME.this_week.example_badge} />
+            <ToDoBadge analyticsId={HOME.this_week.example_card} />
             <Text className="font-sans-b text-[17px] leading-tight tracking-tight text-ink">
               Event Example
             </Text>
@@ -116,6 +118,7 @@ export function EventExampleCard({
       <View className="flex-1 justify-between px-3.5 pb-3 pt-2.5">
         <View className="gap-1.5">
           <ExampleBadge analyticsId={HOME.this_week.example_badge} />
+          <ToDoBadge analyticsId={HOME.this_week.example_card} />
           <Text
             className="font-sans-b text-[15px] tracking-tight text-onaccent"
             numberOfLines={1}
@@ -158,6 +161,7 @@ export function NotificationExampleCard({
     >
       <View className="gap-2.5">
         <ExampleBadge analyticsId={HOME.notifications_preview.example_badge} />
+        <ToDoBadge analyticsId={HOME.notifications_preview.example_row} />
         <Text className="font-sans-b text-[13px] leading-snug text-ink">
           Notification Example
         </Text>

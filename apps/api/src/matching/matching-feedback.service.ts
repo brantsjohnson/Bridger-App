@@ -14,6 +14,8 @@ import {
 } from '@bridger/shared';
 import type { Json } from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
+import { MatchingConfigService } from './matching-config.service';
+import { MatchingFeaturesService } from './matching-features.service';
 
 function sortedPair(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
@@ -21,7 +23,11 @@ function sortedPair(a: string, b: string): [string, string] {
 
 @Injectable()
 export class MatchingFeedbackService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly features: MatchingFeaturesService,
+    private readonly config: MatchingConfigService
+  ) {}
 
   async recordOutcome(opts: {
     userA: string;
@@ -32,24 +38,7 @@ export class MatchingFeedbackService {
     snapshot?: PairFeaturesSnapshot;
   }) {
     const [opaque_a, opaque_b] = sortedPair(opts.userA, opts.userB);
-    let raw = opts.snapshot;
-
-    // THIS SECTION DOES: pull the frozen snapshot from the suggestion row when
-    // the caller only has a suggestion id (e.g. dismiss / later outcomes).
-    if (!raw && opts.suggestionId) {
-      const { data } = await this.supabase.admin
-        .from('matching_suggestions')
-        .select('feature_snapshot')
-        .eq('id', opts.suggestionId)
-        .maybeSingle();
-      raw = (data?.feature_snapshot ?? undefined) as
-        | PairFeaturesSnapshot
-        | undefined;
-    }
-
-    // THIS SECTION DOES: always write all six feature values + contribs
-    // (missing keys become 0). Empty placeholder covers block/remove hard negatives.
-    const snapshot = normalizePairFeaturesSnapshot(raw);
+    const snapshot = await this.hydrateSnapshot(opts);
 
     if (opts.outcome === 'blocked') {
       await this.supabase.admin
@@ -70,6 +59,70 @@ export class MatchingFeedbackService {
       weight: MATCHING_LABEL_WEIGHTS[opts.outcome]
     });
     if (error) throw error;
+  }
+
+  /**
+   * PRIVACY: snapshots are six numbers + quiz ids, never names or answers.
+   * Prefer the Discover-time freeze. If they placed someone Close without a
+   * card (already knew them), score the pair now so the label still teaches.
+   */
+  private async hydrateSnapshot(opts: {
+    userA: string;
+    userB: string;
+    suggestionId?: string;
+    snapshot?: PairFeaturesSnapshot;
+  }): Promise<PairFeaturesSnapshot> {
+    if (opts.snapshot) return normalizePairFeaturesSnapshot(opts.snapshot);
+
+    if (opts.suggestionId) {
+      const { data } = await this.supabase.admin
+        .from('matching_suggestions')
+        .select('feature_snapshot')
+        .eq('id', opts.suggestionId)
+        .maybeSingle();
+      if (data?.feature_snapshot) {
+        return normalizePairFeaturesSnapshot(
+          data.feature_snapshot as PairFeaturesSnapshot
+        );
+      }
+    }
+
+    const { data: sug } = await this.supabase.admin
+      .from('matching_suggestions')
+      .select('feature_snapshot')
+      .or(
+        `and(viewer_id.eq.${opts.userA},candidate_id.eq.${opts.userB}),and(viewer_id.eq.${opts.userB},candidate_id.eq.${opts.userA})`
+      )
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sug?.feature_snapshot) {
+      return normalizePairFeaturesSnapshot(
+        sug.feature_snapshot as PairFeaturesSnapshot
+      );
+    }
+
+    try {
+      const cfg = await this.config.getActive();
+      const bundle = await this.features.computeOrganic(
+        opts.userA,
+        opts.userB,
+        cfg
+      );
+      return normalizePairFeaturesSnapshot({
+        features: bundle.features,
+        contribs: bundle.features,
+        score: 0,
+        evidenceGatePassed: false,
+        sharedQuizIds: bundle.details.quiz_alignment?.sharedQuizIds ?? [],
+        sharedAttributeCount:
+          bundle.details.shared_attributes?.sharedAttributeCount ?? 0,
+        isExploration: false,
+        configVersion: cfg.version
+      });
+    } catch {
+      return normalizePairFeaturesSnapshot(null);
+    }
   }
 
   async purgeOlderThanTtl() {

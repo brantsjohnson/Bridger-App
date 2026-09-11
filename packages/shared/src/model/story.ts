@@ -1,5 +1,7 @@
 import { Accent } from './person';
 import { Cover } from './cover';
+import type { ScrapbookPage } from './scrapbook';
+import type { Tier } from './tier';
 
 // THIS SECTION DOES: describe a bundled image/video asset without pulling in
 // react-native. `@bridger/shared` is compiled into the server too, so it must
@@ -26,6 +28,12 @@ export interface Story {
   postedAt: string;
   seen: boolean;
   segments: number;
+  /**
+   * Sum of the live pages' revisions. Changes when the author adds to a page
+   * after posting, so the tile ring can light again for people who watched
+   * an earlier version. Personal watched-state only, never a public count.
+   */
+  revision?: number;
 }
 
 export interface StoryPost {
@@ -48,6 +56,16 @@ export interface StoryPost {
    * itself (not a URI string) so it works on web and native alike.
    */
   media?: AssetSource;
+  /**
+   * The editable Scrapbook page behind this post (photos, caption, date stamp
+   * with 0..1 positions). Missing on very old demo fixtures; the API always
+   * fills it (legacy rows get a one-photo page built at read time).
+   */
+  page?: ScrapbookPage;
+  /** Goes up each time the author changes the page after posting. */
+  revision?: number;
+  /** Who can see it; the author needs this back to edit the page. */
+  visibleToTier?: Tier;
 }
 
 export type ReactionKind = 'circleVideo' | 'text' | 'sticker';

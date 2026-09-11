@@ -32,8 +32,11 @@ All calls run **server-side** through one gateway (§5). Model IDs live in confi
 | 11 | **Agent reasoning + tools** (`personal_agent` lane) | `assistant` | standard | 0.3 | 2000 | text + tool calls | per user request |
 | 12 | Agent query understanding | `assistant` | fast | 0.2 | 300 | strict JSON | per request |
 | 13 | Agent speech-to-text / reply phrasing | `assistant` | STT / fast | — / 0.4 | — / 400 | text | voice sessions |
+| 14 | **Recap week fill-ins** (leftover Friend Pod prompts) | `recap` | fast | 0.4 | 250 | strict JSON `{questions}` | Monday worker (never on a user tap) |
 
 *Jobs 11–13 run on the separate `personal_agent` lane (see §5a and `AGENT.md`) — single-user, may see the requester's own names/notes, confirmation-gated tools.*
+
+*Job 14 is deidentified. The payload is Bridger's already-chosen rose / thorn / bud copy plus a count. It never includes a friend's name or a question a friend typed. If the job is disabled or fails, the canned weekly bank fills those slots. Opening Friend Pod never waits on this job.*
 
 **Temperature logic:** judgment/extraction tasks (4, 5, 8) run near-0 for consistency; user-visible prose (2, 3, 6) runs ~0.3–0.4 — enough warmth to not sound robotic, low enough to never get creative with facts. Nothing runs above 0.5: creativity is a liability when the source of truth is someone's life.
 

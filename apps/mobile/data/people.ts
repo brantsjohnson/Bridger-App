@@ -17,6 +17,7 @@ import {
   getCachedPeople,
   getCachedPerson
 } from '../lib/people-cache';
+import { demoTierFor } from './friends';
 import { ME, PEOPLE } from './fixtures/catalog';
 
 // --- FRIENDS-OF-FRIENDS (demo): people your friends know who could vibe at
@@ -59,11 +60,13 @@ function byFirstName(a: Person, b: Person): number {
 /** Find a person by id for avatars / labels on cards. */
 export function personById(id: string): Person {
   if (isDemoMode()) {
-    return (
+    const base =
       PEOPLE.find((p) => p.id === id) ??
       FRIEND_OF_FRIEND.find((p) => p.id === id) ??
-      (id === 'me' ? ME : placeholder(id))
-    );
+      (id === 'me' ? ME : placeholder(id));
+    // Overlay session retier so the profile pill matches Friends Edit.
+    const overlay = demoTierFor(id);
+    return overlay ? { ...base, tier: overlay } : base;
   }
   return getCachedPerson(id) ?? placeholder(id);
 }

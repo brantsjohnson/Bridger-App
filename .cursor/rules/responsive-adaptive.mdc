@@ -1,0 +1,61 @@
+---
+description: Adaptive-layout gate — every UI must adapt to screen size (phone, iPhone Duo / foldable, iPad/tablet, and web) on iOS and Android. Read before building or editing any UI.
+alwaysApply: true
+---
+
+# Adaptive Layout Standard (build for every screen size, always)
+
+Bridger is one Expo codebase that runs on iOS, Android, and web, and must be
+ready for big folding phones (iPhone Duo), tablets/iPad, and desktop browsers.
+**No UI is "done" if it only looks right on a phone.** Build screen-size
+adaptation into every feature as you go, never as a later pass.
+
+## The one source of truth
+
+- Use **`useResponsiveLayout()`** from `@bridger/ui`
+  (`packages/ui/src/layout/responsive.ts`). It returns live `width`/`height`, a
+  `breakpoint` (`phone | expanded | large`), `isLarge`, `isPortrait`, and the
+  `contentMaxWidth` to cap at.
+- Never hard-code a device width, and never read `Dimensions.get()` once at
+  module load (it will not update on rotate, fold, or window resize). Branch on
+  `breakpoint` / `isLarge` instead.
+- Tune sizing through `LAYOUT` in that file (e.g. `CONTENT_MAX_WIDTH`). Change it
+  there so the whole app moves together.
+
+## What to check on every UI change
+
+1. **Comfortable middle, not stretched.** Content and nav sit in a centered
+   column on big screens (handled by `Screen` + `FloatingTabBar`). If you build
+   a screen outside that scaffold, cap and center it with `contentMaxWidth`
+   yourself.
+2. **Use the room on big screens.** On `expanded` / `large`, prefer the planned
+   two-column / master-detail layouts over a single stretched strip
+   (`guide-docs/design-briefs/FOLDABLE-DUO-ADAPTIVE-DESIGN-BRIEF.md`).
+3. **Reflow, do not overflow.** Test narrow phone, unfolded foldable, iPad, a
+   resized split-view window, and a wide browser. Nothing clips, no fixed pixel
+   widths force horizontal scroll, images and cards scale.
+4. **Both orientations + fold posture.** Handle portrait and landscape; keep key
+   text/media out of the center-fold gutter when `isPortrait` book posture
+   applies.
+5. **Web too.** The same component must behave on web (mouse, keyboard focus,
+   window resize), not just native.
+6. **Accessibility holds at every size.** Tap targets stay 44x44 or larger and
+   Dynamic Type / font scaling never breaks the layout when the screen changes.
+
+## Example
+
+```tsx
+// ❌ BAD: locks to a phone width, stretches on web/foldable, never updates.
+const W = Dimensions.get('window').width;
+<View style={{ width: W }}>...</View>
+
+// ✅ GOOD: adapts live to phone / foldable / tablet / web.
+const { isLarge, contentMaxWidth } = useResponsiveLayout();
+<View style={{ width: '100%', maxWidth: contentMaxWidth, alignSelf: 'center' }}>
+  {isLarge ? <TwoPaneLayout /> : <SingleColumn />}
+</View>
+```
+
+If a needed adaptive primitive (e.g. `TwoPane`, side nav rail) does not exist
+yet, build it in `packages/ui/src/layout/` and reuse it — do not hand-roll a
+one-off in a screen.

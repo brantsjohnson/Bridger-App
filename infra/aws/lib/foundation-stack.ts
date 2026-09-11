@@ -85,7 +85,22 @@ export class BridgerFoundationStack extends cdk.Stack {
           APPLE_MUSIC_KEY_ID: '',
           APPLE_MUSIC_MEDIA_ID: '',
           APPLE_MUSIC_PRIVATE_KEY: '',
-          API_PUBLIC_URL: ''
+          APPLE_MUSIC_ORIGIN: '',
+          API_PUBLIC_URL: '',
+          APP_WEB_URL: '',
+          STRIPE_SECRET_KEY: '',
+          STRIPE_PRICE_MONTHLY: '',
+          STRIPE_PRICE_YEARLY: '',
+          STRIPE_WEBHOOK_SECRET: '',
+          REVENUECAT_WEBHOOK_SECRET: '',
+          POSTHOG_HOST: '',
+          POSTHOG_PROJECT_ID: '',
+          POSTHOG_PERSONAL_API_KEY: '',
+          POSTHOG_PROJECT_API_KEY: '',
+          TWILIO_ACCOUNT_SID: '',
+          TWILIO_AUTH_TOKEN: '',
+          TWILIO_MESSAGE_SERVICE_SID: '',
+          TWILIO_FROM_NUMBER: ''
         }),
         generateStringKey: '_unused'
       }

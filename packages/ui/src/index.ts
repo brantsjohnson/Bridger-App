@@ -43,8 +43,15 @@ export * from './primitives/SegmentedProgress';
 export * from './primitives/StepProgress';
 export * from './primitives/WindowsDialog';
 export * from './primitives/NotFoundScreen';
+// Scrapbook pages: the 8.5 x 11 page renderer, layout thumbs, and the count pill.
+export * from './primitives/ScrapbookPage';
+export * from './primitives/SpectrumColorPicker';
+export * from './primitives/LayoutCarousel';
+export * from './primitives/CountPill';
 
 // --- Layout (the screen scaffold + the floating navigation) ---
+// Responsive helpers first so screens can ask "big screen or phone?" anywhere.
+export * from './layout/responsive';
 export * from './layout/Screen';
 export * from './layout/SynthGrid';
 export * from './layout/GridColor';

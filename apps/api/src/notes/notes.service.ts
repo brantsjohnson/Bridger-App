@@ -21,13 +21,18 @@ export class NotesService {
   constructor(private readonly supabase: SupabaseService) {}
 
   // THIS SECTION DOES: list your notes for one friend (or all friends).
-  async list(authorId: string, personId?: string): Promise<FriendNote[]> {
+  async list(
+    authorId: string,
+    personId?: string,
+    pendingPersonId?: string
+  ): Promise<FriendNote[]> {
     let query = this.supabase.admin
       .from('friend_notes')
       .select('*')
       .eq('author_id', authorId)
       .order('updated_at', { ascending: false });
     if (personId) query = query.eq('person_id', personId);
+    if (pendingPersonId) query = query.eq('pending_person_id', pendingPersonId);
     const { data, error } = await query;
     if (error) throw error;
     return (data ?? []).map(toDto);
@@ -37,7 +42,8 @@ export class NotesService {
   async create(
     authorId: string,
     body: {
-      personId: string;
+      personId?: string;
+      pendingPersonId?: string;
       kind: NoteKind;
       text?: string;
       date?: string;
@@ -45,7 +51,12 @@ export class NotesService {
       cadence?: FriendNoteCadence;
     }
   ): Promise<FriendNote> {
-    if (!body?.personId) throw new BadRequestException('personId is required');
+    if (!body?.personId && !body?.pendingPersonId) {
+      throw new BadRequestException('personId or pendingPersonId is required');
+    }
+    if (body.personId && body.pendingPersonId) {
+      throw new BadRequestException('pass only one of personId or pendingPersonId');
+    }
     const kind = body.kind;
     if (kind !== 'text' && kind !== 'date' && kind !== 'check_in') {
       throw new BadRequestException('kind must be text, date, or check_in');
@@ -64,7 +75,8 @@ export class NotesService {
       .from('friend_notes')
       .insert({
         author_id: authorId,
-        person_id: body.personId,
+        person_id: body.personId ?? null,
+        pending_person_id: body.pendingPersonId ?? null,
         kind,
         text: text || body.date?.trim() || null,
         date: kind === 'date' ? body.date?.trim() || text || null : null,
@@ -123,7 +135,8 @@ export class NotesService {
 
 function toDto(row: {
   id: string;
-  person_id: string;
+  person_id: string | null;
+  pending_person_id?: string | null;
   kind: string;
   text: string | null;
   date: string | null;
@@ -133,7 +146,8 @@ function toDto(row: {
 }): FriendNote {
   return {
     id: row.id,
-    personId: row.person_id,
+    personId: row.person_id ?? '',
+    pendingPersonId: row.pending_person_id ?? undefined,
     kind: row.kind as NoteKind,
     body: row.text ?? '',
     date: row.date ?? undefined,

@@ -95,9 +95,37 @@ const DEMO_ARCHIVED: Array<{
 /** Session-only demo result so Home can show "Who got who" after take. */
 let demoResultId: string | null = null;
 
+/** Live session overlay so Home shows Results right after finish (before API). */
+let liveSessionResult: { jName: string; percent: number } | null = null;
+
 /** Remember a demo result (called by the road-trip plugin on complete). */
 export function __demoSetQuizResult(resultId: string): void {
   demoResultId = resultId;
+}
+
+/** Remember a live J-name result so Home CTA flips to Results immediately. */
+export function setLiveJnameSessionResult(result: {
+  jName: string;
+  percent: number;
+} | null): void {
+  liveSessionResult = result;
+}
+
+export function getLiveJnameSessionResult(): {
+  jName: string;
+  percent: number;
+} | null {
+  return liveSessionResult;
+}
+
+/** First (canonical) J-name result this session, including demo. */
+export function getCanonicalJnamePreview(): {
+  jName: string;
+  percent: number;
+} | null {
+  if (liveSessionResult) return liveSessionResult;
+  if (demoResultId) return { jName: demoResultId, percent: 87 };
+  return null;
 }
 
 /** Map a LiveQuiz API payload into the Home widget shape. */
@@ -152,7 +180,7 @@ export async function getLiveQuiz(): Promise<HomeQuiz | null> {
       myResult?: { jName: string; percent: number } | null;
     }>('/jname/leaderboard');
 
-    const my = board?.myResult ?? null;
+    const my = board?.myResult ?? liveSessionResult ?? null;
     return {
       id: 'what-j-name',
       title: 'Which "J" name are you?',

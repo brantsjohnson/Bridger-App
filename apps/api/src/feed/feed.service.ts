@@ -59,7 +59,7 @@ export class FeedService {
     // picture is archived on the author's Profile calendar — not here.
     const { data: rows, error } = await this.supabase.admin
       .from('stories')
-      .select('id, update_text, theme_slug, created_at, visible_to_tier, live_until')
+      .select('id, update_text, theme_slug, created_at, visible_to_tier, live_until, revision')
       .eq('author_id', authorId)
       .in('type', ['photo', 'video'])
       .gt('live_until', nowIso)
@@ -94,7 +94,10 @@ export class FeedService {
       postedAt: latest.created_at,
       // PRIVACY: no vanity view tracking exposed; always unread until that ships.
       seen: false,
-      segments: visible.length
+      segments: visible.length,
+      // Sum of page revisions: when the author adds to a page, this changes and
+      // the phone lights the ring again (per-viewer, never a public count).
+      revision: visible.reduce((n, r) => n + ((r as { revision?: number }).revision ?? 1), 0)
     };
   }
 
@@ -188,6 +191,8 @@ export class FeedService {
     today.setHours(0, 0, 0, 0);
 
     for (const n of notes ?? []) {
+      // Pending-person notes are about someone not on Bridger yet.
+      if (!n.person_id) continue;
       if (n.kind === 'date' && n.remind && n.date) {
         const target = new Date(`${n.date}T00:00:00`);
         if (Number.isNaN(target.getTime())) continue;
@@ -244,7 +249,7 @@ export class FeedService {
 
     return (data ?? []).map((n) => {
       const payload = (n.payload ?? {}) as Record<string, string>;
-      const from = payload.from ?? payload.person_id;
+      const from = payload.from ?? payload.person_id ?? payload.personId;
       return {
         id: n.id,
         kind: mapNotificationKind(n.kind),
@@ -304,6 +309,8 @@ function mapNotificationKind(kind: string): AppNotification['kind'] {
     case 'coop_announcement':
     case 'activity_live':
     case 'delight_gift':
+    case 'friend_joined':
+    case 'collage_tag':
       return kind;
     default:
       return 'story_reply';
@@ -360,6 +367,10 @@ function labelForKind(kind: string, payload: Record<string, string>): string {
       return payload.emoji
         ? `reacted ${payload.emoji} to your recap`
         : 'Reacted to your recap';
+    case 'friend_joined':
+      return 'Someone you know joined Bridger';
+    case 'collage_tag':
+      return 'Tagged you on a collage';
     default:
       return payload.text || 'New notification';
   }

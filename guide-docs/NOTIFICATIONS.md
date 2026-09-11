@@ -24,8 +24,8 @@ The full **Notifications** page (not the Home preview) can filter by the same pa
 |---|---|
 | **All** | Every listed alert |
 | **Home** | Story replies, recap, polls/activity, quizzes, birthdays / saved dates / check-ins, co-op notes |
-| **Friends** | Connect requests, mutual connections, inside jokes |
-| **Events** | Touch Grass + event invites / reminders / RSVPs / assignments / intros |
+| **Friends** | Connect requests, mutual connections, inside jokes, Circle adds, version-quiz taken |
+| **Events** | Touch Grass + event invites / reminders / RSVPs / assignments / intros / host notes |
 | **Discover** | Discover-related alerts (when present) |
 
 **Messages are not on this page.** Chat unread lives only on the Messages tab (and its own badge). No Messages filter chip.
@@ -60,8 +60,10 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 | `story_reply` | "{Name} replied to your story" | Your story replies while live; Messages thread after expiry | `/story/me?comments=1` (live) · `/messages/{threadId}` (expired) |
 | `story_reply_elsewhere` | "{Name} replied to your comment" | That person's update, comments open | `/story/{authorId}?comments=1` |
 | `story_prompt` | "Time to post an update" or "📸 Don't forget to capture the mems" (mid-party) | Capture / Your story composer | `/story/capture` or `/story/capture?eventId={eventId}` |
+| `collage_tag` | "{Name} tagged you on a collage" | Their collage page (the author who tagged you) | `/story/{authorId}` |
 | `connect_request` | "{Name} wants to connect" | Discover → Wants to connect | `/(tabs)/discover` (focus request when `requestId` present). Same destination whether the request came from Discover Add or from reveal Screen 3 FoF Add. |
-| `mutual_connection` | "{A} and {B} connected — through you" · or "Joined from your invite" when someone redeems your invite link/QR | Discover (FoF payoff) · their profile when it was an invite join | `/(tabs)/discover` · `/person/{personId}` |
+| `mutual_connection` | "{A} and {B} connected — through you" · or "Joined from your invite" when someone redeems your invite link/QR or makes an account from your J-name quiz share (API may store `connection_accepted`; the app maps it here) | Discover (FoF payoff) · their profile when it was an invite / quiz-share join | `/(tabs)/discover` · `/person/{personId}` · `/quiz/what-j-name` |
+| `friend_joined` | "Someone you know joined Bridger" | Their profile (the person whose phone matched your private card) | `/person/{personId}` · `/(tabs)/friends` if id missing |
 | `touch_grass_signal` | "{Name} is free tonight" | Their live signal (Events / Home strip) | `/(tabs)/events` (signal focused when `signalId` present) |
 | `touch_grass_im_in` | "{Name}'s in" | Your signal / plan | `/(tabs)/events` (own signal / plan) |
 | `birthday` | "{Name}'s birthday is Friday" | Their profile | `/person/{personId}` |
@@ -72,10 +74,16 @@ Every kind can be delivered as an in-app row and as a push. **Tap destination is
 | `rsvp_going` | "{Name} is going" | Event detail | `/event/{eventId}` |
 | `event_assignment` | "You're on drinks" / assignment change | Event detail (assignments) | `/event/{eventId}` |
 | `event_introduction` | Someone at an event you should meet | Event detail (introductions / meet) | `/event/{eventId}` |
+| `event_host_note` | "{Name} posted a note on {event}" | Event detail (notes) | `/event/{eventId}` |
+| `circle_connected` | "You added {Name} to your Circle" / "{Name} added you" | Fan: Influencer card / In common. Influencer: portal | `/person/{personId}` · `/influencer` |
+| `circle_event_invite` | "{Name} invited you (Circle)" | Event detail | `/event/{eventId}` |
+| `version_quiz_taken` | "{Name} took your quiz" | Author's version-of-me dashboard | `/me/version-quiz` |
 | `poll_activity` | "{Name} posted a poll" / "{Name} answered your poll" | Home Ask-the-group / poll results | `/(tabs)/home` (ask widget; open results when `pollId` present) |
 | `quiz_share` | "{Name} shared a quiz with you" | That quiz | `/quiz/{slug}` |
 | `jname_link_opened` | "{Name} opened your quiz link" / "Someone opened your quiz link" | Your J-name quiz result / board | `/quiz/what-j-name` |
 | `jname_top_match` | "{Name} got {J-name} — one of your top picks" | Your J-name quiz result / board | `/quiz/what-j-name` |
+| `friend_nearby` | "{Name} is nearby" (opt-in Local map; coming soon) | Discover Local map / their profile | `/(tabs)/discover` · `/person/{personId}` |
+| `friend_city_visit` | "{Name} is in your city" after they opt to share a visit (coming soon) | Their profile / Touch Grass | `/person/{personId}` · `/(tabs)/events` |
 | `recap_reaction` | "reacted 🔥 to {Name}'s recap" | Weekly recap player | `/recap` |
 | `inside_joke` | "{Name} tagged you in a joke" | Inside Jokes (their / your wall) | `/person/{personId}` (Inside Jokes tab) or Friends wall |
 | `message` | "{Name} sent a message" | That conversation | `/messages/{threadId}` |
@@ -99,8 +107,10 @@ type NotificationKind =
   | 'story_reply'
   | 'story_reply_elsewhere'
   | 'story_prompt'
+  | 'collage_tag'
   | 'connect_request'
   | 'mutual_connection'
+  | 'friend_joined'
   | 'touch_grass_signal'
   | 'touch_grass_im_in'
   | 'birthday'
@@ -111,6 +121,10 @@ type NotificationKind =
   | 'rsvp_going'
   | 'event_assignment'
   | 'event_introduction'
+  | 'event_host_note'
+  | 'circle_connected'
+  | 'circle_event_invite'
+  | 'version_quiz_taken'
   | 'poll_activity'
   | 'quiz_share'
   | 'jname_link_opened'
@@ -263,6 +277,7 @@ Settings shows one row per `kind` (not a bucket like "Events"). Section headers 
 | `custom_date` | Saved dates | birthdays | yes | yes | on |
 | `friend_check_in` | Check-in nudges | birthdays | yes | yes | on |
 | `mutual_connection` | Friends connecting through you | moments | no | yes | off |
+| `friend_joined` | Someone you know joined | meet | no | yes | on |
 | `inside_joke` | Inside jokes | moments | yes | yes | off |
 | `activity_live` | Weekly activities | moments | no | yes | off |
 | `delight_gift` | Surprises from friends | moments | yes | yes | on |
@@ -271,6 +286,10 @@ Settings shows one row per `kind` (not a bucket like "Events"). Section headers 
 | `rsvp_going` | RSVP updates | events | yes | yes | off |
 | `event_assignment` | Event assignments | events | no | yes | off |
 | `event_introduction` | Event introductions | events | no | yes | on |
+| `event_host_note` | Event notes from the host | events | no | yes | on |
+| `circle_connected` | Circle adds | — | no | yes | on |
+| `circle_event_invite` | Circle event invites | events | no | yes | on |
+| `version_quiz_taken` | Friend finished your quiz | — | yes | yes | on |
 | `touch_grass_signal` | Touch Grass signals | — | yes | yes | on |
 | `touch_grass_im_in` | Touch Grass — I'm in | — | yes | yes | on |
 | `connect_request` | Connection requests | — | no | yes | on |
@@ -337,7 +356,9 @@ Register IDs in `ANALYTICS-TAXONOMY.md` in the same PR as UI.
 - `STORIES.md` — reply notification kinds
 - `DISCOVER.md` — connect request + mutual-connection payoff
 - `TOUCHGRASS-AND-QUIZ.md` — signal + "I'm in"
-- `EVENTS.md` — invites, reminders, assignments, RSVP
+- `EVENTS.md` — invites, reminders, assignments, RSVP, host notes, album
+- `CIRCLES.md` — Circle connected + Circle event invite
+- `VERSION-OF-ME.md` — friend finished your quiz
 - `MESSAGES.md` — message pushes
 - `RECAP-PODCAST.md` — recap reactions
 - `complete/COOP.md` / `complete/COOP-PORTAL.md` — co-op announcements

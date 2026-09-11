@@ -59,10 +59,10 @@ import {
   PROFILE_STORY_TILE_W
 } from './profileSpacing';
 
-const VIEW_AS: Array<{ label: string; tier: Tier }> = [
-  { label: 'Close', tier: 'close' },
-  { label: 'Friends', tier: 'friend' },
-  { label: 'Everyone', tier: 'acquaintance' }
+const VIEW_AS: Array<{ label: string; hint: string; tier: Tier }> = [
+  { label: 'Close friends', hint: 'What your closest circle sees', tier: 'close' },
+  { label: 'Friends', hint: 'What friends see', tier: 'friend' },
+  { label: 'Everyone', hint: 'What acquaintances see', tier: 'acquaintance' }
 ];
 
 const TIER_OPTIONS: Tier[] = ['close', 'friend', 'acquaintance'];
@@ -107,7 +107,10 @@ export function ProfileHeaderBlock({
   /** Own profile: open Settings (gear next to Edit). */
   onOpenSettings?: () => void;
   onViewAs?: (tier: Tier) => void;
-  /** Friend: confirmed tier change (fires friend_retiered). */
+  /**
+   * Friend: persist a circle change. Parent fires friend_retiered only after
+   * moveTier succeeds (never on the tap alone).
+   */
   onRetier?: (tier: Tier) => void;
   onPlayRecap?: () => void;
   onOpenStory?: () => void;
@@ -124,7 +127,9 @@ export function ProfileHeaderBlock({
   const { width } = useWindowDimensions();
   // Tall enough that name/city sit in the lower band like Spotify.
   const heroH = Math.max(Math.round(width * PROFILE_HERO_ASPECT), 320);
-  const city = empty ? 'Add your city' : header?.city ?? '';
+  // Own empty profile nudges "Add your city"; friends with no city hide the pin.
+  const city = empty ? 'Add your city' : header?.city?.trim() ?? '';
+  const showCity = Boolean(city);
   // Prefer the live signed URL from the header, then the person's cached URL,
   // then the demo fixture photo. Emoji fills in when nothing else is there.
   const liveUri = header?.avatarUrl?.trim() || person.avatarUrl?.trim();
@@ -138,8 +143,7 @@ export function ProfileHeaderBlock({
     previewFilter ?? header?.avatarFilter ?? null;
   const filterSourceUri = originalUri || liveUri || null;
   const showWarholHero =
-    activeFilter === 'pop_art' &&
-    Boolean(originalUri || (previewFilter === 'pop_art' && filterSourceUri));
+    activeFilter === 'pop_art' && Boolean(filterSourceUri);
   const showBakedFilterHero =
     activeFilter != null &&
     activeFilter !== 'pop_art' &&
@@ -183,7 +187,7 @@ export function ProfileHeaderBlock({
             ? 'Open current story, watched'
             : 'Open current story, new'
           : canAddStory
-            ? 'Post a story'
+            ? 'Start your collage'
             : 'No current story'
       }
       className={cn(
@@ -210,7 +214,7 @@ export function ProfileHeaderBlock({
             ＋
           </Text>
           <Text className="text-center font-sans-b text-[11px] leading-tight text-ink-soft">
-            Post a story!
+            Start your collage!
           </Text>
         </View>
       ) : (
@@ -364,22 +368,24 @@ export function ProfileHeaderBlock({
               {person.name}
             </Text>
           </AnalyticsRegion>
-          <AnalyticsRegion
-            analyticsId={PROFILE.header.city}
-            interactive={false}
-            style={{ marginTop: PROFILE_META_GAP + 2 }}
-          >
-            <View className="flex-row items-center gap-1">
-              <MapPinIcon size={14} color={ON_PHOTO_MUTE} strokeWidth={2.4} />
-              <Text
-                numberOfLines={1}
-                className="min-w-0 flex-1 font-sans-sb"
-                style={{ fontSize: PROFILE_CITY_SIZE, color: ON_PHOTO_MUTE }}
-              >
-                {city}
-              </Text>
-            </View>
-          </AnalyticsRegion>
+          {showCity ? (
+            <AnalyticsRegion
+              analyticsId={PROFILE.header.city}
+              interactive={false}
+              style={{ marginTop: PROFILE_META_GAP + 2 }}
+            >
+              <View className="flex-row items-center gap-1">
+                <MapPinIcon size={14} color={ON_PHOTO_MUTE} strokeWidth={2.4} />
+                <Text
+                  numberOfLines={1}
+                  className="min-w-0 flex-1 font-sans-sb"
+                  style={{ fontSize: PROFILE_CITY_SIZE, color: ON_PHOTO_MUTE }}
+                >
+                  {city}
+                </Text>
+              </View>
+            </AnalyticsRegion>
+          ) : null}
         </View>
       </View>
 
@@ -418,11 +424,11 @@ export function ProfileHeaderBlock({
             <Pressable
               onPress={withAnalyticsPress(PROFILE.header.view_as, () => setViewAsOpen(true))}
               accessibilityRole="button"
-              accessibilityLabel={`View as ${VIEW_AS.find((v) => v.tier === asTier)?.label ?? 'Close'}`}
+              accessibilityLabel={`Preview profile as ${VIEW_AS.find((v) => v.tier === asTier)?.label ?? 'Close friends'}`}
               className="h-9 shrink-0 flex-row items-center gap-0.5 rounded-full border border-ink-line bg-surface px-2.5"
             >
               <Text numberOfLines={1} className="font-sans-b text-[12px] text-ink">
-                {VIEW_AS.find((v) => v.tier === asTier)?.label ?? 'Close'}
+                {`As ${VIEW_AS.find((v) => v.tier === asTier)?.label ?? 'Close friends'}`}
               </Text>
               <ChevronDownIcon size={12} color={c.ink} strokeWidth={2.6} />
             </Pressable>
@@ -470,11 +476,14 @@ export function ProfileHeaderBlock({
         </View>
       </View>
 
-      {/* View-as picker (own). */}
+      {/* View-as picker (own): preview how each circle sees your profile. */}
       <Modal visible={viewAsOpen} transparent animationType="fade" onRequestClose={() => setViewAsOpen(false)}>
         <Pressable className="flex-1 justify-end bg-black/40" onPress={() => setViewAsOpen(false)}>
           <View className="rounded-t-3xl bg-surface px-4 pb-8 pt-4">
-            <Text className="mb-3 font-pixel text-[16px] text-ink">View as</Text>
+            <Text className="mb-1 font-pixel text-[16px] text-ink">Preview as</Text>
+            <Text className="mb-3 font-sans-sb text-[13px] leading-snug text-ink-mute">
+              See your profile the way each circle of friends would see it.
+            </Text>
             {VIEW_AS.map((v) => (
               <Pressable
                 key={v.tier}
@@ -484,9 +493,11 @@ export function ProfileHeaderBlock({
                 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: asTier === v.tier }}
-                className="min-h-[48px] justify-center border-b border-ink-line"
+                accessibilityLabel={`${v.label}. ${v.hint}`}
+                className="min-h-[52px] justify-center border-b border-ink-line py-2"
               >
                 <Text className="font-sans-b text-[16px] text-ink">{v.label}</Text>
+                <Text className="mt-0.5 font-sans-sb text-[12px] text-ink-mute">{v.hint}</Text>
               </Pressable>
             ))}
           </View>
@@ -505,7 +516,6 @@ export function ProfileHeaderBlock({
                   const from = person.tier ?? 'friend';
                   if (t !== from) {
                     onRetier?.(t);
-                    trackProduct('friend_retiered', { from_tier: from, to_tier: t });
                   }
                   setTierOpen(false);
                 }}

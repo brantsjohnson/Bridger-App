@@ -3,6 +3,7 @@
 // Take Your Funny Bone with Bridger flair: coral wash, fun-shaped emoji tiles,
 // burst on tap, note tucked behind a chip, no scrolling. Scores five taste
 // axes + breadth. Disclosure rides along for the moderator.
+// Mid-take answers stay on this phone so you can leave and finish later.
 // ============================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -16,8 +17,14 @@ import {
   trackProduct,
   YOUR_FUNNY_BONE
 } from '@bridger/shared';
+import { EndQuizSheet } from '../../_shared/EndQuizSheet';
 import { getDisclosure } from '../../../data/discover';
 import { toDisclosureContextForQuiz } from '../_shared/disclosure-context';
+import {
+  clearDiscoverDraft,
+  loadDiscoverDraft,
+  saveDiscoverDraft
+} from '../_shared/discover-draft';
 import { optionEmoji } from '../_shared/option-emoji';
 import { QuizTakeShell } from '../_shared/QuizTakeShell';
 import { HUMOR_INSTRUCTIONS, HUMOR_QUESTIONS } from './questions';
@@ -34,6 +41,7 @@ type Props = {
   onComplete: (result: HumorScoreResult) => void | Promise<void>;
 };
 
+const SLUG = 'humor';
 const PHASE_EMOJI = { 1: '😂', 2: '🎤', 3: '🕵️' } as const;
 
 const SHELL_IDS = {
@@ -58,6 +66,7 @@ export function HumorFlow({
   const startedAt = useRef<number | null>(null);
   const lastStep = useRef('intro');
   const completedRef = useRef(false);
+  const hydratingRef = useRef(false);
 
   const [phase, setPhase] = useState<'intro' | 'take' | 'result'>('intro');
   const [index, setIndex] = useState(0);
@@ -65,22 +74,48 @@ export function HumorFlow({
   const [explain, setExplain] = useState('');
   const [answers, setAnswers] = useState<HumorAnswer[]>([]);
   const [result, setResult] = useState<HumorScoreResult | null>(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const [ready, setReady] = useState(false);
 
+  // THIS SECTION DOES: open surface + resume a saved draft when possible.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setReady(false);
+      return;
+    }
     completedRef.current = false;
-    startedAt.current = Date.now();
-    lastStep.current = 'intro';
-    setPhase('intro');
-    setIndex(0);
-    setSelected([]);
-    setExplain('');
-    setAnswers([]);
-    setResult(null);
-    openSurface('your_funny_bone', parentScreen);
-    trackFlowStarted('your_funny_bone', { quiz_id: 'humor' });
-    trackProduct('quiz_started', { quiz_id: 'humor', quiz_version: 1 });
+    hydratingRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      const draft = await loadDiscoverDraft<HumorAnswer>(SLUG);
+      if (cancelled) return;
+      if (draft && draft.phase !== 'result' && (draft.answers?.length || draft.phase === 'take')) {
+        startedAt.current = draft.startedAt || Date.now();
+        lastStep.current = HUMOR_QUESTIONS[draft.index]?.id ?? 'take';
+        setPhase(draft.phase === 'intro' ? 'take' : draft.phase);
+        setIndex(Math.min(draft.index, HUMOR_QUESTIONS.length - 1));
+        setAnswers(draft.answers ?? []);
+        setSelected(draft.selected ?? []);
+        setExplain(draft.explain ?? '');
+        setResult(null);
+      } else {
+        startedAt.current = Date.now();
+        lastStep.current = 'intro';
+        setPhase('intro');
+        setIndex(0);
+        setSelected([]);
+        setExplain('');
+        setAnswers([]);
+        setResult(null);
+        trackFlowStarted('your_funny_bone', { quiz_id: 'humor' });
+        trackProduct('quiz_started', { quiz_id: 'humor', quiz_version: 1 });
+      }
+      openSurface('your_funny_bone', parentScreen);
+      hydratingRef.current = false;
+      setReady(true);
+    })();
     return () => {
+      cancelled = true;
       if (!completedRef.current) {
         const ms = startedAt.current != null ? Date.now() - startedAt.current : 0;
         trackFlowAbandoned('your_funny_bone', ms, lastStep.current, {
@@ -95,6 +130,22 @@ export function HumorFlow({
       }
     };
   }, [open, parentScreen]);
+
+  // THIS SECTION DOES: keep progress on-device while they answer.
+  useEffect(() => {
+    if (!open || !ready || hydratingRef.current || completedRef.current) return;
+    if (phase === 'intro' || phase === 'result') return;
+    void saveDiscoverDraft({
+      slug: SLUG,
+      phase,
+      index,
+      answers,
+      selected,
+      explain,
+      startedAt: startedAt.current ?? Date.now(),
+      totalQuestions: HUMOR_QUESTIONS.length
+    });
+  }, [open, ready, phase, index, answers, selected, explain]);
 
   const question = HUMOR_QUESTIONS[index];
   const total = HUMOR_QUESTIONS.length;
@@ -169,6 +220,7 @@ export function HumorFlow({
   const onDoneResult = async () => {
     if (!result) return;
     completedRef.current = true;
+    await clearDiscoverDraft(SLUG);
     const ms = startedAt.current != null ? Date.now() - startedAt.current : 0;
     await onComplete(result);
     trackFlowCompleted('your_funny_bone', ms, { quiz_id: 'humor' });
@@ -182,9 +234,38 @@ export function HumorFlow({
     onClose();
   };
 
+  const requestLeave = () => {
+    if (phase === 'intro' || completedRef.current) {
+      onClose();
+      return;
+    }
+    setLeaveOpen(true);
+  };
+
+  const saveAndExit = () => {
+    setLeaveOpen(false);
+    void saveDiscoverDraft({
+      slug: SLUG,
+      phase: phase === 'result' ? 'take' : phase,
+      index,
+      answers,
+      selected,
+      explain,
+      startedAt: startedAt.current ?? Date.now(),
+      totalQuestions: total
+    });
+    onClose();
+  };
+
+  const discardAndExit = () => {
+    setLeaveOpen(false);
+    void clearDiscoverDraft(SLUG);
+    onClose();
+  };
+
   const onBack = () => {
     if (phase === 'intro' || (phase === 'take' && index === 0)) {
-      onClose();
+      requestLeave();
       return;
     }
     if (phase === 'result') {
@@ -199,44 +280,56 @@ export function HumorFlow({
     setExplain(prev?.explain ?? '');
   };
 
+  if (!ready && open) return null;
+
   return (
-    <QuizTakeShell
-      open={open}
-      accent="coral"
-      ids={SHELL_IDS}
-      phase={phase}
-      progress={progress}
-      onClose={onClose}
-      onBack={onBack}
-      intro={{
-        headline: HUMOR_INSTRUCTIONS.headline,
-        title: HUMOR_INSTRUCTIONS.title,
-        lead: HUMOR_INSTRUCTIONS.lead,
-        rules: HUMOR_INSTRUCTIONS.rules,
-        emoji: '😂'
-      }}
-      onStart={() => {
-        setPhase('take');
-        lastStep.current = 'h01';
-        trackFlowStep('your_funny_bone', 'take_start', { quiz_id: 'humor' });
-      }}
-      stepLabel={`${index + 1} of ${total}`}
-      prompt={question?.prompt ?? ''}
-      questionEmoji={question ? PHASE_EMOJI[question.phase] : '😂'}
-      options={tiles}
-      selected={selected}
-      maxSelect={question?.maxSelect ?? 1}
-      onToggle={(id) => toggle(id)}
-      explain={explain}
-      onExplainChange={setExplain}
-      continueDisabled={selected.length === 0}
-      continueLabel={
-        index + 1 >= total ? 'See my funny bone' : 'Continue'
-      }
-      onContinue={() => void onContinue()}
-      result={result ? <ResultSummary result={result} /> : null}
-      onDoneResult={() => void onDoneResult()}
-    />
+    <>
+      <QuizTakeShell
+        open={open}
+        accent="coral"
+        ids={SHELL_IDS}
+        phase={phase}
+        progress={progress}
+        onClose={requestLeave}
+        onBack={onBack}
+        intro={{
+          headline: HUMOR_INSTRUCTIONS.headline,
+          title: HUMOR_INSTRUCTIONS.title,
+          lead: HUMOR_INSTRUCTIONS.lead,
+          rules: HUMOR_INSTRUCTIONS.rules,
+          emoji: '😂'
+        }}
+        onStart={() => {
+          setPhase('take');
+          lastStep.current = 'h01';
+          trackFlowStep('your_funny_bone', 'take_start', { quiz_id: 'humor' });
+        }}
+        stepLabel={`${index + 1} of ${total}`}
+        prompt={question?.prompt ?? ''}
+        questionEmoji={question ? PHASE_EMOJI[question.phase] : '😂'}
+        options={tiles}
+        selected={selected}
+        maxSelect={question?.maxSelect ?? 1}
+        onToggle={(id) => toggle(id)}
+        explain={explain}
+        onExplainChange={setExplain}
+        continueDisabled={selected.length === 0}
+        continueLabel={
+          index + 1 >= total ? 'See my funny bone' : 'Continue'
+        }
+        onContinue={() => void onContinue()}
+        result={result ? <ResultSummary result={result} /> : null}
+        onDoneResult={() => void onDoneResult()}
+      />
+      <EndQuizSheet
+        open={leaveOpen}
+        onStay={() => setLeaveOpen(false)}
+        onEnd={saveAndExit}
+        onDiscard={discardAndExit}
+        parentScreen="your_funny_bone"
+        canSaveDraft
+      />
+    </>
   );
 }
 

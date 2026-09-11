@@ -11,6 +11,7 @@ import * as personSummary from './person-summary/v1';
 import * as freshness from './freshness/v1';
 import * as agentQuery from './agent-query/v1';
 import * as agentReasoning from './agent-reasoning/v1';
+import * as recapWeekFill from './recap-week-fill/v1';
 
 export interface PromptBundle {
   version: string;
@@ -34,6 +35,10 @@ const PROMPTS: Partial<Record<JobName, PromptBundle>> = {
   agent_reasoning: {
     version: agentReasoning.VERSION,
     system: agentReasoning.SYSTEM
+  },
+  recap_week_fill: {
+    version: recapWeekFill.VERSION,
+    system: recapWeekFill.SYSTEM
   }
 };
 
@@ -49,5 +54,6 @@ export {
   personSummary,
   freshness,
   agentQuery,
-  agentReasoning
+  agentReasoning,
+  recapWeekFill
 };

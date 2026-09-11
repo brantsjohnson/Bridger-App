@@ -8,14 +8,20 @@
 // selected).
 // ============================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import { FloatingTabBar, ProfileLinkProvider, type TabKey } from '@bridger/ui';
 import { getMe } from '../../data/people';
 import { acknowledgeTab } from '../../data/tab-badges';
 import { useTabAttention } from '../../hooks/useTabAttention';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { isDemoMode } from '../../lib/demo';
+import { setMessagesReturnTo } from '../../lib/messages-return';
 import { getCachedMe, loadPeople, subscribePeople } from '../../lib/people-cache';
+import {
+  hydrateTabSnapshots,
+  isTabSnapshotsReady,
+  markTabEntersSettled
+} from '../../lib/tab-snapshots';
 import { useAuth } from '../../providers/auth-provider';
 
 const TAB_KEYS = new Set<TabKey>(['home', 'friends', 'events', 'discover', 'news']);
@@ -31,15 +37,42 @@ export const unstable_settings = {
 
 export default function TabsLayout() {
   const router = useRouter();
+  const pathname = usePathname();
   const { loading: authLoading, session } = useAuth();
   const demoMode = isDemoMode();
   const me = getMe();
+  const ownerKey = demoMode ? 'demo' : session?.user?.id ?? '';
+  // Wait one beat for last-seen tabs to load from the phone so the first
+  // paint is already the saved Home / Friends / Events, not empty boxes.
+  const [snapReady, setSnapReady] = useState(() =>
+    ownerKey ? isTabSnapshotsReady(ownerKey) : false
+  );
   // Rerender when the live people cache finishes so the header picks up
   // your real avatar URL (demo uses the local asset right away).
   const [peopleTick, setPeopleTick] = useState(0);
   // THIS SECTION DOES: keep the floating-nav dots in sync when you open a tab
   // (nav dot clears; section title dots stay on that page).
   const { badges } = useTabAttention();
+
+  // THIS SECTION DOES: load last-seen tab pictures before the screens mount.
+  useEffect(() => {
+    if (!demoMode && (authLoading || !session)) return;
+    if (!ownerKey) return;
+    let cancelled = false;
+    void hydrateTabSnapshots(ownerKey).finally(() => {
+      if (!cancelled) setSnapReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, demoMode, ownerKey, session]);
+
+  // After the first paint, remounts should not replay fade-ins.
+  useEffect(() => {
+    if (!snapReady) return;
+    const t = setTimeout(() => markTabEntersSettled(), 700);
+    return () => clearTimeout(t);
+  }, [snapReady]);
 
   // Live: fill the people cache so personById / roster look-ups work sync.
   useEffect(() => {
@@ -59,10 +92,11 @@ export default function TabsLayout() {
     router.push('/(tabs)/profile');
   }, [router]);
 
-  // Header paper-plane → your Messages inbox (moved off the bottom pill).
+  // Header paper-plane → Messages. Stash the current tab so Back can return.
   const openMessages = useCallback(() => {
+    setMessagesReturnTo(pathname);
     router.push('/(tabs)/messages');
-  }, [router]);
+  }, [pathname, router]);
 
   const profile = useMemo(() => {
     const live = getCachedMe();
@@ -77,11 +111,18 @@ export default function TabsLayout() {
 
   // SECURITY: signed-out people never mount private tabs or start private API calls.
   if (!demoMode && (authLoading || !session)) return null;
+  if (!snapReady) return null;
 
   return (
     <ProfileLinkProvider profile={profile} open={openProfile} openMessages={openMessages}>
       <Tabs
-        screenOptions={{ headerShown: false }}
+        // Keep every tab built so a pill tap does not rebuild the page.
+        // Freeze hidden tabs so they do not redo work until you come back.
+        screenOptions={{
+          headerShown: false,
+          freezeOnBlur: true,
+          lazy: false
+        }}
         // --- THE NAV: Expo Router tab state → FloatingTabBar, and a pill tap
         //     back into real navigation. ---
         tabBar={({ state, navigation }) => {

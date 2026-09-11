@@ -21,7 +21,7 @@ export function InsideJokeNote({ joke, index = 0 }: {joke: InsideJoke;index?: nu
   return (
     <figure
       className={cn(
-        'sticky-note w-full rounded-none p-4 pb-6',
+        'sticky-note aspect-square w-full rounded-none p-4 pb-6',
         token.bg,
         token.text,
         TILTS[index % TILTS.length]

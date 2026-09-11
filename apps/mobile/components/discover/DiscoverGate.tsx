@@ -21,7 +21,12 @@ import {
   useReduceMotion
 } from '@bridger/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GateCtaProgress } from '../GateCtaProgress';
+import { useGateProgress } from '../../hooks/useGateProgress';
 import { StarField } from './StarField';
+
+/** Device key for the 15 second CTA charge-up (time left, in milliseconds). */
+const DISCOVER_GATE_CHARGE_KEY = 'bridger.gate.discover.charge_remaining_ms';
 
 // THIS SECTION DOES: load the globe piece you split out of the design
 const GLOBE = require('../../assets/images/discover-globe.gif');
@@ -33,6 +38,9 @@ const GAP_BELOW_HEADER = 10;
 const HEADER_ROW = 44;
 
 export function DiscoverGate({ onStart }: { onStart: () => void }) {
+  // THIS SECTION DOES: charge the CTA over 15 total seconds of looking at this
+  // page (pauses when you leave, resumes where it stopped next visit).
+  const { done: ctaReady, progress } = useGateProgress(DISCOVER_GATE_CHARGE_KEY);
   const reduceMotion = useReduceMotion();
   const insets = useSafeAreaInsets();
   const { width, height: windowHeight } = useWindowDimensions();
@@ -143,14 +151,24 @@ export function DiscoverGate({ onStart }: { onStart: () => void }) {
           zIndex: 6
         }}
       >
-        <ButtonPrimary
-          full
-          onPress={onStart}
-          analyticsId={DISCOVER.gate.get_started}
-          accessibilityLabel="Get started with Discover"
-        >
-          Get started
-        </ButtonPrimary>
+        {/* THIS SECTION DOES: show the charging bar until the 15 seconds are
+            done, then swap in the real Get started button. */}
+        {ctaReady ? (
+          <ButtonPrimary
+            full
+            onPress={onStart}
+            analyticsId={DISCOVER.gate.get_started}
+            accessibilityLabel="Get started with Discover"
+          >
+            Get started
+          </ButtonPrimary>
+        ) : (
+          <GateCtaProgress
+            progress={progress}
+            analyticsId={DISCOVER.gate.cta_loading}
+            label="Loading your Discover space"
+          />
+        )}
         <Text className="mt-3 text-center font-sans-sb text-[12px] text-white/70">
           You choose what you share.
         </Text>

@@ -68,6 +68,8 @@ export type FriendNoteCadence = 'week' | 'biweek' | 'month';
 export interface FriendNote {
   id: string;
   personId: string;
+  /** Present when this note is about someone not on Bridger yet. */
+  pendingPersonId?: string;
   kind: 'text' | 'date' | 'check_in';
   body: string;
   /** date notes only — display or ISO date */
@@ -209,6 +211,12 @@ export interface InsideJoke {
   taggedIds?: string[];
   /** the event it happened at; everyone who was there sees it */
   eventName?: string;
+  /** Event id when we tagged a real event (not just a typed place). */
+  eventId?: string;
+  /** When it was posted (ms). Newest notes sort first. */
+  createdAt?: number;
+  /** Optional photo on the note (co-op). Signed URL or a local preview. */
+  photoUri?: string;
 }
 
 /**

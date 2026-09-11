@@ -30,9 +30,10 @@ export class NotesController {
   @Get()
   list(
     @CurrentUser() user: AuthUser,
-    @Query('personId') personId?: string
+    @Query('personId') personId?: string,
+    @Query('pendingPersonId') pendingPersonId?: string
   ) {
-    return this.notes.list(user.id, personId);
+    return this.notes.list(user.id, personId, pendingPersonId);
   }
 
   @Post()
@@ -40,7 +41,8 @@ export class NotesController {
     @CurrentUser() user: AuthUser,
     @Body()
     body: {
-      personId: string;
+      personId?: string;
+      pendingPersonId?: string;
       kind: 'text' | 'date' | 'check_in';
       text?: string;
       date?: string;

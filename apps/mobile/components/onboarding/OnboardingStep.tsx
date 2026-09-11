@@ -37,18 +37,22 @@ import {
   Text,
   View
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeftIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Accent } from '@bridger/shared';
 import { ONBOARDING } from '@bridger/shared';
 import {
+  ACCENT_HEX,
   AnalyticsRegion,
   SynthGrid,
+  THEME,
   useGridColor,
+  useResponsiveLayout,
   useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
+import { headingColorFor } from './onboarding-new-flow';
+import { OnboardingBurstHost, OnboardingLookProvider } from './onboarding-chrome';
 import { OB, OB_BORDER } from './onboarding-theme';
 import {
   OBBody,
@@ -128,6 +132,22 @@ type Props = {
    * so Continue explodes that flag instead of the default party mix.
    */
   burstEmojis?: string[];
+  /**
+   * New onboarding dress. Omit on Old screens so they keep the classic look.
+   * action = your turn (progress + amber pill + blue heading).
+   * info = we are telling you something (inverted canvas, no progress bar).
+   */
+  tone?: 'action' | 'info';
+  /** Right-side chrome label on action screens (e.g. Getting started). */
+  conceptLabel?: string;
+  /** Heading color. Action screens stay blue. Info screens use the concept. */
+  headingColor?: string;
+  /** ⓘ that takes the chrome slot on information screens. */
+  headerNote?: React.ReactNode;
+  /** Quiet line under the CTA, e.g. "You can change this anytime." */
+  ctaNote?: string;
+  /** New screens use sentence case. Old screens stay all-caps. */
+  sentenceCase?: boolean;
 };
 
 /** Side padding for the whole run, straight from the design (24px). */
@@ -155,12 +175,59 @@ export function OnboardingStep({
   fillBody = true,
   scrollBody = false,
   smallAsk = false,
-  burstEmojis
+  burstEmojis,
+  tone,
+  conceptLabel,
+  headingColor,
+  headerNote,
+  ctaNote,
+  sentenceCase = false,
+  accent
 }: Props) {
   const insets = useSafeAreaInsets();
   // Same canvas + grid tint as Home / every other Screen.
   const theme = useThemeColors();
   const { gridColor } = useGridColor();
+  const { contentMaxWidth } = useResponsiveLayout();
+  const dressed = tone === 'action' || tone === 'info';
+  const info = tone === 'info';
+  const hideBar = info || (dressed && step <= 0);
+  // Info screens flip the phone's mode so "being told" feels different from
+  // "your turn." Action screens stay on the app canvas.
+  const phoneDark = theme.canvas.toLowerCase() === THEME.dark.canvas.toLowerCase();
+  const onDark = info ? !phoneDark : phoneDark;
+  const pageCanvas = dressed
+    ? onDark
+      ? THEME.dark.canvas
+      : THEME.light.canvas
+    : theme.canvas;
+  const pageInk = dressed ? (onDark ? THEME.dark.ink : THEME.light.ink) : theme.ink;
+  const pageInkSoft = dressed
+    ? onDark
+      ? THEME.dark.inkSoft
+      : THEME.light.inkSoft
+    : theme.inkSoft;
+  const pageInkMute = dressed
+    ? onDark
+      ? THEME.dark.inkMute
+      : THEME.light.inkMute
+    : theme.inkMute;
+  const askColor =
+    headingColor ??
+    (dressed && accent
+      ? headingColorFor(tone ?? 'action', accent, onDark)
+      : info
+        ? ACCENT_HEX.pink
+        : OB.blue);
+  const askStyle = sentenceCase || dressed
+    ? {
+        fontSize: smallAsk ? 30 : 34,
+        lineHeight: smallAsk ? 34 : 38,
+        letterSpacing: -0.6,
+        textTransform: 'none' as const,
+        color: askColor
+      }
+    : undefined;
 
   // THIS SECTION DOES: decide whether the body fills the screen or scrolls.
   const bodyFills = fillBody && !scrollBody;
@@ -181,12 +248,17 @@ export function OnboardingStep({
   const layoutH = useRef(0);
   const scrollY = useRef(0);
   const [moreBelow, setMoreBelow] = useState(false);
+  const [atScrollTop, setAtScrollTop] = useState(true);
   // True while a child (color slider / spectrum) is dragging, so the page
   // does not scroll under the finger at the same time.
   const [scrollLocked, setScrollLocked] = useState(false);
+  // Extra bottom pad only while the keyboard is up (Obsession song field).
+  // A permanent 320 pad made Confirm always show a "SCROLL" label over First name.
+  const [keyboardPad, setKeyboardPad] = useState(0);
   const refreshMoreBelow = () => {
     const leftover = contentH.current - layoutH.current - scrollY.current;
-    setMoreBelow(leftover > 12);
+    setMoreBelow(leftover > 24);
+    setAtScrollTop(scrollY.current < 16);
   };
 
   // THIS SECTION DOES: record where the scroll window sits on screen, safely.
@@ -211,14 +283,18 @@ export function OnboardingStep({
     if (typeof target.measureInWindow !== 'function') return;
     target.measureInWindow((_tx, ty, _tw, th) => {
       const win = scrollWindow.current;
-      if (win.height <= 0) return;
-      const pad = 28;
+      if (win.height <= 0) {
+        // Measure failed: push far enough that the song field clears the keys.
+        scrollRef.current?.scrollToEnd({ animated: true });
+        return;
+      }
+      const pad = 48;
       const visibleTop = win.y + pad;
       const visibleBottom = win.y + win.height - pad;
       const fieldBottom = ty + th;
       let delta = 0;
       if (fieldBottom > visibleBottom) {
-        delta = fieldBottom - visibleBottom;
+        delta = fieldBottom - visibleBottom + 24;
       } else if (ty < visibleTop) {
         delta = ty - visibleTop;
       }
@@ -233,13 +309,14 @@ export function OnboardingStep({
   const bodyScrollApi = useMemo<BodyScrollApi>(
     () => ({
       ensureVisible: (target) => {
-        // Wait for KeyboardAvoidingView + keyboard animation, then scroll.
+        // Wait for keyboard animation, then retry so late insets still catch it.
         pendingVisible.current = target;
+        const run = (delay: number) =>
+          setTimeout(() => scrollTargetIntoView(target), delay);
         requestAnimationFrame(() => {
-          setTimeout(
-            () => scrollTargetIntoView(target),
-            Platform.OS === 'ios' ? 280 : 160
-          );
+          run(Platform.OS === 'ios' ? 120 : 80);
+          run(Platform.OS === 'ios' ? 360 : 220);
+          run(Platform.OS === 'ios' ? 560 : 400);
         });
       },
       setScrollLocked
@@ -250,24 +327,45 @@ export function OnboardingStep({
   // After the keyboard finishes opening, re-check the field we were aiming at.
   useEffect(() => {
     if (!scrollBody) return;
-    const sub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardDidShow' : 'keyboardDidShow',
-      () => {
-        // Window height changed; refresh measure then scroll again.
-        rememberScrollWindow(layoutH.current);
-        const target = pendingVisible.current;
-        if (!target) return;
-        setTimeout(() => scrollTargetIntoView(target), 60);
+    const sub = Keyboard.addListener('keyboardDidShow', (e) => {
+      // Use most of the keyboard height as scroll room so the song field
+      // clears the keys (0.55 left the field half-covered on iPhone).
+      setKeyboardPad(Math.max(220, Math.round((e.endCoordinates?.height ?? 300) * 0.85)));
+      // Window height changed; refresh measure then scroll again.
+      rememberScrollWindow(layoutH.current);
+      const target = pendingVisible.current;
+      if (!target) {
+        // Obsession: if we lost the anchor, still lift the bottom of the page.
+        scrollRef.current?.scrollToEnd({ animated: true });
+        return;
       }
-    );
+      setTimeout(() => scrollTargetIntoView(target), 40);
+      setTimeout(() => scrollTargetIntoView(target), 280);
+      setTimeout(() => scrollTargetIntoView(target), 520);
+    });
     return () => sub.remove();
   }, [rememberScrollWindow, scrollBody, scrollTargetIntoView]);
 
-  // Soft fade into the live canvas color (matches Home, including dark mode).
-  const fadeTop = `${theme.canvas}00`;
-  const fadeBottom = theme.canvas;
+  // THIS SECTION DOES: when the keyboard closes, pull the scroll back if we
+  // overscrolled into empty padding (Confirm / Obsession "can't scroll up").
+  useEffect(() => {
+    if (!scrollBody) return;
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      pendingVisible.current = null;
+      setKeyboardPad(0);
+      const maxY = Math.max(0, contentH.current - layoutH.current);
+      if (scrollY.current > maxY + 8) {
+        scrollRef.current?.scrollTo({ y: maxY, animated: true });
+      }
+    });
+    return () => sub.remove();
+  }, [scrollBody]);
 
+  // THIS SECTION DOES: New screens get rounded boxes and a page-level emoji
+  // shower that never blocks scrolling. Old screens stay square.
   return (
+    <OnboardingLookProvider dressed={dressed}>
+    <OnboardingBurstHost>
     <View
       className="flex-1 bg-canvas"
       style={{
@@ -275,14 +373,52 @@ export function OnboardingStep({
         width: '100%',
         alignSelf: 'stretch',
         height: '100%',
-        backgroundColor: theme.canvas,
+        backgroundColor: pageCanvas,
         overflow: 'hidden'
       }}
     >
       {/* Same drifting grid Home uses, not the old graph-paper corner patches. */}
-      <SynthGrid strength="normal" color={gridColor} />
+      <SynthGrid strength="normal" color={dressed && onDark ? 'rgba(255,255,255,0.08)' : gridColor} />
 
-      <View className="relative z-10 flex-1" style={{ backgroundColor: 'transparent' }}>
+      {/* Soft concept blobs sit at the bottom so they never cover Back. */}
+      {dressed ? (
+        <View pointerEvents="none" accessible={false} style={{ position: 'absolute', inset: 0 }}>
+          <View
+            style={{
+              position: 'absolute',
+              bottom: -96,
+              left: -80,
+              width: 240,
+              height: 240,
+              borderRadius: 999,
+              backgroundColor: onDark ? '#FFFFFF' : askColor,
+              opacity: onDark ? 0.09 : 0.18
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              bottom: -128,
+              right: -64,
+              width: 208,
+              height: 208,
+              borderRadius: 999,
+              backgroundColor: onDark ? '#FFFFFF' : OB.pink,
+              opacity: onDark ? 0.05 : 0.14
+            }}
+          />
+        </View>
+      ) : null}
+
+      <View
+        className="relative z-10 flex-1"
+        style={{
+          backgroundColor: 'transparent',
+          width: '100%',
+          maxWidth: contentMaxWidth,
+          alignSelf: 'center'
+        }}
+      >
       {/* TOP BAR: square back box (to fix an earlier answer) + the step bar. */}
       <View
         style={{
@@ -306,31 +442,62 @@ export function OnboardingStep({
               flexShrink: 0,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: theme.canvas,
+              backgroundColor: dressed ? (onDark ? THEME.dark.surface : THEME.light.surface) : theme.canvas,
               borderWidth: OB_BORDER,
               // Theme ink so the box stays visible on a dark canvas.
-              borderColor: theme.ink
+              borderColor: pageInk,
+              borderRadius: dressed ? 999 : 0
             }}
           >
-            <ArrowLeftIcon size={18} color={theme.ink} strokeWidth={2.6} />
+            <ArrowLeftIcon size={18} color={pageInk} strokeWidth={2.6} />
           </Pressable>
         ) : null}
-        <View style={{ flex: 1 }}>
-          <OBProgress step={step} total={total} analyticsId={ONBOARDING.chrome.progress_bar} />
-        </View>
+        {hideBar ? (
+          <View style={{ flex: 1 }} />
+        ) : (
+          <View style={{ flex: 1 }}>
+            <OBProgress step={step} total={total} analyticsId={ONBOARDING.chrome.progress_bar} />
+          </View>
+        )}
+        {headerNote ??
+          (dressed && !info && conceptLabel ? (
+            <Text className="font-sans-b text-[12px]" style={{ color: pageInkMute }}>
+              {conceptLabel}
+            </Text>
+          ) : null)}
       </View>
 
       {/* THE ASK: why we're asking, the big question, and an optional sentence.
           Some steps (taste intro) skip this and put the headline in the body. */}
-      {purpose || ask || blurb || kicker ? (
-        <View style={{ paddingHorizontal: PAGE_X, paddingTop: 14, paddingBottom: 8, gap: 16 }}>
-          {purpose ? <OBChip>{purpose}</OBChip> : null}
+      {purpose || ask || blurb || kicker || (dressed && !info) ? (
+        <View style={{ paddingHorizontal: PAGE_X, paddingTop: 14, paddingBottom: 8, gap: 12 }}>
+          {(purpose || (dressed && !info)) ? (
+            <OBChip>{purpose ?? 'Your turn'}</OBChip>
+          ) : null}
           {ask ? (
             <AnalyticsRegion analyticsId={ONBOARDING.chrome.step_title} interactive={false}>
-              <OBHeading small={smallAsk}>{ask}</OBHeading>
+              <OBHeading small={smallAsk} style={askStyle}>
+                {ask}
+              </OBHeading>
             </AnalyticsRegion>
           ) : null}
-          {blurb ? <OBBody>{blurb}</OBBody> : null}
+          {blurb ? (
+            dressed ? (
+              <Text
+                style={{
+                  fontSize: 15,
+                  lineHeight: 21,
+                  fontWeight: '600',
+                  color: pageInkSoft,
+                  maxWidth: 300
+                }}
+              >
+                {blurb}
+              </Text>
+            ) : (
+              <OBBody>{blurb}</OBBody>
+            )
+          ) : null}
           {kicker ? <OBKicker>{kicker}</OBKicker> : null}
         </View>
       ) : null}
@@ -342,7 +509,9 @@ export function OnboardingStep({
         <OnboardingBodyScrollContext.Provider value={bodyScrollApi}>
         <KeyboardAvoidingView
           style={{ flex: 1, minHeight: 0 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // One keyboard owner: iOS ScrollView insets + ensureVisible.
+          // Extra KAV padding fought the scroll and left people stuck mid-page.
+          behavior={undefined}
           keyboardVerticalOffset={0}
         >
           {bodyFills ? (
@@ -393,42 +562,36 @@ export function OnboardingStep({
                 }}
                 scrollEventThrottle={16}
                 contentContainerStyle={{
-                  flexGrow: 1,
+                  // Do not flexGrow when content is tall: that padded empty space
+                  // made Confirm / Obsession feel stuck scrolled down.
                   paddingHorizontal: PAGE_X,
                   paddingTop: 8,
-                  // Extra air so the last field can scroll above the keyboard.
-                  paddingBottom: 120
+                  // Quiet base pad; grow only while the keyboard is open so the
+                  // song field can scroll above the keys without a permanent
+                  // "SCROLL" label sitting on First name.
+                  paddingBottom: 48 + keyboardPad
                 }}
               >
                 {children}
               </ScrollView>
-              {/* Soft fade + chevron: only while there is still content below. */}
-              {moreBelow ? (
+              {/* Soft fade + hint: between the list and Continue, never painted
+                  over a typing box. */}
+              {moreBelow && atScrollTop ? (
                 <View
                   pointerEvents="none"
                   accessible={false}
                   style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: 56,
+                    height: 22,
                     alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    paddingBottom: 4
+                    justifyContent: 'center'
                   }}
                 >
-                  <LinearGradient
-                    colors={[fadeTop, fadeBottom]}
-                    style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}
-                  />
                   <Text
-                    className="font-sans-sb text-[11px]"
+                    className="font-sans-sb text-[10px]"
                     style={{
                       letterSpacing: 1,
                       textTransform: 'uppercase',
-                      // Theme ink: dark navy disappears on a dark canvas.
-                      color: theme.ink
+                      color: theme.inkMute
                     }}
                   >
                     Scroll
@@ -457,6 +620,14 @@ export function OnboardingStep({
                     onPress={onContinue}
                     burstEmojis={burstEmojis}
                   />
+                  {ctaNote ? (
+                    <Text
+                      className="text-center font-sans-sb text-[12px]"
+                      style={{ color: pageInkMute }}
+                    >
+                      {ctaNote}
+                    </Text>
+                  ) : null}
                   {onSkip ? (
                     <OBSkipLink
                       label={skipLabel}
@@ -473,5 +644,7 @@ export function OnboardingStep({
       </View>
       </View>
     </View>
+    </OnboardingBurstHost>
+    </OnboardingLookProvider>
   );
 }

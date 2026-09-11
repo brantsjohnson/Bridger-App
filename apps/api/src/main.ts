@@ -8,8 +8,13 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { loadServerSecretIntoEnv } from './load-server-secret';
 
 async function bootstrap() {
+  // THIS SECTION DOES: pull Stripe / MusicKit / Spotify fields from the vault
+  // before Nest reads env, so keys you added in Secrets Manager are actually used.
+  await loadServerSecretIntoEnv();
+
   // rawBody: true so Stripe webhook signature verification can read the bytes.
   const app = await NestFactory.create(AppModule, { rawBody: true });
 

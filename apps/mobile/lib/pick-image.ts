@@ -1,13 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// One shared way to get a profile picture: either take one with the camera or
-// choose one from your photo library. It asks for the right permission at the
-// moment you tap (never at launch), crops it to a square, and hands back the
-// local file path so the caller can upload it.
-//
-// PRIVACY: this only ever touches the single photo you pick. We never read your
-// whole library, and nothing is uploaded from here — the caller decides that.
-// This is the ONE upload exception in the app (stories stay capture-only).
+// One shared way to pick a photo: take one with the camera or choose one from
+// the library. Permission is asked at the tap (never at launch). Profile
+// photos crop square. Inside Joke photos (co-op) keep a wider crop. The
+// caller uploads. We only ever touch the one picture they picked.
 // ============================================
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,10 +15,18 @@ export type PhotoSource = 'camera' | 'library';
 export type PickedPhoto = { uri: string };
 
 // Square crop keeps every avatar consistent behind the house filter.
-const OPTIONS: ImagePicker.ImagePickerOptions = {
+const PROFILE_OPTIONS: ImagePicker.ImagePickerOptions = {
   allowsEditing: true,
   aspect: [1, 1],
   quality: 0.72,
+  mediaTypes: ['images']
+};
+
+// Wider crop so a joke photo can sit across the sticky note.
+const ATTACHED_OPTIONS: ImagePicker.ImagePickerOptions = {
+  allowsEditing: true,
+  aspect: [4, 3],
+  quality: 0.8,
   mediaTypes: ['images']
 };
 
@@ -39,12 +43,26 @@ const OPTIONS: ImagePicker.ImagePickerOptions = {
 export async function pickProfilePhoto(
   source: PhotoSource
 ): Promise<PickedPhoto | null> {
+  return pickPhoto(source, PROFILE_OPTIONS);
+}
+
+/** One photo for an Inside Joke (co-op). Same permission rules as profile. */
+export async function pickAttachedPhoto(
+  source: PhotoSource
+): Promise<PickedPhoto | null> {
+  return pickPhoto(source, ATTACHED_OPTIONS);
+}
+
+async function pickPhoto(
+  source: PhotoSource,
+  options: ImagePicker.ImagePickerOptions
+): Promise<PickedPhoto | null> {
   try {
     // CAMERA (native only): ask for the camera the moment they tap "Take one".
     if (source === 'camera' && Platform.OS !== 'web') {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) return null;
-      const result = await ImagePicker.launchCameraAsync(OPTIONS);
+      const result = await ImagePicker.launchCameraAsync(options);
       if (result.canceled || !result.assets?.[0]) return null;
       return { uri: result.assets[0].uri };
     }
@@ -56,8 +74,8 @@ export async function pickProfilePhoto(
     if (!perm.granted && Platform.OS !== 'web') return null;
     const webOptions =
       Platform.OS === 'web'
-        ? { ...OPTIONS, allowsEditing: false }
-        : OPTIONS;
+        ? { ...options, allowsEditing: false }
+        : options;
     const result = await ImagePicker.launchImageLibraryAsync(webOptions);
     if (result.canceled || !result.assets?.[0]) return null;
     return { uri: result.assets[0].uri };

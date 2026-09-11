@@ -10,18 +10,31 @@ import {
   listStoryDays,
   type StorageState
 } from '../data/profile';
+import { getTabSnapshot, setTabSnapshot } from '../lib/tab-snapshots';
+
+type ArchiveSnap = {
+  days: Record<number, string>;
+  storage: StorageState;
+};
+
+const SNAP_KEY = 'archive';
 
 export function useStoryArchive() {
-  const [days, setDays] = useState<Record<number, string>>({});
-  const [storage, setStorage] = useState<StorageState>(emptyStorageState);
-  const [loading, setLoading] = useState(true);
+  const cached = getTabSnapshot<ArchiveSnap>(SNAP_KEY);
+  const [days, setDays] = useState<Record<number, string>>(cached?.days ?? {});
+  const [storage, setStorage] = useState<StorageState>(
+    cached?.storage ?? emptyStorageState
+  );
+  const [loading, setLoading] = useState(!cached);
 
   const refresh = useCallback(async (month?: string) => {
-    setLoading(true);
+    const hadCache = Boolean(getTabSnapshot<ArchiveSnap>(SNAP_KEY));
+    if (!hadCache) setLoading(true);
     try {
       const [d, s] = await Promise.all([listStoryDays(month), getStorageState()]);
       setDays(d);
       setStorage(s);
+      setTabSnapshot<ArchiveSnap>(SNAP_KEY, { days: d, storage: s });
     } finally {
       setLoading(false);
     }

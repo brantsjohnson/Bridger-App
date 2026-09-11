@@ -12,10 +12,11 @@ import {
   Header,
   Post,
   Query,
+  Req,
   Res,
   UseGuards
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { UpsertMusicPickBody } from '@bridger/shared';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SupabaseAuthGuard, type AuthUser } from '../auth/auth.guard';
@@ -33,10 +34,12 @@ export class MusicController {
   }
 
   // --- Start Spotify account link ---
+  // Passes the public Host the phone already used, so a missing
+  // SPOTIFY_REDIRECT_URI secret cannot fall back to 127.0.0.1 on device.
   @Get('spotify/connect')
   @UseGuards(SupabaseAuthGuard)
-  connect(@CurrentUser() user: AuthUser) {
-    return this.music.beginSpotifyConnect(user.id);
+  connect(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    return this.music.beginSpotifyConnect(user.id, publicRequestBase(req));
   }
 
   // --- Spotify redirects here after the person approves ---
@@ -46,9 +49,15 @@ export class MusicController {
     @Query('code') code: string | undefined,
     @Query('state') state: string | undefined,
     @Query('error') error: string | undefined,
+    @Req() req: Request,
     @Res() res: Response
   ) {
-    const redirectTo = await this.music.handleSpotifyCallback(code, state, error);
+    const redirectTo = await this.music.handleSpotifyCallback(
+      code,
+      state,
+      error,
+      publicRequestBase(req)
+    );
     return res.redirect(redirectTo);
   }
 
@@ -61,15 +70,18 @@ export class MusicController {
   // --- Start Apple Music account link (MusicKit page URL) ---
   @Get('apple/connect')
   @UseGuards(SupabaseAuthGuard)
-  appleConnect(@CurrentUser() user: AuthUser) {
-    return this.music.beginAppleConnect(user.id);
+  appleConnect(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    return this.music.beginAppleConnect(user.id, publicRequestBase(req));
   }
 
   // --- MusicKit authorize page (browser; state maps to the Bridger user) ---
   @Get('apple/authorize')
   @Header('Content-Type', 'text/html; charset=utf-8')
-  async appleAuthorize(@Query('state') state: string | undefined) {
-    return this.music.appleAuthorizePageHtml(state);
+  async appleAuthorize(
+    @Query('state') state: string | undefined,
+    @Req() req: Request
+  ) {
+    return this.music.appleAuthorizePageHtml(state, publicRequestBase(req));
   }
 
   // --- MusicKit posts the music-user-token here; we store it and return a deep link ---
@@ -151,4 +163,24 @@ export class MusicController {
   ) {
     return this.music.saveToLibrary(user.id, body);
   }
+}
+
+/**
+ * THIS SECTION DOES: rebuild the public https://host the phone already used to
+ * reach Nest (App Runner puts the real host on X-Forwarded-Host / Proto).
+ */
+function publicRequestBase(req: Request): string | undefined {
+  const forwardedHost = headerFirst(req.headers['x-forwarded-host']);
+  const host = forwardedHost || headerFirst(req.headers.host);
+  if (!host) return undefined;
+  const forwardedProto = headerFirst(req.headers['x-forwarded-proto']);
+  const proto = (forwardedProto || req.protocol || 'https').split(',')[0]?.trim();
+  if (!proto) return undefined;
+  return `${proto}://${host.split(',')[0]?.trim()}`;
+}
+
+function headerFirst(value: string | string[] | undefined): string | undefined {
+  if (!value) return undefined;
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw?.trim() || undefined;
 }

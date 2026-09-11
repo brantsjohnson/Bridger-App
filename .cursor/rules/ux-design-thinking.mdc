@@ -1,0 +1,36 @@
+---
+description: Every new feature is UX-designed first — visual appeal, brand fit, simplicity, personality. Applies every session.
+alwaysApply: true
+---
+
+# UX Design Thinking (every feature, every session)
+
+You are not only an implementer. **On every new or changed feature, act as a UX designer first**, then build. Wiring alone is not done.
+
+## Visual first (before code)
+
+Ask and answer these before shipping UI or a multi-step flow:
+
+1. **Is this visually appealing?** Would someone want to linger here, or does it look like a form dumped on eggshell?
+2. **Does it fit the brand?** Check `DESIGN.md` + `MAGIC-PATTERNS.md` (80% clean modern, 20% retro personality; Magic Patterns components; no hand-rolled lookalikes).
+3. **Where is the personality?** Pixel headers, metallic primary CTAs, hobby blobs, whimsy (`Reveal` / `Wiggle` / `Sparkles`), tier color, leaning cards. Give the moment a Bridger voice without clutter.
+4. **Is the infrastructure sound?** Clear hierarchy, one job per section, room to breathe, adaptive via `useResponsiveLayout()`, accessible (44pt targets, contrast, reduced motion).
+
+## Simplicity & copy hygiene
+
+- **One idea per screen or section.** Do not stack competing headlines, helper lines, and chips that say the same thing.
+- **No redundant text.** If a title already says it, cut the subtitle. If a button label is clear, cut the paragraph above it.
+- **No duplications.** Same CTA twice, same empty-state copy in two places, repeated progress chrome: remove or merge.
+- Prefer show over tell: a strong visual or interaction beats another sentence.
+
+## Definition of done (UX gate)
+
+A feature is not done until:
+
+- [ ] Visual-first questions above were answered (not skipped for "ship later polish")
+- [ ] Layout uses Magic Patterns / design tokens; fits brand ratio and surfaces in `DESIGN.md`
+- [ ] Copy is short, non-redundant, and on-voice
+- [ ] The moment has a touch of Bridger personality without breaking clarity or accessibility
+- [ ] It still works on phone, foldable/tablet, and web (`responsive-adaptive.mdc`)
+
+If the design feels generic, clinical, or "admin panel," stop and redesign before more engineering.

@@ -5,6 +5,8 @@
 // lights the tighter ones too (Close ⊂ Friends ⊂ Everyone). Named groups only
 // show when the person actually has some. Tone "dark" is for the capture
 // composer.
+// PRIVACY: `allowOnlyMe` adds an "Only me" choice (Scrapbook pages). It maps
+// to DB tier `none`, which can_view() already treats as owner-only.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -13,16 +15,20 @@ import { cn } from '../lib/cn';
 import { withAnalyticsPress, type AnalyticsProps } from '../lib/analytics';
 import { useThemeColors } from '../tokens';
 
-export type AudienceLevel = 'close' | 'friend' | 'everyone';
+export type AudienceLevel = 'only_me' | 'close' | 'friend' | 'everyone';
 
 const LEVELS: Array<{ id: AudienceLevel; label: string }> = [
-  { id: 'close', label: 'Close' },
+  { id: 'close', label: 'Close friends' },
   { id: 'friend', label: 'Friends' },
   { id: 'everyone', label: 'Everyone' }
 ];
 
+/** The owner-only choice, shown first when a caller opts in. */
+const ONLY_ME: { id: AudienceLevel; label: string } = { id: 'only_me', label: 'Only me' };
+
 /** Concentric: picking a wider circle lights the tighter ones too. */
 export function reachOf(level: AudienceLevel): AudienceLevel[] {
+  if (level === 'only_me') return ['only_me'];
   if (level === 'close') return ['close'];
   if (level === 'friend') return ['close', 'friend'];
   return ['close', 'friend', 'everyone'];
@@ -38,6 +44,8 @@ type Props = {
   /** the selected custom group, which replaces the tier choice */
   group?: string | null;
   onGroupChange?: (g: string | null) => void;
+  /** Show the "Only me" choice (Scrapbook pages). Off for shared activities. */
+  allowOnlyMe?: boolean;
   className?: string;
   /** Optional per-level analytics ids (close / friends / everyone) */
   levelAnalyticsIds?: Partial<Record<AudienceLevel, string>>;
@@ -55,12 +63,14 @@ export function AudiencePicker({
   groups = [],
   group = null,
   onGroupChange,
+  allowOnlyMe = false,
   className,
   levelAnalyticsIds
 }: Props) {
   const c = useThemeColors();
   const lit = group ? [] : reachOf(value);
   const dark = tone === 'dark';
+  const levels = allowOnlyMe ? [ONLY_ME, ...LEVELS] : LEVELS;
 
   return (
     <View className={className}>
@@ -74,7 +84,7 @@ export function AudiencePicker({
       </Text>
 
       <View className="flex-row gap-2">
-        {LEVELS.map((l) => {
+        {levels.map((l) => {
           const on = lit.includes(l.id);
           const selected = !group && value === l.id;
           return (
@@ -133,6 +143,16 @@ export function AudiencePicker({
           );
         })}
       </View>
+
+      {/* Concentric reach: Friends lights Close too. One choice is stored. */}
+      <Text
+        className={cn(
+          'mt-2 font-sans-sb text-[12px]',
+          dark ? 'text-white/55' : 'text-ink-mute'
+        )}
+      >
+        Wider circles include closer ones. Tap one choice.
+      </Text>
 
       {/* Groups only when they have some. Empty = no "Or a group" section. */}
       {groups.length > 0 ? (

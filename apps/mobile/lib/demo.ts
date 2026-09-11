@@ -21,14 +21,68 @@ export const DEMO_UNLOCK_PASSWORD = 'demomode';
  */
 export const DEMO_ONBOARD_PASSWORD = 'onboard';
 
+/**
+ * Third demo password: types you into the OLD 19-step onboarding so you can
+ * still preview / screenshot the previous flow.
+ */
+export const DEMO_ONBOARD_OLD_PASSWORD = 'onboardold';
+
+/** Which onboarding script a demo run should walk. */
+export type OnboardingFlowVariant = 'new' | 'old';
+
+const ONBOARDING_VARIANT_KEY = 'bridger.onboarding.flowVariant';
+
+let flowVariant: OnboardingFlowVariant = 'old';
+
+/** Remember New vs Old for this demo session (and on the device). */
+export async function setOnboardingFlowVariant(
+  variant: OnboardingFlowVariant
+): Promise<void> {
+  flowVariant = variant;
+  try {
+    await AsyncStorage.setItem(ONBOARDING_VARIANT_KEY, variant);
+  } catch {
+    // Best-effort: in-memory still works for this session.
+  }
+}
+
+/**
+ * Real TestFlight / store accounts always walk Old onboarding.
+ * New (story) onboarding only runs in demo after password "onboard".
+ */
+export function getOnboardingFlowVariant(): OnboardingFlowVariant {
+  if (!isDemoMode()) return 'old';
+  return flowVariant;
+}
+
+/** Load the last demo onboarding variant from the device. */
+export async function hydrateOnboardingFlowVariant(): Promise<OnboardingFlowVariant> {
+  if (!isDemoMode()) {
+    flowVariant = 'old';
+    return flowVariant;
+  }
+  try {
+    const raw = await AsyncStorage.getItem(ONBOARDING_VARIANT_KEY);
+    if (raw === 'old' || raw === 'new') flowVariant = raw;
+  } catch {
+    // Keep the in-memory default.
+  }
+  return flowVariant;
+}
+
 /** Returns true when the typed password matches the demo unlock secret. */
 export function verifyDemoUnlockPassword(input: string): boolean {
   return input.trim() === DEMO_UNLOCK_PASSWORD;
 }
 
-/** Returns true when the typed password matches the onboarding-demo secret. */
+/** Returns true when the typed password matches the New onboarding-demo secret. */
 export function verifyOnboardDemoPassword(input: string): boolean {
   return input.trim().toLowerCase() === DEMO_ONBOARD_PASSWORD;
+}
+
+/** Returns true when the typed password matches the Old onboarding-demo secret. */
+export function verifyOnboardOldDemoPassword(input: string): boolean {
+  return input.trim().toLowerCase() === DEMO_ONBOARD_OLD_PASSWORD;
 }
 
 // --- DEMO ONBOARDING SEED ---------------------------------------------------
@@ -144,6 +198,9 @@ export async function disableDemoMode(): Promise<void> {
   runtimeDemo = false;
   hydrated = true;
   await AsyncStorage.removeItem(RUNTIME_DEMO_KEY);
+  // PRIVACY: demo last-seen tabs should not linger after you leave demo.
+  const { clearSessionCaches } = await import('./session-caches');
+  await clearSessionCaches();
 }
 
 // --- DEV PREVIEW (localhost / internal builds only) -------------------------
@@ -183,5 +240,16 @@ export async function prepOnboardingPreview(): Promise<void> {
   armDevPreview('onboarding');
   await enableDemoMode();
   await resetOnboarding();
+  await setOnboardingFlowVariant('new');
+  setDemoOnboardSeed(makeDemoOnboardSeed());
+}
+
+/** Prep demo + the OLD 19-step onboarding for reference. */
+export async function prepOldOnboardingPreview(): Promise<void> {
+  const { resetOnboarding } = await import('../data/onboarding');
+  armDevPreview('onboarding');
+  await enableDemoMode();
+  await resetOnboarding();
+  await setOnboardingFlowVariant('old');
   setDemoOnboardSeed(makeDemoOnboardSeed());
 }

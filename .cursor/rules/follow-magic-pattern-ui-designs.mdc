@@ -2,4 +2,8 @@
 alwaysApply: true
 ---
 
-always follow the magic pattern compontents and designs to update them to react
+# Magic Patterns UI (always)
+
+Always follow the Magic Patterns components and designs, ported to React. Never hand-roll a lookalike UI kit.
+
+Pair this with visual-first UX (`.cursor/rules/ux-design-thinking.mdc` + `DESIGN.md`): brand fit, personality, simplicity, no redundant copy. Components alone are not enough if the flow still feels generic or cluttered.

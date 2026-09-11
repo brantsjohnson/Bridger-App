@@ -1,0 +1,28 @@
+---
+description: Bridger type size floors — body/input ≥16px, caption secondary only. Read TYPOGRAPHY.md before UI text sizing.
+alwaysApply: true
+---
+
+# Typography floors (always)
+
+Readable type is not optional. **`guide-docs/TYPOGRAPHY.md` is the source of truth** for size tokens. Follow it on every UI change.
+
+## Hard rules
+
+1. **Body ≥ 16px** everywhere (phone, tablet, web). Never ship primary reading copy at 12–15px.
+2. **Inputs ≥ 16px** everywhere (stops mobile browser zoom-on-focus).
+3. **Caption = 13–14px and secondary only** (meta, helper, timestamps). If the user must read it to act, it is body or larger.
+4. **Do not fix overflow by shrinking type.** Reflow, truncate with affordance, scroll, or use `useResponsiveLayout()`.
+5. **No new one-off sizes** outside the token table in `TYPOGRAPHY.md`. If you need a new token, add the row in that doc in the same change.
+
+## Quick map
+
+| Role | Phone | Large |
+|---|---|---|
+| body | 16px, ~1.6 line-height | 16–18px, ~1.5 |
+| body-lg | 18px | 18–20px |
+| caption | 13–14px | 13–14px |
+| input | 16px | 16px |
+| h1 / h2 / h3 | 24–32 / 20–24 / 18–20 | larger per doc |
+
+Fonts (family) still follow `DESIGN.md`: pixel for section/onboarding headers, clean sans for body, Big Shoulders only on reality-check screens.

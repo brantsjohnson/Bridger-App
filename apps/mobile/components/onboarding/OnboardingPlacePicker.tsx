@@ -276,7 +276,7 @@ export function OnboardingPlacePicker({
             {formatPlaceTitle(hit)}
           </Text>
           <Text className="font-sans-sb text-[12px]" style={{ color: OB.inkSoft }}>
-            Selected · search again to change
+            Selected · search again to change. Add more pins later on Profile.
           </Text>
         </View>
       ) : null}

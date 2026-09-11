@@ -23,6 +23,8 @@ import type {
   ThemedPrompt
 } from '@bridger/shared';
 import { DEFAULT_HOME_LAYOUT } from '@bridger/shared';
+import { RecapService } from '../recap/recap.service';
+import { mondayUtc } from '../recap/recap-week.math';
 import { SupabaseService } from '../supabase/supabase.service';
 
 /** Turn a jsonb cover column into the shared Cover type (or skip if empty). */
@@ -52,7 +54,10 @@ const DEFAULT_ADAPTATION: AdaptationPolicy = {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly recap: RecapService
+  ) {}
 
   // --- Config helpers ---
 
@@ -734,17 +739,17 @@ export class AdminService {
     if (error) throw error;
 
     const weekIds = (weeks ?? []).map((w) => w.id);
-    const byWeek = new Map<string, { idx: number; text: string }[]>();
+    const byWeek = new Map<string, { idx: number; text: string; source: string }[]>();
     if (weekIds.length) {
       const { data: qs, error: qErr } = await this.supabase.admin
         .from('recap_questions')
-        .select('week_id, idx, text')
+        .select('week_id, idx, text, source')
         .in('week_id', weekIds)
         .order('idx', { ascending: true });
       if (qErr) throw qErr;
       for (const q of qs ?? []) {
         const arr = byWeek.get(q.week_id) ?? [];
-        arr.push({ idx: q.idx, text: q.text });
+        arr.push({ idx: q.idx, text: q.text, source: q.source });
         byWeek.set(q.week_id, arr);
       }
     }
@@ -753,12 +758,19 @@ export class AdminService {
       id: w.id,
       weekOf: w.week_of,
       active: w.active,
-      questions: (byWeek.get(w.id) ?? []).map((q) => q.text)
+      origin: w.origin ?? 'admin',
+      weekStart: w.week_start ?? null,
+      questions: (byWeek.get(w.id) ?? []).map((q) => q.text),
+      sources: (byWeek.get(w.id) ?? []).map((q) => q.source)
     }));
   }
 
   /** Create a week with its 5 questions. Only one week is active at a time. */
-  async createRecapWeek(body: { weekOf: string; questions: string[] }) {
+  async createRecapWeek(body: {
+    weekOf: string;
+    questions: string[];
+    makeLive?: boolean;
+  }) {
     const questions = (body.questions ?? []).slice(0, 5);
     if (questions.length !== 5) {
       throw new BadRequestException('A recap week needs exactly 5 questions');
@@ -766,7 +778,11 @@ export class AdminService {
 
     const { data: week, error } = await this.supabase.admin
       .from('recap_weeks')
-      .insert({ week_of: body.weekOf, active: false })
+      .insert({
+        week_of: body.weekOf,
+        active: false,
+        origin: 'admin'
+      })
       .select('*')
       .single();
     if (error) throw error;
@@ -782,10 +798,22 @@ export class AdminService {
       .insert(rows as never);
     if (qErr) throw qErr;
 
+    if (body.makeLive) {
+      await this.recap.activateWeek(week.id, mondayUtc(new Date()));
+    }
+
+    const live = await this.supabase.admin
+      .from('recap_weeks')
+      .select('*')
+      .eq('id', week.id)
+      .single();
+
     return {
       id: week.id,
-      weekOf: week.week_of,
-      active: week.active,
+      weekOf: live.data?.week_of ?? week.week_of,
+      active: live.data?.active ?? week.active,
+      origin: 'admin',
+      weekStart: live.data?.week_start ?? null,
       questions
     };
   }
@@ -796,16 +824,11 @@ export class AdminService {
     patch: { weekOf?: string; questions?: string[]; active?: boolean }
   ) {
     if (patch.active === true) {
-      // Only one live week at a time.
-      await this.supabase.admin
-        .from('recap_weeks')
-        .update({ active: false })
-        .eq('active', true);
+      await this.recap.activateWeek(id, mondayUtc(new Date()));
     }
 
     const update: Record<string, unknown> = {};
     if (patch.weekOf !== undefined) update.week_of = patch.weekOf;
-    if (patch.active !== undefined) update.active = patch.active;
     if (Object.keys(update).length) {
       const { error } = await this.supabase.admin
         .from('recap_weeks')
@@ -854,6 +877,8 @@ export class AdminService {
       id: week.id,
       weekOf: week.week_of,
       active: week.active,
+      origin: week.origin ?? 'admin',
+      weekStart: week.week_start ?? null,
       questions: (qs ?? []).map((q) => q.text)
     };
   }

@@ -7,6 +7,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { MatchingDiscoverService } from './matching-discover.service';
 import { MatchingFeedbackService } from './matching-feedback.service';
+import { MatchingLearnService } from './matching-learn.service';
 
 @Injectable()
 export class MatchingCronService {
@@ -14,14 +15,19 @@ export class MatchingCronService {
 
   constructor(
     private readonly discover: MatchingDiscoverService,
-    private readonly feedback: MatchingFeedbackService
+    private readonly feedback: MatchingFeedbackService,
+    private readonly learn: MatchingLearnService
   ) {}
 
-  async runNightly(): Promise<{ refreshed: number }> {
+  async runNightly(): Promise<{
+    refreshed: number;
+    learned: Awaited<ReturnType<MatchingLearnService['runNightly']>>;
+  }> {
     this.log.log('matching nightly: start');
     const refreshed = await this.discover.refreshBatch(100);
     await this.feedback.purgeOlderThanTtl();
+    const learned = await this.learn.runNightly();
     this.log.log(`matching nightly: refreshed ${refreshed}`);
-    return { refreshed };
+    return { refreshed, learned };
   }
 }

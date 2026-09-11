@@ -27,7 +27,10 @@ export const AUTH = {
   welcome: {
     brand: aid('auth', 'welcome', 'brand'),
     beat_body: aid('auth', 'welcome', 'beat_body'),
-    progress_bar: aid('auth', 'welcome', 'progress_bar')
+    /** Fills over 5s after typing; not its own tap target (the Next button is). */
+    progress_bar: aid('auth', 'welcome', 'progress_bar'),
+    /** Appears after a CRT screen finishes typing. method tap | auto. */
+    next: aid('auth', 'welcome', 'next')
   },
   sign_in: {
     page_title: aid('auth', 'sign_in', 'page_title'),
@@ -40,7 +43,17 @@ export const AUTH = {
     email: aid('auth', 'sign_in', 'email'),
     password: aid('auth', 'sign_in', 'password'),
     submit: aid('auth', 'sign_in', 'submit'),
-    switch_to_sign_up: aid('auth', 'sign_in', 'switch_to_sign_up')
+    switch_to_sign_up: aid('auth', 'sign_in', 'switch_to_sign_up'),
+    /** Phone number field (E.164). Never logs the digits. */
+    phone: aid('auth', 'sign_in', 'phone'),
+    /** Send the SMS one-time code. */
+    send_code: aid('auth', 'sign_in', 'send_code'),
+    /** One-time code field (iOS autofill). Never logs the code. */
+    otp_code: aid('auth', 'sign_in', 'otp_code'),
+    /** Confirm the SMS code. */
+    verify: aid('auth', 'sign_in', 'verify'),
+    /** Resend the SMS code after the cooldown. */
+    resend_otp: aid('auth', 'sign_in', 'resend_otp')
   },
   sign_up: {
     page_title: aid('auth', 'sign_up', 'page_title'),
@@ -63,10 +76,21 @@ export const ONBOARDING = {
     skip: aid('onboarding', 'chrome', 'skip'),
     back: aid('onboarding', 'chrome', 'back'),
     progress_bar: aid('onboarding', 'chrome', 'progress_bar'),
-    step_title: aid('onboarding', 'chrome', 'step_title')
+    step_title: aid('onboarding', 'chrome', 'step_title'),
+    /** ⓘ that opens the claim-and-proof note on New info screens */
+    info_note: aid('onboarding', 'chrome', 'info_note')
   },
   privacy: {
-    acknowledge: aid('onboarding', 'privacy', 'acknowledge')
+    acknowledge: aid('onboarding', 'privacy', 'acknowledge'),
+    next_1: aid('onboarding', 'privacy', 'next_1'),
+    next_2: aid('onboarding', 'privacy', 'next_2'),
+    save_audience: aid('onboarding', 'privacy', 'save_audience'),
+    group_option: aid('onboarding', 'privacy', 'group_option'),
+    next_4: aid('onboarding', 'privacy', 'next_4'),
+    next_5: aid('onboarding', 'privacy', 'next_5'),
+    next_7: aid('onboarding', 'privacy', 'next_7'),
+    /** dead — birthday / groups visual on the privacy story screens */
+    visual: aid('onboarding', 'privacy', 'visual')
   },
   notifications: {
     pref: aid('onboarding', 'notifications', 'pref'),
@@ -75,7 +99,10 @@ export const ONBOARDING = {
   },
   name: {
     first_input: aid('onboarding', 'name', 'first_input'),
-    last_input: aid('onboarding', 'name', 'last_input')
+    last_input: aid('onboarding', 'name', 'last_input'),
+    first_next: aid('onboarding', 'name', 'first_next'),
+    last_next: aid('onboarding', 'name', 'last_next'),
+    birthday_next: aid('onboarding', 'name', 'birthday_next')
   },
   // Step 2 — confirm profile (name + photo on one screen).
   confirm_profile: {
@@ -91,12 +118,19 @@ export const ONBOARDING = {
     filter_comic: aid('onboarding', 'confirm_profile', 'filter_comic'),
     filter_sepia: aid('onboarding', 'confirm_profile', 'filter_sepia'),
     /** dead — reassurance row under the filter pills when preview is on-device */
-    local_processing_badge: aid('onboarding', 'confirm_profile', 'local_processing_badge')
+    local_processing_badge: aid('onboarding', 'confirm_profile', 'local_processing_badge'),
+    /** Skip photo in New onboarding ("Add one later"). */
+    photo_skip: aid('onboarding', 'confirm_profile', 'photo_skip')
   },
   groups: {
     invite: aid('onboarding', 'groups', 'invite'),
     /** dead — the three tier cards are explanatory, not tappable */
-    tier_card: aid('onboarding', 'groups', 'tier_card')
+    tier_card: aid('onboarding', 'groups', 'tier_card'),
+    next_1: aid('onboarding', 'groups', 'next_1'),
+    next_2: aid('onboarding', 'groups', 'next_2'),
+    next_3: aid('onboarding', 'groups', 'next_3'),
+    /** dead — nested groups visual */
+    visual: aid('onboarding', 'groups', 'visual')
   },
   // Before Privacy & Control: teach Close / Friends / Acquaintances + caps.
   circles: {
@@ -135,6 +169,8 @@ export const ONBOARDING = {
     invite_slot: aid('onboarding', 'contacts', 'invite_slot'),
     contact_row: aid('onboarding', 'contacts', 'contact_row'),
     contacts_cancel: aid('onboarding', 'contacts', 'contacts_cancel'),
+    /** Focus the contacts search box in the invite sheet (never logs query). */
+    contact_search: aid('onboarding', 'contacts', 'contact_search'),
     /** Dead: the "AWESOME! We'll notify you…" success banner after sync / invite */
     awesome_banner: aid('onboarding', 'contacts', 'awesome_banner'),
     skip: aid('onboarding', 'contacts', 'skip')
@@ -184,8 +220,14 @@ export const ONBOARDING = {
     /** Fine-tune slider under the spectrum (saturation; method=`slider`). */
     color_slider: aid('onboarding', 'taste', 'color_slider'),
     hometown_input: aid('onboarding', 'taste', 'hometown_input'),
+    /** Private vs Close friends only under Hometown (method=private|close). */
+    hometown_privacy: aid('onboarding', 'taste', 'hometown_privacy'),
     current_town_input: aid('onboarding', 'taste', 'current_town_input'),
+    /** Private vs Close friends only under Current town. */
+    current_town_privacy: aid('onboarding', 'taste', 'current_town_privacy'),
     favorite_place_input: aid('onboarding', 'taste', 'favorite_place_input'),
+    /** Private vs Close friends only under favorite place. */
+    favorite_place_privacy: aid('onboarding', 'taste', 'favorite_place_privacy'),
     /** Focus the favorite-place search box (never logs query text). */
     place_search: aid('onboarding', 'taste', 'place_search'),
     /** Dead-click: "Tap a place to pin it" hint above search matches. */
@@ -245,7 +287,23 @@ export const ONBOARDING = {
     /** dead — the Free vs Co-op comparison table body is not tappable */
     plan_compare: aid('onboarding', 'coop', 'plan_compare'),
     /** dead — member perk bullet list (same as Co-op page) is not tappable */
-    perks_grid: aid('onboarding', 'coop', 'perks_grid')
+    perks_grid: aid('onboarding', 'coop', 'perks_grid'),
+    next_1: aid('onboarding', 'coop', 'next_1'),
+    next_2: aid('onboarding', 'coop', 'next_2'),
+    next_3: aid('onboarding', 'coop', 'next_3'),
+    next_4: aid('onboarding', 'coop', 'next_4'),
+    next_5: aid('onboarding', 'coop', 'next_5'),
+    save_interests: aid('onboarding', 'coop', 'save_interests'),
+    interest_option: aid('onboarding', 'coop', 'interest_option'),
+    skip_to_product: aid('onboarding', 'coop', 'skip_to_product'),
+    /** dead — ads vs members visual */
+    visual: aid('onboarding', 'coop', 'visual'),
+    /** New: expand extra member benefits */
+    see_more_benefits: aid('onboarding', 'coop', 'see_more_benefits'),
+    /** New: open Priority support detail */
+    benefit_support: aid('onboarding', 'coop', 'benefit_support'),
+    /** New: open Early access detail */
+    benefit_early: aid('onboarding', 'coop', 'benefit_early')
   },
   /**
    * @deprecated The "You're in" screen was removed 2026-08-28. Finishing Co-op
@@ -256,6 +314,78 @@ export const ONBOARDING = {
     lets_go: aid('onboarding', 'welcome_in', 'lets_go'),
     /** dead — the three "what happens next" cards are not tappable */
     next_cards: aid('onboarding', 'welcome_in', 'next_cards')
+  },
+  // New onboarding (2026-09): story-driven education after name / photo / birthday.
+  why: {
+    next_1: aid('onboarding', 'why', 'next_1'),
+    next_2: aid('onboarding', 'why', 'next_2'),
+    /** dead — fragmented-life / swiss-knife visual */
+    visual: aid('onboarding', 'why', 'visual')
+  },
+  custom_groups: {
+    to_coop: aid('onboarding', 'custom_groups', 'to_coop'),
+    member_interest: aid('onboarding', 'custom_groups', 'member_interest'),
+    /** dead — default groups + custom group teaser */
+    visual: aid('onboarding', 'custom_groups', 'visual')
+  },
+  route: {
+    custom_groups_join: aid('onboarding', 'route', 'custom_groups_join'),
+    custom_groups_free: aid('onboarding', 'route', 'custom_groups_free'),
+    vote_join: aid('onboarding', 'route', 'vote_join'),
+    vote_later: aid('onboarding', 'route', 'vote_later'),
+    no_ads_join: aid('onboarding', 'route', 'no_ads_join'),
+    no_ads_invite: aid('onboarding', 'route', 'no_ads_invite'),
+    /** dead — membership routing visual */
+    visual: aid('onboarding', 'route', 'visual')
+  },
+  free: {
+    choose_friends: aid('onboarding', 'free', 'choose_friends'),
+    continue: aid('onboarding', 'free', 'continue'),
+    skip: aid('onboarding', 'free', 'skip'),
+    /** dead — three empty friend slots */
+    visual: aid('onboarding', 'free', 'visual')
+  },
+  product: {
+    next_1: aid('onboarding', 'product', 'next_1'),
+    save_help: aid('onboarding', 'product', 'save_help'),
+    option: aid('onboarding', 'product', 'option'),
+    /** dead — group-chat-expands visual */
+    visual: aid('onboarding', 'product', 'visual'),
+    /** New: Keep going on a picked feature tour screen */
+    feature_next: aid('onboarding', 'product', 'feature_next'),
+    /** New: expand the extra feature chips */
+    see_more: aid('onboarding', 'product', 'see_more')
+  },
+  plans: {
+    next_1: aid('onboarding', 'plans', 'next_1'),
+    next_2: aid('onboarding', 'plans', 'next_2'),
+    branch_next: aid('onboarding', 'plans', 'branch_next'),
+    /** dead — Touch Grass / availability visual */
+    visual: aid('onboarding', 'plans', 'visual')
+  },
+  friendsb: {
+    next_1: aid('onboarding', 'friendsb', 'next_1'),
+    next_2: aid('onboarding', 'friendsb', 'next_2'),
+    branch_next: aid('onboarding', 'friendsb', 'branch_next'),
+    /** dead — friend notes visual */
+    visual: aid('onboarding', 'friendsb', 'visual')
+  },
+  memories: {
+    next_1: aid('onboarding', 'memories', 'next_1'),
+    next_2: aid('onboarding', 'memories', 'next_2'),
+    next_3: aid('onboarding', 'memories', 'next_3'),
+    branch_next: aid('onboarding', 'memories', 'branch_next'),
+    option: aid('onboarding', 'memories', 'option'),
+    /** dead — scrapbook page visual */
+    visual: aid('onboarding', 'memories', 'visual')
+  },
+  discover: {
+    next_1: aid('onboarding', 'discover', 'next_1'),
+    next_2: aid('onboarding', 'discover', 'next_2'),
+    branch_suggest: aid('onboarding', 'discover', 'branch_suggest'),
+    branch_browse: aid('onboarding', 'discover', 'branch_browse'),
+    /** dead — friends-of-friends visual */
+    visual: aid('onboarding', 'discover', 'visual')
   }
 } as const;
 
@@ -275,7 +405,9 @@ export const INVITE_ACCESS = {
   body: aid('invite_access', 'main', 'body'),
   invite_button: aid('invite_access', 'main', 'invite_button'),
   contact_row: aid('invite_access', 'contacts_sheet', 'contact_row'),
-  contacts_cancel: aid('invite_access', 'contacts_sheet', 'cancel')
+  contacts_cancel: aid('invite_access', 'contacts_sheet', 'cancel'),
+  /** Focus search in the invite contacts sheet (never logs query text). */
+  contact_search: aid('invite_access', 'contacts_sheet', 'contact_search')
 } as const;
 
 // --- Floating tab bar (global chrome) ---
@@ -528,7 +660,7 @@ export const DISCOVER = {
     image_option: aid('discover', 'discover_me', 'image_option'),
     continue: aid('discover', 'discover_me', 'continue')
   },
-  // "Connect Over" — the private modules preview at the top of Discover.
+  // Personality quizzes preview at the top of Discover (id stays connect_over).
   connect_over: {
     // dead: the section title
     section_header: aid('discover', 'connect_over', 'section_header'),
@@ -547,7 +679,9 @@ export const DISCOVER = {
   },
   gate: {
     body: aid('discover', 'gate', 'body'),
-    get_started: aid('discover', 'gate', 'get_started')
+    get_started: aid('discover', 'gate', 'get_started'),
+    /** The charging bar shown before Get started unlocks (dead-click region). */
+    cta_loading: aid('discover', 'gate', 'cta_loading')
   },
   settings_sheet: {
     discoverable_toggle: aid('discover', 'settings_sheet', 'discoverable_toggle'),
@@ -558,7 +692,7 @@ export const DISCOVER = {
   }
 } as const;
 
-// --- Connect Over (own screen: the full list of private modules) ---
+// --- Personality quizzes (own screen; analytics name stays connect_over) ---
 export const CONNECT_OVER = {
   list: {
     // dead: the screen title
@@ -714,6 +848,7 @@ export const FRIENDS = {
     page_title: aid('friends', 'top_nav', 'page_title'),
     profile_icon: aid('friends', 'top_nav', 'profile_icon'),
     add: aid('friends', 'top_nav', 'add'),
+    /** Retired in UI. Edit now lives beside Your circle (`roster.edit`). */
     edit: aid('friends', 'top_nav', 'edit')
   },
   roster: {
@@ -721,13 +856,29 @@ export const FRIENDS = {
     drag_handle: aid('friends', 'roster', 'drag_handle'),
     tier_header: aid('friends', 'roster', 'tier_header'),
     birthday_row: aid('friends', 'roster', 'birthday_row'),
-    info: aid('friends', 'roster', 'info')
+    info: aid('friends', 'roster', 'info'),
+    // Same Add friend control as top_nav.add, placed beside Your circle.
+    add: aid('friends', 'roster', 'add'),
+    /** Edit / Done for moving people between circles. Beside Your circle. */
+    edit: aid('friends', 'roster', 'edit'),
+    pending_row: aid('friends', 'roster', 'pending_row'),
+    pending_header: aid('friends', 'roster', 'pending_header'),
+    /** Filters the roster under Your circle. Query text is never logged. */
+    search: aid('friends', 'roster', 'search')
   },
   add_sheet: {
     invite_link: aid('friends', 'add_sheet', 'invite_link'),
     qr: aid('friends', 'add_sheet', 'qr'),
     scan: aid('friends', 'add_sheet', 'scan'),
-    scan_enable: aid('friends', 'add_sheet', 'scan_enable')
+    scan_enable: aid('friends', 'add_sheet', 'scan_enable'),
+    connect_contacts: aid('friends', 'add_sheet', 'connect_contacts'),
+    contact_row: aid('friends', 'add_sheet', 'contact_row'),
+    contacts_cancel: aid('friends', 'add_sheet', 'contacts_cancel')
+  },
+  cold_start: {
+    body: aid('friends', 'cold_start', 'body'),
+    connect_contacts: aid('friends', 'cold_start', 'connect_contacts'),
+    cta: aid('friends', 'cold_start', 'cta')
   },
   inside_jokes: {
     note: aid('friends', 'inside_jokes', 'note'),
@@ -738,6 +889,8 @@ export const FRIENDS = {
   },
   pod: {
     play: aid('friends', 'pod', 'play'),
+    /** Chevron / card body: open the player without starting audio. */
+    open: aid('friends', 'pod', 'open'),
     record: aid('friends', 'pod', 'record'),
     submit_question: aid('friends', 'pod', 'submit_question'),
     vote_question: aid('friends', 'pod', 'vote_question'),
@@ -746,12 +899,32 @@ export const FRIENDS = {
   }
 } as const;
 
+// --- Card you made for someone not on Bridger yet ---
+export const PENDING_PROFILE = {
+  top_nav: {
+    page_title: aid('pending_profile', 'top_nav', 'page_title'),
+    back: aid('pending_profile', 'top_nav', 'back')
+  },
+  header: {
+    name: aid('pending_profile', 'header', 'name'),
+    status: aid('pending_profile', 'header', 'status')
+  },
+  notes: {
+    section_header: aid('pending_profile', 'notes', 'section_header')
+  },
+  actions: {
+    invite: aid('pending_profile', 'actions', 'invite')
+  }
+} as const;
+
 // --- Weekly recap recorder (own surface: record 5 answers by voice) ---
 export const RECAP_RECORDER = {
   question: {
     body: aid('recap_recorder', 'question', 'body'),
     /** Full list shown before recording starts (dead — they read, then Start). */
-    list: aid('recap_recorder', 'question', 'list')
+    list: aid('recap_recorder', 'question', 'list'),
+    /** Jump to a question by tapping its segment in the swipeable deck. */
+    segment: aid('recap_recorder', 'question', 'segment')
   },
   record: {
     start: aid('recap_recorder', 'record', 'start'),
@@ -770,7 +943,13 @@ export const RECAP_RECORDER = {
   actions: {
     /** Leaves the preview list and begins Q1. */
     start: aid('recap_recorder', 'actions', 'start'),
+    /** Record phase → review: confirm who hears it. */
+    review: aid('recap_recorder', 'actions', 'review'),
+    /** Review → back to the questions. */
+    back: aid('recap_recorder', 'actions', 'back'),
     post: aid('recap_recorder', 'actions', 'post'),
+    /** Close the "You're in this week" confirmation once you have seen it. */
+    done: aid('recap_recorder', 'actions', 'done'),
     dismiss: aid('recap_recorder', 'actions', 'dismiss')
   }
 } as const;
@@ -790,6 +969,14 @@ export const RECAP_PLAYER = {
     /** Close / Friends / Acquaintances chip (method = tier) */
     chip: aid('recap_player', 'filter', 'chip')
   },
+  weeks: {
+    /** dead — "This week / earlier" strip */
+    body: aid('recap_player', 'weeks', 'body'),
+    /** pick a locked week (method = current | past). Never the week label. */
+    row: aid('recap_player', 'weeks', 'row'),
+    /** Free Lite: opens co-op join for earlier weeks */
+    join: aid('recap_player', 'weeks', 'join')
+  },
   speaker: {
     body: aid('recap_player', 'speaker', 'body')
   },
@@ -802,11 +989,26 @@ export const RECAP_PLAYER = {
     /** tap a friend's face to jump to / relisten to their clips */
     voice: aid('recap_player', 'in_this_week', 'voice')
   },
+  questions: {
+    /** dead — this week's five questions, shown on the page */
+    body: aid('recap_player', 'questions', 'body'),
+    /** dead — one numbered question row */
+    row: aid('recap_player', 'questions', 'row')
+  },
+  suggest: {
+    input: aid('recap_player', 'suggest', 'input'),
+    send: aid('recap_player', 'suggest', 'send'),
+    vote: aid('recap_player', 'suggest', 'vote')
+  },
   react: {
     open: aid('recap_player', 'react', 'open'),
     emoji: aid('recap_player', 'react', 'emoji')
   },
   actions: {
+    /** Open the recorder from the recap page ("Add your recap"). */
+    record: aid('recap_player', 'actions', 'record'),
+    /** Record one more answer after you are already in this week. */
+    record_another: aid('recap_player', 'actions', 'record_another'),
     dismiss: aid('recap_player', 'actions', 'dismiss')
   }
 } as const;
@@ -953,10 +1155,19 @@ export const PROFILE = {
     add_dismiss: aid('add_bucket_sheet', 'actions', 'dismiss'),
     edit_dismiss: aid('edit_bucket_sheet', 'actions', 'dismiss')
   },
-  /** Untaken past quizzes with friends-taken counts (ADMIN.md §5). */
+  /** Taken + untaken quizzes that live on Profile after Home rotates. */
   quizzes: {
     untaken_row: aid('profile', 'quizzes', 'untaken_row'),
-    section_header: aid('profile', 'quizzes', 'section_header')
+    section_header: aid('profile', 'quizzes', 'section_header'),
+    /** Card body for a finished quiz (dead). */
+    taken_row: aid('profile', 'quizzes', 'taken_row'),
+    see_result: aid('profile', 'quizzes', 'see_result'),
+    share: aid('profile', 'quizzes', 'share'),
+    retake: aid('profile', 'quizzes', 'retake'),
+    /** Visible invite URL (dead). Never log the URL. */
+    share_url: aid('profile', 'quizzes', 'share_url'),
+    copy_link: aid('profile', 'quizzes', 'copy_link'),
+    preview_link: aid('profile', 'quizzes', 'preview_link')
   },
   settings: {
     who_sees_what: aid('profile', 'settings', 'who_sees_what'),
@@ -1038,7 +1249,11 @@ export const PROFILE = {
     info: aid('profile', 'in_common', 'info'),
     section_header: aid('profile', 'in_common', 'section_header'),
     /** A mutual friend's face in the In common strip */
-    mutual_row: aid('profile', 'in_common', 'mutual_row')
+    mutual_row: aid('profile', 'in_common', 'mutual_row'),
+    /** dead — empty In common copy when nothing overlaps at this circle */
+    empty_body: aid('profile', 'in_common', 'empty_body'),
+    /** opens Personality quizzes (connect_over). Click only; quiz_completed later. */
+    personality_quizzes: aid('profile', 'in_common', 'personality_quizzes')
   },
   actions: {
     message: aid('profile', 'actions', 'message'),
@@ -1121,6 +1336,8 @@ export const EVENTS = {
     touch_grass_mark: aid('events', 'gate', 'touch_grass_mark'),
     /** Dismisses the gate into the normal Events list (does not open create). */
     explore: aid('events', 'gate', 'explore'),
+    /** The charging bar shown before Explore Events unlocks (dead-click region). */
+    cta_loading: aid('events', 'gate', 'cta_loading'),
     /** Retired: Explore Events used to open create. Kept so old events still parse. */
     create: aid('events', 'gate', 'create'),
     body: aid('events', 'gate', 'body')
@@ -1359,17 +1576,53 @@ export const POST_COMPOSER = {
   capture: {
     photo: aid('post_composer', 'capture', 'photo'),
     hold_video: aid('post_composer', 'capture', 'hold_video'),
-    switch_camera: aid('post_composer', 'capture', 'switch_camera')
+    switch_camera: aid('post_composer', 'capture', 'switch_camera'),
+    /** Flash cycles off / on / auto (property flash_mode). */
+    flash: aid('post_composer', 'capture', 'flash'),
+    /** Camera-roll thumb bottom-left of the shutter (opens the OS picker). */
+    roll: aid('post_composer', 'capture', 'roll'),
+    /** Small thumbnail of a page you already made today; tap = edit that page. */
+    today_page_thumb: aid('post_composer', 'capture', 'today_page_thumb'),
+    /** @deprecated Removed from capture UI 2026-09-09. Keep id for historical events. */
+    prompts_tray_open: aid('post_composer', 'capture', 'prompts_tray_open'),
+    /** "2 photos" count pill (dead-click). Was "2/4", which looked like steps. */
+    count_pill: aid('post_composer', 'capture', 'count_pill'),
+    /** Zoom chip (.5 / 1 / 2 / 4). Property zoom_factor. Only chips the phone supports. */
+    zoom: aid('post_composer', 'capture', 'zoom')
   },
   caption: {
     type: aid('post_composer', 'caption', 'type'),
-    voice_to_text: aid('post_composer', 'caption', 'voice_to_text')
+    voice_to_text: aid('post_composer', 'caption', 'voice_to_text'),
+    /** Done in the caption sheet. */
+    done: aid('post_composer', 'caption', 'done')
+  },
+  /** The 8.5 x 11 page itself on the compose screen. */
+  page: {
+    /** Paper with nothing tappable under the finger (dead-click). */
+    canvas: aid('post_composer', 'page', 'canvas'),
+    photo_slot: aid('post_composer', 'page', 'photo_slot'),
+    caption_slot: aid('post_composer', 'page', 'caption_slot'),
+    stamp: aid('post_composer', 'page', 'stamp'),
+    /** Chip row above the page after a photo is selected. */
+    replace: aid('post_composer', 'page', 'replace'),
+    remove: aid('post_composer', 'page', 'remove'),
+    move_to_page: aid('post_composer', 'page', 'move_to_page')
+  },
+  layouts: {
+    /** One layout thumbnail (method tap|swipe, page_index, carousel_depth, layout_id). */
+    thumb: aid('post_composer', 'layouts', 'thumb')
+  },
+  /** Strip of today's pages (1 to 4). */
+  pages: {
+    page_thumb: aid('post_composer', 'pages', 'page_thumb'),
+    new_page: aid('post_composer', 'pages', 'new_page')
   },
   suggested: {
+    /** @deprecated Themed OOTD / Hot take squares removed from capture 2026-09-09. */
     suggested_prompt: aid('post_composer', 'suggested', 'suggested_prompt'),
-    /** Opt-in random update nudges (about 1–3 / day). */
+    /** Opt-in random update nudges (Settings → Notifications; not on capture). */
     random_nudges_toggle: aid('post_composer', 'suggested', 'random_nudges_toggle'),
-    /** Label beside the random-nudges toggle (dead-click). */
+    /** @deprecated Was beside the capture-tray toggle. */
     random_nudges_label: aid('post_composer', 'suggested', 'random_nudges_label'),
     /** Event tag row when opened from a party capture nudge (dead-click). */
     event_tag_label: aid('post_composer', 'suggested', 'event_tag_label'),
@@ -1380,12 +1633,281 @@ export const POST_COMPOSER = {
     close: aid('post_composer', 'audience', 'close'),
     friends: aid('post_composer', 'audience', 'friends'),
     everyone: aid('post_composer', 'audience', 'everyone'),
-    group: aid('post_composer', 'audience', 'group')
+    group: aid('post_composer', 'audience', 'group'),
+    /** Owner-only page (DB tier `none`). */
+    only_me: aid('post_composer', 'audience', 'only_me'),
+    /** The "Friends" chip top-right of the page that opens the audience sheet. */
+    chip: aid('post_composer', 'audience', 'chip')
   },
   actions: {
+    /** Confirm inside the who-sees sheet ("Post to Friends"). */
     post: aid('post_composer', 'actions', 'post'),
+    /** Compose bar CTA: opens the who-sees sheet so they pick audience, then post. */
+    next: aid('post_composer', 'actions', 'next'),
     add_another: aid('post_composer', 'actions', 'add_another'),
-    discard: aid('post_composer', 'actions', 'discard')
+    discard: aid('post_composer', 'actions', 'discard'),
+    /** "+" in the composer bar: opens the add-media sheet. */
+    add: aid('post_composer', 'actions', 'add'),
+    /** Pencil in the composer bar: opens the customize tray. */
+    customize: aid('post_composer', 'actions', 'customize'),
+    /** Tiny "i" that explains the compose screen (opens section_info_tooltip). */
+    info: aid('post_composer', 'actions', 'info'),
+    info_dismiss: aid('post_composer', 'actions', 'info_dismiss'),
+    /** The tip bubble body (dead-click). */
+    info_body: aid('post_composer', 'actions', 'info_body'),
+    undo: aid('post_composer', 'actions', 'undo'),
+    /** Back chevron from the page to the camera (draft kept). */
+    back: aid('post_composer', 'actions', 'back'),
+    /** Add-media sheet choices. */
+    add_camera: aid('post_composer', 'actions', 'add_camera'),
+    add_roll: aid('post_composer', 'actions', 'add_roll'),
+    /** Customize tray: paper color swatch. */
+    background_swatch: aid('post_composer', 'actions', 'background_swatch'),
+    /** Just-shot: leave the photo on today's page and post with last audience. */
+    done: aid('post_composer', 'actions', 'done'),
+    /** Just-shot: open the collage editor. */
+    make_collage: aid('post_composer', 'actions', 'make_collage'),
+    /** Just-shot: throw this take away and open the camera again. */
+    retake: aid('post_composer', 'actions', 'retake'),
+    /** Save the photo or finished page to the camera roll (confirmed save). */
+    save_roll: aid('post_composer', 'actions', 'save_roll')
+  },
+  just_shot: {
+    /** "On today's page" line (dead-click). */
+    on_page: aid('post_composer', 'just_shot', 'on_page'),
+    photo: aid('post_composer', 'just_shot', 'photo')
+  }
+} as const;
+
+// --- Collage editor (optional second door after the camera) ---
+export const COLLAGE_EDITOR = {
+  chrome: {
+    close: aid('collage_editor', 'chrome', 'close'),
+    undo: aid('collage_editor', 'chrome', 'undo'),
+    redo: aid('collage_editor', 'chrome', 'redo'),
+    menu: aid('collage_editor', 'chrome', 'menu'),
+    next: aid('collage_editor', 'chrome', 'next'),
+    /** Title / empty paper (dead-click). */
+    title: aid('collage_editor', 'chrome', 'title')
+  },
+  menu: {
+    save_roll: aid('collage_editor', 'menu', 'save_roll'),
+    learn: aid('collage_editor', 'menu', 'learn'),
+    change_pack: aid('collage_editor', 'menu', 'change_pack'),
+    clear: aid('collage_editor', 'menu', 'clear'),
+    delete_page: aid('collage_editor', 'menu', 'delete_page')
+  },
+  page: {
+    canvas: aid('collage_editor', 'page', 'canvas'),
+    piece: aid('collage_editor', 'page', 'piece'),
+    bin: aid('collage_editor', 'page', 'bin')
+  },
+  rail: {
+    delete: aid('collage_editor', 'rail', 'delete'),
+    duplicate: aid('collage_editor', 'rail', 'duplicate'),
+    edit: aid('collage_editor', 'rail', 'edit'),
+    rotate: aid('collage_editor', 'rail', 'rotate'),
+    bring_front: aid('collage_editor', 'rail', 'bring_front')
+  },
+  toolbar: {
+    text: aid('collage_editor', 'toolbar', 'text'),
+    add: aid('collage_editor', 'toolbar', 'add'),
+    camera: aid('collage_editor', 'toolbar', 'camera'),
+    packs: aid('collage_editor', 'toolbar', 'packs'),
+    voice: aid('collage_editor', 'toolbar', 'voice')
+  }
+} as const;
+
+export const COLLAGE_HUB = {
+  grid: {
+    text: aid('collage_hub', 'grid', 'text'),
+    camera: aid('collage_hub', 'grid', 'camera'),
+    roll: aid('collage_hub', 'grid', 'roll'),
+    voice: aid('collage_hub', 'grid', 'voice'),
+    people: aid('collage_hub', 'grid', 'people'),
+    layout: aid('collage_hub', 'grid', 'layout'),
+    paper: aid('collage_hub', 'grid', 'paper'),
+    cutout: aid('collage_hub', 'grid', 'cutout'),
+    sticker: aid('collage_hub', 'grid', 'sticker')
+  },
+  chrome: {
+    dismiss: aid('collage_hub', 'chrome', 'dismiss'),
+    title: aid('collage_hub', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_PAPER = {
+  swatch: {
+    paper: aid('collage_paper', 'swatch', 'paper'),
+    pack: aid('collage_paper', 'swatch', 'pack'),
+    spectrum: aid('collage_paper', 'swatch', 'spectrum')
+  },
+  chrome: {
+    dismiss: aid('collage_paper', 'chrome', 'dismiss'),
+    done: aid('collage_paper', 'chrome', 'done'),
+    title: aid('collage_paper', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_TEXT = {
+  field: {
+    type: aid('collage_text', 'field', 'type')
+  },
+  tools: {
+    size: aid('collage_text', 'tools', 'size'),
+    font: aid('collage_text', 'tools', 'font'),
+    color: aid('collage_text', 'tools', 'color'),
+    spectrum: aid('collage_text', 'tools', 'spectrum'),
+    box: aid('collage_text', 'tools', 'box')
+  },
+  chrome: {
+    dismiss: aid('collage_text', 'chrome', 'dismiss'),
+    done: aid('collage_text', 'chrome', 'done'),
+    title: aid('collage_text', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_VOICE = {
+  capture: {
+    record: aid('collage_voice', 'capture', 'record'),
+    stop: aid('collage_voice', 'capture', 'stop'),
+    play: aid('collage_voice', 'capture', 'play'),
+    transcribe: aid('collage_voice', 'capture', 'transcribe'),
+    add: aid('collage_voice', 'capture', 'add'),
+    permission_prompt: aid('collage_voice', 'capture', 'permission_prompt')
+  },
+  chrome: {
+    dismiss: aid('collage_voice', 'chrome', 'dismiss'),
+    title: aid('collage_voice', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_PEOPLE = {
+  list: {
+    friend: aid('collage_people', 'list', 'friend'),
+    empty: aid('collage_people', 'list', 'empty')
+  },
+  chrome: {
+    dismiss: aid('collage_people', 'chrome', 'dismiss'),
+    done: aid('collage_people', 'chrome', 'done'),
+    title: aid('collage_people', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_CUTOUT = {
+  tools: {
+    subject: aid('collage_cutout', 'tools', 'subject'),
+    shape: aid('collage_cutout', 'tools', 'shape'),
+    add: aid('collage_cutout', 'tools', 'add')
+  },
+  chrome: {
+    dismiss: aid('collage_cutout', 'chrome', 'dismiss'),
+    title: aid('collage_cutout', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_LAYER = {
+  tabs: {
+    more: aid('collage_layer', 'tabs', 'more'),
+    tilt: aid('collage_layer', 'tabs', 'tilt'),
+    colour: aid('collage_layer', 'tabs', 'colour'),
+    frame: aid('collage_layer', 'tabs', 'frame')
+  },
+  pick: {
+    option: aid('collage_layer', 'pick', 'option'),
+    swap: aid('collage_layer', 'pick', 'swap'),
+    duplicate: aid('collage_layer', 'pick', 'duplicate'),
+    delete: aid('collage_layer', 'pick', 'delete')
+  },
+  chrome: {
+    dismiss: aid('collage_layer', 'chrome', 'dismiss'),
+    done: aid('collage_layer', 'chrome', 'done'),
+    title: aid('collage_layer', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_EXIT = {
+  actions: {
+    discard: aid('collage_exit', 'actions', 'discard'),
+    save: aid('collage_exit', 'actions', 'save')
+  },
+  chrome: {
+    title: aid('collage_exit', 'chrome', 'title'),
+    body: aid('collage_exit', 'chrome', 'body')
+  }
+} as const;
+
+export const COLLAGE_FINISH = {
+  actions: {
+    save_roll: aid('collage_finish', 'actions', 'save_roll'),
+    share: aid('collage_finish', 'actions', 'share'),
+    done: aid('collage_finish', 'actions', 'done')
+  },
+  chrome: {
+    title: aid('collage_finish', 'chrome', 'title'),
+    page: aid('collage_finish', 'chrome', 'page')
+  }
+} as const;
+
+export const COLLAGE_PACK_BROWSER = {
+  list: {
+    use: aid('collage_packs', 'list', 'use'),
+    card: aid('collage_packs', 'list', 'card')
+  },
+  chrome: {
+    dismiss: aid('collage_packs', 'chrome', 'dismiss'),
+    title: aid('collage_packs', 'chrome', 'title')
+  }
+} as const;
+
+export const COLLAGE_LAYOUTS = {
+  list: {
+    thumb: aid('collage_layouts', 'list', 'thumb')
+  },
+  chrome: {
+    dismiss: aid('collage_layouts', 'chrome', 'dismiss'),
+    done: aid('collage_layouts', 'chrome', 'done'),
+    title: aid('collage_layouts', 'chrome', 'title')
+  }
+} as const;
+
+/** @deprecated Tray removed from capture 2026-09-09. Ids kept for historical events. */
+export const PROMPTS_TRAY = {
+  tray: {
+    dismiss: aid('prompts_tray', 'tray', 'dismiss')
+  }
+} as const;
+
+/** Half-height caption sheet: Type or Record (own surface). */
+export const CAPTION_SHEET = {
+  tabs: {
+    type: aid('caption_sheet', 'tabs', 'type'),
+    record: aid('caption_sheet', 'tabs', 'record')
+  },
+  actions: {
+    done: aid('caption_sheet', 'actions', 'done'),
+    dismiss: aid('caption_sheet', 'actions', 'dismiss')
+  }
+} as const;
+
+/** Who-sees-this sheet wrapping AudiencePicker (own surface). */
+export const AUDIENCE_SHEET = {
+  actions: {
+    dismiss: aid('audience_sheet', 'actions', 'dismiss')
+  }
+} as const;
+
+/** "+" add-media sheet (own surface). */
+export const ADD_MEDIA_SHEET = {
+  actions: {
+    dismiss: aid('add_media_sheet', 'actions', 'dismiss')
+  }
+} as const;
+
+/** Pencil customize tray (own surface). */
+export const CUSTOMIZE_TRAY = {
+  actions: {
+    dismiss: aid('customize_tray', 'actions', 'dismiss')
   }
 } as const;
 
@@ -1490,6 +2012,13 @@ export const REVEAL = {
     add: aid('reveal', 'suggestions', 'add'),
     /** Turn on Discover matching from the nudge */
     optin_toggle: aid('reveal', 'suggestions', 'optin_toggle')
+  },
+  /** Thin overlap: no shared quiz / hobby / granted-tier fact yet. */
+  thin: {
+    /** dead — the "nothing to line up yet" copy */
+    body: aid('reveal', 'thin', 'body'),
+    /** opens Personality quizzes. Click only; quiz_completed fires later. */
+    personality_quizzes: aid('reveal', 'thin', 'personality_quizzes')
   }
 } as const;
 
@@ -1511,7 +2040,44 @@ export const QUIZ = {
     share: aid('quiz', 'result', 'share'),
     who_got_who: aid('quiz', 'result', 'who_got_who'),
     see_more: aid('quiz', 'result', 'see_more'),
-    done: aid('quiz', 'result', 'done')
+    done: aid('quiz', 'result', 'done'),
+    /** "Connect with friends" headline (dead). */
+    connect_header: aid('quiz', 'result', 'connect_header'),
+    /** Invite copy under the headline (dead). */
+    connect_body: aid('quiz', 'result', 'connect_body'),
+    share_link: aid('quiz', 'result', 'share_link'),
+    share_story: aid('quiz', 'result', 'share_story'),
+    save_image: aid('quiz', 'result', 'save_image'),
+    view_first: aid('quiz', 'result', 'view_first'),
+    view_fun: aid('quiz', 'result', 'view_fun'),
+    retake: aid('quiz', 'result', 'retake'),
+    /** "Just for fun" note on a retake (dead). */
+    fun_note: aid('quiz', 'result', 'fun_note'),
+    empty_board: aid('quiz', 'result', 'empty_board'),
+    invite_friends: aid('quiz', 'result', 'invite_friends'),
+    /** You vs the friend who shared the link (dead). */
+    duo_card: aid('quiz', 'result', 'duo_card'),
+    make_account: aid('quiz', 'result', 'make_account'),
+    add_friend: aid('quiz', 'result', 'add_friend'),
+    /** Visible invite URL (dead). Never log the URL. */
+    share_url: aid('quiz', 'result', 'share_url'),
+    copy_link: aid('quiz', 'result', 'copy_link'),
+    preview_link: aid('quiz', 'result', 'preview_link')
+  }
+} as const;
+
+/** Public shared-result page (`/q/[token]`). Own surface. */
+export const QUIZ_SHARE = {
+  body: {
+    card: aid('quiz_share', 'body', 'card'),
+    headline: aid('quiz_share', 'body', 'headline'),
+    /** "No account needed" helper (dead). */
+    note: aid('quiz_share', 'body', 'note')
+  },
+  actions: {
+    take: aid('quiz_share', 'actions', 'take'),
+    make_account: aid('quiz_share', 'actions', 'make_account'),
+    add_friend: aid('quiz_share', 'actions', 'add_friend')
   }
 } as const;
 
@@ -1557,11 +2123,21 @@ export const ACTIVITY_CAPTURE = {
   close: aid('activity_capture', 'chrome', 'close')
 } as const;
 
-/** Add an Inside Joke sheet — own surface with parent_screen=friends|profile */
+/** Add an Inside Joke — full-screen composer (surface name kept for history) */
 export const ADD_INSIDE_JOKE_SHEET = {
   quote_input: aid('add_inside_joke_sheet', 'form', 'quote_input'),
+  sticky_note: aid('add_inside_joke_sheet', 'form', 'sticky_note'),
+  color_header: aid('add_inside_joke_sheet', 'form', 'color_header'),
+  color_swatch: aid('add_inside_joke_sheet', 'form', 'color_swatch'),
+  photo_add: aid('add_inside_joke_sheet', 'form', 'photo_add'),
+  photo_remove: aid('add_inside_joke_sheet', 'form', 'photo_remove'),
+  photo_locked: aid('add_inside_joke_sheet', 'form', 'photo_locked'),
+  who_header: aid('add_inside_joke_sheet', 'form', 'who_header'),
+  who_search: aid('add_inside_joke_sheet', 'form', 'who_search'),
   who_chip: aid('add_inside_joke_sheet', 'form', 'who_chip'),
   who_empty: aid('add_inside_joke_sheet', 'form', 'who_empty'),
+  event_header: aid('add_inside_joke_sheet', 'form', 'event_header'),
+  event_search: aid('add_inside_joke_sheet', 'form', 'event_search'),
   where_input: aid('add_inside_joke_sheet', 'form', 'where_input'),
   where_event_chip: aid('add_inside_joke_sheet', 'form', 'where_event_chip'),
   post: aid('add_inside_joke_sheet', 'actions', 'post'),

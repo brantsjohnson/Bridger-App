@@ -10,6 +10,22 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 ---
 
+## Visual-first feature design (required on every new feature)
+
+Every new flow, screen, or element is a **UX design problem first**, then an engineering problem. Cursor rules enforce this every session (`.cursor/rules/ux-design-thinking.mdc` + `guide-rules.mdc` §2). Do not ship "it works" UI that looks like a checklist or an admin panel.
+
+**Ask before you build (and again before you call it done):**
+
+1. **Is this visually appealing?** Would someone want to spend time here? Is there a clear visual anchor (shape, color block, illustration, motion) or only stacked text?
+2. **Does it fit Bridger's brand guiding systems?** Eggshell canvas, pixel section headers, flat surfaces, white containers with earned vivid accents, Magic Patterns components, the 80/20 ratio above. No one-off palettes or generic Material/iOS clones.
+3. **How do we give it personality?** Use the tools this system already has: pixel type for section voice, metallic primary CTAs for key moments, hobby blobs, leaning `funShape` cards, tier color, whimsy (`Reveal` / `Wiggle` / `Sparkles`), intentional empty states. Personality is deliberate seasoning, not clutter.
+4. **Is the infrastructure good?** One job per section, clear hierarchy, generous whitespace, adaptive layout (`useResponsiveLayout()`), readable type floors (`TYPOGRAPHY.md`), accessible targets and reduced-motion.
+5. **Is the copy simple?** No redundant headlines + subtitles that repeat. No duplicated CTAs or empty-state messages. Prefer a strong visual over another sentence.
+
+If the answer to (1)–(3) is weak, redesign before more wiring. Polish is not a later pass; it is part of done.
+
+---
+
 ## Canvas & color
 
 - **Main app canvas: eggshell white** (a warm off-white, ~`#F4F1E7`), **black/near-black in dark mode** (~`#0E0E0E`). The classier, calmer canvas makes colorful, fun elements pop — that's the whole reason for it.
@@ -30,10 +46,12 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 ## Typography
 
+**Size floors and token scale live in [`TYPOGRAPHY.md`](./TYPOGRAPHY.md).** That doc is permanent: body and inputs never go below **16px**, captions stay secondary (13–14px), and measure/line-height follow phone vs large breakpoints. When a layout feels tight, shrink padding or reflow. Do not shrink type under the floors.
+
 - **Section headers** (Home, Friends, Discover, Events, This week…) use a **pixel / retro-computer font** (e.g. FeloniaPixel). This is the single loudest retro cue — it carries the personality so the rest can stay clean. Onboarding question headings use the same pixel font. **Big Shoulders Display is reserved for the four onboarding reality-check ("quick recap") screens only.**
 - **Body, labels, descriptions:** clean, highly readable sans-serif. Never pixel — pixel body copy is a readability sin.
 - **Buttons/UI labels:** simple sans, sentence case.
-- Two weights, generous line-height, sentence case everywhere.
+- Two weights, generous line-height (see `TYPOGRAPHY.md`), sentence case everywhere.
 
 ---
 
@@ -50,10 +68,10 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 - Rounded rectangles, pill buttons, soft cards, clean modular blocks. Radius ~12–24px on cards, pill radius on chips/buttons.
 - **Floating nav bar.** The bottom navigation is a **detached, elongated capsule** inset from the screen edge (a little margin left and right, never flush). Same long-pill language as the toggle: the track stretches most of the width, and the active destination is a **filled elongated pill** in that tab's color, not a tight circle. Translucent where possible; may shrink or tuck away on scroll.
-- **Fun quiz take (Which "J" name are you?):** geometric brutalist exception. Solid **white** canvas (no drifting grid). Question sits in a large sharp navy slab. Answers are large **accent-colored** blocks (purple, coral, teal, amber…) so options read as different, with thick white gutters. Tap sprays a short emoji shower from that tile (Reduce Motion skips it). No rounded pills on the take. Leave is always an **X** top-right (no back arrow); it opens End quiz. **Commentary / quip screens** are a different beat: vivid amber canvas (not dusty yellow), the line sits free in the middle (no slab), same X, Continue is the old-Windows metallic `ButtonPrimary` at the bottom. Discover / Connect Over quizzes stay on the shared `QuizTakeShell`.
+- **Fun quiz take (Which "J" name are you?):** geometric brutalist exception. Solid **white** canvas (no drifting grid). Question sits in a large sharp navy slab. Answers are large **accent-colored** blocks (purple, coral, teal, amber…) so options read as different, with thick white gutters. Tap sprays a short emoji shower from that tile (Reduce Motion skips it). No rounded pills on the take. Leave is always an **X** top-right (no back arrow); it opens End quiz. **Commentary / quip screens** are a different beat: vivid amber canvas (not dusty yellow), the line sits free in the middle (no slab), same X, Continue is the old-Windows metallic `ButtonPrimary` at the bottom. Discover / Personality quizzes stay on the shared `QuizTakeShell`.
 - **Page title headers scroll with the page.** Home / Friends / Events / etc. title rows are not sticky and do not slide back when you scroll up mid-page. They leave only as content pushes them off the top, and they return only when you scroll all the way back to the top (`ScreenHeader` + `ScreenBody` in `packages/ui`).
 - **Flat.** No heavy shadows, no fake depth, no busy textures. A faint hairline or a solid color fill separates surfaces — that's enough.
-- **White is the default container; color is earned.** `surface` is plain white. Color does not come from tinting every card a pale shade — a pastel wash everywhere reads muted, not playful. It comes from making the things that matter **fully vivid**: the Touch Grass button, Connect Over cards, message rows, the event banner. When in doubt: white base, loud feature.
+- **White is the default container; color is earned.** `surface` is plain white. Color does not come from tinting every card a pale shade — a pastel wash everywhere reads muted, not playful. It comes from making the things that matter **fully vivid**: the Touch Grass button, Personality quiz cards, message rows, the event banner. When in doubt: white base, loud feature.
 - **Never the toned-down yellow.** Pale/dusty yellow is out of the palette. Yellow appears only as the vivid "you" tier color.
 - **Shapes lean.** A card should not be a rectangle with sanded corners. `funShape(id)` in tokens gives each card one hard-curved corner pair and one tight pair, picked from its own id — stable per card, varied down a list. Some things stay plain on purpose: story tiles, notifications, and anything in a tight grid.
 - Generous whitespace; bold but never cluttered.
@@ -64,7 +82,7 @@ The guiding ratio: **80% clean modern product, 20% retro personality.** The 20% 
 
 The hobby/interest pickers must **not** feel like a plain checklist or a dating app. Instead: **colorful rounded "blob" pills**, each with a little **character/illustration icon** and a checkmark when selected (think friendly, hand-drawn energy). With ~95 hobbies, this is what keeps a long selection joyful instead of a chore. Color-code by category; let the shapes feel a touch organic.
 
-## Discover quiz take screens (Connect Over)
+## Discover quiz take screens (Personality quizzes)
 
 Private measurement quizzes (Your Funny Bone, Your Vibe, The Friend Zone, What Gets You Going) are **fill-out energy**, not Settings forms:
 
@@ -78,12 +96,13 @@ Private measurement quizzes (Your Funny Bone, Your Vibe, The Friend Zone, What G
 
 ## Onboarding is its own room (shape stays special; colors match the app)
 
-First run keeps its own **shape** language (square boxes, hard outlines, pink Continue pill), taken from the Magic Patterns "Onboarding Flow" design, and it ends the moment you land on Home. **Colors do not invent a second palette.** Every hex comes from the same Bridger tokens as the rest of the app (`THEME` + `ACCENT_HEX` in `packages/ui`), so the handoff into Home stays on-brand. Nothing below is allowed to leak out of `apps/mobile/components/onboarding/`.
+First run keeps its own **shape** language, taken from the Magic Patterns "Onboarding Flow" design, and it ends the moment you land on Home. Old stays square. New uses rounded cards like the main app. **Colors do not invent a second palette.** Every hex comes from the same Bridger tokens as the rest of the app (`THEME` + `ACCENT_HEX` in `packages/ui`), so the handoff into Home stays on-brand. Nothing below is allowed to leak out of `apps/mobile/components/onboarding/`.
 
 - **Canvas:** same eggshell as the main app (`#FAF8F2`), light only (dark mode does not flip it). Faint graph-paper squares sit in two corners instead of the drifting grid.
 - **Type:** the question is **FeloniaPixel, all caps, tight, in accent blue** (`#1D6FE8`), same pixel header font as the rest of the app. Body copy stays the normal clean sans. **Big Shoulders Display is only for the four reality-check screens.**
-- **Shape:** square. Hard 2px ink outlines (`#1C1B16`) on white boxes (`#FFFFFF`). **No border radius**, no soft cards, no pills.
-- **Primary button:** hot pink (`#FF3E8A`), all caps **bold sans** (same `font-sans-b` as the rest of Bridger's buttons), **square** like every other onboarding box, with a trailing arrow. No pill rounding. The metallic CTA does not appear in onboarding. On reality-check screens this keeps the CTA a step apart from the Big Shoulders headlines.
+- **Shape (Old 19-step):** square. Hard 2px ink outlines (`#1C1B16`) on white boxes (`#FFFFFF`). **No border radius**, no soft cards, no pills.
+- **Shape (New, demo `onboard`):** rounded like the main app (`20` card radius). Fields and pick rows have **no outline**. The **progress bar stays square**. The gray Windows metallic CTA is never used here.
+- **Primary button:** hot pink (`#FF3E8A`), all caps **bold sans** (same `font-sans-b` as the rest of Bridger's buttons). Old stays square. New is rounded. One trailing arrow only (do not add a second if the label already has `→`). The metallic CTA does not appear in onboarding. On reality-check screens this keeps the CTA a step apart from the Big Shoulders headlines.
 - **Chosen state:** pale blue wash (`#BBD6FB`, same as the app's blue tint) plus a tick or a moved switch knob, so it never reads by color alone.
 - **Accents:** amber (`#FFB515`) for the small "why we're asking" tag, pink for small all-caps hints, coral (`#FF5A1F`) for the reality-check kicker, teal (`#00A676`) for confirmed / on switches.
 - **The four reality-check screens** invert it: flat accent-blue page, white type, a faint white grid, Big Shoulders Display for headlines and big numbers.
@@ -178,8 +197,10 @@ radius: cards 12–24px · chips/buttons = pill
 
 ## Acceptance criteria
 
+- [ ] New or changed UI passed the visual-first gate: appealing, on-brand, has Bridger personality, simple non-redundant copy, sound adaptive layout (see § Visual-first feature design).
 - [ ] Main app renders on an eggshell canvas (light) / near-black (dark); onboarding and fill flows may use full color.
 - [ ] Section headers use the pixel font; body copy is clean sans and never pixel.
+- [ ] Type sizes obey `TYPOGRAPHY.md` (body/input ≥ 16px; caption secondary only).
 - [ ] Primary CTAs use the beveled retro-metallic style; other buttons stay flat. The treatment is reserved, not universal.
 - [ ] Surfaces are flat and rounded — no heavy shadows or textures.
 - [ ] Interest/hobby selectors are colorful illustrated blobs, not a plain checklist.

@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Set the 5 questions for the weekly recap podcast. Create a new week, make one
-// live, and pull in the questions friends submitted (most-voted first). Only one
-// week is live at a time; that's the one people record into on the Friends tab.
+// Optional override for the weekly Friend Pod. If you do nothing, Monday
+// locks itself: rose / thorn / bud, then the most-voted suggestions, then
+// short fill-ins. You can still type all 5 and make a week live.
 // ============================================
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { PageState } from '../components/PageState';
@@ -16,7 +16,10 @@ type RecapWeekRow = {
   id: string;
   weekOf: string;
   active: boolean;
+  origin?: string;
+  weekStart?: string | null;
   questions: string[];
+  sources?: string[];
 };
 
 type SubmittedQuestion = {
@@ -29,6 +32,13 @@ type SubmittedQuestion = {
 
 const EMPTY_FIVE = ['', '', '', '', ''];
 
+function sourceLabel(source?: string) {
+  if (source === 'submitted') return 'voted';
+  if (source === 'ai') return 'filled in';
+  if (source === 'builtin') return 'built in';
+  return 'admin';
+}
+
 export function WeeklyRecap() {
   const [weeks, setWeeks] = useState<RecapWeekRow[]>([]);
   const [submitted, setSubmitted] = useState<SubmittedQuestion[]>([]);
@@ -39,7 +49,9 @@ export function WeeklyRecap() {
   // New-week form.
   const [weekOf, setWeekOf] = useState('');
   const [questions, setQuestions] = useState<string[]>([...EMPTY_FIVE]);
+  const [makeLive, setMakeLive] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [rolling, setRolling] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -85,7 +97,8 @@ export function WeeklyRecap() {
         method: 'POST',
         body: {
           weekOf: weekOf.trim(),
-          questions: questions.map((q) => q.trim())
+          questions: questions.map((q) => q.trim()),
+          makeLive
         }
       });
       setWeekOf('');
@@ -101,7 +114,7 @@ export function WeeklyRecap() {
     }
   };
 
-  const makeLive = async (id: string) => {
+  const makeWeekLive = async (id: string) => {
     setSaved(false);
     setError(null);
     try {
@@ -118,15 +131,46 @@ export function WeeklyRecap() {
     }
   };
 
+  const lockThisWeek = async () => {
+    setRolling(true);
+    setSaved(false);
+    setError(null);
+    try {
+      await api('/admin/recap/rollover', { method: 'POST', body: {} });
+      setSaved(true);
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : 'Could not lock this week automatically.'
+      );
+    } finally {
+      setRolling(false);
+    }
+  };
+
   const filledCount = questions.filter((q) => q.trim()).length;
 
   return (
     <div className="mx-auto max-w-4xl">
       <h1 className="mb-1 font-pixel text-3xl">Weekly recap</h1>
-      <p className="mb-6 text-sm text-muted">
-        The 5 questions everyone answers by voice on the Friends tab. Make one
-        week live at a time.
+      <p className="mb-4 text-sm text-muted">
+        You do not have to set questions. Each Monday the Friend Pod locks
+        itself: rose, thorn, and bud, then the two most-voted unused
+        suggestions, then short fill-ins. Use this page only when you want a
+        themed week instead.
       </p>
+
+      <div className="mb-6">
+        <Button
+          variant="secondary"
+          onClick={() => void lockThisWeek()}
+          disabled={rolling}
+        >
+          {rolling ? 'Locking…' : 'Lock this week now'}
+        </Button>
+      </div>
 
       <PageState
         loading={loading}
@@ -136,12 +180,12 @@ export function WeeklyRecap() {
         savedMessage="Recap saved."
       />
 
-      <Card title="New week" className="mb-6">
+      <Card title="Override this week" className="mb-6">
         <form onSubmit={(e) => void onCreate(e)} className="space-y-4">
           <Field
             id="recap-week-of"
             label="Week label"
-            hint='What people see, e.g. "Week of 27 Jul"'
+            hint='What people see, e.g. "Week of 7 Sep"'
             required
             value={weekOf}
             onChange={(e) => setWeekOf(e.target.value)}
@@ -161,6 +205,18 @@ export function WeeklyRecap() {
               />
             ))}
           </div>
+          <label
+            htmlFor="recap-make-live"
+            className="flex items-center gap-2 text-sm text-ink"
+          >
+            <input
+              id="recap-make-live"
+              type="checkbox"
+              checked={makeLive}
+              onChange={(e) => setMakeLive(e.target.checked)}
+            />
+            Make this the live week now
+          </label>
           <Button
             type="submit"
             variant="primary"
@@ -174,7 +230,8 @@ export function WeeklyRecap() {
       {submitted.length > 0 ? (
         <Card title="Questions friends suggested" className="mb-6">
           <p className="mb-3 text-xs text-muted">
-            Most-voted first. Tap Use to drop one into the form above.
+            Most-voted first. Unused ones feed next Monday automatically. Tap
+            Use to drop one into an override week.
           </p>
           <ul className="divide-y divide-line">
             {submitted.map((q) => (
@@ -212,12 +269,15 @@ export function WeeklyRecap() {
                     <Badge tone={w.active ? 'live' : 'draft'}>
                       {w.active ? 'live now' : 'draft'}
                     </Badge>
+                    <Badge tone="draft">
+                      {w.origin === 'auto' ? 'auto' : 'admin'}
+                    </Badge>
                     {w.active ? (
                       <span className="text-sm text-ok">Current</span>
                     ) : (
                       <Button
                         variant="primary"
-                        onClick={() => void makeLive(w.id)}
+                        onClick={() => void makeWeekLive(w.id)}
                       >
                         Make live
                       </Button>
@@ -226,7 +286,12 @@ export function WeeklyRecap() {
                 </div>
                 <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
                   {w.questions.map((q, i) => (
-                    <li key={i}>{q}</li>
+                    <li key={i}>
+                      {q}
+                      <span className="ml-2 text-xs">
+                        ({sourceLabel(w.sources?.[i])})
+                      </span>
+                    </li>
                   ))}
                 </ol>
               </li>

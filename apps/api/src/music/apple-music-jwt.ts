@@ -23,9 +23,9 @@ export function loadAppleMusicPrivateKey(opts: {
   path?: string | null;
   inlinePem?: string | null;
 }): string {
-  const inline = opts.inlinePem?.trim();
+  const inline = normalizePem(opts.inlinePem);
   if (inline) {
-    return inline.includes('\\n') ? inline.replace(/\\n/g, '\n') : inline;
+    return inline;
   }
   const path = opts.path?.trim();
   if (!path) {
@@ -33,7 +33,23 @@ export function loadAppleMusicPrivateKey(opts: {
       'Set APPLE_MUSIC_PRIVATE_KEY_PATH or APPLE_MUSIC_PRIVATE_KEY for MusicKit'
     );
   }
-  return readFileSync(path, 'utf8');
+  return normalizePem(readFileSync(path, 'utf8'));
+}
+
+// THIS SECTION DOES: clean a MusicKit .p8 so extra quotes or \n text still work.
+function normalizePem(raw?: string | null): string {
+  if (!raw) return '';
+  let text = raw.trim();
+  if (
+    (text.startsWith('"') && text.endsWith('"')) ||
+    (text.startsWith("'") && text.endsWith("'"))
+  ) {
+    text = text.slice(1, -1);
+  }
+  if (text.includes('\\n')) {
+    text = text.replace(/\\n/g, '\n');
+  }
+  return text.trim();
 }
 
 // THIS SECTION DOES: mint a developer JWT Apple's MusicKit will accept.

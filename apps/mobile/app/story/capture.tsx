@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Full-screen modal route for capturing + composing a new Update. Opened from
-// the "Your story" tile on Home, or from a party capture notification that
-// passes ?eventId= so the post tags the event photo album.
+// Full-screen modal route for making a Collage page (camera, then the page).
+// Opened from the "Your collage" tile on Home, from a party capture
+// notification that passes ?eventId= so the post tags the event photo album,
+// or with ?postId= to open one of today's pages straight away to add to it.
 // Video posting is a co-op perk: we load real membership before compose mounts.
 // ============================================
 import { useEffect, useState } from 'react';
@@ -13,7 +14,11 @@ import { getEvent } from '../../data/events';
 
 export default function StoryCaptureScreen() {
   const router = useRouter();
-  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  const { eventId, postId, photoUri } = useLocalSearchParams<{
+    eventId?: string;
+    postId?: string;
+    photoUri?: string;
+  }>();
   const [isCoopMember, setIsCoopMember] = useState(false);
   const [eventTitle, setEventTitle] = useState<string | undefined>();
 
@@ -61,6 +66,8 @@ export default function StoryCaptureScreen() {
       isCoopMember={isCoopMember}
       initialEventId={tagEventId}
       initialEventTitle={eventTitle}
+      initialPostId={typeof postId === 'string' ? postId : undefined}
+      initialPhotoUri={typeof photoUri === 'string' ? photoUri : undefined}
     />
   );
 }

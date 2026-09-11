@@ -23,8 +23,8 @@ import { SubmitQuestion } from '../../components/pod/SubmitQuestion';
 import { PEOPLE } from '../../state/mock-data';
 import { BIRTHDAYS } from '../../state/connections';
 
-/** Feature flag — when false the search bar is not rendered at all. */
-const searchEnabled = false;
+/** Friends search filters people already in your circle (name / handle). */
+const searchEnabled = true;
 
 const TIERS: Tier[] = ['close', 'friend', 'acquaintance'];
 
@@ -81,17 +81,9 @@ export function FriendsScreen({
         title="Friends"
         trailing={
         <span className="flex items-center gap-2">
-            <ButtonSecondary size="sm" tone={editing ? 'solid' : 'outline'} onClick={() => setEditing((v) => !v)}>
-              {editing ? 'Done' : 'Edit'}
+            <ButtonSecondary size="sm" tone="solid" onClick={() => setAddOpen(true)}>
+              Add friend
             </ButtonSecondary>
-            <button
-            type="button"
-            onClick={() => setAddOpen(true)}
-            aria-label="Add friend"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-white">
-            
-              <PlusIcon className="h-[18px] w-[18px]" strokeWidth={2.6} />
-            </button>
           </span>
         } />
       
@@ -147,12 +139,37 @@ export function FriendsScreen({
 
         {empty ?
         <Breathe>
-            <div className="mt-4">
+            <div className="mt-7">
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <PixelHeading size="md">Your circle</PixelHeading>
+                <span className="flex items-center gap-2">
+                  <ButtonSecondary size="sm" tone={editing ? 'solid' : 'outline'} onClick={() => setEditing((v) => !v)}>
+                    {editing ? 'Done' : 'Edit'}
+                  </ButtonSecondary>
+                  <ButtonSecondary size="sm" tone="solid" onClick={() => setAddOpen(true)}>
+                    Add friend
+                  </ButtonSecondary>
+                </span>
+              </div>
               <ColdStart onAdd={() => setAddOpen(true)} />
             </div>
           </Breathe> :
 
-        TIERS.map((tier) => {
+        <>
+          <Breathe>
+            <div className="mt-7 mb-1 flex items-center justify-between gap-3">
+              <PixelHeading size="md">Your circle</PixelHeading>
+              <span className="flex items-center gap-2">
+                <ButtonSecondary size="sm" tone={editing ? 'solid' : 'outline'} onClick={() => setEditing((v) => !v)}>
+                  {editing ? 'Done' : 'Edit'}
+                </ButtonSecondary>
+                <ButtonSecondary size="sm" tone="solid" onClick={() => setAddOpen(true)}>
+                  Add friend
+                </ButtonSecondary>
+              </span>
+            </div>
+          </Breathe>
+        {TIERS.map((tier) => {
           const group = roster.filter((p) => tiers[p.id] === tier);
           if (group.length === 0 && !editing) return null;
           const isOver = editing && overTier === tier;
@@ -249,6 +266,8 @@ export function FriendsScreen({
               </Breathe>);
 
         })
+        }
+        </>
         }
       </ScreenBody>
 

@@ -1,10 +1,7 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The full "Connect Over" screen. Tapping "See more" on Discover lands here and
-// shows every private module as a colored card. It reuses the same MatchModules
-// component (with the header off, since the screen already titles itself), so
-// the cards and the open-a-module flow behave exactly like the Discover preview.
-// This is its own analytics screen ("connect_over").
+// The full Personality quizzes screen. Tapping "See more" on Discover lands
+// here. Analytics screen stays "connect_over" so old events still resolve.
 // ============================================
 import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -25,7 +22,7 @@ export default function ConnectOverScreen() {
   return (
     <Screen tone="synth">
       <ScreenHeader
-        title="Connect Over"
+        title="Personality quizzes"
         onBack={() => router.back()}
         hideProfile
         titleAnalyticsId={CONNECT_OVER.list.page_title}

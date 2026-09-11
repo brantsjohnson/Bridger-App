@@ -35,6 +35,13 @@ import { SupabaseService } from '../supabase/supabase.service';
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Longest edge for every server look. 2000 is 200% of the older 1000 cap so
+ * Comic ink and Pop art bands stay sharp on retina phones.
+ */
+const FILTER_MAX_SIDE = 2000;
+const FILTER_RESIZE = `${FILTER_MAX_SIDE}x${FILTER_MAX_SIDE}>`;
+
 /** Looks rendered on the server (all four profile-photo looks). */
 export type ServerPhotoFilter = 'pop_art' | 'comic' | 'x_ray' | 'sepia';
 
@@ -178,7 +185,7 @@ export class PhotoFiltersService {
     const args = [
       inputPath,
       '-resize',
-      '1000x1000>',
+      FILTER_RESIZE,
       '-modulate',
       '105,180,100',
       '-contrast-stretch',
@@ -197,12 +204,14 @@ export class PhotoFiltersService {
    * The comic recipe (plain English): boost green saturation, squash colors into
    * 4 flat posterized bands, find strong edges on a blurred copy (not skin
    * noise), thicken them into ink, and multiply those black lines on top.
+   * If Canny is missing on older ImageMagick, fall back to a posterize-only look
+   * so Comic never spins forever on the phone.
    */
   private async runComic(inputPath: string, outputPath: string): Promise<void> {
-    const args = [
+    const fullArgs = [
       inputPath,
       '-resize',
-      '1000x1000>',
+      FILTER_RESIZE,
       '(',
       '-clone',
       '0',
@@ -243,7 +252,24 @@ export class PhotoFiltersService {
       '90',
       outputPath
     ];
-    await this.runMagick(args);
+    try {
+      await this.runMagick(fullArgs);
+    } catch {
+      // THIS SECTION DOES: simpler poster comic when Canny / morphology fails.
+      await this.runMagick([
+        inputPath,
+        '-resize',
+        FILTER_RESIZE,
+        '-modulate',
+        '103,160,100',
+        '+dither',
+        '-posterize',
+        String(COMIC_COLOR_LEVELS),
+        '-quality',
+        '90',
+        outputPath
+      ]);
+    }
   }
 
   /**
@@ -257,10 +283,10 @@ export class PhotoFiltersService {
    * look described in onboarding.
    */
   private async runXRay(inputPath: string, outputPath: string): Promise<void> {
-    const args = [
+    const fullArgs = [
       inputPath,
       '-resize',
-      '1000x1000>',
+      FILTER_RESIZE,
       '-negate',
       '-colorspace',
       'Gray',
@@ -273,7 +299,23 @@ export class PhotoFiltersService {
       '90',
       outputPath
     ];
-    await this.runMagick(args);
+    try {
+      await this.runMagick(fullArgs);
+    } catch {
+      // THIS SECTION DOES: invert + gray when tint/auto-level is unavailable.
+      await this.runMagick([
+        inputPath,
+        '-resize',
+        FILTER_RESIZE,
+        '-negate',
+        '-colorspace',
+        'Gray',
+        '-normalize',
+        '-quality',
+        '90',
+        outputPath
+      ]);
+    }
   }
 
   /**
@@ -285,7 +327,7 @@ export class PhotoFiltersService {
     const args = [
       inputPath,
       '-resize',
-      '1000x1000>',
+      FILTER_RESIZE,
       '-colorspace',
       'Gray',
       '-auto-level',

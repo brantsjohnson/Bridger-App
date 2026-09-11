@@ -19,11 +19,19 @@ type TextFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   error?: string;
-  /** 'email' | 'password' | 'text' — controls keyboard + secure entry */
-  type?: 'text' | 'email' | 'password';
+  /** 'email' | 'password' | 'text' | 'phone' | 'otp' — controls keyboard + autofill */
+  type?: 'text' | 'email' | 'password' | 'phone' | 'otp';
   multiline?: boolean;
-  autoComplete?: 'email' | 'password' | 'new-password' | 'off';
+  autoComplete?:
+    | 'email'
+    | 'password'
+    | 'new-password'
+    | 'off'
+    | 'tel'
+    | 'sms-otp';
   accessibilityLabel?: string;
+  /** Extra spoken hint (e.g. "required"). */
+  accessibilityHint?: string;
   /** called when the user presses Enter / Done on the keyboard */
   onSubmitEditing?: () => void;
   /** On onboarding color washes, labels use dark onaccent type (pastel bg stays light in dark mode). */
@@ -40,6 +48,7 @@ export function TextField({
   multiline = false,
   autoComplete,
   accessibilityLabel,
+  accessibilityHint,
   analyticsId,
   onSubmitEditing,
   labelTone = 'default'
@@ -66,15 +75,30 @@ export function TextField({
           placeholder={placeholder}
           placeholderTextColor={c.inkMute}
           secureTextEntry={type === 'password'}
-          autoCapitalize={type === 'email' ? 'none' : 'sentences'}
+          autoCapitalize={type === 'email' || type === 'otp' ? 'none' : 'sentences'}
           autoCorrect={type === 'text'}
-          keyboardType={type === 'email' ? 'email-address' : 'default'}
-          autoComplete={autoComplete}
+          keyboardType={
+            type === 'email'
+              ? 'email-address'
+              : type === 'phone'
+                ? 'phone-pad'
+                : type === 'otp'
+                  ? 'number-pad'
+                  : 'default'
+          }
+          autoComplete={
+            autoComplete ??
+            (type === 'phone' ? 'tel' : type === 'otp' ? 'sms-otp' : undefined)
+          }
+          textContentType={
+            type === 'phone' ? 'telephoneNumber' : type === 'otp' ? 'oneTimeCode' : undefined
+          }
           multiline={multiline}
           returnKeyType={onSubmitEditing ? 'done' : undefined}
           onSubmitEditing={onSubmitEditing}
           blurOnSubmit={!!onSubmitEditing}
           accessibilityLabel={accessibilityLabel ?? label}
+          accessibilityHint={accessibilityHint}
           className="font-sans-sb text-[14px] text-ink"
           style={{ padding: 0 }}
           onFocus={() => {

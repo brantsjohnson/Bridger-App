@@ -27,8 +27,8 @@ import { personById } from '../data/people';
  */
 function circleLabel(audience?: string): string | null {
   const a = (audience ?? '').toLowerCase();
-  if (a === 'close') return 'close';
-  if (a === 'friends') return 'friends';
+  if (a === 'close') return 'close friends';
+  if (a === 'friends' || a === 'friend') return 'friends';
   return null;
 }
 
@@ -58,13 +58,16 @@ export function GrassSignalSheet({
 
   const person = personById(signal.personId);
   const first = person.name.split(' ')[0];
+  // Who's in: after "I'm in", show You right away even before the parent refreshes.
   const inPeople = (signal.inIds ?? []).map(personById);
   const circle = circleLabel(signal.audience);
+  const showYouIn = joined || (signal.inIds ?? []).includes('me');
 
   function join() {
     if (joined || !signal) return;
     const id = signal.id;
     setJoined(true);
+    trackProduct('touch_grass_answered', { parent_screen: parentScreen });
     setTimeout(() => onJoin?.(id), 400);
   }
 
@@ -148,17 +151,36 @@ export function GrassSignalSheet({
             <UsersIcon size={16} color={c.inkSoft} strokeWidth={2.4} />
             <View className="min-w-0 flex-1">
               <Text className="font-sans-b text-[12px] text-ink-mute">{"Who's in"}</Text>
-              {inPeople.length === 0 ? (
+              {!showYouIn && inPeople.length === 0 ? (
                 <Text className="mt-0.5 font-sans-sb text-[14px] text-ink-mute">
                   Nobody yet — you would be first.
                 </Text>
               ) : (
                 <View className="mt-1 flex-row items-center gap-2">
-                  {inPeople.map((p) => (
-                    <Avatar key={p.id} name={p.name} emoji={p.emoji} accent={p.accent} personId={p.id} size="xs" />
-                  ))}
+                  {showYouIn ? (
+                    <Avatar name="You" emoji="🙂" accent="green" personId="me" size="xs" />
+                  ) : null}
+                  {inPeople
+                    .filter((p) => p.id !== 'me')
+                    .map((p) => (
+                      <Avatar
+                        key={p.id}
+                        name={p.name}
+                        emoji={p.emoji}
+                        accent={p.accent}
+                        personId={p.id}
+                        size="xs"
+                      />
+                    ))}
                   <Text className="font-sans-sb text-[14px] text-ink">
-                    {inPeople.map((p) => p.name.split(' ')[0]).join(', ')}
+                    {[
+                      showYouIn ? 'You' : null,
+                      ...inPeople
+                        .filter((p) => p.id !== 'me')
+                        .map((p) => p.name.split(' ')[0])
+                    ]
+                      .filter(Boolean)
+                      .join(', ')}
                   </Text>
                 </View>
               )}

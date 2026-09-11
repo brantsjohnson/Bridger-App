@@ -1,6 +1,6 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The "You did it!" party that plays ONE time, right after someone finishes
+// The congratulations splash that plays ONE time, right after someone finishes
 // onboarding and lands on Home. A see-through black sheet drops over Home,
 // fireworks pop across it, the words "You did it!" and "Welcome to Bridger!!!"
 // fade in, and the phone buzzes like fireworks going off. Tap anywhere (or the
@@ -17,7 +17,13 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { WELCOME_CELEBRATION, dismissSurface, openSurface } from '@bridger/shared';
-import { AnalyticsRegion, NATIVE_DRIVER, useReduceMotion, withAnalyticsPress } from '@bridger/ui';
+import {
+  AnalyticsRegion,
+  NATIVE_DRIVER,
+  useReduceMotion,
+  useResponsiveLayout,
+  withAnalyticsPress
+} from '@bridger/ui';
 import { FireworksBackdrop } from '../FireworksBackdrop';
 
 // How long the whole show runs before it clears itself if untouched.
@@ -26,6 +32,7 @@ const AUTO_DISMISS_MS = 6000;
 export function WelcomeCelebration({ onDone }: { onDone: () => void }) {
   const reduceMotion = useReduceMotion();
   const { width, height } = useWindowDimensions();
+  const { contentMaxWidth } = useResponsiveLayout();
   const openedAt = useRef(Date.now());
   // Guard so leaving the party records exactly one surface_dismissed, whether it
   // ends by tap, by the auto-timer, or by an unmount.
@@ -97,7 +104,7 @@ export function WelcomeCelebration({ onDone }: { onDone: () => void }) {
       <Pressable
         onPress={withAnalyticsPress(WELCOME_CELEBRATION.overlay.continue, finish)}
         accessibilityRole="button"
-        accessibilityLabel="You did it! Welcome to Bridger. Tap to continue to Home."
+        accessibilityLabel="Congratulations on onboarding. Welcome to Bridger. Tap to continue to Home."
         style={{
           position: 'absolute',
           left: 0,
@@ -113,6 +120,8 @@ export function WelcomeCelebration({ onDone }: { onDone: () => void }) {
           <Animated.View
             style={{
               alignItems: 'center',
+              width: '100%',
+              maxWidth: contentMaxWidth,
               opacity: wordsIn,
               transform: [
                 {
@@ -139,20 +148,32 @@ export function WelcomeCelebration({ onDone }: { onDone: () => void }) {
                 textAlign: 'center'
               }}
             >
-              You did it!
+              Congratulations
+            </Text>
+            <Text
+              className="font-display uppercase"
+              style={{
+                color: '#FFC93C',
+                fontSize: 30,
+                letterSpacing: 1,
+                textAlign: 'center',
+                marginTop: 6
+              }}
+            >
+              on onboarding
             </Text>
             <Text
               className="font-display uppercase"
               style={{
                 color: '#FFFFFF',
-                fontSize: 46,
-                lineHeight: 46,
+                fontSize: 40,
+                lineHeight: 42,
                 letterSpacing: 0.5,
                 textAlign: 'center',
-                marginTop: 8
+                marginTop: 16
               }}
             >
-              Welcome to Bridger!!!
+              Welcome to Bridger
             </Text>
           </Animated.View>
         </AnalyticsRegion>

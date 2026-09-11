@@ -66,14 +66,20 @@ One line each; keep them dumb and reusable.
 | `FloatingTabBar` | the 5-destination floating pill |
 | `StoryTile` | rectangular, pic-in-corner, image fills |
 | `StoryProgressBars` | 1–3 segments |
-| `UpdateComposer` | post-capture: photo/video + "what did you do today" caption, type or voice-to-text mic, audience, Post update |
+| `UpdateComposer` | superseded by the Collage pieces below (kept for reference) |
+| `ScrapbookPage` | 8.5 x 11 page renderer: photos, caption, date, voice, friend tags, cut-outs; compose + view (`SCRAPBOOKS.md`). Collage editor / hub live in `apps/mobile/components/collage/` |
+| `LayoutCarousel` / `LayoutThumb` | **TO DESIGN** row of page-shaped layout thumbnails, no labels, selected = blue outline |
+| `CountPill` | **TO DESIGN** "2 photos" dead-click pill (amber when the day is full; not step-style "2/4") |
+| `CaptureRail` | **TO DESIGN** flash · flip · camera-roll thumb · today's-page thumb · zoom chips (.5/1/2/4 by device) around the shutter (no themed prompt icon) |
+| `ComposerBar` | **TO DESIGN** `+` · pencil · metallic Next · tiny `i` |
+| `CaptionSheet` / `AudienceSheet` / `AddMediaSheet` / `CustomizeTray` | **TO DESIGN** the compose sheets (Sheet-based; page stays visible behind). Audience confirm is "Post to Friends". |
 | `DaySummaryCard` | **hero** day card: bold day title + big ~square photo + caption underneath (see `STORIES.md`) |
 | `CatchUpEventCard` | compact event card with its **real cover image**; "Going" starts an on-card countdown |
 | `CatchUpPollCard` | **compact** poll: question + option chips + tiny "closes Xd" |
 | `CurrentlySplit` | small two-cell row: Listening \| Reading |
 | `AnsweredRow` | very-bottom "You answered '{poll}'" — results hidden |
 | `PolaroidCard` | white frame, photo, name, heart; slight rotation |
-| `InsideJokeNote` | sticky note: quoted person's photo + quote; tap → posted-by + event/place + date |
+| `InsideJokeNote` | square sticky note: quote on the paper; photo notes flip quote ↔ photo; tap → posted-by + event/place + date |
 | `InsideJokeWall` | sticky notes + **Add tile first** (top of grid) + null container; single All/About-you/By-you **filter** (not tabs) |
 | `InsideJokeComposer` | quote note + tag people + tag event; "shares to tagged + event guests" |
 | `BucketListTab` | own profile tab: items (solo or friend-tagged), public/private, check-off, title "+" add + Edit/Done, swipe-left delete, edit sheet |
@@ -81,7 +87,7 @@ One line each; keep them dumb and reusable.
 | `InterestBlob` | colorful rounded blob, icon + label + check |
 | `HobbiesWidget` | two contained views: clean chips (tap = drop-down answer) + swipe page listing every hobby + answer, scroll inside (see `PROFILE.md`) |
 | `InCommonAnswers` | a shared hobby with both people's follow-up answers side by side |
-| `AudiencePicker` | Close/Friends/Everyone multi-select + per-person caret |
+| `AudiencePicker` | Only me (pages) / Close / Friends / Everyone multi-select + per-person caret |
 | `Toggle` | pill switch |
 | `Sheet` / `Modal` | rounded bottom sheet |
 | `CalendarCell` | day cell: dot or thumbnail; tap a posted day → opens story player |
@@ -115,6 +121,18 @@ One line each; keep them dumb and reusable.
 | `SuggestionCard` | leads with shared thread (headline) + name (subtitle) + mutual as connection ("you both know {friend}") + shared chips + interest color; marked as Bridger's pick; spotlight variant for top match (see `DISCOVER.md`) |
 | `RevealProgressBars` | 3 story-style segments for the connection reveal |
 | `EmptyState` | icon + short line + action |
+| `CircleConnectWizard` | **TO DESIGN** fan connect: confirm Influencer, visibility tier, platforms + handles (`CIRCLES.md`) |
+| `CircleSettingsList` | **TO DESIGN** Settings list of Circles with visibility / pause / disconnect |
+| `InfluencerPortal` | **TO DESIGN** private query + member rows + create Circle event (not the co-op portal) |
+| `CircleSegmentFilters` | **TO DESIGN** filter chips for Zone B themes + platforms (no vanity totals on the public profile) |
+| `EventHostNoteComposer` | **TO DESIGN** one-way host note: text + optional photo + going/invited/both (`EVENTS.md` §6) |
+| `EventAlbumViewer` | **TO DESIGN** shared album grid + full-screen photo + Save (`EVENTS.md` §7) |
+| `EventAlbumSaveButton` | **TO DESIGN** add-only save-to-Photos control |
+| `VersionQuizAuthor` | **TO DESIGN** author wizard: versions (photo + label), questions, weights (`VERSION-OF-ME.md`) |
+| `VersionCard` | **TO DESIGN** one version tile (photo + label + blurb) |
+| `VersionQuizTake` | **TO DESIGN** friend take (can reuse quiz take chrome) |
+| `VersionResultCard` | **TO DESIGN** result + share / save image |
+| `VersionWhoGotWho` | **TO DESIGN** private-to-author / mutual-friends grouping (no public counts) |
 
 **Delighters (optional fun):** there is no Magic Patterns delight kit yet. Code lives under `apps/mobile/delight/` (`effects/` for reusable motion, `plugins/` for host-mounted surprises). See `DELIGHT.md` + `apps/mobile/delight/CATALOG.md`. Do not invent delighter UI inside random feature folders.
 
@@ -132,6 +150,9 @@ One line each; keep them dumb and reusable.
 | Post / capture (themed) | `STORIES.md` |
 | Friends + add-friend sheet | `FRIENDS.md` |
 | Events: list / detail / host | `EVENTS.md` |
+| Event host note + album viewer | `EVENTS.md` (§6–7; **TO DESIGN**) |
+| Circles connect / settings / Influencer portal | `CIRCLES.md` (**TO DESIGN**) |
+| What version of me (author / take / result) | `VERSION-OF-ME.md` (**TO DESIGN**; home TBD) |
 | Discover: gate / main / settings | `DISCOVER.md` |
 | Profile: Profile / Stories(calendar) / Inside Jokes / Bucket List | `PROFILE.md` |
 | Connection reveal (3 screens) | `complete/REVEAL.md` |

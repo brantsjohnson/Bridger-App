@@ -181,8 +181,10 @@ export async function startThreadWith(personId: string): Promise<string> {
     ];
     return id;
   }
-  // TODO: POST /messages/start { personId }
-  throw new Error('startThreadWith requires the live API outside demo mode');
+  // Messages API is not live yet (E2E encrypt + Nest routes still to ship).
+  throw new Error(
+    'Messaging is not available in this build yet. You can still find them on Friends.'
+  );
 }
 
 /**

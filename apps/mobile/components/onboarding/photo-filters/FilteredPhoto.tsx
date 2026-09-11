@@ -1,20 +1,17 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The traffic cop for profile-photo looks. Given a photo and the currently
-// picked filter, it shows the right version of the photo:
-//   - Pop art: the 4-tile Warhol grid draws instantly on the phone as a preview
-//     while the server bakes a single-tile pop JPEG for the saved avatar.
-//   - Comic / X-ray / Sepia: rendered on the server; while we wait we show a
-//     spinner, then the finished picture; if it fails we fall back to plain.
-//
-// It always fills the square box it sits inside, so it drops straight into the
-// photo well on the Confirm your details step.
+// picked filter, it shows the right version of the photo right away:
+//   - Pop art: the 4-tile Warhol grid (instant).
+//   - Comic / X-ray / Sepia: stay on the on-device color matrix. The saved
+//     avatar may still bake on our server later (ImageMagick, not AI). The
+//     picker itself never waits on that, so the "ran locally" line stays true.
 // ============================================
 import React from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
-import { OB } from '../onboarding-theme';
+import { Image, View } from 'react-native';
 import type { PhotoFilterKey } from '../PhotoFilterPicker';
 import type { ServerPhotoFilter } from '../../../lib/photo-filters';
+import { LiveFilterPreview } from './LiveFilterPreview';
 import { WarholPhoto } from './WarholPhoto';
 
 /** Full-bleed style so any look fills the square photo well. */
@@ -39,50 +36,31 @@ const SERVER_FILTERS = new Set<PhotoFilterKey>([
 export function FilteredPhoto({
   uri,
   filter,
-  bakedUrl,
-  bakedLoading,
   accessibilityLabel
 }: {
   uri: string;
   filter: PhotoFilterKey;
-  /** Server-rendered preview link, once ready (Comic, X-ray, Sepia, Pop art). */
+  /** Kept so older call sites still compile. The picker paints on-device. */
   bakedUrl?: string | null;
-  /** True while the server is rendering a server-side look. */
+  /** Kept so older call sites still compile. The picker does not wait on bake. */
   bakedLoading?: boolean;
   accessibilityLabel?: string;
 }) {
-  // THIS SECTION DOES: Pop art keeps the instant Warhol grid as the onboarding
-  // preview. The server bake (single-tile pop) is what becomes the avatar.
+  // THIS SECTION DOES: Pop art keeps the instant Warhol grid. Comic / X-ray /
+  // Sepia stay on the on-device matrix so the picker never looks like AI.
   if (filter === 'pop_art') {
-    return <WarholPhoto uri={uri} />;
+    return (
+      <View style={FILL}>
+        <WarholPhoto uri={uri} />
+      </View>
+    );
   }
 
-  // THIS SECTION DOES: Comic, X-ray, or Sepia, all rendered on the server.
   if (SERVER_FILTERS.has(filter)) {
-    if (bakedLoading) {
-      return (
-        <View style={[FILL, { alignItems: 'center', justifyContent: 'center' }]}>
-          <ActivityIndicator color={OB.navy} />
-        </View>
-      );
-    }
-    if (bakedUrl) {
-      return (
-        <Image
-          source={{ uri: bakedUrl }}
-          accessibilityLabel={accessibilityLabel}
-          resizeMode="cover"
-          style={FILL}
-        />
-      );
-    }
     return (
-      <Image
-        source={{ uri }}
-        accessibilityLabel={accessibilityLabel}
-        resizeMode="cover"
-        style={FILL}
-      />
+      <View style={FILL}>
+        <LiveFilterPreview uri={uri} filter={filter} />
+      </View>
     );
   }
 

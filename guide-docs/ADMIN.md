@@ -43,8 +43,9 @@ A separate organizer-only surface in its **own repository** (not shipped in the 
 - **Auth codes** — make a promo / auth code that grants a **free year of the co-op** with no payment. Set how many people can use each code (the "amount", default 25), rename it, turn it off, and see **who redeemed each code** (opaque user ids only). Redemption happens server-side (`POST /coop/membership/redeem`); a person can use a given code once, and a code stops working once its amount is reached. Backed by `coop_promo_codes` + `coop_promo_redemptions` (see `DATA.md`) and `GET/POST/PATCH /admin/coop/promo-codes`.
 - **Quiz registry** — see every quiz folder with its status (live / draft / archived), and **New quiz** to scaffold a fresh folder.
 - **Home defaults / featured** — set the default widget arrangement and any pinned/featured content everyone starts with.
-- **Themed post prompts** — the three suggested-post squares on the capture screen (e.g. OOTD / Take 0.5 / Hot take); swap them in and out over time (see `STORIES.md`).
+- **Themed post prompts** — **retired from capture** (OOTD / Take 0.5 / Hot take squares no longer appear). Admin editor may still exist for historical rows; do not treat it as a live capture surface.
 - **Surprises (delights)** — open backlog of optional delighters (`idea` / `built` / `live` + notes), plus toggle/scope/schedule for live standalones; scaffold via repo script (see `DELIGHT.md`).
+- **Weekly recap (Friend Pod)** — optional. If you do not create a week, Monday locks itself (rose / thorn / bud, then the most-voted unused suggestions, then fill-ins). You can still type all 5, make a week live, or tap **Lock this week now** (`POST /admin/recap/rollover`). APIs: `GET/POST /admin/recap/weeks`, `PATCH /admin/recap/weeks/:id`, `GET /admin/recap/submitted-questions`.
 
 Admin sets **content and defaults**; it does not reach into each user's personal arrangement (that's the user's, below).
 
@@ -114,7 +115,8 @@ Admin section for connection-outcome learning (`MACHINE-LEARNING.md` §10):
 
 - **Metrics:** `GET /admin/matching/metrics` — add→Close (north star), suggestion→add, dismiss/block rates, reveal_plan / event_attended counts. Computed from `matching_feedback` + domain only (never PostHog).
 - **Config / rollback:** `GET/PUT /admin/matching/config`, `POST /admin/matching/config/activate/:version`.
-- **Nightly refresh:** `POST /admin/matching/nightly` (Discover batch + feedback TTL purge).
+- **Nightly refresh:** `POST /admin/matching/nightly` (Discover batch + feedback TTL purge + weight-learn preview; live weights flip only when Close-label volume is high enough).
+- **Learn preview / apply:** `GET /admin/matching/learn` (proposed weights from Close / Friends / skip labels). `POST /admin/matching/learn` with `{ "apply": true }` writes a new `matching_config` version (rollback via activate). See `MATCHING-PSYCHOLOGY.md`.
 
 ## Assistant / Billy (opt-in relationship helper)
 
@@ -150,7 +152,7 @@ Admin console page **API / integrations** (`/integrations-health` in `apps/admin
 - **`GET /admin/integrations/health`** (AdminGuard) → `{ overall, checkedAt, checks[] }`
 - Each check: `id`, `label`, `status` (`ok` | `warn` | `error` | `skip`), `detail` (plain English, **never secrets**), `kind` (`config` | `live` | `self`)
 
-**Current checks:** Nest self, Supabase (live query), Spotify (config + client-credentials probe), Apple Music / MusicKit (config + developer JWT mint), Anthropic key, OpenAI key, Resend key, music token encryption key, PostHog (person-purge credentials + live project probe).
+**Current checks:** Nest self, AWS secret vault (whether boot copied `bridger/api/server` JSON fields into env; key names only, never values), Supabase (live query), Spotify (config + client-credentials probe), Apple Music / MusicKit (config + developer JWT mint), Anthropic key, OpenAI key, Resend key, music token encryption key, PostHog (person-purge credentials + live project probe), Twilio SMS (config for phone OTP: account SID, auth token, and messaging service or from-number; never echoes secrets), RevenueCat webhook secret, Stripe (secret + price ids + webhook secret).
 
 Public **`GET /health`** stays a shallow App Runner liveness probe. Do **not** hang dependency checks on it.
 

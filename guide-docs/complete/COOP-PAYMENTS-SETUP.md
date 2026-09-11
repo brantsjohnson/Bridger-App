@@ -88,6 +88,12 @@ Signing secret and live price ids are in the local (gitignored) file:
 
 `apps/api/.env.live.snippet`
 
+App Runner used to inject only a short list of vault fields. Nest now reads the
+**whole** `bridger/api/server` JSON at boot (`BRIDGER_SERVER_SECRET_NAME`), so
+Stripe / RevenueCat / the MusicKit `.p8` you already put in the vault are used
+after the next API deploy. `seed-secret.mjs` merges and will not wipe a filled
+AWS field.
+
 **Prod env (App Runner / Secrets Manager) must set:**
 
 - `STRIPE_SECRET_KEY` = live secret or restricted `rk_live_…`

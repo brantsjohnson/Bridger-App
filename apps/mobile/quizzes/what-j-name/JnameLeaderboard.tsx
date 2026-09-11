@@ -10,7 +10,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import type { Accent } from '@bridger/shared';
-import { AvatarStack, cn } from '@bridger/ui';
+import { QUIZ } from '@bridger/shared';
+import { AnalyticsRegion, AvatarStack, ButtonSecondary, cn } from '@bridger/ui';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { personById } from '../../data/people';
 
@@ -42,24 +43,42 @@ export function JnameLeaderboard({
   limit,
   title = 'Your versions',
   /** When true, list each friend with a % compatible line. */
-  showCompatibility = true
+  showCompatibility = true,
+  /** Empty board: tap to send the quiz link so friends can take it. */
+  onInvite
 }: {
   buckets: LeaderboardBucket[];
   limit?: number;
   title?: string;
   showCompatibility?: boolean;
+  onInvite?: () => void;
 }) {
   const shown = typeof limit === 'number' ? buckets.slice(0, limit) : buckets;
   if (!shown.length) {
     return (
-      <View
-        accessible
-        accessibilityLabel="No friends have taken the quiz yet"
-        className="rounded-card border border-ink-line bg-surface px-4 py-5"
-      >
-        <Text className="text-center font-sans-sb text-[13px] text-ink-mute">
-          When friends take it, they show up here as your version of each J.
-        </Text>
+      <View className="rounded-card border border-ink-line bg-surface px-4 py-5">
+        <AnalyticsRegion
+          analyticsId={QUIZ.result.empty_board}
+          interactive={false}
+          accessibilityLabel="No friends have taken the quiz yet. Invite them so you can compare."
+        >
+          <Text className="text-center font-sans-sb text-[13px] text-ink-mute">
+            Invite friends to take this quiz. Their results land here, with how
+            compatible you two are.
+          </Text>
+        </AnalyticsRegion>
+        {onInvite ? (
+          <View className="mt-3">
+            <ButtonSecondary
+              full
+              onPress={onInvite}
+              analyticsId={QUIZ.result.invite_friends}
+              accessibilityLabel="Invite friends to take this quiz"
+            >
+              Invite friends
+            </ButtonSecondary>
+          </View>
+        ) : null}
       </View>
     );
   }

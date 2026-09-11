@@ -13,8 +13,12 @@ export type NotificationKind =
   | 'story_reply_elsewhere'
   /** Opt-in: BeReal-like capture reminders, 1–3 notifications a day */
   | 'story_prompt'
+  /** A friend tagged you on a Collage page they posted. */
+  | 'collage_tag'
   | 'connect_request'
   | 'mutual_connection'
+  /** Someone you already kept a private card for just joined Bridger. */
+  | 'friend_joined'
   | 'touch_grass_signal'
   | 'touch_grass_im_in'
   | 'birthday'
@@ -181,6 +185,16 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     homePreview: false,
     defaultOn: false
   },
+  {
+    kind: 'collage_tag',
+    label: 'Tagged on a collage',
+    description: 'A friend tagged you on a collage page',
+    section: 'Updates & replies',
+    onboardingGroup: 'life_updates',
+    circleGated: true,
+    homePreview: true,
+    defaultOn: true
+  },
   // --- Birthdays & dates ---
   {
     kind: 'birthday',
@@ -329,6 +343,16 @@ export const NOTIFICATION_KIND_PREFS: NotificationKindPref[] = [
     kind: 'connect_request',
     label: 'Connection requests',
     description: 'Someone wants to connect through a mutual',
+    section: 'Also available',
+    onboardingGroup: 'meet',
+    circleGated: false,
+    homePreview: true,
+    defaultOn: true
+  },
+  {
+    kind: 'friend_joined',
+    label: 'Someone you know joined',
+    description: 'A person you already saved a private card for signed up',
     section: 'Also available',
     onboardingGroup: 'meet',
     circleGated: false,
@@ -521,6 +545,7 @@ const KIND_TO_PAGE: Record<NotificationKind, NotificationPageFilter | null> = {
   story_reply: 'home',
   story_reply_elsewhere: 'home',
   story_prompt: 'home',
+  collage_tag: 'home',
   recap_reaction: 'home',
   poll_activity: 'home',
   activity_live: 'home',
@@ -534,6 +559,7 @@ const KIND_TO_PAGE: Record<NotificationKind, NotificationPageFilter | null> = {
   coop_announcement: 'home',
   connect_request: 'friends',
   mutual_connection: 'friends',
+  friend_joined: 'friends',
   inside_joke: 'friends',
   touch_grass_signal: 'events',
   touch_grass_im_in: 'events',

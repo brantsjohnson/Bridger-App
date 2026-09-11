@@ -1,11 +1,10 @@
 import { ModuleQuestion } from '../../../packages/ui';
 
 /**
- * MATCHING MODULES — Connect Over on Discover.
+ * MATCHING MODULES — Personality quizzes on Discover.
  *
- * Live Bridger set: Behind the Scenes + four measurement quizzes.
- * Production app: disclosure uses DisclosureFlow; the others land as packs.
- * This Magic Patterns file keeps the same titles/ids for design parity.
+ * Live Bridger set: four measurement quizzes. Behind the Scenes is archived
+ * in production (code kept, not listed). This file matches that live set.
  */
 export type MatchModuleKind = 'module' | 'quiz';
 
@@ -21,24 +20,6 @@ export interface MatchModule {
 }
 
 export const MATCH_MODULES: MatchModule[] = [
-  {
-    id: 'disclosure',
-    kind: 'quiz',
-    title: 'Behind the Scenes',
-    blurb: 'A quiet, optional check-in. Private, and only once if you skip.',
-    emoji: '🎬',
-    accent: 'teal',
-    // Design preview only. Production uses DisclosureFlow (custom screens).
-    questions: [
-      {
-        id: 'preview-share',
-        ask: 'Want to share a little private context so matches can go at your pace?',
-        type: 'single',
-        options: ['Share a little', 'Skip for now'],
-        emoji: '🤝'
-      }
-    ]
-  },
   {
     id: 'humor',
     kind: 'quiz',

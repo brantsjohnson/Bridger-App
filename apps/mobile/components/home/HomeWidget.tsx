@@ -32,6 +32,7 @@ export function HomeWidget({
   canMoveUp,
   canMoveDown,
   index = 0,
+  instant = false,
   showDot = false,
   dotColor,
   children
@@ -53,6 +54,8 @@ export function HomeWidget({
   canMoveDown?: boolean;
   /** position down the page — widgets arrive one after another, not all at once */
   index?: number;
+  /** Skip the arrive motion when Home was already painted. */
+  instant?: boolean;
   /** Little "new here" dot beside the widget title. */
   showDot?: boolean;
   /** Fill color for showDot (Home teal by default via SectionTitle). */
@@ -68,6 +71,7 @@ export function HomeWidget({
     // widgets stretch to match the taller neighbor in their row.
     <Reveal
       index={index}
+      instant={instant}
       style={[
         { minWidth: 0, flexDirection: 'column' },
         size === 'full'

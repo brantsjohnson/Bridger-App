@@ -2,7 +2,8 @@
 // WHAT THIS FILE DOES (plain English):
 // The dials Your Vibe measures. Big Five, with Extraversion split into
 // sociability (wants people) and assertiveness (takes charge) because those
-// can go opposite ways — and matching treats them differently.
+// can go opposite ways. Nest matching uses the same modes from
+// @bridger/shared quiz-match (do not invent a second chart here).
 // ============================================
 
 export const PERSONALITY_DIMENSIONS = [

@@ -2,13 +2,22 @@
 // WHAT THIS FILE DOES (plain English):
 // The full-screen Updates player. Shows one friend's posts with timed progress
 // bars, caption on the left with bottom controls (emoji → comment → red-dot
-// record) on the right, floating
-// reply balloons, and the Catch-Up peek. Tap left = previous, center = pause,
-// right = next. When the last post ends, we either open the next friend in the
-// tray sequence or show "You're all caught up" with confetti. Catch-Up stays
-// parked at the peek while swapping friends. Respects reduce-motion.
+// record) on the right, floating reply balloons, and the Catch-Up peek. Tap
+// left = previous, center = pause, right = next (zones sit above the media so
+// collage pages and photos cannot steal the tap). When the last post ends, we
+// either open the next friend in the tray sequence or show "You're all caught
+// up" with confetti. Catch-Up stays parked at the peek while swapping friends.
+// Respects reduce-motion.
+//
+// SCRAPBOOK PAGES: a post that carries a real page (photos laid out on an
+// 8.5 x 11 sheet) is drawn as that page, letterboxed on the dark canvas, so
+// the chrome never covers the photos. A video on the page plays in its slot.
+// Old one-photo posts still fill the screen like before.
 // ============================================
 import React, { useCallback, useEffect, useState } from 'react';
+// #region agent log
+import { debugStoryEvent } from '../../lib/debug-instrumentation';
+// #endregion
 import {
   Alert,
   Image,
@@ -25,6 +34,7 @@ import {
   XIcon
 } from 'lucide-react-native';
 import {
+  SCRAPBOOK_ASPECT_RATIO,
   STORY,
   dismissSurface,
   openSurface,
@@ -34,11 +44,14 @@ import {
   ACCENTS,
   AnalyticsRegion,
   Avatar,
+  ScrapbookPage,
   SegmentedProgress,
   cn,
   withAnalyticsPress
 } from '@bridger/ui';
 import { clearStoryReplyNotifications, markStorySeen } from '../../data/feed';
+import { withFriendNames } from '../../data/collage';
+import { useCollageVoice } from '../../hooks/useCollageVoice';
 import { getMembership } from '../../data/coop';
 import { avatarPhotoFor } from '../../lib/avatar-photo';
 import { useStoryViewer } from '../../hooks/useStoryViewer';
@@ -94,6 +107,7 @@ export function StoryViewer({
   onAdvanceAuthor
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { play: playVoice, stop: stopVoice } = useCollageVoice();
   const {
     author,
     posts,
@@ -131,6 +145,9 @@ export function StoryViewer({
   // New slide clears a manual pause so the next post can run.
   useEffect(() => {
     setUserPaused(false);
+    // #region agent log
+    debugStoryEvent('slide index now', { index, authorId, postCount: posts.length });
+    // #endregion
   }, [index, authorId]);
 
   // Keep Catch-Up collapsed when moving to the next friend — never carry an
@@ -168,11 +185,33 @@ export function StoryViewer({
     }
   };
 
+  // --- PAGE: a real Collage page (not the one-photo legacy shape)? ---
+  const isPage = !!post?.page && !post.page.id.startsWith('legacy-');
+  // The first video on the page is the one that plays (others show a poster).
+  const pageVideo = isPage
+    ? post?.page?.elements.find((e) => e.type === 'video' && !!e.uri)
+    : undefined;
   // --- VIDEO: is the current slide a video we have real media for? ---
-  const isVideo = post?.type === 'video' && !!post?.media;
+  const isVideo = isPage ? !!pageVideo : post?.type === 'video' && !!post?.media;
+  /** What the shared player should load for this slide. */
+  const videoSource: VideoSource | null = isPage
+    ? pageVideo?.uri
+      ? { uri: pageVideo.uri }
+      : null
+    : ((post?.media as VideoSource | undefined) ?? null);
+  // How wide the page can be drawn inside the media frame (measured below).
+  const [pageBox, setPageBox] = useState<{ w: number; h: number } | null>(null);
+  const pageForView = post?.page ? withFriendNames(post.page) : null;
+  const pageVoice = pageForView?.elements.find((e) => e.type === 'voice' && e.uri);
   // How long the progress bar should take. Photos use a fixed 6s; videos use
   // their real length once we learn it (falls back to 6s until then).
   const [videoDurationMs, setVideoDurationMs] = useState(POST_MS);
+
+  // THIS SECTION DOES: play a voice note when this page opens.
+  useEffect(() => {
+    if (pageVoice?.uri) playVoice(pageVoice.uri);
+    return () => stopVoice();
+  }, [post?.id, pageVoice?.uri, playVoice, stopVoice]);
 
   // One reusable video player for the whole viewer. We swap its source as the
   // slides change rather than creating a new player each time.
@@ -217,8 +256,12 @@ export function StoryViewer({
   // Catch-Up open = stay put (do not dismiss under the sheet).
   const handleExhausted = useCallback(() => {
     if (catchUpOpen) return;
-    // Finished every post for this person → ring off + move to back of tray
-    markStorySeen(authorId);
+    // Finished every post for this person → ring off + move to back of tray.
+    // Remember which revision we watched so a later add lights the ring again.
+    markStorySeen(
+      authorId,
+      posts.reduce((n, p) => n + (p.revision ?? 1), 0)
+    );
     if (fromProfile) {
       // One friend's profile: celebrate then close (Done on the end screen).
       setAllCaughtUp(true);
@@ -232,12 +275,15 @@ export function StoryViewer({
       return;
     }
     setAllCaughtUp(true);
-  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor]);
+  }, [catchUpOpen, fromProfile, sequence, authorId, onAdvanceAuthor, posts]);
 
   const handleNext = useCallback(() => {
     const result = goNext();
+    // #region agent log
+    debugStoryEvent('handleNext fired', { result: String(result), index, postCount: posts.length, authorId });
+    // #endregion
     if (result === 'exhausted') handleExhausted();
-  }, [goNext, handleExhausted]);
+  }, [goNext, handleExhausted, index, posts.length, authorId]);
 
   const togglePause = useCallback(() => {
     setUserPaused((v) => !v);
@@ -245,10 +291,10 @@ export function StoryViewer({
 
   // --- VIDEO: point the player at the current slide (or clear it) ---
   useEffect(() => {
-    if (isVideo && post?.media) {
+    if (isVideo && videoSource) {
       // Story media is a bundled require()'d asset, which expo-video accepts
       // even though its type is written for image sources.
-      player.replace(post.media as VideoSource);
+      player.replace(videoSource);
       // Kick playback off immediately rather than waiting on another render,
       // so the clip doesn't sit on a frozen first frame before it starts.
       if (!paused) player.play();
@@ -259,7 +305,7 @@ export function StoryViewer({
     }
     // `paused` deliberately left out: the play/pause effect below owns that.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVideo, post?.media, player]);
+  }, [isVideo, post?.media, pageVideo?.uri, player]);
 
   // --- VIDEO: play/pause with the rest of the viewer (sheets, menu, tabs) ---
   useEffect(() => {
@@ -332,44 +378,87 @@ export function StoryViewer({
   // Bottom controls + caption sit just above the Catch-Up peek.
   const controlsBottom = CATCH_UP_PEEK + 10;
 
-  return (
-    <View className={cn('relative flex-1 overflow-hidden', token.bg)}>
-      {/*
-        Tap zones over the media: left = previous, center = pause/play,
-        right = next. Chrome (header, bottom controls, Catch-Up) sits above
-        and keeps its own taps.
-      */}
-      <View className="absolute inset-0 flex-row" style={{ bottom: mediaBottom }}>
-        <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_prev, goPrev)}
-          accessibilityRole="button"
-          accessibilityLabel="Previous post"
-          className="w-[28%]"
-        />
-        <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_pause, togglePause)}
-          accessibilityRole="button"
-          accessibilityLabel={userPaused ? 'Play' : 'Pause'}
-          className="flex-1"
-        />
-        <Pressable
-          onPress={withAnalyticsPress(STORY.viewer.tap_next, handleNext)}
-          accessibilityRole="button"
-          accessibilityLabel="Next post"
-          className="w-[28%]"
-        />
-      </View>
+  // A page already shows its own caption; the bottom bubble would repeat it.
+  const pageShowsCaption =
+    isPage &&
+    !!post.page?.elements.some(
+      (e) => e.type === 'text' && e.data.role === 'caption' && String(e.data.text ?? '').trim()
+    );
 
+  return (
+    // Pages sit on the near-black canvas (like the composer); legacy posts keep their accent.
+    <View
+      className={cn('relative flex-1 overflow-hidden', isPage ? 'bg-[#0E0E0E]' : token.bg)}
+      // #region agent log
+      onTouchStart={(e) => {
+        debugStoryEvent('root touch', {
+          x: Math.round(e.nativeEvent.pageX),
+          y: Math.round(e.nativeEvent.pageY),
+          isPage,
+          index
+        });
+      }}
+      // #endregion
+    >
       {/*
-        Media frame: full screen width, stops at the top of Catch-Up.
-        Cover fills this box — crop story photos to ~9:15.5 so faces aren't cut.
+        Media first (under the tap zones). Cover fills this box. pointerEvents
+        none so left / center / right taps always reach the zones above — the
+        collage page, photo, and video used to sit on top and block skip.
       */}
       <View
         pointerEvents="none"
         className="absolute inset-x-0 top-0 items-center justify-center overflow-hidden"
         style={{ bottom: mediaBottom }}
       >
-        {isVideo ? (
+        {isPage && pageForView ? (
+          // COLLAGE PAGE: fills the media frame edge to edge, exactly like a
+          // photo story. The 8.5 x 11 sheet is scaled up to COVER the frame
+          // (the sides crop evenly) instead of letterboxing with empty space.
+          <View
+            className="flex-1 items-center justify-center"
+            style={{ width: '100%' }}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              setPageBox({ w: width, h: height });
+            }}
+          >
+            {pageBox ? (
+              <ScrapbookPage
+                page={pageForView}
+                // Cover math: wide enough that the page's height reaches the
+                // frame's height, and never narrower than the frame itself.
+                width={Math.max(
+                  120,
+                  pageBox.w,
+                  pageBox.h * SCRAPBOOK_ASPECT_RATIO
+                )}
+                mode="view"
+                radius={0}
+                accessibilityLabel={`${author.name}'s page`}
+                renderMedia={(el, box) =>
+                  el.type === 'video' ? (
+                    el.id === pageVideo?.id ? (
+                      <VideoView
+                        player={player}
+                        style={{ width: box.width, height: box.height }}
+                        contentFit="cover"
+                        nativeControls={false}
+                        accessibilityIgnoresInvertColors
+                      />
+                    ) : (
+                      <View
+                        style={{ width: box.width, height: box.height }}
+                        className="items-center justify-center bg-[#1C1B16]"
+                      >
+                        <Text className="text-[22px]">▶</Text>
+                      </View>
+                    )
+                  ) : null
+                }
+              />
+            ) : null}
+          </View>
+        ) : isVideo ? (
           <VideoView
             player={player}
             style={{ width: '100%', height: '100%' }}
@@ -398,12 +487,52 @@ export function StoryViewer({
         ) : null}
       </View>
 
-      <FloatingReactions
-        replies={replies}
-        paused={paused}
-        bottomInset={controlsBottom + 56}
-        onOpen={() => setCommentsOpen(true)}
-      />
+      {/*
+        Tap zones OVER the media: left = previous, center = pause/play,
+        right = next. Must sit above the page/photo or taps never land.
+        Chrome (header, bottom controls, Catch-Up) stays higher via z-index.
+      */}
+      <View
+        className="absolute inset-0 z-10 flex-row"
+        style={{ bottom: mediaBottom }}
+      >
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_prev, () => {
+            // #region agent log
+            debugStoryEvent('tap_prev fired', { index, postCount: posts.length, authorId });
+            // #endregion
+            goPrev();
+          })}
+          accessibilityRole="button"
+          accessibilityLabel="Previous post"
+          className="w-[28%]"
+        />
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_pause, togglePause)}
+          accessibilityRole="button"
+          accessibilityLabel={userPaused ? 'Play' : 'Pause'}
+          className="flex-1"
+        />
+        <Pressable
+          onPress={withAnalyticsPress(STORY.viewer.tap_next, handleNext)}
+          accessibilityRole="button"
+          accessibilityLabel="Next post"
+          className="w-[28%]"
+        />
+      </View>
+
+      <View
+        pointerEvents="box-none"
+        className="absolute inset-0 z-[15]"
+        style={{ bottom: mediaBottom }}
+      >
+        <FloatingReactions
+          replies={replies}
+          paused={paused}
+          bottomInset={controlsBottom + 56}
+          onOpen={() => setCommentsOpen(true)}
+        />
+      </View>
 
       {/* timed progress + header */}
       <View
@@ -452,7 +581,6 @@ export function StoryViewer({
                 style={{ textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 4 }}
               >
                 {post.createdAt}
-                {post.themeSlug ? ' · Take 0.5' : ''}
               </Text>
             </View>
           </Pressable>
@@ -510,7 +638,7 @@ export function StoryViewer({
           Caption uses a fixed dark scrim + white type. Theme ink flips light
           in dark mode, so bg-ink + text-white used to vanish on cream.
         */}
-        {post.caption ? (
+        {post.caption && !pageShowsCaption ? (
           <AnalyticsRegion
             analyticsId={STORY.viewer.caption_body}
             interactive={false}

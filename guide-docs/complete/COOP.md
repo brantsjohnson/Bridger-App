@@ -36,7 +36,7 @@ A corollary: **anyone can always view co-op members' richer content** (their vid
 - **Touch Grass**.
 - **Answering** polls and questions.
 - **Quizzes**.
-- **Inside Jokes** (posting on the wall).
+- **Inside Jokes** (posting text on the wall). A photo on the note is a co-op perk.
 - **Bucket list**.
 - **Posting on their story** (photo, text, voice-to-text, stickers). Video posting is co-op.
 - **Watching everyone else's stories**, including videos posted by co-op members.
@@ -71,6 +71,10 @@ Background, colors/vibe, extra photos, custom widgets. Friends see it the way it
 ### 4. Extra photos on places traveled
 - Co-op members can add additional photos on places traveled. Shared places can show both people's photos in In common.
 
+### 4b. Photo on an Inside Joke
+- Free Lite can still write and post a sticky note.
+- Co-op members may add **one photo** on the note (camera or one picked camera-roll item, asked in that moment). Everyone who can see the joke can see the photo.
+
 ### 5. Daily recaps
 - Free Lite = previous-week recap of stories.
 - Co-op = **updated daily recaps**, so it is not a week behind.
@@ -79,6 +83,8 @@ Background, colors/vibe, extra photos, custom widgets. Friends see it the way it
 ### 6. Unlimited storage
 - Free Lite = rolling 30-day window.
 - Co-op = keep everything.
+- **Friend Pod archive:** this week's listen and record stay free (rolling 7 days). Co-op members can open **earlier locked weeks** in the player (`GET /recap/weeks`, `GET /recap/playlist?weekId=`). Free Lite sees an Earlier weeks chip that opens join. This is storage / history, not a paywall on hearing friends this week. It is separate from §5 **daily recaps of stories**.
+- **Event album is a separate pool.** Personal unlimited storage does **not** make a shared event album unlimited. Free Lite vs co-op guests get different per-event album caps; the host may buy an **event album storage add-on** for that event (`EVENTS.md` §7).
 
 ### 7. Bigger event hosting + premium host tools
 - Guest cap goes from **35 to 100**.
@@ -102,6 +108,8 @@ You are not the product. The co-op is how Bridger stays a tool for you instead o
 
 - **Annual co-op dues** unlock all of the above. Display price **$72/year** (about $6/mo). Storage, video, circles, hosting scale, and host tools are **co-op benefits**, not separate micro-SKUs.
 - **Exception, Billy+:** the opt-in relationship assistant (Billy) is metered separately. Co-op members who enable Billy get a small taste allowance (~$0.50/mo of model cost). **Billy+** (~$5/mo) grants more Billy time with capped rollover. See `AGENT.md`. Ambient AI (recaps, quiz moderator, embeddings) stays in the co-op / platform budget, not Billy balances.
+- **Exception, Influencer SKU (planned):** a paid creator role (`CIRCLES.md`). Not a co-op benefit. Fans never pay to add an Influencer.
+- **Exception, event album storage (planned):** a host can pay to raise one event's shared album cap (`EVENTS.md`). Not a membership perk and not personal storage.
 - Runs through `payments` (`coop_dues` and `billy_plus`); membership is recorded in `coop_memberships` (`DATA.md`).
 - **Governance lives in the co-op portal** (`complete/COOP-PORTAL.md`).
 - **Cancel is period-end.** You keep member perks until you are paid through (`dues_paid_through`), then you drop back to Free Lite (including the 30-day storage window). Quiet manage screen: `/coop/portal/manage`.
@@ -110,7 +118,7 @@ You are not the product. The co-op is how Bridger stays a tool for you instead o
 
 ## What is NOT gated (guardrails)
 
-Never behind the co-op: meeting people (Discover), adding friends, unlimited acquaintances, messaging, attending events, viewing anyone's content (including co-op video and custom profiles), answering polls, Inside Jokes, Bucket list, posting photo/text stories, the weekly recap, and a readable default profile. **Connection and consumption are always free on Free Lite.** Neither tier shows ads.
+Never behind the co-op: meeting people (Discover), adding friends, unlimited acquaintances, messaging, attending events, viewing anyone's content (including co-op video and custom profiles), answering polls, Inside Jokes, Bucket list, posting photo/text stories, **this week's** Friend Pod, and a readable default profile. **Earlier Friend Pod weeks** are a co-op storage perk. **Connection and consumption of what is live this week are always free on Free Lite.** Neither tier shows ads.
 
 ---
 
@@ -144,10 +152,11 @@ Enforced server-side by membership status; RLS + API checks gate creation (never
 - [ ] Video updates and video reactions are a co-op capability; everyone can still view video.
 - [ ] Free Lite users get a previous-week recap; co-op members get daily recaps (same word-only privacy rule).
 - [ ] Free Lite storage is rolling 30-day; co-op is unlimited.
+- [ ] This week's Friend Pod is free. Co-op members can open earlier locked weeks; Free Lite is offered join.
 - [ ] Hosting is free up to 35 guests on Free Lite; co-op raises the cap to 100 and unlocks co-hosts, allergy collection, and assignments.
 - [ ] Creating polls / Ask the group is co-op; answering is free.
 - [ ] Portal is public to read, member to participate, including the feature-cost page.
-- [ ] One annual membership ($72/yr display, about $6/mo) unlocks all co-op benefits; Billy+ is the only intentional add-on SKU.
+- [ ] One annual membership ($72/yr display, about $6/mo) unlocks all co-op benefits. Intentional extra SKUs: Billy+, Influencer (planned), event album storage add-on (planned).
 - [ ] Neither Free Lite nor co-op shows ads in the feed.
 
 ---
@@ -156,4 +165,7 @@ Enforced server-side by membership status; RLS + API checks gate creation (never
 
 | Date | Change |
 |---|---|
+| 2026-09-09 | Inside Joke text posting stays free. One photo on the note is a co-op perk. |
+| 2026-09-09 | Friend Pod: this week stays free; earlier locked weeks are a co-op storage perk (separate from daily story recaps). |
+| 2026-09-09 | Event album is a separate per-event pool (not personal unlimited storage). Extra SKUs called out: Influencer role, event album add-on (planned). Billy+ unchanged. |
 | 2026-08-14 | Caps: Free Lite 5 Close / 30 Friends; co-op 25 Close / 125 Friends (not unlimited). Bucket list + Inside Jokes posting called out as free. Host extras (co-hosts, allergies, assignments) are co-op. Daily recaps vs previous-week recap. Video viewing stays free. |

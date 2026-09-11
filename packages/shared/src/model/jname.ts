@@ -77,6 +77,17 @@ export type JnameResolveReferralInput = {
   anonRef?: string;
 };
 
+/** What the server returns after a quiz-share signup (attribution + add friend). */
+export type JnameResolveReferralResult = {
+  resolved: boolean;
+  /** True when we just created the friendship. */
+  connected?: boolean;
+  /** True when they were already accepted friends. */
+  alreadyFriends?: boolean;
+  /** Opaque id of the person who shared the quiz. */
+  personId?: string;
+};
+
 /**
  * Fun pairwise score for two people who both finished the J-name quiz.
  * Same persona = high. Friend landed on one of your top picks = medium-high.

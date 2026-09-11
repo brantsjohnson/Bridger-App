@@ -1,3 +1,8 @@
+// #region agent log
+// TEMPORARY: debug instrumentation for the lag sweep (loads first to catch everything).
+import '../lib/debug-instrumentation';
+import { debugGuardRedirect, debugRouteChange } from '../lib/debug-instrumentation';
+// #endregion
 import 'react-native-gesture-handler';
 import {
   useFonts,
@@ -16,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DarkTheme,
   DefaultTheme,
+  type Href,
   Stack,
   ThemeProvider,
   usePathname,
@@ -23,7 +29,7 @@ import {
   useSegments
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -49,10 +55,22 @@ import {
   disableDemoMode,
   getDevPreview,
   hydrateDemoMode,
+  hydrateOnboardingFlowVariant,
   isDemoMode
 } from '../lib/demo';
-import { resolveJnameReferral } from '../lib/jname-api';
-import { takePendingReferral } from '../lib/jname-referral';
+import { resolveJnameReferral, saveJnameResult } from '../lib/jname-api';
+import {
+  getAnonRef,
+  peekPendingReferral,
+  setShowDuoToken,
+  takePendingReferral,
+  takeShowDuoToken
+} from '../lib/jname-referral';
+import {
+  clearJnameGuestResult,
+  loadJnameGuestResult
+} from '../quizzes/what-j-name/guest-result';
+import { setLiveJnameSessionResult } from '../data/quiz';
 import { takePendingInvite } from '../lib/invite-pending';
 import { redeemInvite } from '../data/invites';
 import { loadPeople } from '../lib/people-cache';
@@ -97,7 +115,7 @@ export default function RootLayout() {
   //     you?" result card (the image people save to their photos). They are
   //     loaded here, once, because the saved PNG has to look identical every
   //     time and a half-loaded font would ruin it. ---
-  const [loaded, error] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     FeloniaPixel: require('../assets/fonts/FeloniaPixel.otf'),
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
@@ -111,31 +129,68 @@ export default function RootLayout() {
     Antonio_700Bold
   });
   // THIS SECTION DOES: read the saved demo flag before the auth gate runs.
+  // Never leave the splash stuck if device storage is slow or throws.
   const [demoReady, setDemoReady] = useState(false);
+  // Failsafe: if fonts never resolve, still leave the boot screen after 8s.
+  const [fontsTimedOut, setFontsTimedOut] = useState(false);
+  const fontsReady = fontsLoaded || fontsTimedOut;
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  // Hide splash first so a font failure does not look like a frozen launch.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    if (fontsLoaded || fontError || fontsTimedOut) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, fontsTimedOut]);
 
   useEffect(() => {
+    if (fontError) throw fontError;
+  }, [fontError]);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) return;
+    const t = setTimeout(() => {
+      console.warn('[boot] fonts timed out; continuing with fallbacks');
+      setFontsTimedOut(true);
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Failsafe: if hydrate hangs, still open the app after 2.5s.
+    const failsafe = setTimeout(() => {
+      if (!cancelled) setDemoReady(true);
+    }, 2500);
+
     void (async () => {
-      await hydrateDemoMode();
-      // LOCAL PREVIEW: leave any leftover long-press demo so Welcome can play.
-      if (process.env.EXPO_PUBLIC_FORCE_WELCOME === '1') {
-        await disableDemoMode();
+      try {
+        await hydrateDemoMode();
+        await hydrateOnboardingFlowVariant();
+        // LOCAL PREVIEW: leave any leftover long-press demo so Welcome can play.
+        if (process.env.EXPO_PUBLIC_FORCE_WELCOME === '1') {
+          await disableDemoMode();
+        }
+      } catch (err) {
+        console.warn('[boot] demo hydrate failed; continuing', err);
+      } finally {
+        if (!cancelled) setDemoReady(true);
       }
-      setDemoReady(true);
     })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(failsafe);
+    };
   }, []);
 
   useEffect(() => {
-    if (loaded && demoReady) {
-      SplashScreen.hideAsync();
+    if (fontsReady && demoReady) {
+      void SplashScreen.hideAsync();
     }
-  }, [loaded, demoReady]);
+  }, [fontsReady, demoReady]);
 
-  if (!loaded || !demoReady) {
+  if (!fontsReady || !demoReady) {
     return (
       <View
         style={{
@@ -247,10 +302,17 @@ function useProtectedRoute() {
     // returning account into onboarding off an empty device flag.
     if (loading || !welcomeReady || !onbReady || !accessReady) return;
     if (session && !onbServerReady) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    const inOnboarding = segments[0] === 'onboarding';
-    const inInviteAccess = segments[0] === 'invite-access';
-    if (segments[0] === 'q') return;
+    // THIS SECTION DOES: figure out which top-level route we are on
+    // (CI has no local .expo typed routes, so treat segments as a plain string list).
+    const routeSegments = segments as readonly string[];
+    const inAuthGroup = routeSegments[0] === '(auth)';
+    const inOnboarding = routeSegments[0] === 'onboarding';
+    const inInviteAccess = routeSegments[0] === 'invite-access';
+    if (routeSegments[0] === 'q') return;
+    // Logged-out friends can take Which J name from a share link (no account).
+    if (routeSegments[0] === 'quiz' && !session && routeSegments[1] !== 'preview-cards') {
+      return;
+    }
     // Let the invite link screen mount so it can either redeem now (signed in)
     // or stash the invite and route to sign-in itself (signed out).
     if (segments[0] === 'invite') return;
@@ -267,18 +329,30 @@ function useProtectedRoute() {
       // (which just reset the flag) starts the run instead of bouncing to Home.
       const demoDone = isOnboardingCompleteCached();
       if (!demoDone && !inOnboarding) {
+        // #region agent log
+        debugGuardRedirect('/onboarding', 'demo not-done', segments.join('/'));
+        // #endregion
         router.replace('/onboarding');
         return;
       }
       if (demoDone && !accessGranted && !inInviteAccess) {
+        // #region agent log
+        debugGuardRedirect('/invite-access', 'demo no-access', segments.join('/'));
+        // #endregion
         router.replace('/invite-access');
         return;
       }
       if (demoDone && accessGranted && inInviteAccess) {
+        // #region agent log
+        debugGuardRedirect('/home', 'demo leave-invite-access', segments.join('/'));
+        // #endregion
         router.replace('/home');
         return;
       }
       if (demoDone && (inAuthGroup || inOnboarding)) {
+        // #region agent log
+        debugGuardRedirect('/home', 'demo leave-auth-or-onboarding', segments.join('/'));
+        // #endregion
         router.replace('/home');
       }
       return;
@@ -363,17 +437,91 @@ function GridColorSync() {
 }
 
 // THIS SECTION DOES: once someone is signed in, if they arrived by opening a
-// friend's shared J-name link before making an account, connect them to that
-// friend now (then forget the link). No-op when there is nothing pending.
+// friend's shared J-name link before making an account, upload their guest
+// take, add that friend, then (after onboarding) open the duo result.
 function JnameReferralSync() {
   const { user } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+  const processedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      processedRef.current = null;
+      return;
+    }
+    if (processedRef.current === user.id) return;
+    processedRef.current = user.id;
+    void (async () => {
+      const guest = await loadJnameGuestResult();
+      const pending = await peekPendingReferral();
+      const token = pending ?? guest?.shareToken ?? null;
+      if (token) await setShowDuoToken(token);
+
+      if (guest?.jName) {
+        await saveJnameResult({
+          jName: guest.jName,
+          percent: guest.percent,
+          topNames: guest.topNames
+        });
+        setLiveJnameSessionResult({ jName: guest.jName, percent: guest.percent });
+        await clearJnameGuestResult();
+      }
+
+      await takePendingReferral();
+      const anonRef = await getAnonRef();
+      if (!token && !anonRef) return;
+      const res = await resolveJnameReferral({
+        ...(token ? { token } : {}),
+        anonRef
+      });
+      if (res.connected) {
+        trackProduct('friend_added', { method: 'link' });
+        if (!isDemoMode()) await loadPeople();
+      }
+
+      if (!token) return;
+      const done = isOnboardingCompleteCached() || (await getOnboardingComplete());
+      const root = segments[0];
+      const blocked =
+        root === 'onboarding' ||
+        root === '(auth)' ||
+        root === 'welcome' ||
+        root === 'quiz';
+      if (done && !blocked) {
+        await takeShowDuoToken();
+        router.replace({
+          pathname: '/quiz/[slug]',
+          params: { slug: 'what-j-name', share: token }
+        } as Href);
+      }
+    })();
+  }, [user?.id, router, segments]);
+
+  // After setup is done, open the quiz so they see you-vs-them (the duo result).
   useEffect(() => {
     if (!user?.id) return;
+    const root = segments[0];
+    if (
+      root === 'onboarding' ||
+      root === '(auth)' ||
+      root === 'welcome' ||
+      root === 'quiz'
+    ) {
+      return;
+    }
     void (async () => {
-      const token = await takePendingReferral();
-      if (token) await resolveJnameReferral({ token });
+      const done = isOnboardingCompleteCached() || (await getOnboardingComplete());
+      if (!done) return;
+      const token = await takeShowDuoToken();
+      if (!token) return;
+      router.replace({
+        pathname: '/quiz/[slug]',
+        params: { slug: 'what-j-name', share: token }
+      } as Href);
     })();
-  }, [user?.id]);
+  }, [user?.id, segments, router]);
+
   return null;
 }
 
@@ -433,6 +581,7 @@ function RootLayoutNav() {
           <Stack.Screen name="onboarding/index" options={{ headerShown: false }} />
           <Stack.Screen name="invite-access" options={{ headerShown: false }} />
           <Stack.Screen name="person/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="pending/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="discover/connect-over" options={{ headerShown: false }} />
           <Stack.Screen name="event/[id]" options={{ headerShown: false }} />
           <Stack.Screen
@@ -451,6 +600,18 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="story/capture"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="collage/capture"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="collage/editor"
+            options={{ headerShown: false, presentation: 'fullScreenModal' }}
+          />
+          <Stack.Screen
+            name="collage/finish"
             options={{ headerShown: false, presentation: 'fullScreenModal' }}
           />
           <Stack.Screen
@@ -542,5 +703,8 @@ function useRouteTrail() {
   const pathname = usePathname();
   useEffect(() => {
     if (pathname) recordRoutePath(pathname);
+    // #region agent log
+    if (pathname) debugRouteChange(pathname);
+    // #endregion
   }, [pathname]);
 }

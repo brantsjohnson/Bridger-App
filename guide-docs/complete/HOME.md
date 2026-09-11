@@ -14,6 +14,8 @@ Two privacy rules are visible here as **absences**, enforced by `feed` (per `ARC
 
 Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboarding's desire step writes a per-user `home_layout_seed` (`stay_close` / `go_deeper` / `make_plans` / `meet_people`) and seeds that person's starting Home order + empty-state teach from a deterministic map in `ONBOARDING.md`. Same bones for everyone; desire only changes emphasis. The person can rearrange anytime (`home_layout_saved`). Desire prefs never enter matching embeddings.
 
+The last Home they saw (widget order plus the last stories / cards) stays on the phone so tapping Home does not rebuild from empty. New items still refresh in the background. Edit → Done writes that arrangement locally and to the server.
+
 ---
 
 ## Layout (top → bottom)
@@ -63,7 +65,7 @@ Admin still owns the **global** default widget arrangement (`ADMIN.md`). Onboard
 | 5b | Inside jokes | A few **new sticky-note inside jokes** from the week (from the Inside Jokes wall); when none are new, falls back to older ones as **"moments"** | — | always shows something (new or moments) |
 | 6 | Ask the group | **Create a poll** \| **Ask a question** — **co-op only** (creating; answering is free) — plus a **"See previous polls"** link into past/other polls | (split row) | shown; create gated to co-op |
 | 7 | Your live poll | Your active poll + running results, visible on your own Home | — | hidden when no live poll |
-| 8 | This week | The **quiz**: take → your result + **Share quiz** + **"who got who"** dashboard (see `TOUCHGRASS-AND-QUIZ.md`). The recap **podcast** and **add-your-recap** prompt (the Friend Pod) are **not on Home**; they live on the **Friends** tab (see `RECAP-PODCAST.md`) | — | hidden when nothing active |
+| 8 | This week | The **quiz**: **Take the quiz** until the first finish, then **See your result** + **Share quiz** + **"who got who"** (see `TOUCHGRASS-AND-QUIZ.md`). The recap **podcast** and **add-your-recap** prompt (the Friend Pod) are **not on Home**; they live on the **Friends** tab (see `RECAP-PODCAST.md`) | — | hidden when nothing active |
 | 8c | Side Quest | Entry card into the hosted wall (e.g. "Notes App Discovery · post yours"). Photo quests use polaroids; text quests use a notes-style blurb input. | — | **hidden unless a Side Quest is live in admin** |
 | 9 | Co-op footer | Hero **"$6 a month"** · "Join the co-op · you are not the product" — opens the co-op portal (also reachable from Profile settings) | — | always shown (non-member) |
 
@@ -167,7 +169,7 @@ Right under the stories row, a strip surfaces the **reactions and video response
 ### This week (the weekly section)
 
 Home's weekly-cadence content, all conditional:
-- **Quiz** — this week's quiz: a take-it CTA that becomes a result distribution after completion, plus **Share quiz** and the **"who got who"** dashboard.
+- **Quiz** — this week's quiz: **"Take the quiz"** until the first finish, then **"See your result"** plus **Share quiz** and the **"who got who"** / **"Your versions"** dashboard. The first J-name result also lives on Profile after Home rotates. A shared invite link lets a friend take Which J name with no account; making an account adds you so both can see the duo result.
 
 **Moved off Home:** the **Friends' week podcast** (play the stitched recap) and the **Add your recap** prompt are the **Friend Pod**, which now lives on the **Friends** tab (opens `/recap`), not Home. See `RECAP-PODCAST.md`.
 
@@ -242,7 +244,7 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 - **Posting is capture-only and story-only from Home** (per app-wide rule): the "Your story" tile opens the camera, never a library picker, then shows the concentric multi-select audience picker (with per-person caret). Limits (3 stories/day, 20s video) are enforced by `stories`.
 - **Touch-grass on Home is answer-only:** a friend's signal card offers **"I'm in"** (notifies the originator) or **✕** to dismiss. No explicit "no." **Sending** a signal happens on the **Events page**, not Home.
 - **Polls** are created from the action row (separate from stories), use the audience picker, and surface running results on the author's Home while live.
-- **This week** on Home is just the **quiz** (CTA → results). The recap podcast + add-your-recap prompt (Friend Pod) live on the Friends tab. Hidden entirely off-week.
+- **This week** on Home is just the **quiz** (Take the quiz → See your result). The recap podcast + add-your-recap prompt (Friend Pod) live on the Friends tab. Hidden entirely off-week.
 - **Split for actions, stack for content:** only the poll/ask-a-question action row is side-by-side; content sections never are.
 - **Co-op** appears twice by design: a conditional banner above Stories (announcements/feedback) and the persistent footer join-link (swaps to a member state once joined).
 
@@ -280,7 +282,7 @@ The full layout above. Empty zones (announcements carousel, updates, your poll, 
 - [ ] On Home, a friend's touch-grass card offers "I'm in" (notifies the originator) and ✕ to dismiss — no explicit "no." (Sending a signal is on the Events page, not Home.)
 - [ ] Polls are created from the action row (not the story composer), use the audience picker, and show running results on the author's Home while live.
 - [ ] The action row (poll / ask a question) is the only side-by-side zone; content sections stack full-width.
-- [ ] This week on Home shows only the quiz (CTA → results) and hides off-week; the recap podcast + add-your-recap prompt (Friend Pod) are on the Friends tab, not Home.
+- [ ] This week on Home shows only the quiz (Take the quiz until the first finish, then See your result) and hides off-week; the recap podcast + add-your-recap prompt (Friend Pod) are on the Friends tab, not Home.
 - [ ] The co-op footer persists for non-members; co-op announcements appear as a card in the announcements carousel (distinct from the footer).
 - [ ] Story tiles are rectangular with pic-in-corner; the week badge opens the summary peek.
 - [ ] No story view count or follower count appears anywhere on Home.

@@ -10,7 +10,7 @@
 // ============================================
 import React, { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { ChevronDownIcon, IdCardIcon, SquarePenIcon } from 'lucide-react-native';
 import {
   DAILY_CAP,
@@ -38,10 +38,12 @@ import {
   type MessageCardState
 } from '@bridger/ui';
 import type { ThreadRow } from '../../data/messages';
+import { skipTabEnterAnimation } from '../../lib/tab-snapshots';
 import { ContactCardPanel } from '../../components/messages/ContactCardPanel';
 import { NewMessageSheet } from '../../components/messages/NewMessageSheet';
 import { startThreadWith } from '../../data/messages';
 import { useMessages } from '../../hooks/useMessages';
+import { takeMessagesReturnTo } from '../../lib/messages-return';
 
 // --- STATUS SHAPE: turn a thread into one of three card outlines ---
 // maxed = you've used all 5 today · needsReply = they spoke last (your turn) ·
@@ -92,9 +94,15 @@ export default function MessagesScreen() {
         // header photo, and conversation rows are name-only (no faces).
         hideProfile
         // Messages now opens from the header shortcut, so give it a way back.
+        // Prefer the tab you left (stashed on open); never force Home.
         onBack={() => {
+          const returnTo = takeMessagesReturnTo();
+          if (returnTo) {
+            router.replace(returnTo as Href);
+            return;
+          }
           if (router.canGoBack()) router.back();
-          else router.replace('/home');
+          else router.replace('/(tabs)/home');
         }}
         trailing={
           <Pressable
@@ -193,7 +201,7 @@ export default function MessagesScreen() {
                     const fill = waiting ? tone.light : tone.deep;
                     const textColor = waiting ? tone.onLight : tone.onDeep;
                     return (
-                      <Reveal key={t.id} index={i}>
+                      <Reveal key={t.id} index={i} instant={skipTabEnterAnimation('messages')}>
                         <Pressable
                           onPress={withAnalyticsPress(MESSAGES.conversation.row, () =>
                             router.push(`/messages/${t.id}`)

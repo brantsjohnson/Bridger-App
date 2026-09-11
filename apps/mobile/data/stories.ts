@@ -1,17 +1,25 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Everything the Stories ("Updates") player needs: list someone's posts, load
-// their Catch-Up sheet, list/add replies, answer a poll/question, and create a
-// new post (with the 3-per-day quota). Demo mode keeps answers and new posts in
-// memory for the session. Live mode calls the Nest /stories API.
+// Everything the Stories ("Updates", shown as Collage pages) player and
+// composer need: list someone's posts, load their Catch-Up sheet, list/add
+// replies, answer a poll/question, create a new page, change or delete a page
+// you posted today, and the daily limit (4 photos or videos across all of
+// today's pages). Demo mode keeps answers and new posts in memory for the
+// session. Live mode calls the Nest /stories API.
 // ============================================
-import type {
-  CatchUpItem,
-  Reaction,
-  ReactionKind,
-  StoryPost,
-  ThemedPrompt,
-  Tier
+import {
+  DAILY_SCRAPBOOK_MEDIA_LIMIT,
+  countMediaElements,
+  type BackgroundConfig,
+  type CatchUpItem,
+  type LayoutFamily,
+  type Reaction,
+  type ReactionKind,
+  type ScrapbookElement,
+  type ScrapbookPage,
+  type StoryPost,
+  type ThemedPrompt,
+  type Tier
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
@@ -32,8 +40,8 @@ import {
 
 export type { WeekDay };
 
-/** Soft daily cap from STORIES.md. */
-const DAILY_POST_CAP = 3;
+/** Daily limit: photos + videos across all of today's pages. One constant, in packages/shared. */
+const DAILY_POST_CAP = DAILY_SCRAPBOOK_MEDIA_LIMIT;
 
 /** What Catch-Up returns, already ordered for the sheet. */
 export type CatchUpBundle = {
@@ -41,6 +49,17 @@ export type CatchUpBundle = {
   answered: CatchUpItem[];
   week: WeekDay[];
   currently: typeof STORY_CURRENTLY;
+};
+
+/** Who can see a page. `only_me` = DB tier `none` (owner only). */
+export type PostAudience = 'only_me' | 'close' | 'friend' | 'everyone';
+
+/** The page as the API accepts it: elements carry media ids, never file uris. */
+export type PageInput = {
+  layoutId?: string;
+  layoutFamily?: LayoutFamily;
+  background?: BackgroundConfig;
+  elements: ScrapbookElement[];
 };
 
 export type CreatePostInput = {
@@ -51,17 +70,33 @@ export type CreatePostInput = {
   caption?: string;
   themeSlug?: string;
   /** PRIVACY: concentric audience — mapped to visible_to_tier on the API */
-  audience?: 'close' | 'friend' | 'everyone';
+  audience?: PostAudience;
   group?: string | null;
   /** Tag this update to an event photo album (party capture flow). */
   eventId?: string;
   /**
    * Local file uri from the camera (or a picker). Live mode uploads this into
    * the private media bucket before calling POST /stories. Demo ignores it.
+   * With `page`, this is the flattened page preview (what the feed shows).
    */
   uri?: string;
   /** Already-uploaded media row id (skips upload when set). */
   mediaId?: string;
+  /**
+   * The Collage page. Media elements must already have `mediaId` (live) or a
+   * local `uri` (demo). The composer uploads them before calling this.
+   */
+  page?: PageInput;
+};
+
+export type UpdatePageInput = {
+  postId: string;
+  page: PageInput;
+  caption?: string;
+  audience?: PostAudience;
+  /** Local uri of the new flattened preview (uploaded here in live mode). */
+  previewUri?: string;
+  previewMediaId?: string;
 };
 
 export type AddReplyInput = {
@@ -88,7 +123,15 @@ let demoReplies: Reaction[] = [
   STORY_REPLY_EXTRA,
   ...MAYA_STORY_REPLIES
 ];
-let demoPostsLeft = 2;
+/** Demo: photos + videos already "used" today (seeded at 1 so the pill reads 1/4). */
+let demoMediaUsed = 1;
+/** Demo: ids of pages posted this session (the page strip shows these). */
+const demoTodayIds = new Set<string>();
+
+/** Demo: how many photos/videos a post uses (legacy fixture post = 1). */
+function demoMediaCount(post: StoryPost): number {
+  return post.page ? countMediaElements(post.page) : 1;
+}
 
 /**
  * When you drop photos/videos into assets/demo/stories/{name}/, those become
@@ -98,7 +141,9 @@ let demoPostsLeft = 2;
 function applyDroppedStoryMedia(authorId: string, posts: StoryPost[]): StoryPost[] {
   const media = getStoryMedia(authorId);
   if (media.length === 0) return posts;
-  return media.map((m, i) => {
+  // Pages made this session keep showing after the dropped-in demo photos.
+  const sessionPages = posts.filter((p) => p.page && demoTodayIds.has(p.id));
+  const fromMedia = media.map((m, i) => {
     const existing = posts[i];
     return {
       id: existing?.id ?? `demo-media-${authorId}-${i}`,
@@ -114,12 +159,22 @@ function applyDroppedStoryMedia(authorId: string, posts: StoryPost[]): StoryPost
       media: m.source
     };
   });
+  return [...fromMedia, ...sessionPages];
 }
 
-/** Map composer audience to the DB tier column. */
-function audienceToTier(audience?: CreatePostInput['audience']): Tier {
+/** Map composer audience to the DB tier column. PRIVACY: only_me = 'none' = owner only. */
+export function audienceToTier(audience?: PostAudience): Tier {
+  if (audience === 'only_me') return 'none';
   if (audience === 'close') return 'close';
   if (audience === 'everyone') return 'acquaintance';
+  return 'friend';
+}
+
+/** The reverse: a stored tier back to the composer's audience choice. */
+export function tierToAudience(tier?: Tier): PostAudience {
+  if (tier === 'none') return 'only_me';
+  if (tier === 'close') return 'close';
+  if (tier === 'acquaintance') return 'everyone';
   return 'friend';
 }
 
@@ -132,6 +187,32 @@ function mapPostDto(dto: StoryPostDto): StoryPost {
     emoji: rest.emoji ?? (rest.type === 'video' ? '🎥' : '📸'),
     media: mediaUrl ? { uri: mediaUrl } : undefined
   };
+}
+
+/**
+ * Strip local-only fields before a page goes over the wire. The API rejects
+ * media elements without a `mediaId`, so callers upload first.
+ */
+function pageToWire(page: PageInput): PageInput {
+  return {
+    layoutId: page.layoutId,
+    layoutFamily: page.layoutFamily,
+    background: page.background,
+    elements: page.elements.map(({ uri: _uri, ...el }) => ({
+      ...el,
+      data: stripClientOnlyData(el.data)
+    }))
+  };
+}
+
+/** Names and local file paths stay on the phone. */
+function stripClientOnlyData(data: ScrapbookElement['data']): ScrapbookElement['data'] {
+  const { displayNames: _names, ...rest } = data;
+  if (typeof rest.maskUri === 'string' && !/^https?:\/\//i.test(rest.maskUri)) {
+    const { maskUri: _mask, ...clean } = rest;
+    return clean;
+  }
+  return rest;
 }
 
 /**
@@ -285,14 +366,14 @@ export async function listThemedPrompts(): Promise<ThemedPrompt[]> {
   }
 }
 
-/** How many posts you still have today (cap 3). */
+/** How many photos/videos you can still add today (cap 4 across all pages). */
 export async function getPostQuota(): Promise<{ left: number; cap: number }> {
   if (isDemoMode()) {
-    return { left: demoPostsLeft, cap: DAILY_POST_CAP };
+    return { left: Math.max(0, DAILY_POST_CAP - demoMediaUsed), cap: DAILY_POST_CAP };
   }
   // THIS SECTION DOES: if the phone cannot reach the API (common on device
-  // builds pointed at a dead host), keep the default 3-left so capture still
-  // opens instead of throwing a red LogBox over the shutter.
+  // builds pointed at a dead host), keep the default so capture still opens
+  // instead of throwing a red LogBox over the shutter.
   try {
     return await apiFetch<{ left: number; cap: number }>('/stories/quota');
   } catch {
@@ -301,13 +382,51 @@ export async function getPostQuota(): Promise<{ left: number; cap: number }> {
 }
 
 /**
+ * Upload every photo/video element on a page that still only has a local file
+ * uri, and return the page with `mediaId`s filled in. Elements that already
+ * uploaded (mediaId set) are left alone, so re-posting the same page is cheap.
+ */
+export async function uploadPageMedia(page: PageInput): Promise<PageInput> {
+  const elements: ScrapbookElement[] = [];
+  for (const el of page.elements) {
+    const needsUpload =
+      (el.type === 'photo' ||
+        el.type === 'video' ||
+        el.type === 'voice' ||
+        el.type === 'cutout') &&
+      !el.mediaId &&
+      el.uri;
+    if (needsUpload) {
+      const localUri = el.uri;
+      if (!localUri) {
+        elements.push(el);
+        continue;
+      }
+      const kind =
+        el.type === 'voice' ? 'audio' : el.type === 'video' ? 'video' : 'photo';
+      const mediaId = await uploadMedia(
+        localUri,
+        kind,
+        `stories/page-${Date.now()}-${el.id}`
+      );
+      elements.push({ ...el, mediaId });
+    } else {
+      elements.push(el);
+    }
+  }
+  return { ...page, elements };
+}
+
+/**
  * Create a new update for "me".
  * PAYMENT: video posting is a co-op unlock — callers should gate before calling;
  * demo still accepts video so the lock UI can be previewed separately.
+ * With `page`, the daily limit counts the page's photos + videos.
  */
 export async function createPost(input: CreatePostInput): Promise<StoryPost> {
   if (isDemoMode()) {
-    if (demoPostsLeft <= 0) {
+    const cost = input.page ? countMediaElements(input.page) : 1;
+    if (demoMediaUsed + cost > DAILY_POST_CAP) {
       throw new Error('Daily post quota reached');
     }
     const next: StoryPost = {
@@ -321,10 +440,22 @@ export async function createPost(input: CreatePostInput): Promise<StoryPost> {
       themeSlug: input.themeSlug,
       eventId: input.eventId,
       createdAt: 'now',
-      media: input.uri ? { uri: input.uri } : undefined
+      media: input.uri ? { uri: input.uri } : undefined,
+      page: input.page
+        ? {
+            id: `page-${Date.now()}`,
+            aspectRatio: 8.5 / 11,
+            revision: 1,
+            ...input.page,
+            background: input.page.background ?? { kind: 'solid', color: '#F4F1E7' }
+          }
+        : undefined,
+      revision: 1,
+      visibleToTier: audienceToTier(input.audience)
     };
     demoPosts = [...demoPosts, next];
-    demoPostsLeft = Math.max(0, demoPostsLeft - 1);
+    demoTodayIds.add(next.id);
+    demoMediaUsed += cost;
     return next;
   }
 
@@ -333,10 +464,12 @@ export async function createPost(input: CreatePostInput): Promise<StoryPost> {
   if (!mediaId && input.uri) {
     mediaId = await uploadMedia(
       input.uri,
-      input.type,
+      // With a page, `uri` is the flattened preview image (always a photo).
+      input.page ? 'photo' : input.type,
       `stories/tmp-${Date.now()}`
     );
   }
+  const page = input.page ? pageToWire(await uploadPageMedia(input.page)) : undefined;
 
   const caption = input.caption ?? input.overlayText;
   const dto = await apiFetch<StoryPostDto>('/stories', {
@@ -347,10 +480,89 @@ export async function createPost(input: CreatePostInput): Promise<StoryPost> {
       caption,
       themeSlug: input.themeSlug,
       visibleToTier: audienceToTier(input.audience),
-      eventId: input.eventId
+      eventId: input.eventId,
+      page
     })
   });
   return mapPostDto(dto);
+}
+
+/**
+ * Change a page you posted today (added a photo, new layout, caption, or
+ * audience). The server bumps `revision` so friends' rings light again.
+ */
+export async function updatePostPage(input: UpdatePageInput): Promise<StoryPost> {
+  if (isDemoMode()) {
+    const existing = demoPosts.find((p) => p.id === input.postId);
+    if (!existing) throw new Error('Story not found');
+    const before = demoMediaCount(existing);
+    const after = countMediaElements(input.page);
+    if (demoMediaUsed - before + after > DAILY_POST_CAP) {
+      throw new Error('Daily post quota reached');
+    }
+    demoMediaUsed += after - before;
+    const revision = (existing.revision ?? 1) + 1;
+    const updated: StoryPost = {
+      ...existing,
+      caption: input.caption ?? existing.caption,
+      visibleToTier: input.audience ? audienceToTier(input.audience) : existing.visibleToTier,
+      media: input.previewUri ? { uri: input.previewUri } : existing.media,
+      revision,
+      page: {
+        ...(existing.page ?? { id: `page-${Date.now()}`, aspectRatio: 8.5 / 11 }),
+        ...input.page,
+        background:
+          input.page.background ?? existing.page?.background ?? { kind: 'solid', color: '#F4F1E7' },
+        revision
+      }
+    };
+    demoPosts = demoPosts.map((p) => (p.id === input.postId ? updated : p));
+    return updated;
+  }
+
+  let previewMediaId = input.previewMediaId;
+  if (!previewMediaId && input.previewUri) {
+    previewMediaId = await uploadMedia(input.previewUri, 'photo', `stories/tmp-${Date.now()}`);
+  }
+  const page = pageToWire(await uploadPageMedia(input.page));
+  const dto = await apiFetch<StoryPostDto>(
+    `/stories/posts/${encodeURIComponent(input.postId)}/page`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        page,
+        mediaId: previewMediaId,
+        caption: input.caption,
+        visibleToTier: input.audience ? audienceToTier(input.audience) : undefined
+      })
+    }
+  );
+  return mapPostDto(dto);
+}
+
+/** Delete one of your pages (used when two pages are merged into one). */
+export async function deletePost(postId: string): Promise<void> {
+  if (isDemoMode()) {
+    const existing = demoPosts.find((p) => p.id === postId);
+    if (existing) demoMediaUsed = Math.max(0, demoMediaUsed - demoMediaCount(existing));
+    demoPosts = demoPosts.filter((p) => p.id !== postId);
+    demoTodayIds.delete(postId);
+    return;
+  }
+  await apiFetch(`/stories/posts/${encodeURIComponent(postId)}`, { method: 'DELETE' });
+}
+
+/** Your own pages from today, oldest first (the page strip on compose). */
+export async function listTodayPosts(): Promise<StoryPost[]> {
+  if (isDemoMode()) {
+    return demoPosts.filter((p) => demoTodayIds.has(p.id));
+  }
+  try {
+    const rows = await apiFetch<StoryPostDto[]>('/stories/today');
+    return rows.map(mapPostDto);
+  } catch {
+    return [];
+  }
 }
 
 /** Photo updates tagged to an event (shared album on the event page). */

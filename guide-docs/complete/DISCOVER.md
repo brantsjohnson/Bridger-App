@@ -92,6 +92,8 @@ Reveal Screen 3 may also show **friends of friends** across the new bridge (up t
 
 `In common` replays the same commonality content on demand. This means `person/[id]` in `ARCHITECTURE.md` gains a tabbed layout, and the reveal component is reused inside it.
 
+The Discover strip above suggestions is **Personality quizzes** (route `/discover/connect-over`; analytics ids stay `connect_over`). Live cards: Your Funny Bone, What Gets You Going, Your Vibe, The Friend Zone. **Behind the Scenes is archived** from this list (code and tables stay). Adding a friend is never blocked on taking a quiz. Thin reveal / In common point here. Overlap after connect is one-way: each person sees what the other labeled for the circle they were placed in (We just met = Acquaintances).
+
 ---
 
 ## 7 · Mutual-connection notification (the communal payoff)

@@ -1,7 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // Mode 2: after beat 0 sets the friendship tier, compute what two connected
-// people share (reveal + In common). Never invents filler when overlap is thin.
+// people share (reveal + In common). Each side is filtered by the circle
+// the owner put the other person in (one-way). Never invents filler.
 // Quiz answers/explanations never cross — only the quiz's in-app title + %.
 // Hobby follow-up answers, favorites items, and music picks/artists all count.
 // ============================================
@@ -10,7 +11,7 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
-import { DISCOVER_QUIZ_IDS } from '@bridger/shared';
+import { DISCOVER_QUIZ_IDS, fieldVisibleAtGrantedTier } from '@bridger/shared';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MatchingConfigService } from './matching-config.service';
 import { MatchingIdfService } from './matching-idf.service';
@@ -19,13 +20,6 @@ import type {
   OverlapItemDto,
   RevealPayloadDto
 } from './matching.types';
-
-const TIER_RANK: Record<string, number> = {
-  none: 0,
-  acquaintance: 1,
-  friend: 2,
-  close: 3
-};
 
 type AttrEntry = {
   fp: string;
@@ -62,6 +56,11 @@ export class MatchingOverlapService {
       .or(
         `and(user_id.eq.${viewerId},other_id.eq.${otherId}),and(user_id.eq.${otherId},other_id.eq.${viewerId})`
       );
+    // PRIVACY (asymmetric): each person only sees what the OTHER labeled for
+    // the circle they put this viewer in. We just met = Acquaintances.
+    // Example: they put me as Friends, I put them as Acquaintances.
+    // I see their Friends-labeled facts. They only see my Acquaintance facts.
+    // Overlap = my visible set ∩ their visible set.
     const viewerGranted =
       tiers?.find((t) => t.user_id === otherId && t.other_id === viewerId)
         ?.tier ?? 'acquaintance';
@@ -161,7 +160,6 @@ export class MatchingOverlapService {
     ownerId: string,
     grantedTier: string
   ): Promise<AttrEntry[]> {
-    const need = TIER_RANK[grantedTier] ?? 1;
     const { data } = await this.supabase.admin
       .from('attributes')
       .select('key, value, layer, visible_to_tier')
@@ -170,8 +168,7 @@ export class MatchingOverlapService {
 
     const out: AttrEntry[] = [];
     for (const row of data ?? []) {
-      const rank = TIER_RANK[row.visible_to_tier] ?? 0;
-      if (rank === 0 || rank > need) continue;
+      if (!fieldVisibleAtGrantedTier(row.visible_to_tier, grantedTier)) continue;
 
       // THIS SECTION DOES: expand fav: group rows into one fingerprint per item.
       if (
@@ -223,7 +220,6 @@ export class MatchingOverlapService {
     ownerId: string,
     grantedTier: string
   ): Promise<AttrEntry[]> {
-    const need = TIER_RANK[grantedTier] ?? 1;
     const { data } = await this.supabase.admin
       .from('music_picks')
       .select('kind, title, artist_name, visible_to_tier')
@@ -238,8 +234,7 @@ export class MatchingOverlapService {
 
     const out: AttrEntry[] = [];
     for (const row of data ?? []) {
-      const rank = TIER_RANK[row.visible_to_tier] ?? 0;
-      if (rank === 0 || rank > need) continue;
+      if (!fieldVisibleAtGrantedTier(row.visible_to_tier, grantedTier)) continue;
       const title = (row.title ?? '').trim();
       if (!title) continue;
       const artist = (row.artist_name ?? '').trim();

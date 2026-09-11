@@ -23,11 +23,13 @@ import { MatchingModule } from './matching/matching.module';
 import { MeModule } from './me/me.module';
 import { MusicModule } from './music/music.module';
 import { NotesModule } from './notes/notes.module';
+import { PendingPeopleModule } from './pending-people/pending-people.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PhotoFiltersModule } from './photo-filters/photo-filters.module';
 import { PollsModule } from './polls/polls.module';
 import { ProfilesModule } from './profiles/profiles.module';
 import { QuizModule } from './quiz/quiz.module';
+import { QuotesModule } from './quotes/quotes.module';
 import { RecapModule } from './recap/recap.module';
 import { StoriesModule } from './stories/stories.module';
 import { SupabaseModule } from './supabase/supabase.module';
@@ -52,6 +54,7 @@ import { DemoWeekModule } from './demo-week/demo-week.module';
     DemoWeekModule,
     MeModule,
     NotesModule,
+    PendingPeopleModule,
     MusicModule,
     MatchingModule,
     ProfilesModule,
@@ -65,6 +68,7 @@ import { DemoWeekModule } from './demo-week/demo-week.module';
     AdminModule,
     ContentModule,
     QuizModule,
+    QuotesModule,
     JnameModule,
     ActivityModule,
     CoopModule,

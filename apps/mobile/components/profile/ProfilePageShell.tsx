@@ -4,6 +4,9 @@
 // Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → Hobbies →
 // Places → Where you met. Co-op Greatest hits photos insert after a section
 // via afterModule. Own Edit mode can rearrange movable modules.
+// Empty sections: only your full own profile shows "Add …" cards. Friend
+// pages and View as Friends/Everyone hide empty sections entirely so the
+// page does not hint that something is missing.
 // ============================================
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View, type ImageSourcePropType } from 'react-native';
@@ -33,6 +36,7 @@ import {
   getProfilePresentation,
   saveProfilePresentation
 } from '../../data/profile-presentation';
+import { getTabSnapshot, setTabSnapshot } from '../../lib/tab-snapshots';
 import { AboutMeSection } from './AboutMeSection';
 import { CurrentObsessionSection } from './CurrentObsessionSection';
 import { FavoritesSection } from './FavoritesSection';
@@ -74,6 +78,7 @@ function normalizeOrder(order?: MovableModule[] | null): MovableModule[] {
 export function ProfilePageShell({
   own,
   editable,
+  showEmptyCtas = false,
   personName,
   personPhoto,
   personEmoji,
@@ -108,6 +113,12 @@ export function ProfilePageShell({
 }: {
   own: boolean;
   editable?: boolean;
+  /**
+   * True only on your full own profile (not View as Friends/Everyone, not a
+   * friend page). Empty sections then show "Add …" cards. When false, empty
+   * sections disappear entirely (no header, no "nothing shared").
+   */
+  showEmptyCtas?: boolean;
   personName?: string;
   personPhoto?: ImageSourcePropType;
   personEmoji?: string;
@@ -163,14 +174,18 @@ export function ProfilePageShell({
 
   // THIS SECTION DOES: load the saved module order (or the Spotify default).
   const [layoutOrder, setLayoutOrder] = useState<MovableModule[]>(() =>
-    normalizeOrder(DEFAULT_PROFILE_LAYOUT.order)
+    normalizeOrder(
+      getTabSnapshot<MovableModule[]>('profileLayout') ?? DEFAULT_PROFILE_LAYOUT.order
+    )
   );
 
   useEffect(() => {
     let alive = true;
     void getProfilePresentation().then((p) => {
       if (!alive) return;
-      setLayoutOrder(normalizeOrder(p?.layoutOrder));
+      const next = normalizeOrder(p?.layoutOrder);
+      setLayoutOrder(next);
+      setTabSnapshot('profileLayout', next);
     });
     return () => {
       alive = false;
@@ -179,6 +194,7 @@ export function ProfilePageShell({
 
   const persistOrder = useCallback(async (next: MovableModule[]) => {
     setLayoutOrder(next);
+    setTabSnapshot('profileLayout', next);
     const current = await getProfilePresentation();
     await saveProfilePresentation({
       accent: current?.accent ?? 'purple',
@@ -224,7 +240,10 @@ export function ProfilePageShell({
   );
 
   // THIS SECTION DOES: Spotify scroll order. Greatest hits inject after a module.
+  // PRIVACY / UX: when View as or a friend is looking, skip sections with no
+  // visible answers so the page does not hint that something is missing.
   const visibleModules = useMemo(() => {
+    const filledFavorites = favorites.some((f) => !f.empty) || thisOrThat.length > 0;
     return layoutOrder.filter((m) => {
       if (m === 'mutuals') return !own && mutuals.length > 0;
       if (m === 'whereMet') return !own && !!whereMet;
@@ -233,9 +252,30 @@ export function ProfilePageShell({
       // Not shipped as live widgets yet — skip until content exists.
       if (m === 'recommendations' || m === 'timeline') return false;
       if (m === 'upcoming') return upcoming.length > 0;
+      if (!showEmptyCtas) {
+        if (m === 'top5') return top5.length > 0;
+        if (m === 'obsession') return obsession.length > 0;
+        if (m === 'favorites') return filledFavorites;
+        if (m === 'hobbies') return hobbies.length > 0;
+        if (m === 'places') return places.length > 0;
+        // About me stays: photo / name / city still belong on the card.
+      }
       return true;
     });
-  }, [layoutOrder, own, mutuals.length, whereMet, upcoming.length]);
+  }, [
+    layoutOrder,
+    own,
+    mutuals.length,
+    whereMet,
+    upcoming.length,
+    showEmptyCtas,
+    top5.length,
+    obsession.length,
+    favorites,
+    thisOrThat.length,
+    hobbies.length,
+    places.length
+  ]);
 
   /** Photos that sit after a given section (placement_index order). */
   const hitsAfter = useCallback(
@@ -292,12 +332,19 @@ export function ProfilePageShell({
         return wrap(undefined, <MutualsRow mutuals={mutuals} onPress={onOpenMutuals} />);
       case 'top5':
         return wrap(
-          onOpenTop5,
-          <Top5Section items={top5} editable={editable} own={own} onAdd={onOpenTop5} />
+          showEmptyCtas ? onOpenTop5 : undefined,
+          <Top5Section
+            items={top5}
+            editable={editable && showEmptyCtas}
+            own={own}
+            showEmptyCtas={showEmptyCtas}
+            onAdd={onOpenTop5}
+          />,
+          { skipEmpty: !showEmptyCtas && top5.length === 0 }
         );
       case 'aboutMe':
         return wrap(
-          onOpenAbout,
+          showEmptyCtas ? onOpenAbout : undefined,
           <AboutMeSection
             name={personName}
             city={city}
@@ -305,12 +352,13 @@ export function ProfilePageShell({
             photo={personPhoto}
             emoji={personEmoji}
             fields={about}
-            editable={editable}
+            editable={editable && showEmptyCtas}
             own={own}
+            showEmptyCtas={showEmptyCtas}
             onAdd={onOpenAbout}
             onEditField={onEditAboutField}
             onEditBio={onEditBio}
-            onChangePhoto={onChangeAboutPhoto}
+            onChangePhoto={showEmptyCtas ? onChangeAboutPhoto : undefined}
             onReorderFields={onReorderAboutFields}
           />
         );
@@ -319,24 +367,29 @@ export function ProfilePageShell({
         return wrap(undefined, <UpcomingEventsSection events={upcoming} onOpenEvent={onOpenEvent} />);
       case 'obsession':
         return wrap(
-          onOpenObsession,
+          showEmptyCtas ? onOpenObsession : undefined,
           <CurrentObsessionSection
             items={obsession}
-            editable={editable}
+            editable={editable && showEmptyCtas}
             own={own}
+            showEmptyCtas={showEmptyCtas}
             onAdd={onOpenObsession}
-          />
+          />,
+          { skipEmpty: !showEmptyCtas && obsession.length === 0 }
         );
       case 'greatestHits':
         return null;
-      case 'favorites':
-        return wrap(undefined, (
+      case 'favorites': {
+        const hasFilled = favModules.some((f) => !f.empty);
+        return wrap(
+          undefined,
           <FavoritesSection
             modules={favModules}
             own={own}
+            showEmptyCtas={showEmptyCtas}
             onOpenModule={(mid) => {
-              // Friend profiles: only show their answers, never start a quiz.
-              if (!own) {
+              // Friend / View-as: only show their answers, never start a quiz.
+              if (!showEmptyCtas) {
                 onViewFavoriteAnswers?.(mid);
                 return;
               }
@@ -345,11 +398,14 @@ export function ProfilePageShell({
               else if (mid === 'places') onOpenPlaces?.();
               else onOpenFavoritesModule?.(mid);
             }}
-          />
-        ));
+          />,
+          { skipEmpty: !showEmptyCtas && !hasFilled }
+        );
+      }
       case 'hobbies':
+        if (!showEmptyCtas && hobbies.length === 0) return null;
         return wrap(
-          onOpenHobbies,
+          showEmptyCtas ? onOpenHobbies : undefined,
           <View>
             <Text
               className="font-pixel text-ink"
@@ -363,7 +419,7 @@ export function ProfilePageShell({
                 analyticsId={hobbiesId}
                 followUps={hobbyFollowUps}
               />
-            ) : editable || own ? (
+            ) : (
               <ProfileAddCard
                 label="Add hobbies"
                 helper="Pick a few things you like."
@@ -373,14 +429,13 @@ export function ProfilePageShell({
                 accessibilityLabel="Add hobbies"
                 onPress={() => onOpenHobbies?.()}
               />
-            ) : (
-              <Text className="font-sans-sb text-[14px] text-ink-mute">No hobbies yet.</Text>
             )}
           </View>
         );
       case 'places':
+        if (!showEmptyCtas && places.length === 0) return null;
         return wrap(
-          onOpenPlaces,
+          showEmptyCtas ? onOpenPlaces : undefined,
           <View>
             <Text
               className="font-pixel text-ink"
@@ -390,26 +445,24 @@ export function ProfilePageShell({
             </Text>
             <AnalyticsRegion analyticsId={placesId} interactive={false}>
               {places.length === 0 ? (
-                editable || own ? (
-                  <ProfileAddCard
-                    label="Add places"
-                    helper="Pin the places you have been."
-                    emoji="🗺️"
-                    accent="coral"
-                    analyticsId={PROFILE.card.add_places}
-                    accessibilityLabel="Add places"
-                    onPress={() => onOpenPlaces?.()}
-                  />
-                ) : (
-                  <Text className="font-sans-sb text-[14px] text-ink-mute">No places yet.</Text>
-                )
+                <ProfileAddCard
+                  label="Add places"
+                  helper="Pin the places you have been."
+                  emoji="🗺️"
+                  accent="coral"
+                  analyticsId={PROFILE.card.add_places}
+                  accessibilityLabel="Add places"
+                  onPress={() => onOpenPlaces?.()}
+                />
               ) : (
                 <TravelModule places={places} analyticsId={placesId} />
               )}
             </AnalyticsRegion>
-            <Text className="mt-2 font-sans-sb text-[11px] text-ink-mute">
-              Photos for each place are coming soon.
-            </Text>
+            {places.length > 0 ? (
+              <Text className="mt-2 font-sans-sb text-[11px] text-ink-mute">
+                Photos for each place are coming soon.
+              </Text>
+            ) : null}
           </View>
         );
       case 'whereMet':

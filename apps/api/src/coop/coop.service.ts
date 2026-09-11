@@ -338,25 +338,20 @@ export class CoopService {
       };
     }
 
-    let usedPct = 0;
-    let effectiveUsed = usedBytes;
-    if (usedBytes > 0) {
-      usedPct = Math.min(
-        100,
-        Math.round((usedBytes / FREE_STORY_STORAGE_BYTES) * 100)
-      );
-    } else {
-      const since = new Date();
-      since.setUTCDate(since.getUTCDate() - 30);
-      const { count } = await this.supabase.admin
-        .from('media')
-        .select('id', { count: 'exact', head: true })
-        .eq('owner_id', userId)
-        .gte('created_at', since.toISOString());
-      usedPct = Math.min(100, (count ?? 0) * 5);
-      // Approximate bytes from the percent so the meter has a number to show.
-      effectiveUsed = Math.round((usedPct / 100) * FREE_STORY_STORAGE_BYTES);
-    }
+    // Free plan: meter by finished posts in the last 30 days, not raw media
+    // rows. One scrapbook page can spawn many media files (photos + preview +
+    // voice), so media*5% made a single post look ~45% full.
+    // plans.used_bytes is not maintained for free, so ignore it here.
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - 30);
+    const { count } = await this.supabase.admin
+      .from('stories')
+      .select('id', { count: 'exact', head: true })
+      .eq('author_id', userId)
+      .gte('created_at', since.toISOString());
+    // ~2% per post → about 50 posts (~a month of daily posting) before 100%.
+    const usedPct = Math.min(100, (count ?? 0) * 2);
+    const effectiveUsed = Math.round((usedPct / 100) * FREE_STORY_STORAGE_BYTES);
 
     const meter = buildStorageMeter({
       usedBytes: effectiveUsed,

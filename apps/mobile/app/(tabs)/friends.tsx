@@ -2,15 +2,19 @@
 // WHAT THIS FILE DOES (plain English):
 // The Friends tab: your confirmed circle, grouped by Close / Friends /
 // Acquaintances. Edit mode lets you drag people into another group (or use
-// the Move-to sheet via tap / long-press). The header + is Add friend ONLY
-// (QR / link / scan) — "Add your recap" lives on the Friend Pod card below.
+// the Move-to sheet via tap / long-press). "Add friend" and the empty state
+// open Connect your contacts (or QR / link / scan). Search filters the roster.
+// Cards you made for people not on Bridger yet sit above the live roster.
 // Friend Pod and Inside Jokes sit above the roster.
 // Analytics: opens the friends surface on mount; every control uses FRIENDS.*
 // ids from the shared taxonomy (no invented names).
 // ============================================
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+// #region agent log
+import { debugScreenMount } from '../../lib/debug-instrumentation';
+// #endregion
 import { Alert, Pressable, Share, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { PlusIcon } from 'lucide-react-native';
 import type { Tier } from '@bridger/shared';
 import { FRIENDS, openSurface, trackProduct } from '@bridger/shared';
@@ -22,36 +26,38 @@ import {
   SearchField,
   SectionTitle,
   TAB_COLOR,
-  useThemeColors,
   withAnalyticsPress
 } from '@bridger/ui';
 import { ColdStart } from '../../components/ColdStart';
+import { ContactInviteSheet } from '../../components/invite/ContactInviteSheet';
 import { AddFriendSheet } from '../../components/friends/AddFriendSheet';
+import { PendingFriendRow } from '../../components/friends/PendingFriendRow';
 import { AddInsideJokeSheet } from '../../components/friends/AddInsideJokeSheet';
 import { FriendPodWidget } from '../../components/friends/FriendPodWidget';
 import { FriendsRoster } from '../../components/friends/FriendsRoster';
 import type { FriendRowPerson } from '../../components/friends/FriendRow';
 import { InsideJokesWidget } from '../../components/friends/InsideJokesWall';
 import { ScanFriendSheet } from '../../components/friends/ScanFriendSheet';
-import { SubmitQuestion } from '../../components/friends/SubmitQuestion';
 import { TierPicker } from '../../components/friends/TierPicker';
-import { RecapRecorder } from '../../components/pod/RecapRecorder';
-import { useFriendPod } from '../../hooks/useFriendPod';
+import { useConnectContacts } from '../../hooks/useConnectContacts';
 import { useFriends } from '../../hooks/useFriends';
 import { useTabAttention } from '../../hooks/useTabAttention';
 import { useInsideJokes } from '../../hooks/useInsideJokes';
 import { createShareInvite } from '../../data/invites';
 import { getInviteAccess } from '../../data/access';
+import { listPendingPeople, type PendingPerson } from '../../data/pending-people';
+import { getTabSnapshot, setTabSnapshot } from '../../lib/tab-snapshots';
 
 /**
- * Feature flag: when false the search bar is not rendered at all.
- * Flip to true once live people search is ready (searchFriends is already stubbed).
+ * Friends search filters the roster you already have (name / handle).
+ * It does not hit Discover or invent new people.
  */
-const searchEnabled = false;
+const searchEnabled = true;
 
 export default function FriendsScreen() {
-  // THIS SECTION DOES: theme colors for icons in the header.
-  const c = useThemeColors();
+  // #region agent log
+  useEffect(() => debugScreenMount('friends'), []);
+  // #endregion
   const router = useRouter();
   // THIS SECTION DOES: section title dots after the Friends nav-bar badge clears.
   const { sectionDots } = useTabAttention('friends');
@@ -60,44 +66,30 @@ export default function FriendsScreen() {
   // THIS SECTION DOES: load the roster, jokes wall, and this week's Friend Pod.
   const { sections, total, refresh, onMoveTier } = useFriends();
   const { jokes, onAdd: onAddJoke } = useInsideJokes('all');
-  const { recap, refresh: refreshPod } = useFriendPod();
+  const contacts = useConnectContacts();
+  const [pending, setPending] = useState<PendingPerson[]>(
+    () => getTabSnapshot<PendingPerson[]>('pendingPeople') ?? []
+  );
 
   // THIS SECTION DOES: local UI state for sheets, edit mode, and search.
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
-  const [questionOpen, setQuestionOpen] = useState(false);
-  const [recordOpen, setRecordOpen] = useState(false);
   const [jokeOpen, setJokeOpen] = useState(false);
   const [moving, setMoving] = useState<FriendRowPerson | null>(null);
   const [canInvite, setCanInvite] = useState(true);
   /** Freeze page scroll while a native drag is in progress. */
   const [rosterDragging, setRosterDragging] = useState(false);
 
-  // THIS SECTION DOES: block Recap if the header + just won the tap (fall-through guard).
-  const preferAddFriend = useRef(false);
-
-  // THIS SECTION DOES: open the full-page weekly podcast (not a popup).
-  const openPlayer = useCallback(() => {
-    router.push('/recap');
+  // THIS SECTION DOES: open the weekly podcast. Play starts audio; open waits.
+  // Recording + suggesting a question now live on that page, not on this tab.
+  const openPlayer = useCallback((autoplay: boolean) => {
+    router.push({
+      pathname: '/recap',
+      params: { autoplay: autoplay ? '1' : '0' }
+    });
   }, [router]);
-
-  // THIS SECTION DOES: open the recap recorder from Friend Pod only (never header +).
-  const openRecorder = useCallback(() => {
-    // Header + and this row can fight if the title row remounts mid-tap.
-    if (preferAddFriend.current) return;
-    if (recap?.canRecordAfter) {
-      const when = new Date(recap.canRecordAfter);
-      Alert.alert(
-        'Already recorded',
-        `You can add a new recap after ${when.toLocaleDateString()}.`
-      );
-      return;
-    }
-    setAddOpen(false);
-    setRecordOpen(true);
-  }, [recap?.canRecordAfter]);
 
   // THIS SECTION DOES: header + is add-friend only (QR / link / scan).
   const openAddFriend = useCallback(() => {
@@ -108,45 +100,52 @@ export default function FriendsScreen() {
       );
       return;
     }
-    preferAddFriend.current = true;
-    setRecordOpen(false);
     setAddOpen(true);
-    // Clear the lock after the gesture settles so Pod record still works.
-    setTimeout(() => {
-      preferAddFriend.current = false;
-    }, 400);
   }, [canInvite]);
 
-  // THIS SECTION DOES: keep Edit / + as the same React nodes so the header
-  // does not remount them on every Friends re-render (that let + taps hit Recap).
+  // THIS SECTION DOES: one labeled Add friend control, reused in the header
+  // and beside Your circle (same look; different analytics id by placement).
+  const addFriendButton = useCallback(
+    (analyticsId: string) => (
+      <ButtonSecondary
+        size="sm"
+        className="h-10"
+        tone="solid"
+        onPress={openAddFriend}
+        accessibilityLabel="Add friend"
+        analyticsId={analyticsId}
+      >
+        Add friend
+      </ButtonSecondary>
+    ),
+    [openAddFriend]
+  );
+
+  // THIS SECTION DOES: keep header Add friend as a stable node so the title
+  // row does not remount on every Friends re-render (that let taps hit Recap).
   const headerTrailing = useMemo(
+    () => addFriendButton(FRIENDS.top_nav.add),
+    [addFriendButton]
+  );
+
+  // THIS SECTION DOES: Edit lives on Your circle, next to that row's Add friend.
+  const circleActions = useMemo(
     () => (
       <View className="flex-row items-center gap-2">
-        {/* Edit toggles move-between-circles mode */}
         <ButtonSecondary
           size="sm"
           className="h-10"
           tone={editing ? 'solid' : 'light'}
           onPress={() => setEditing((v) => !v)}
           accessibilityLabel={editing ? 'Done editing friends' : 'Edit friends'}
-          analyticsId={FRIENDS.top_nav.edit}
+          analyticsId={FRIENDS.roster.edit}
         >
           {editing ? 'Done' : 'Edit'}
         </ButtonSecondary>
-        {/* + opens Add friend only (never the recap / podcast recorder) */}
-        <Pressable
-          onPress={withAnalyticsPress(FRIENDS.top_nav.add, openAddFriend)}
-          accessibilityRole="button"
-          accessibilityLabel="Add friend"
-          hitSlop={8}
-          className="h-10 w-10 items-center justify-center rounded-full bg-ink active:opacity-90"
-        >
-          {/* Solid ink circle + canvas plus so the + stays readable in both themes */}
-          <PlusIcon size={18} color={c.canvas} strokeWidth={3} />
-        </Pressable>
+        {addFriendButton(FRIENDS.roster.add)}
       </View>
     ),
-    [editing, openAddFriend, c.canvas]
+    [editing, addFriendButton]
   );
 
   // THIS SECTION DOES: mark Friends as the active analytics surface on mount.
@@ -162,15 +161,58 @@ export default function FriendsScreen() {
     void refresh(editing);
   }, [editing, refresh]);
 
-  const empty = total === 0;
+  // THIS SECTION DOES: reload cards you made when this tab is on screen again.
+  const refreshPending = useCallback(() => {
+    void listPendingPeople().then((rows) => {
+      setPending(rows);
+      setTabSnapshot('pendingPeople', rows);
+    });
+  }, []);
 
-  // THIS SECTION DOES: filter the roster when search is enabled.
-  const filteredSections = sections.map((s) => ({
-    ...s,
-    people: searchEnabled && query.trim()
-      ? s.people.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()))
-      : s.people
-  }));
+  useFocusEffect(
+    useCallback(() => {
+      // Roster + pending: after add/reveal the tab stays mounted, so we must
+      // refresh on focus or Friends looks empty until a force-close remount.
+      void refresh(editing);
+      refreshPending();
+    }, [refresh, refreshPending, editing])
+  );
+
+  const empty = total === 0 && pending.length === 0;
+
+  // THIS SECTION DOES: filter the roster by name or handle (never logs the query).
+  const filteredSections = sections.map((s) => {
+    const q = query.trim().toLowerCase();
+    if (!searchEnabled || !q) return s;
+    return {
+      ...s,
+      people: s.people.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) || p.handle.toLowerCase().includes(q)
+      )
+    };
+  });
+
+  const q = query.trim().toLowerCase();
+  const filteredPending =
+    searchEnabled && q
+      ? pending.filter((p) => (p.displayName ?? '').toLowerCase().includes(q))
+      : pending;
+
+  // THIS SECTION DOES: pick a contact, save their number, open the card you made.
+  const handleContactPicked = async (
+    contact: Parameters<typeof contacts.pickContact>[0]
+  ) => {
+    const card = await contacts.pickContact(contact);
+    if (!card) return;
+    refreshPending();
+    router.push({ pathname: '/pending/[id]', params: { id: card.id } });
+  };
+
+  const startConnectFromAdd = () => {
+    setAddOpen(false);
+    contacts.startConnect();
+  };
 
   const openMove = (person: FriendRowPerson) => setMoving(person);
 
@@ -203,7 +245,7 @@ export default function FriendsScreen() {
 
   return (
     <Screen tone="canvas">
-      {/* THIS SECTION DOES: page title + Edit + Add-friend +. */}
+      {/* THIS SECTION DOES: page title + labeled Add friend. Edit sits on Your circle. */}
       <ScreenHeader
         title="Friends"
         analyticsSurface="friends"
@@ -212,18 +254,6 @@ export default function FriendsScreen() {
 
       {/* THIS SECTION DOES: the scrolling page body (frozen while dragging). */}
       <ScreenBody scrollEnabled={!rosterDragging}>
-        {/* THIS SECTION DOES: optional search (feature-flagged off until live). */}
-        {searchEnabled ? (
-          <View className="mb-4">
-            <SearchField
-              value={query}
-              onChange={setQuery}
-              placeholder="Search friends"
-              analyticsId={FRIENDS.top_nav.search}
-            />
-          </View>
-        ) : null}
-
         {/* THIS SECTION DOES: Friend Pod always — record even with zero friends
             (your clip just has nobody to hear it yet). */}
         <View>
@@ -243,9 +273,8 @@ export default function FriendsScreen() {
           />
           <FriendPodWidget
             size="full"
-            onPlay={() => void openPlayer()}
-            onRecord={openRecorder}
-            onSubmitQuestion={() => setQuestionOpen(true)}
+            onPlay={() => openPlayer(true)}
+            onOpen={() => openPlayer(false)}
           />
         </View>
 
@@ -271,9 +300,9 @@ export default function FriendsScreen() {
                   onPress={withAnalyticsPress(FRIENDS.inside_jokes.add, () => setJokeOpen(true))}
                   accessibilityRole="button"
                   accessibilityLabel="Add an Inside Joke"
-                  className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
+                  className="h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple active:opacity-90"
                 >
-                  <PlusIcon size={16} color="#FFFFFF" strokeWidth={3} />
+                  <PlusIcon size={18} color="#FFFFFF" strokeWidth={3} />
                 </Pressable>
               ) : null
             }
@@ -299,34 +328,87 @@ export default function FriendsScreen() {
 
         {/* THIS SECTION DOES: friends roster, or the invite empty card under the pods. */}
         <View className="mt-7">
+          {/* Roster block title is "Your circle" so it is not the same word as
+              the page header ("Friends") or the middle tier ("Friends").
+              Edit and Add friend sit here, right above Close friends. */}
           <SectionTitle
-            title="Friends"
+            title="Your circle"
             description={
               empty
-                ? 'Your circle lives here once people join.'
-                : 'Close, Friends, and Acquaintances — who sees what.'
+                ? 'Your people live here once they join.'
+                : 'Close friends, Friends, and Acquaintances — who sees what.'
             }
             infoAnalyticsId={FRIENDS.roster.info}
             parentScreen="friends"
             section="roster"
-            className="mb-2"
+            className="mb-1"
             showDot={!!sectionDots.roster}
             dotColor={friendsDot}
+            action={circleActions}
           />
+          {/* Search sits right under Your circle so it filters this roster,
+              not Friend Pod or Inside Jokes above. */}
+          {searchEnabled ? (
+            <View className="mb-1">
+              <SearchField
+                value={query}
+                onChange={setQuery}
+                placeholder="Search friends"
+                analyticsId={FRIENDS.roster.search}
+              />
+            </View>
+          ) : null}
           {empty ? (
-            <ColdStart onAdd={() => openAddFriend()} inviteLocked={!canInvite} />
-          ) : (
-            <FriendsRoster
-              sections={filteredSections}
-              editing={editing}
-              onOpenPerson={(p) =>
-                router.push({ pathname: '/person/[id]', params: { id: p.id } })
-              }
-              onOpenStory={(p) => router.push(`/story/${p.id}?from=profile`)}
-              onOpenMove={openMove}
-              onDropTier={(p, tier) => void retierPerson(p, tier)}
-              onDraggingChange={setRosterDragging}
+            <ColdStart
+              friendsEmpty
+              onAdd={() => openAddFriend()}
+              onConnectContacts={contacts.startConnect}
+              inviteLocked={!canInvite}
             />
+          ) : (
+            <View>
+              {filteredPending.length > 0 ? (
+                <View className="mb-6">
+                  <SectionTitle
+                    title="Not on Bridger yet"
+                    description="Cards you made from a contact. When they join with that number, their real profile takes over and your notes stay."
+                    infoAnalyticsId={FRIENDS.roster.pending_header}
+                    parentScreen="friends"
+                    section="roster"
+                    analyticsProps={{ pending: true }}
+                    count={filteredPending.length}
+                    className="mb-2"
+                  />
+                  <View className="gap-2.5">
+                    {filteredPending.map((p) => (
+                      <PendingFriendRow
+                        key={p.id}
+                        person={p}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/pending/[id]',
+                            params: { id: p.id }
+                          })
+                        }
+                      />
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+              {total > 0 ? (
+                <FriendsRoster
+                  sections={filteredSections}
+                  editing={editing}
+                  onOpenPerson={(p) =>
+                    router.push({ pathname: '/person/[id]', params: { id: p.id } })
+                  }
+                  onOpenStory={(p) => router.push(`/story/${p.id}?from=profile`)}
+                  onOpenMove={openMove}
+                  onDropTier={(p, tier) => void retierPerson(p, tier)}
+                  onDraggingChange={setRosterDragging}
+                />
+              ) : null}
+            </View>
           )}
         </View>
       </ScreenBody>
@@ -335,6 +417,7 @@ export default function FriendsScreen() {
       <AddFriendSheet
         open={addOpen}
         onClose={() => setAddOpen(false)}
+        onConnectContacts={startConnectFromAdd}
         onShare={() => {
           if (!canInvite) {
             Alert.alert(
@@ -365,23 +448,25 @@ export default function FriendsScreen() {
         }}
       />
 
-      <ScanFriendSheet open={scanOpen} onClose={() => setScanOpen(false)} />
-
-      <SubmitQuestion open={questionOpen} onClose={() => setQuestionOpen(false)} />
-
-      {/* Add your recap: record the week's 5 questions by voice */}
-      <RecapRecorder
-        open={recordOpen}
-        onClose={() => setRecordOpen(false)}
-        weekId={recap?.week.id ?? ''}
-        questions={recap?.week.questions ?? []}
-        onPosted={() => void refreshPod()}
+      <ContactInviteSheet
+        open={contacts.sheetOpen}
+        contacts={contacts.contacts}
+        onPick={(c) => void handleContactPicked(c)}
+        onClose={() => contacts.setSheetOpen(false)}
+        title="Pick someone to add"
+        surface="friends_contacts_sheet"
+        parentScreen="friends"
+        pickAnalyticsId={FRIENDS.add_sheet.contact_row}
+        cancelAnalyticsId={FRIENDS.add_sheet.contacts_cancel}
       />
+
+      <ScanFriendSheet open={scanOpen} onClose={() => setScanOpen(false)} />
 
       <AddInsideJokeSheet
         open={jokeOpen}
         onClose={() => setJokeOpen(false)}
         onAdd={onAddJoke}
+        parentScreen="friends"
       />
 
       <TierPicker

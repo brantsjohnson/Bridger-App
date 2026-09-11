@@ -40,19 +40,28 @@ Self-contained. Two behaviors Magic Patterns kept missing. Keep UI copy minimal 
 
 **Take → result → share → compare.**
 
-**On Home:** a quiz card with **"Take the quiz"**.
+**On Home:** a quiz card with **"Take the quiz"**. After you finish, that CTA becomes **"See your result"** (never "Take the quiz" again for that first finish).
 
-**Take it** → answer the questions → **get your result** (shown big).
+**Take it** → answer the questions → **get your result** (shown big) **and** a second payoff: **Connect with friends** (share the link so they can take it) plus the friend board.
 
 **After taking, the same card on Home shows:**
 1. **Your result.**
-2. **Share quiz** — a shareable link (friends, or people without an account).
-3. **"Who got who" dashboard** *(only if the quiz supports comparison)* — your friends **grouped by result**, each group showing avatars + a count. Example: *Coastal cruiser · 3 · [avatars] · Mountain roamer · 2 · [avatars]*.
-4. **See more / tap a result** → full breakdown: who got each result, **how you compare** (for Which J name: a fun % compatible when both of you finished), and the friend-group dynamic (e.g. "you and Priya matched").
+2. **See your result**: opens the final result screen (poster + connect-with-friends + board).
+3. **Share quiz**: a shareable link (friends, or people without an account).
+4. **"Who got who" / "Your versions" dashboard** *(only if the quiz supports comparison)*: your friends **grouped by result**, each group showing avatars + a count. Example: *Coastal cruiser · 3 · [avatars] · Mountain roamer · 2 · [avatars]*.
+5. **See your result / tap a result** → full breakdown: who got each result, **how you compare** (for Which J name: a fun % compatible when both of you finished your **first** result), and the friend-group dynamic (e.g. "you and Priya matched").
+
+**Which J name extras**
+- The **first** finish is the durable result (server + Profile). Home may later feature a different quiz; Profile still shows this card.
+- **Retake for fun** is optional. The latest fun run stays on this phone. You can flip **Your result** / **Fun retake**. Fun retakes do **not** look up friend compatibility and do **not** overwrite the first result.
+- **Share link is visible.** The result (and Profile) show the actual invite URL with Copy and Preview so you can send it or open the guest page yourself.
+- **No account needed to take it.** A friend opens `/q/<token>`, taps Take the quiz, and finishes. Their first result stays on the device until they make an account. Signup (or Add friend while signed in) adds the sharer so both can see the duo %.
 
 If a quiz has **no comparison feature**, show only the result + share (no dashboard).
+
+**Copy discipline (Home / result):** "Take the quiz" only before the first finish. After that: **"See your result"**.
 
 ---
 
 ## Copy discipline
-Short labels only: "TOUCH GRASS", "Send signal", "I'm in", "Take the quiz", "Share quiz", "Who got who", "See more". No sentences inside components.
+Short labels only: "TOUCH GRASS", "Send signal", "I'm in", "Take the quiz", "See your result", "Share quiz", "Who got who", "See more". No sentences inside components.

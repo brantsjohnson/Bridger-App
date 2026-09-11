@@ -71,7 +71,8 @@ export function RightNowStep({
             placeholder="Barista, student, nurse..."
             analyticsId={ONBOARDING.taste.current_input}
             accessibilityLabel="What you currently do"
-            multiline
+            // Single-line so the typed words sit centered in the white box
+            // (multiline TextInputs always pin text to the top on iOS).
             returnKeyType="next"
             onSubmitEditing={() => dreamRef.current?.focus()}
             onFocusExtra={(anchor) => ensureVisible(anchor)}
@@ -89,7 +90,6 @@ export function RightNowStep({
             placeholder="What you'd love to do"
             analyticsId={ONBOARDING.taste.dream_input}
             accessibilityLabel="If anything were possible, what would you do"
-            multiline
             inputRef={dreamRef}
             returnKeyType="go"
             onSubmitEditing={onNext}

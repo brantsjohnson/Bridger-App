@@ -295,16 +295,21 @@ export async function savePhoto(input: {
   originalUri?: string | null;
 }): Promise<void> {
   if (isDemoMode()) {
-    demoDraftSaved.photo = input.source ?? 'library';
-    // Keep the picked (or baked preview) path on the profile header so About Me
-    // + banner show the look they chose, not a stock demo face.
-    if (input.uri) {
-      const { setMyProfileHeader } = await import('./profile');
-      await setMyProfileHeader({
-        avatarUrl: input.uri,
-        avatarFilter: input.filter ?? null,
-        avatarOriginalUrl: input.originalUri ?? input.uri
-      });
+    try {
+      demoDraftSaved.photo = input.source ?? 'library';
+      // Keep the picked (or baked preview) path on the profile header so About Me
+      // + banner show the look they chose, not a stock demo face.
+      if (input.uri) {
+        const { setMyProfileHeader } = await import('./profile');
+        await setMyProfileHeader({
+          avatarUrl: input.uri,
+          avatarFilter: input.filter ?? null,
+          avatarOriginalUrl: input.originalUri ?? input.uri
+        });
+      }
+    } catch (err) {
+      // Demo must never crash the onboarding run over a header write.
+      console.warn('[savePhoto] demo header update failed', err);
     }
     return;
   }
@@ -312,20 +317,29 @@ export async function savePhoto(input: {
   // A server look is already stored: point identity at the filtered copy and
   // remember the original + look key for later Edit switches.
   if (input.filteredMediaId) {
-    await apiFetch('/me', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        avatarMediaId: input.filteredMediaId,
-        ...(input.originalMediaId
-          ? { avatarOriginalMediaId: input.originalMediaId }
-          : {}),
-        ...(input.filter ? { avatarFilter: input.filter } : {})
-      })
-    });
+    try {
+      await apiFetch('/me', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          avatarMediaId: input.filteredMediaId,
+          ...(input.originalMediaId
+            ? { avatarOriginalMediaId: input.originalMediaId }
+            : {}),
+          ...(input.filter ? { avatarFilter: input.filter } : {})
+        })
+      });
+    } catch (err) {
+      // Filter columns may be missing on an older DB: still save the face plain.
+      console.warn('[savePhoto] filtered identity patch failed; plain fallback', err);
+      await apiFetch('/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ avatarMediaId: input.filteredMediaId })
+      });
+    }
     // THIS SECTION DOES: refresh the in-memory face so Home header updates now.
     try {
       const { loadPeople } = await import('../lib/people-cache');
-      await loadPeople();
+      await loadPeople({ force: true });
     } catch {
       // Cache refresh is best-effort; the DB write already succeeded.
     }
@@ -343,17 +357,27 @@ export async function savePhoto(input: {
     'photo',
     `avatar/${Date.now()}.jpg`
   );
-  await apiFetch('/me', {
-    method: 'PATCH',
-    body: JSON.stringify({
-      avatarMediaId: mediaId,
-      avatarOriginalMediaId: mediaId,
-      avatarFilter: null
-    })
-  });
+  try {
+    await apiFetch('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        avatarMediaId: mediaId,
+        avatarOriginalMediaId: mediaId,
+        // Keep the look they picked even when the server bake did not finish.
+        avatarFilter: input.filter ?? null
+      })
+    });
+  } catch (err) {
+    // Older servers without filter columns: save just the avatar media id.
+    console.warn('[savePhoto] plain identity patch with filter null failed', err);
+    await apiFetch('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ avatarMediaId: mediaId })
+    });
+  }
   try {
     const { loadPeople } = await import('../lib/people-cache');
-    await loadPeople();
+    await loadPeople({ force: true });
   } catch {
     // Cache refresh is best-effort; the DB write already succeeded.
   }
@@ -361,17 +385,20 @@ export async function savePhoto(input: {
 
 /**
  * Birthday — About Me row + legacy essential key for privacy review.
- * PRIVACY: visibility is chosen in the review step; the value is never logged
- * as analytics content.
+ * PRIVACY: visibility is chosen in the review step (Old) or the birthday group
+ * picker (New). The value is never logged as analytics content.
  */
-export async function saveBirthday(value: string): Promise<void> {
+export async function saveBirthday(
+  value: string,
+  visibleToTier: Tier = 'friend'
+): Promise<void> {
   if (isDemoMode()) {
     demoDraftSaved.birthday = value;
+    demoDraftSaved.birthdayTier = visibleToTier;
     return;
   }
   const trimmed = value.trim();
   if (!trimmed) return;
-  // Canonical About Me field the profile card reads (kind=about).
   await apiFetch('/me/attributes', {
     method: 'POST',
     body: JSON.stringify({
@@ -383,13 +410,69 @@ export async function saveBirthday(value: string): Promise<void> {
             id: 'about-birthday',
             key: 'Birthday',
             value: trimmed,
-            tier: 'friend'
+            tier: visibleToTier
           },
           layer: 'profile',
-          visibleToTier: 'friend'
+          visibleToTier
         }
       ]
     })
+  });
+}
+
+/** PRIVACY: write who can see the birthday (Close / Friends / Acquaintances). */
+export async function saveBirthdayAudience(
+  birthday: string,
+  tier: Tier
+): Promise<void> {
+  if (!birthday.trim()) {
+    if (isDemoMode()) demoDraftSaved.birthdayTier = tier;
+    return;
+  }
+  await saveBirthday(birthday, tier);
+}
+
+/** Opaque membership-interest keys from New onboarding Co-op 6. */
+export async function saveMembershipInterests(ids: string[]): Promise<void> {
+  const clean = ids.filter((s) => typeof s === 'string' && s.trim()).slice(0, 20);
+  if (isDemoMode()) {
+    demoDraftSaved.membershipInterests = clean;
+    trackProduct('membership_interests_selected', { count: clean.length });
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ membershipInterests: clean })
+  });
+  trackProduct('membership_interests_selected', { count: clean.length });
+}
+
+/** Opaque "what would help" keys from New onboarding Product 2. */
+export async function saveHelpInterests(ids: string[]): Promise<void> {
+  const clean = ids.filter((s) => typeof s === 'string' && s.trim()).slice(0, 20);
+  if (isDemoMode()) {
+    demoDraftSaved.helpInterests = clean;
+    trackProduct('help_interests_selected', { count: clean.length });
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ helpInterests: clean })
+  });
+  trackProduct('help_interests_selected', { count: clean.length });
+}
+
+/** How they like collage pages made (auto / manual / assist). */
+export async function savePageAuthoring(
+  pref: 'auto' | 'manual' | 'assist' | null
+): Promise<void> {
+  if (isDemoMode()) {
+    demoDraftSaved.pageAuthoring = pref;
+    return;
+  }
+  await apiFetch('/me/settings', {
+    method: 'PATCH',
+    body: JSON.stringify({ pageAuthoring: pref })
   });
 }
 
@@ -615,7 +698,15 @@ export async function savePlaces(input: {
     lng: number;
     countryCode: string;
   } | null;
+  /** Private = none, Close friends only = close (default Private for towns). */
+  hometownTier?: Tier;
+  currentTownTier?: Tier;
+  favoritePlaceTier?: Tier;
 }): Promise<void> {
+  const hometownTier = input.hometownTier ?? 'none';
+  const currentTownTier = input.currentTownTier ?? 'none';
+  const favoritePlaceTier = input.favoritePlaceTier ?? 'close';
+
   if (isDemoMode()) {
     demoDraftSaved.places = {
       hometown: input.hometown,
@@ -639,10 +730,10 @@ export async function savePlaces(input: {
               id: 'about-from',
               key: 'Hometown',
               value: input.hometown.trim(),
-              tier: 'acquaintance'
+              tier: hometownTier
             },
             layer: 'profile',
-            visibleToTier: 'acquaintance'
+            visibleToTier: hometownTier
           }
         ]
       })
@@ -660,10 +751,10 @@ export async function savePlaces(input: {
               id: 'about-town',
               key: 'Lives in',
               value: input.currentTown.trim(),
-              tier: 'acquaintance'
+              tier: currentTownTier
             },
             layer: 'profile',
-            visibleToTier: 'acquaintance'
+            visibleToTier: currentTownTier
           }
         ]
       })
@@ -694,7 +785,7 @@ export async function savePlaces(input: {
       countryCode: hit.countryCode.toUpperCase(),
       emoji: '⭐',
       year: String(new Date().getFullYear()),
-      tier: 'friend' as Tier,
+      tier: favoritePlaceTier,
       tags: ['visited' as const],
       favorite: true
     };
@@ -730,10 +821,10 @@ export async function savePlaces(input: {
             id: 'about-favorite-place',
             key: 'Favorite place',
             value: fav,
-            tier: 'friend'
+            tier: favoritePlaceTier
           },
           layer: 'profile',
-          visibleToTier: 'friend'
+          visibleToTier: favoritePlaceTier
         }
       ]
     })
@@ -936,6 +1027,9 @@ export function buildPrivacyRows(input: {
   dreamJob: string;
   favoritePlace: string;
   song: string;
+  hometownTier?: Tier;
+  currentTownTier?: Tier;
+  favoritePlaceTier?: Tier;
 }): VisibilityRow[] {
   const val = (s: string) => (s.trim() ? s.trim() : 'Not added');
   return [
@@ -949,13 +1043,13 @@ export function buildPrivacyRows(input: {
       id: 'about:about-from',
       label: 'Hometown',
       value: val(input.hometown ?? ''),
-      tier: 'acquaintance' as Tier
+      tier: (input.hometownTier ?? 'none') as Tier
     },
     {
       id: 'about:about-town',
       label: 'Lives in',
       value: val(input.currentTown ?? ''),
-      tier: 'acquaintance' as Tier
+      tier: (input.currentTownTier ?? 'none') as Tier
     },
     {
       id: 'about:about-job',
@@ -973,7 +1067,7 @@ export function buildPrivacyRows(input: {
       id: 'about:about-favorite-place',
       label: 'Place traveled',
       value: val(input.favoritePlace),
-      tier: 'friend' as Tier
+      tier: (input.favoritePlaceTier ?? 'close') as Tier
     },
     {
       id: 'currently_song',
@@ -1016,9 +1110,20 @@ export async function flushOnboardingDraft(draft: {
     lng: number;
     countryCode: string;
   } | null;
+  hometownPrivacy?: Tier;
+  currentTownPrivacy?: Tier;
+  favoritePlacePrivacy?: Tier;
   visibility: VisibilityRow[];
+  birthdayTier?: Tier | null;
+  membershipInterests?: string[];
+  helpInterests?: string[];
+  pageAuthoring?: 'auto' | 'manual' | 'assist' | null;
 }): Promise<void> {
   if (isDemoMode()) return;
+
+  // Collect hard failures so finish can stop instead of marking complete with
+  // an empty profile (TestFlight: "I already typed that" on Add details).
+  const critical: string[] = [];
 
   const name = `${draft.firstName} ${draft.lastName}`.trim();
   if (name) {
@@ -1026,6 +1131,7 @@ export async function flushOnboardingDraft(draft: {
       await saveName(name);
     } catch (err) {
       console.warn('flushOnboardingDraft: name failed', err);
+      critical.push('name');
     }
   }
 
@@ -1041,14 +1147,16 @@ export async function flushOnboardingDraft(draft: {
       });
     } catch (err) {
       console.warn('flushOnboardingDraft: photo failed', err);
+      critical.push('photo');
     }
   }
 
   if (draft.birthday.trim()) {
     try {
-      await saveBirthday(draft.birthday);
+      await saveBirthday(draft.birthday, draft.birthdayTier ?? 'friend');
     } catch (err) {
       console.warn('flushOnboardingDraft: birthday failed', err);
+      critical.push('birthday');
     }
   }
 
@@ -1076,6 +1184,7 @@ export async function flushOnboardingDraft(draft: {
       });
     } catch (err) {
       console.warn('flushOnboardingDraft: rightNow failed', err);
+      critical.push('work');
     }
   }
 
@@ -1084,6 +1193,7 @@ export async function flushOnboardingDraft(draft: {
       await saveObsessionSong(draft.song);
     } catch (err) {
       console.warn('flushOnboardingDraft: song failed', err);
+      critical.push('song');
     }
   }
 
@@ -1114,10 +1224,14 @@ export async function flushOnboardingDraft(draft: {
         hometown: draft.hometown,
         currentTown: draft.currentTown,
         favoritePlace: draft.favoritePlace,
-        favoritePlaceHit: draft.favoritePlaceHit
+        favoritePlaceHit: draft.favoritePlaceHit,
+        hometownTier: draft.hometownPrivacy,
+        currentTownTier: draft.currentTownPrivacy,
+        favoritePlaceTier: draft.favoritePlacePrivacy
       });
     } catch (err) {
       console.warn('flushOnboardingDraft: places failed', err);
+      critical.push('places');
     }
   }
 
@@ -1126,7 +1240,38 @@ export async function flushOnboardingDraft(draft: {
       await saveVisibility(draft.visibility);
     } catch (err) {
       console.warn('flushOnboardingDraft: visibility failed', err);
+      critical.push('privacy');
     }
+  }
+
+  if (draft.membershipInterests?.length) {
+    try {
+      await saveMembershipInterests(draft.membershipInterests);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: membershipInterests failed', err);
+    }
+  }
+
+  if (draft.helpInterests?.length) {
+    try {
+      await saveHelpInterests(draft.helpInterests);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: helpInterests failed', err);
+    }
+  }
+
+  if (draft.pageAuthoring) {
+    try {
+      await savePageAuthoring(draft.pageAuthoring);
+    } catch (err) {
+      console.warn('flushOnboardingDraft: pageAuthoring failed', err);
+    }
+  }
+
+  if (critical.length) {
+    throw new Error(
+      `Could not save ${critical.join(', ')}. Check your connection and try again.`
+    );
   }
 }
 

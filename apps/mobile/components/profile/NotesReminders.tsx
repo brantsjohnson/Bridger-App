@@ -49,9 +49,12 @@ const CADENCES: FriendNoteCadence[] = ['week', 'biweek', 'month'];
 
 export function NotesReminders({
   personId,
+  pendingPersonId,
   firstName
 }: {
-  personId: string;
+  personId?: string;
+  /** Card you made for someone who is not on Bridger yet. */
+  pendingPersonId?: string;
   firstName: string;
 }) {
   const c = useThemeColors();
@@ -61,10 +64,10 @@ export function NotesReminders({
   const [cadence, setCadence] = useState<FriendNoteCadence>('biweek');
   const [notes, setNotes] = useState<FriendNote[]>([]);
 
-  // Load your private notes for this friend whenever the person changes.
+  // Load your private notes for this friend (or the card you made).
   useEffect(() => {
-    void listFriendNotes(personId).then(setNotes);
-  }, [personId]);
+    void listFriendNotes({ personId, pendingPersonId }).then(setNotes);
+  }, [personId, pendingPersonId]);
 
   const placeholder =
     kind === 'text'
@@ -82,6 +85,7 @@ export function NotesReminders({
 
     const created = await addFriendNote({
       personId,
+      pendingPersonId,
       kind,
       body: resolvedBody,
       date: kind === 'date' ? draftDate.trim() || undefined : undefined,

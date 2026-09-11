@@ -26,6 +26,9 @@ import { FilteredPhoto } from '../onboarding/photo-filters/FilteredPhoto';
 import { isDemoMode } from '../../lib/demo';
 import { bakeClientPhotoFilter } from '../../lib/client-photo-filters';
 import { bakeServerPhotoFilter } from '../../lib/photo-filters';
+// #region agent log
+import { debugFilterEvent } from '../../lib/debug-instrumentation';
+// #endregion
 import { savePhoto } from '../../data/onboarding';
 
 const FILTER_ANALYTICS: Record<PhotoFilterKey, string> = {
@@ -76,8 +79,12 @@ export function PhotoLookSheet({
     Map<string, { url: string; mediaId: string; originalMediaId: string }>
   >(new Map());
 
-  // Source to bake from: prefer the plain original, else the current avatar.
-  const sourceUri = originalUrl?.trim() || avatarUrl?.trim() || null;
+  // Source to bake from: prefer the plain original, else the current avatar,
+  // else the person-cache URL (same fallback the hero photo uses).
+  const sourceUri =
+    originalUrl?.trim() ||
+    avatarUrl?.trim() ||
+    null;
 
   // THIS SECTION DOES: reset the picker when the sheet opens.
   useEffect(() => {
@@ -139,8 +146,18 @@ export function PhotoLookSheet({
       setBakedLoading(false);
     };
 
+    // #region agent log
+    debugFilterEvent('bake start (PhotoLookSheet)', {
+      filter,
+      demo: isDemoMode(),
+      platform: Platform.OS
+    });
+    // #endregion
     if (isDemoMode()) {
       if (Platform.OS !== 'web') {
+        // #region agent log
+        debugFilterEvent('native demo: no bake, plain photo kept', { filter });
+        // #endregion
         finish(null, null, null);
         return;
       }

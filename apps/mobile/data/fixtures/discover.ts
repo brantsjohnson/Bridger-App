@@ -143,21 +143,12 @@ export type MatchModule = {
 };
 
 /**
- * Matching modules at the top of Discover (Connect Over).
- * Live set = Behind the Scenes + the four measurement quizzes as they land.
- * Answers are never shared — they only find more relevant friends of friends.
- * Disclosure uses its own DisclosureFlow (empty questions here on purpose).
+ * Personality quizzes at the top of Discover (analytics screen stays
+ * connect_over). Live set is the four measurement quizzes. Behind the
+ * Scenes is archived: code and tables stay, this list does not show it.
+ * Answers are never shared — they only help introductions.
  */
 export const MATCH_MODULES: MatchModule[] = [
-  {
-    id: 'disclosure',
-    kind: 'quiz',
-    title: 'Behind the Scenes',
-    blurb: 'A quiet, optional check-in. Private, and only once if you skip.',
-    emoji: '🎬',
-    accent: 'teal',
-    questions: []
-  },
   {
     id: 'humor',
     kind: 'quiz',

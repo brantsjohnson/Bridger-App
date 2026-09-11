@@ -5,8 +5,9 @@
 // submitting / upvoting questions. Demo mode reads the fixture week; live mode
 // talks to the Nest /recap routes.
 //
-// RETENTION note: the podcast only includes clips from the rolling last 7 days;
-// you can only re-record once your own last set is a week old. The server owns
+// RETENTION note: this week's podcast uses the rolling last 7 days. Co-op
+// members can also open an earlier locked week (kept clips only). You can
+// only re-record once your own last set is a week old. The server owns
 // those rules — this file just relays what it returns.
 // ============================================
 import type {
@@ -15,13 +16,16 @@ import type {
   RecapAudience,
   RecapPlaylist,
   RecapSummaryDTO,
+  RecapWeeksDTO,
   Tier
 } from '@bridger/shared';
 import { isDemoMode } from '../lib/demo';
 import { apiFetch } from '../lib/api';
 import {
   RECAP_ANSWERS,
+  RECAP_ANSWERS_PREVIOUS,
   RECAP_WEEK,
+  RECAP_WEEK_PREVIOUS,
   SUBMITTED_QUESTIONS,
   type RecapWeek
 } from './fixtures/catalog';
@@ -29,6 +33,8 @@ import { personById } from './people';
 
 export type RecapSummary = {
   week: RecapWeek;
+  /** Monday UTC this week is locked to, YYYY-MM-DD. */
+  weekStart?: string;
   /** unique friends who recorded this week */
   voices: Person[];
   /** total audio length in whole minutes */
@@ -55,6 +61,7 @@ export async function getRecapWeek(): Promise<RecapSummary> {
     const seconds = RECAP_ANSWERS.reduce((n, a) => n + a.duration, 0);
     return {
       week: RECAP_WEEK,
+      weekStart: '2026-09-07',
       voices,
       minutes: Math.round(seconds / 60),
       questionCount: RECAP_WEEK.questions.length,
@@ -71,6 +78,7 @@ export async function getRecapWeek(): Promise<RecapSummary> {
         weekOf: dto.week.weekOf,
         questions: dto.week.questions
       },
+      weekStart: dto.week.weekStart,
       voices: dto.voiceIds.map((id) => personById(id)),
       minutes: dto.minutes,
       questionCount: dto.questionCount,
@@ -87,45 +95,82 @@ export async function getRecapWeek(): Promise<RecapSummary> {
   }
 }
 
-/** The full playlist for the player (clips grouped by question, tier-filtered). */
-export async function getRecapPlaylist(): Promise<RecapPlaylist> {
-  if (isDemoMode()) {
+function demoClips(
+  weekId: string,
+  answers: typeof RECAP_ANSWERS,
+  keepForever: boolean
+) {
+  return answers.map((a) => {
+    const created = new Date();
+    created.setDate(created.getDate() - (weekId === RECAP_WEEK.id ? 2 : 14));
+    const expires = keepForever
+      ? undefined
+      : new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
     return {
-      week: {
-        id: RECAP_WEEK.id,
-        weekOf: RECAP_WEEK.weekOf,
-        questions: RECAP_WEEK.questions
-      },
-      clips: RECAP_ANSWERS.map((a) => {
-        // Demo: stagger expiry so the player can show "Expires in N days".
-        const daysLeftByAuthor: Record<string, number> = {
-          maya: 7,
-          ines: 5,
-          devon: 2,
-          kit: 1,
-          nour: 7
-        };
-        const days = daysLeftByAuthor[a.authorId] ?? 7;
-        const created = new Date();
-        created.setDate(created.getDate() - (7 - days));
-        const expires = new Date(created);
-        expires.setDate(expires.getDate() + 7);
-        return {
-          id: `${a.authorId}-${a.questionIndex}`,
-          weekId: a.weekId,
-          authorId: a.authorId,
-          questionIndex: a.questionIndex,
-          audioUrl: a.audioUrl,
-          duration: a.duration,
-          visibleToTier: a.visibleToTier as RecapAudience,
-          createdAt: created.toISOString(),
-          expiresAt: expires.toISOString()
-        };
-      }),
-      voiceIds: Array.from(new Set(RECAP_ANSWERS.map((a) => a.authorId)))
+      id: `${a.authorId}-${weekId}-${a.questionIndex}`,
+      weekId: a.weekId,
+      authorId: a.authorId,
+      questionIndex: a.questionIndex,
+      audioUrl: a.audioUrl,
+      duration: a.duration,
+      visibleToTier: a.visibleToTier as RecapAudience,
+      createdAt: created.toISOString(),
+      expiresAt: expires
+    };
+  });
+}
+
+/** Weeks this listener may open. Co-op gets earlier locked weeks. */
+export async function listRecapWeeks(): Promise<RecapWeeksDTO> {
+  if (isDemoMode()) {
+    const { getMembership } = await import('./coop');
+    const member = (await getMembership()).member;
+    const current = {
+      id: RECAP_WEEK.id,
+      weekOf: RECAP_WEEK.weekOf,
+      isCurrent: true
+    };
+    if (!member) return { canBrowsePast: false, weeks: [current] };
+    return {
+      canBrowsePast: true,
+      weeks: [
+        current,
+        {
+          id: RECAP_WEEK_PREVIOUS.id,
+          weekOf: RECAP_WEEK_PREVIOUS.weekOf,
+          isCurrent: false
+        }
+      ]
     };
   }
-  return apiFetch<RecapPlaylist>('/recap/playlist');
+  return apiFetch<RecapWeeksDTO>('/recap/weeks');
+}
+
+/** The full playlist for the player (clips grouped by question, tier-filtered). */
+export async function getRecapPlaylist(weekId?: string): Promise<RecapPlaylist> {
+  if (isDemoMode()) {
+    const { getMembership } = await import('./coop');
+    const member = (await getMembership()).member;
+    const past = weekId === RECAP_WEEK_PREVIOUS.id;
+    if (past && !member) {
+      throw new Error('Earlier weeks are a co-op perk');
+    }
+    const week = past ? RECAP_WEEK_PREVIOUS : RECAP_WEEK;
+    const source = past ? RECAP_ANSWERS_PREVIOUS : RECAP_ANSWERS;
+    return {
+      week: {
+        id: week.id,
+        weekOf: week.weekOf,
+        questions: week.questions
+      },
+      clips: demoClips(week.id, source, past || member),
+      voiceIds: Array.from(new Set(source.map((a) => a.authorId))),
+      isCurrent: !past,
+      canBrowsePast: member
+    };
+  }
+  const q = weekId ? `?weekId=${encodeURIComponent(weekId)}` : '';
+  return apiFetch<RecapPlaylist>(`/recap/playlist${q}`);
 }
 
 export type PostRecapInput = {

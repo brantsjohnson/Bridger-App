@@ -45,7 +45,8 @@ export {
   personSummary,
   freshness,
   agentQuery,
-  agentReasoning
+  agentReasoning,
+  recapWeekFill
 } from './prompts';
 
 // Bridge playbooks: per-task manuals injected into personal_agent prompts.
