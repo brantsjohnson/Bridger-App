@@ -158,6 +158,7 @@ apps/api/src/
 ├── profiles/                   # the pool + the 3 layers (essential/profile/connection); Listening via music_picks + currently_song
 ├── music/                      # Spotify account link (not login), search, picks, top-artists sync, save-to-library
 ├── attributes/                 # individual tagged facts; every write sets visibility+matchable
+├── share/                      # opt-in interests export (off by default): owner GET/PATCH /me/share/interests + public GET /public/share/interests/:slug (or Bearer share-token) → sanitized tastes only (hobbies/movies/books/currently_book). Reads existing attributes; no parallel store. Table `interest_shares`.
 ├── activities/                 # weekly hosted activity/challenge: prompt, posts (in-app capture), double-tap hearts; admin on/off (see ADMIN.md)
 ├── connections/                # the ACT of connecting: requests, accept/decline, links, QR; records how-you-met (event/mutual/coarse place)
 ├── tiers/                      # sort people into close / friend / acquaintance

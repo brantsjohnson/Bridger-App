@@ -169,6 +169,13 @@ You may post a short quote on a sticky note and tag a friend who said it (and op
 - Viewers may always choose "View original" or a standing "always show plain pages" preference.
 - **Storage meter:** co-op members see used vs included media storage. Going over shows an overage price before any charge (current wave: display stub only; no silent charges). Free accounts use the rolling story window.
 
+### 7.6e Sharing your interests to your own website
+
+- This is **off by default.** If you turn it on in Settings, you are choosing to publish a **read-only** slice of your own tastes so a website you control (or a tool you point at it) can display them.
+- You pick which categories may leave the app: hobbies, favorite movies, favorite books, and what you are currently reading. Nothing else is ever exposed (no messages, friends, places, About Me answers, Top 5, matching data, or your name / email / photo).
+- Turning it on creates a **public link** (a random address) and a **secret token**. Anyone who has the link or token can read the categories you chose, without a Bridger login. Treat them like a shareable URL: share them only where you want those tastes seen. You can turn the switch off (which disables the link) or rotate the secret token at any time.
+- You are responsible for the content you choose to publish this way. The same acceptable-use rules apply to the facts you expose.
+
 ### 7.7 Events and chip-in
 
 - Hosts may mark events as repeating (weekly / monthly / yearly). You are responsible for the series you publish. Cancel or update the series from the event page.
@@ -266,6 +273,7 @@ You may post a short quote on a sticky note and tag a friend who said it (and op
 
 | Date | What was added / changed |
 |---|---|
+| 2026-09-11 | Opt-in interests export (7.6e): off by default; publish read-only hobbies / movies / books / current read to your own site via a public link or secret token. You choose the categories and can turn it off or rotate the token anytime. |
 | 2026-09-10 | Founder-only software agents (e.g. Grokbot) are not part of the member product and are not Billy. |
 | 2026-09-09 | Inside Jokes: you are responsible for tagged quotes and any co-op photo you attach. Same report / block rules as other UGC. |
 | 2026-09-09 | Profile photo looks preview on your phone (not AI). The saved avatar still uses Bridger's own image tool. |
