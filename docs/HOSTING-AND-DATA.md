@@ -18,10 +18,21 @@ guide-docs/DATA.md; for the AWS stacks see infra/aws/.
 ============================================
 -->
 
-# Bridger — Hosting & Data Map
+# Bridger - Hosting & Data Map
 
 Last audited from the `main` tree. This is a factual map, not a plan. Sources
 are cited inline as `path/to/file`.
+
+**Two kinds of evidence in this doc:**
+
+- **(repo)** - proven by a file in this repository, named next to the claim.
+- **(ops-verified)** - confirmed by the Bridger GM as true in the live
+  production account (AWS / Supabase / Expo / RevenueCat dashboards) on
+  2026-09-11. These are things the repo cannot prove on its own (dashboard IDs,
+  what is actually deployed, beta size). Anything the GM has **not** confirmed
+  and the repo cannot prove is marked **UNKNOWN**.
+
+Known production gaps are collected in §9.
 
 ---
 
@@ -55,8 +66,12 @@ definition, so this is pieced together from concrete identifiers:
   quiz, and event links (`apps/mobile/app.config.js`,
   `apps/site/public/.well-known/README.md`).
 
-UNKNOWN: whether "Bridger.Social" is a distinct sub-product or just the brand /
-domain. The repo only supports the domain / brand reading above.
+**(ops-verified)** There is a real **naming / repo split**: the live engineering
+repo and product are **Bridger-App** (this repo, `github.com/brantsjohnson/Bridger-App`,
+Supabase project "Bridger-App-db"), while **Bridger.Social** is the older brand /
+domain name (and an older site repo). They are not two live products; the
+day-to-day build happens under Bridger-App. See §9 for the gap this creates.
+Instagram handle is `bridger.social` (ops-verified).
 
 ---
 
@@ -84,7 +99,14 @@ domain. The repo only supports the domain / brand reading above.
   (`/invite`, `/q`, `/e`) are declared with `autoVerify: true` but need the
   hosted `assetlinks.json` SHA-256 filled in
   (`apps/site/public/.well-known/assetlinks.json`, `.well-known/README.md`).
-- CI does **not** run EAS builds yet (`guide-docs/INFRASTRUCTURE.md`).
+- `EXPO_PUBLIC_AUTH_MODE=legacy` (Google / Apple / email) on both `preview` and
+  `production`; demo unlock is off on `production` (`apps/mobile/eas.json`) **(repo)**.
+- CI does **not** run EAS builds yet (`guide-docs/INFRASTRUCTURE.md`) **(repo)**.
+  **(ops-verified)** No TestFlight build has gone out from the recent PRs #31-#36;
+  native shipping is still manual and not wired into CI.
+- **(ops-verified)** Beta footprint is roughly **25 phones** (small internal beta).
+- **(ops-verified)** RevenueCat is still on the **Test Store** only - see §5; no
+  real in-app purchases are live yet.
 
 ---
 
@@ -95,31 +117,41 @@ Infrastructure is AWS CDK in `infra/aws/` (TypeScript), split into two stacks
 
 - **Region: `us-east-1`** for all AWS resources. Chosen because App Runner is
   not offered in Canada and `us-east-1` is nearest to the Supabase database
-  region (documented as `ca-central-1`) — see `infra/aws/bin/bridger.ts` and
+  region (documented as `ca-central-1`) - see `infra/aws/bin/bridger.ts` and
   `infra/aws/README.md`.
 
-### `BridgerServiceStack` — the API (`infra/aws/lib/service-stack.ts`)
+### `BridgerServiceStack` - the API (`infra/aws/lib/service-stack.ts`)
 
 - **AWS App Runner** service named `bridger-api`.
 - Runs the NestJS container built from `apps/api/Dockerfile` (build context is
   the repo root; forced to `linux/amd64`; image pushed to ECR by CDK).
-- Container port `3000`; health check `GET /health`
-  (`apps/api/src/health/health.controller.ts`).
+- Container port `3000`. Two health surfaces **(repo + ops-verified)**:
+  - `GET /health` is **shallow** (App Runner liveness only)
+    (`apps/api/src/health/health.controller.ts`).
+  - `GET /admin/integrations/health` is the **deep** check of every outbound
+    dependency (`apps/api/src/admin/integrations-health.service.ts`).
 - Size: `0.25 vCPU` / `0.5 GB`; `autoDeploymentsEnabled: false` (deploys are on
   purpose, not on every image push).
 - Instance role is least-privilege: it may read only the one server secret and
   decrypt it via that secret's KMS key.
-- Secret env fields are injected at runtime from Secrets Manager (see §7).
+- Secret env fields are injected at runtime from Secrets Manager (see §7). At
+  boot Nest reads the whole vault named by `BRIDGER_SERVER_SECRET_NAME`
+  (`bridger/api/server`) so later-added fields are used **(repo + ops-verified)**.
+- **Inbound webhooks** land on this service **(repo + ops-verified)**:
+  - RevenueCat → `POST /coop/webhooks/revenuecat`
+  - Stripe → `POST /coop/webhooks/stripe`
+  (`apps/api/src/coop/`, `apps/api/.env.example`).
 
 **Public API base URL:** `https://jiyzei8qqu.us-east-1.awsapprunner.com`
-(the value baked into every EAS build profile as `EXPO_PUBLIC_API_URL` in
-`apps/mobile/eas.json`). This matches the "known hint" in the audit request.
-The exact value is otherwise only printed at deploy time as the `ApiUrl` stack
-output. UNKNOWN: whether a custom API domain (e.g. `api.bridger.social`) is in
-front of it in production — `API_PUBLIC_URL` exists as a config field but no
-value lives in the repo.
+**(ops-verified as the live production API)** - also the value baked into every
+EAS build profile as `EXPO_PUBLIC_API_URL` in `apps/mobile/eas.json` **(repo)**.
+This matches the audit hint. `API_PUBLIC_URL` and `APP_WEB_URL` exist as config
+fields; **(ops-verified)** `APP_WEB_URL` is intended to be `https://bridger.social`.
+UNKNOWN: whether a custom API domain (e.g. `api.bridger.social`) fronts App
+Runner in production - no such value lives in the repo and the GM did not
+confirm one.
 
-### `BridgerFoundationStack` — secrets + web hosting (`infra/aws/lib/foundation-stack.ts`)
+### `BridgerFoundationStack` - secrets + web hosting (`infra/aws/lib/foundation-stack.ts`)
 
 - **AWS Secrets Manager** secret `bridger/api/server`, encrypted with a
   dedicated **KMS** key (yearly rotation, `RETAIN` on delete). Starts empty; real
@@ -142,16 +174,17 @@ alternative, but the committed CDK uses App Runner.)
 - **Supabase** provides Postgres + pgvector + Auth + Storage + Row-Level
   Security (`guide-docs/DATA.md` §2, `guide-docs/ARCHITECTURE.md`). There is **no
   Prisma** in the tree despite `ARCHITECTURE.md` mentioning an `infra/prisma`
-  folder — the schema is raw SQL migrations under `infra/supabase/migrations/`
-  (59 numbered files).
-- **Project ref / id:** `fewtcanrxmdzyqhlgpdr` — API URL
-  `https://fewtcanrxmdzyqhlgpdr.supabase.co` (`apps/mobile/eas.json`
-  `EXPO_PUBLIC_SUPABASE_URL`). Informally called **"Bridger-App-db"** in the
-  audit request; this project ref matches the hint.
+  folder - the schema is raw SQL migrations under `infra/supabase/migrations/`
+  (60 numbered files).
+- **Project name / ref / id:** **"Bridger-App-db"**, ref `fewtcanrxmdzyqhlgpdr`
+  - API URL `https://fewtcanrxmdzyqhlgpdr.supabase.co` **(ops-verified)**. The
+  ref matches `EXPO_PUBLIC_SUPABASE_URL` baked into `apps/mobile/eas.json`
+  **(repo)**. The app reads `EXPO_PUBLIC_SUPABASE_URL` + the publishable key from
+  `eas.json` at build time.
 - **Postgres major version 17** (`infra/supabase/config.toml`).
 - **Connection style:**
   - The app (client) uses the public URL + a **publishable** key
-    `sb_publishable_...` (safe to ship; RLS protects data) — `apps/mobile/eas.json`,
+    `sb_publishable_...` (safe to ship; RLS protects data) - `apps/mobile/eas.json`,
     `apps/mobile/.env.example`.
   - The API (server) uses the **secret** key `sb_secret_...`
     (`SUPABASE_SECRET_KEY`) via `@supabase/supabase-js`, bypassing RLS as trusted
@@ -179,15 +212,39 @@ The schema is domain-grouped. Highlights, keyed by privacy zone:
   `touch_grass`, weekly activities, `scrapbook_pages` / `scrapbook_elements`
   (Collage), recap podcast tables.
 - **AI / RAG (Zone C / derived, deletable):** `person_embeddings`,
-  `person_summaries` (pgvector; RLS on, no policy — server-only by design).
+  `person_summaries` (pgvector; RLS on, no policy - server-only by design).
 - **Membership & payments:** `coop_memberships`, `coop_promo_codes`,
-  `coop_promo_redemptions`, payment-provider tables.
+  `coop_promo_redemptions`, payment-provider tables, plus **`coop_waitlist`**
+  (co-op signup waitlist) - `infra/supabase/migrations/0024_coop_portal.sql`
+  **(repo + ops-verified)**.
+- **Public interests share:** **`interest_shares`** - one opt-in row per person
+  (master `enabled` OFF by default, `slug`, `share_token`, and four taste
+  checkboxes). Added by `infra/supabase/migrations/0058_interest_share.sql`,
+  landed on `main` via PR #35. The tastes themselves stay in `attributes`; this
+  table only records the choice to expose a read-only slice **(repo + ops-verified)**.
 - **Admin / config:** `admin_config`, quizzes / `quiz_registry`, notifications,
   delights, announcements, `client_not_found_hits`.
 
 Privacy invariants (RLS everywhere, hard-delete cascades, AI never sees PII) are
-enforced at the DB layer — see `guide-docs/DATA.md` and
+enforced at the DB layer - see `guide-docs/DATA.md` and
 `infra/supabase/README.md`.
+
+### Public interests share (opt-in personal-site feed)
+
+A small, opt-in feature that lets a person expose a read-only slice of their
+tastes to their own website. Routes live in `apps/api/src/share/`
+(`interest-share.controller.ts`) **(repo + ops-verified)**:
+
+- Owner (logged in): `GET /me/share/interests` (read my switch, link/token, and
+  checkboxes) and `PATCH /me/share/interests` (turn on/off, choose fields).
+- Public (no login): `GET /public/share/interests/:slug` (by friendly link) and
+  `GET /public/share/interests` (by secret Bearer-style token).
+
+Default is **OFF** (nothing is public until the owner opts in); the public view
+returns only the four allowed taste categories, never messages, friends, places,
+About answers, or matching internals. **(ops-verified gap, see §9)** For a live
+`:slug` to work in production, the `0058` migration must be applied to the
+Bridger-App-db project **and** the API must be redeployed on App Runner.
 
 ---
 
@@ -202,7 +259,7 @@ Every outbound integration also has a non-secret health probe in
 | **Supabase Auth** | Email + Google + Apple sign-in; phone OTP | `guide-docs/DATA.md`, `apps/mobile/.env.example`, `infra/supabase/config.toml` |
 | **Twilio** | SMS provider behind Supabase Auth phone OTP | `config.toml [auth.sms.twilio]`, `integrations-health.service.ts` (`TWILIO_*`) |
 | **Resend** | Transactional email (co-op portal notifications) | `RESEND_API_KEY`, `COOP_IDEA_REVIEW_EMAIL=hello@bridger.social` (`apps/api/.env.example`) |
-| **RevenueCat** | iOS / Android co-op membership IAP; product `social_bridger_app_pro` (`monthly` / `yearly`); webhook `POST /coop/webhooks/revenuecat` | `guide-docs/INFRASTRUCTURE.md`, `REVENUECAT_WEBHOOK_SECRET` |
+| **RevenueCat** | iOS / Android co-op membership IAP; project `proj36ebfcd1`, entitlement `social_bridger_app_pro` (`monthly` / `yearly`); currently **Test Store only** (no real IAP live); webhook `POST /coop/webhooks/revenuecat` | `guide-docs/INFRASTRUCTURE.md`, `REVENUECAT_WEBHOOK_SECRET` (repo); project id + Test-Store status (ops-verified) |
 | **Stripe** | Web card membership; Checkout `POST /coop/checkout/stripe`, webhook `POST /coop/webhooks/stripe`; prefers restricted `rk_` keys | `apps/api/package.json` (`stripe` dep), `apps/api/.env.example`, `apps/api/src/coop/stripe.service.ts` |
 | **Anthropic (Claude)** | Summaries + quiz moderation; server-side only | `ANTHROPIC_API_KEY` |
 | **OpenAI** | Embeddings; server-side only | `OPENAI_API_KEY` |
@@ -213,7 +270,7 @@ Every outbound integration also has a non-secret health probe in
 
 Payments note: Stripe Connect is **not** used for co-op dues (dues pay Bridger;
 peer chip-in handles like Venmo / Cash App are plain text links, never processed)
-— `guide-docs/INFRASTRUCTURE.md`.
+- `guide-docs/INFRASTRUCTURE.md`.
 
 ---
 
@@ -221,15 +278,22 @@ peer chip-in handles like Venmo / Cash App are plain text links, never processed
 
 | Domain | Purpose | Evidence |
 |---|---|---|
-| `bridger.social` (+ `www.bridger.social`) | Marketing site + brand; contact `hello@bridger.social` | `infra/aws/bin/bridger.ts`, `apps/site/public/index.html`, `apps/api/.env.example` |
-| `bridger.app` | Deep links / Universal + App Links: `/invite/<token>`, `/q/<token>`, `/e/<id>` | `apps/mobile/app.config.js`, `apps/site/public/.well-known/` |
-| `jiyzei8qqu.us-east-1.awsapprunner.com` | Current public API base (App Runner default host) | `apps/mobile/eas.json` |
+| `bridger.social` (+ `www.bridger.social`) | Marketing + co-op site + brand; contact `hello@bridger.social`; Instagram `bridger.social` | `infra/aws/bin/bridger.ts`, `apps/site/public/index.html`, `apps/api/.env.example` (repo); marketing/co-op + IG (ops-verified) |
+| `bridger.app` | Deep links / Universal + App Links: `/invite/<token>`, `/q/<token>`, `/e/<id>`, plus the `bridger://` custom scheme | `apps/mobile/app.config.js`, `apps/site/public/.well-known/` |
+| `jiyzei8qqu.us-east-1.awsapprunner.com` | Live public API base (App Runner default host) | `apps/mobile/eas.json` (repo); live (ops-verified) |
 | `*.cloudfront.net` | Default web + admin CDN hosts until custom domains are attached | `infra/aws/lib/foundation-stack.ts` |
-| `fewtcanrxmdzyqhlgpdr.supabase.co` | Supabase API host for the DB project | `apps/mobile/eas.json` |
+| `fewtcanrxmdzyqhlgpdr.supabase.co` | Supabase API host for the Bridger-App-db project | `apps/mobile/eas.json` |
+
+Universal Links are still gated by placeholder credentials: the `.well-known`
+association files use `REPLACE`-style Team ID / SHA-256 placeholders, so
+`https://bridger.app/...` links do not yet verify and the `bridger://` scheme is
+the working path (`apps/site/public/.well-known/`, `apps/mobile/app.config.js`)
+**(repo + ops-verified)**.
 
 UNKNOWN: whether `bridger.social` and `bridger.app` DNS are pointed at the
 CloudFront distributions / App Runner today (the CDK supports custom web domains
-via env vars, but no committed value proves the live DNS wiring).
+via env vars, but no committed value proves the live DNS wiring, and the GM did
+not confirm the DNS records).
 
 ---
 
@@ -239,7 +303,7 @@ via env vars, but no committed value proves the live DNS wiring).
   to `main`: install (pnpm), `pnpm build`, `pnpm typecheck`, `pnpm test`. There
   is **no automated deploy** in CI yet (no EAS, no App Runner rollout, no S3
   sync in the workflow).
-- **API deploy (manual, CDK):** per `infra/aws/README.md` —
+- **API deploy (manual, CDK):** per `infra/aws/README.md` -
   1. `pnpm --filter @bridger/infra deploy BridgerFoundationStack` (secret vault +
      web hosting).
   2. Fill the secret with `node infra/aws/scripts/seed-secret.mjs` (write-only;
@@ -282,7 +346,7 @@ via env vars, but no committed value proves the live DNS wiring).
 `AWS_REGION`, `PORT`.
 (Canonical field list: `infra/aws/server-secret-keys.json`.)
 
-### Mobile app — public only (`apps/mobile/.env.example`, `apps/mobile/eas.json`)
+### Mobile app - public only (`apps/mobile/.env.example`, `apps/mobile/eas.json`)
 
 `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
 `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_POSTHOG_KEY`, `EXPO_PUBLIC_POSTHOG_HOST`,
@@ -306,13 +370,35 @@ committed).
 
 ---
 
-## 9 · Open UNKNOWNs (not in the repo; do not guess)
+## 9 · Known gaps and open UNKNOWNs
+
+### Ops-verified gaps (real today, called out by the GM)
+
+- **Naming / repo split.** Live engineering is **Bridger-App** (this repo +
+  "Bridger-App-db"); **Bridger.Social** is the older brand/domain with an older
+  site repo. Watch for stale references pointing at the old site repo.
+- **Old marketing site repo.** `apps/site` here is only a static landing page;
+  the older Bridger.Social site lives in a separate/older repo. Confirm which one
+  actually serves `bridger.social` before editing marketing content.
+- **No EAS in CI.** CI runs checks only; native builds / TestFlight are manual.
+  Recent PRs #31-#36 did not produce a TestFlight build.
+- **RevenueCat is Test Store only** (project `proj36ebfcd1`, entitlement
+  `social_bridger_app_pro`). No real IAP is live; do not treat membership
+  purchase as production-ready.
+- **Interests share is not live in prod yet.** For a `:slug` link to resolve,
+  migration `0058_interest_share.sql` must be applied to Bridger-App-db **and**
+  the App Runner API must be redeployed. Until both happen, the public route
+  returns not-found.
+- **Universal Links unverified.** `.well-known` files still hold `REPLACE`
+  placeholders; only the `bridger://` scheme works today.
+
+### UNKNOWN (neither repo nor GM confirmed)
 
 - Live DNS wiring of `bridger.social` / `bridger.app` to CloudFront / App Runner.
 - Whether a custom API domain fronts App Runner in production (`API_PUBLIC_URL`
   has no committed value).
 - The actual Supabase project region (documented `ca-central-1`, not verifiable
-  in-repo).
-- AWS account id / any per-environment (staging vs prod) split — the CDK uses a
+  in-repo or by the GM here).
+- AWS account id / any per-environment (staging vs prod) split - the CDK uses a
   single account from active credentials and one region.
 - Real values of any secret (by design: the vault ships empty).
