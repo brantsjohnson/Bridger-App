@@ -2,7 +2,7 @@
 
 > **WHAT THIS FILE IS:** the permanent contract for how Bridger protects Zone A and sensitive content at rest, who can decrypt what, and how keys are stored so a single breach (database dump, one vault, or one laptop) is not enough to read member PII or message bodies.
 >
-> **STATUS:** Pass 2 (docs only, September 2026). Describes the target architecture and rollout phases. Implementation, production key cutover, and mass re-encrypt migrations remain **out of scope** until a later engineering pass.
+> **STATUS:** Pass 3 (September 2026) added Nest crypto **stubs** and nullable SQL columns only. Pass 2 docs remain the architecture source. Production key cutover, mass re-encrypt, and reads from ciphertext columns remain **out of scope** until a later pass.
 >
 > **RELATED:** `DATA.md` (zones A/B/C, RLS, deletion), `INFRASTRUCTURE.md` (hosting, Secrets Manager, KMS), `docs/PRIVACY.md` (member-facing promises), `AI-SYSTEM.md` (PII firewall for models), `complete/MESSAGES.md` (E2E DM contract), `ADMIN.md` (integrations health; no secret values in health JSON).
 
@@ -316,3 +316,4 @@ Encryption docs do not replace `AI-SYSTEM.md`; they reinforce it:
 |---|---|
 | 2026-09-11 | Pass 1: breach-ready split-key architecture, Phases 1 / 1b / 2, AI boundaries, break-glass, non-goals. Docs only. |
 | 2026-09-11 | Pass 2: attack scenarios, media ciphertext paths, rotation runbook, canary + decrypt audit, loader/payload checklist, table mapping. Docs only. |
+| 2026-09-11 | Pass 3: `apps/api/src/crypto/` interfaces + fake KMS tests; migration `0059_phase1_phone_crypto_columns_stub.sql` (nullable parallel columns); split-lockbox env names in `crypto.constants.ts`. No cutover. |
