@@ -68,6 +68,7 @@ import {
   type FavItem
 } from './fixtures/profile-questions';
 import { FRIEND_PROFILES, type FriendProfile } from './fixtures/friend-profiles';
+import { compactValues, compactSortedByOrder } from './profile.math';
 
 export type {
   AboutField,
@@ -387,26 +388,30 @@ export const HOBBY_FOLLOW_UPS = new Proxy({} as Record<string, HobbyFollowUp>, {
 export async function listFavs(): Promise<FavGroup[]> {
   if (isDemoMode()) return demoFavs.map((g) => ({ ...g, items: [...g.items] }));
   const rows = await fetchAttributes<FavGroup>('fav');
-  return rows.map((r) => r.value);
+  // Drop any partial rows with no value so a broken API response can't crash the card.
+  return compactValues(rows);
 }
 
 export async function listThisOrThat(): Promise<ThisOrThatRow[]> {
   if (isDemoMode()) return demoThisOrThat.map((t) => ({ ...t }));
   const rows = await fetchAttributes<ThisOrThatRow>('thisOrThat');
-  return rows.map((r) => r.value);
+  // Drop any partial rows with no value so a broken API response can't crash the card.
+  return compactValues(rows);
 }
 
 export async function listTravelPlaces(): Promise<TravelPlace[]> {
   if (isDemoMode()) return demoPlaces.map((p) => ({ ...p }));
   const rows = await fetchAttributes<TravelPlace>('place');
-  return rows.map((r) => r.value);
+  // Drop any partial rows with no value so a broken API response can't crash the map.
+  return compactValues(rows);
 }
 
 /** Top 5 ordered identity lines. */
 export async function listTop5(): Promise<Top5Item[]> {
   if (isDemoMode()) return demoTop5.map((t) => ({ ...t }));
   const rows = await fetchAttributes<Top5Item>('top5');
-  return rows.map((r) => r.value).sort((a, b) => a.order - b.order);
+  // Drop empty rows BEFORE sorting so the .order comparator never reads a null.
+  return compactSortedByOrder(rows);
 }
 
 /** Attach Listening catalog fields onto obsession squares when we have a pick. */
@@ -481,7 +486,8 @@ export async function listObsession(): Promise<ObsessionSquare[]> {
     return withListeningMusic(demoObsession.map((o) => ({ ...o })));
   }
   const rows = await fetchAttributes<ObsessionSquare>('obsession');
-  let squares = rows.map((r) => r.value).sort((a, b) => a.order - b.order);
+  // Drop empty rows BEFORE sorting so the .order comparator never reads a null.
+  let squares = compactSortedByOrder(rows);
 
   // THIS SECTION DOES: surface the canonical currently_song as a Listening
   // square when obsession modules haven't filled one yet (onboarding seed).
