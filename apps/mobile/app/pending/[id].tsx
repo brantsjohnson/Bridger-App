@@ -27,7 +27,15 @@ import {
 import { sendInviteToContact } from '../../lib/invite-from-contacts';
 
 export default function PendingProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // ROUTING: deep links and rapid nav can hand us an array or "id1,id2", so we
+  // keep only the first real segment to give the loader one clean id.
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id =
+    typeof params.id === 'string'
+      ? params.id
+      : Array.isArray(params.id)
+        ? params.id[0]
+        : undefined;
   const router = useRouter();
   const [person, setPerson] = useState<PendingPerson | null>(null);
   const [inviting, setInviting] = useState(false);

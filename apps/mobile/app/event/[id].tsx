@@ -89,7 +89,15 @@ function openMaps(event: EventItem) {
 }
 
 export default function EventDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // ROUTING: deep links and rapid nav can hand us an array or "id1,id2", so we
+  // keep only the first real segment to give the loader one clean id.
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id =
+    typeof params.id === 'string'
+      ? params.id
+      : Array.isArray(params.id)
+        ? params.id[0]
+        : undefined;
   const router = useRouter();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -109,8 +117,9 @@ export default function EventDetailScreen() {
   }, []);
 
   useEffect(() => {
+    if (!id) return;
     let alive = true;
-    void getEvent(String(id)).then((e) => {
+    void getEvent(id).then((e) => {
       if (!alive) return;
       setEvent(e);
       if (e?.role === 'going') setRsvp('going');
@@ -132,7 +141,8 @@ export default function EventDetailScreen() {
   }, [id]);
 
   async function refresh() {
-    const e = await getEvent(String(id));
+    if (!id) return;
+    const e = await getEvent(id);
     setEvent(e);
   }
 
@@ -779,7 +789,7 @@ export default function EventDetailScreen() {
             ) : null}
 
             {/* --- PHOTO ALBUM (updates tagged to this event) --- */}
-            {!isOutsider && id ? <EventPhotoAlbum eventId={String(id)} /> : null}
+            {!isOutsider && id ? <EventPhotoAlbum eventId={id} /> : null}
 
             {/* --- WHO YOU SHOULD MEET (guests on the list) --- */}
             {!isHost && !isOutsider && meet.length > 0 ? (
