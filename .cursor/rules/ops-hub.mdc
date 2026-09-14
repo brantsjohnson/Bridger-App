@@ -1,0 +1,19 @@
+---
+description: The shared agent hub in ops/ (queue, handoffs, bugs, risk tiers) and the branch/PR protocol every Cursor session follows so Claude and Grokbot can pick up where Cursor leaves off.
+alwaysApply: true
+---
+
+# Ops hub: work the queue, leave a trail
+
+Cursor is one of three agents on this repo (with Claude and Grokbot). The shared desk is `ops/`. Read `AGENTS.md` at the repo root once per session.
+
+1. **Start** with `pnpm ops list`. Items with `owner: cursor` are yours, in priority order (p0 first). If Brant gives you a new ask, create a queue file first (`pnpm ops new "Title" --owner cursor --risk low --area mobile`) so the work survives the session.
+2. **Claim** before building: `pnpm ops claim <id> cursor`.
+3. **Branch** `cursor/<id>-<slug>` from `main`. Never commit to `main`.
+4. **Bugs** go in `ops/BUGS.md` before you fix them. Reference the bug id in the PR.
+5. **PR** with the template. Cite the queue id. CI adds `risk:low` or `risk:high` by path (`ops/RISK-TIERS.md`). Never remove `risk:high`. Low-risk PRs auto-merge when CI is green.
+6. **Need someone else?** Follow `ops/runbooks/handoff-protocol.md`: append to `ops/HANDOFFS.md` with `@claude` / `@grokbot` / `@brant` and reassign the queue file.
+7. **Finish**: `pnpm ops done <id> --pr <url>`, and close the bug row if there was one.
+8. **Cursor Bugbot** reviews every PR. Treat its comments like a teammate's: fix or reply, do not ignore.
+
+Everything else (Magic Patterns, analytics taxonomy, PRIVACY/TERMS, plain-language comments, no em dashes) is unchanged and still applies.

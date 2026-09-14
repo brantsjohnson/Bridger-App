@@ -6,6 +6,8 @@ This is **not** a Bridger product feature for members. It is **not** Billy.
 
 ---
 
+> **Where the work lives:** the shared desk for Grokbot, Claude, and Cursor is `ops/` at the repo root (`ops/README.md`). Queue, handoffs, bugs, risk tiers, and nightly reports live there. Seat living memory stays in this file.
+>
 > **New Grokbot session? Read `GROKBOT-BRIEF.md` first.** It is the complete, detailed orientation to the whole project (scope, tabs, features, backend, data/AI/privacy, build status) plus this founder-only boundary. This file stays the boundary contract **and** the living org chart for every founder agent role. The brief is the product map; this file is the company-of-agents map.
 
 ---
@@ -170,13 +172,13 @@ No seat ships alone. QA + Legal eyes get louder as soon as we have member accoun
 **Living memory:**
 | Field | Notes |
 |---|---|
-| Last active | 2026-09-10: org chart authored; wire-up still planned |
-| Owns right now | Keep FOUNDER-AGENTS.org current; orient new sessions via GROKBOT-BRIEF |
-| Done recently | Boundary contract + company-of-agents org written |
-| Open risks | No dedicated QA gate yet before account/email era |
-| Waiting on founder | When to split seats vs stay single-hat; preferred memory store |
-| Hands off to | QA, Legal, Cyber as soon as accounts/email ship |
-| Tools in play | Cursor, this repo, INDEX.md, GROKBOT-BRIEF.md |
+| Last active | 2026-09-14: shared ops hub landed (`ops/`); Claude joins as nightly triage, analytics, and low-risk fixer |
+| Owns right now | Keep FOUNDER-AGENTS current; orient new sessions via GROKBOT-BRIEF; work `@grokbot` tags in `ops/HANDOFFS.md` |
+| Done recently | Boundary contract + org chart (09-10); coordination protocol, queue, risk tiers, CI auto-merge (09-14, with Claude) |
+| Open risks | Leaked Magic Patterns token on a public repo (ops/queue/001); no automated QA gate yet; GitHub write access for Claude pending (ops/queue/002) |
+| Waiting on founder | Token rotation + repo private; repo settings for auto-merge; which mailbox is customer service |
+| Hands off to | Finance seat: ops/queue/005; Marketing seat: ops/queue/008; QA, Legal, Cyber as soon as accounts/email ship |
+| Tools in play | Cursor, Claude (Cowork), this repo, INDEX.md, GROKBOT-BRIEF.md, ops/ |
 
 ---
 
@@ -716,4 +718,5 @@ Update this table as real vendors settle. Agents should not invent spend.
 | Date | Note |
 |---|---|
 | 2026-09-10 | Contract added: founder-only Grokbot intent; not Billy; may update software under standing rules; access private to founder. |
+| 2026-09-14 | Shared ops hub added at `ops/` (queue, handoffs, bugs, decisions, risk tiers, runbooks, nightly reports). Claude (Cowork) joins as a third agent: nightly triage, analytics watcher, docs, low-risk fixes on branches. Risk-tiered auto-merge in CI. Memory store decision answered: the repo. |
 | 2026-09-10 | Company-of-agents org chart added: Chief of Staff, Product, Eng (FE/BE/UX), QA release gate, Cyber, Legal scan, Analytics, PR/podcasts/press, Marketing/SEO/Brand, announcements, Sales, Finance, timesheets, entity ops, Consultant, Support prep; living memory + release swarm + invoke patterns. |
