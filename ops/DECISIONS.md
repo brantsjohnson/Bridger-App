@@ -9,3 +9,4 @@ Append only. Product and spec decisions also get logged in `guide-docs/INDEX.md`
 | 2026-09-14 | Risk is decided by path (see `ops/RISK-TIERS.md`) and enforced by CI label plus CODEOWNERS, not by agent judgment | Judgment drifts; paths do not | Claude, pending Brant confirm |
 | 2026-09-14 | Branch naming `<owner>/<queue-id>-<slug>`; PR body must cite the queue id | Lets the nightly report tie merges to work items automatically | Claude |
 | 2026-09-14 | Priority order for Claude's first weeks: agent coordination, then bug triage, then PostHog depth, then Figma component library | Brant's pick 2026-09-14 | Brant |
+| 2026-09-14 | Set up GitHub for Claude (push, PR, repo settings) via a fine-grained PAT Brant generated and pasted in chat, rather than the Cowork GitHub-source picker | Brant is non-technical; doing the GitHub setup directly was faster and less confusing than walking him through settings pages | Brant, Claude |
