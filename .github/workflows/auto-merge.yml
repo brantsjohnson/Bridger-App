@@ -1,0 +1,40 @@
+# ============================================
+# WHAT THIS FILE DOES (plain English):
+# Turns on GitHub's own auto-merge for pull requests labeled "risk:low". GitHub
+# then merges the PR by itself the moment every required check (CI, secret
+# scan) is green and branch protection is satisfied. If the label is removed
+# or "risk:high" appears, auto-merge is switched off again. Needs "Allow
+# auto-merge" enabled in the repo settings (see ops/RISK-TIERS.md).
+# ============================================
+name: Auto-merge low risk
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, synchronize, opened, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  toggle:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Enable or disable auto-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const labels = pr.labels.map(l => l.name);
+            const eligible = labels.includes('risk:low') && !labels.includes('risk:high') && !labels.includes('risk:block');
+            const q = eligible
+              ? `mutation($id: ID!) { enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) { clientMutationId } }`
+              : `mutation($id: ID!) { disablePullRequestAutoMerge(input: {pullRequestId: $id}) { clientMutationId } }`;
+            try {
+              await github.graphql(q, { id: pr.node_id });
+              core.info(`${eligible ? 'Enabled' : 'Disabled'} auto-merge on #${pr.number}`);
+            } catch (e) {
+              // Common causes: auto-merge not allowed in repo settings, or PR already mergeable with no protection.
+              core.warning(`Could not toggle auto-merge on #${pr.number}: ${e.message}`);
+            }

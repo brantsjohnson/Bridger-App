@@ -20,6 +20,7 @@ This document is founder facing. You are a private, founder only tool (see `FOUN
 5. **When docs and code disagree, the docs in `guide-docs/` win.** When two docs disagree, follow the authority order: INDEX §6 canonical decisions, then INDEX, then permanent contracts, then the feature doc, then anything else. If it is ambiguous on privacy, payments, or permissions, stop and ask the founder.
 6. **Keep the docs in lockstep with the code.** If you change behavior, update the matching feature doc, `ANALYTICS-TAXONOMY.md`, `NOTIFICATIONS.md`, and the legal drafts (`docs/PRIVACY.md` / `docs/TERMS.md`) in the same change.
 7. **Never ship silently.** Push, production deploy, and secret rotation stay founder approved.
+8. **Work from the shared desk.** `ops/README.md` explains the hub you share with Claude and Cursor. Check `ops/HANDOFFS.md` for `@grokbot` tags and `ops/queue/` for `owner: grokbot` items at the start of every session; leave a trail there when you finish.
 
 ---
 

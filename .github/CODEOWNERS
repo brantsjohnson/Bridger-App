@@ -1,0 +1,35 @@
+# ============================================
+# WHAT THIS FILE DOES (plain English):
+# Tells GitHub which paths need Brant's review before they can merge. This is
+# the hard enforcement behind ops/RISK-TIERS.md: even if a label is wrong,
+# branch protection with "require review from Code Owners" blocks a merge on
+# these paths until @brantsjohnson approves. Keep in lockstep with
+# scripts/risk-tier.mjs.
+# ============================================
+/apps/api/src/auth/                 @brantsjohnson
+/apps/api/src/coop/                 @brantsjohnson
+/apps/api/src/me/                   @brantsjohnson
+/apps/api/src/posthog/              @brantsjohnson
+/apps/api/src/load-server-secret*   @brantsjohnson
+/apps/api/src/admin/                @brantsjohnson
+/apps/mobile/app/(auth)/            @brantsjohnson
+/apps/mobile/app/onboarding/        @brantsjohnson
+/apps/mobile/lib/analytics-*.ts     @brantsjohnson
+/apps/mobile/lib/posthog-sink.ts    @brantsjohnson
+/apps/mobile/PrivacyInfo.xcprivacy  @brantsjohnson
+/apps/mobile/app.config.js          @brantsjohnson
+/apps/mobile/app.json               @brantsjohnson
+/apps/mobile/eas.json               @brantsjohnson
+/packages/permissions/              @brantsjohnson
+/packages/shared/src/analytics/     @brantsjohnson
+/infra/                             @brantsjohnson
+/supabase/                          @brantsjohnson
+/guide-docs/docs/PRIVACY.md         @brantsjohnson
+/guide-docs/docs/TERMS.md           @brantsjohnson
+/guide-docs/DATA.md                 @brantsjohnson
+/guide-docs/INFRASTRUCTURE.md       @brantsjohnson
+/.github/                           @brantsjohnson
+/.cursor/mcp.json                   @brantsjohnson
+/.mcp.json                          @brantsjohnson
+**/.env*                            @brantsjohnson
+**/*.sql                            @brantsjohnson

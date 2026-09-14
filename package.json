@@ -2,7 +2,7 @@
   "name": "bridger",
   "version": "0.0.1",
   "private": true,
-  "description": "Bridger — a private friendship/community app. Monorepo root.",
+  "description": "Bridger \u2014 a private friendship/community app. Monorepo root.",
   "packageManager": "pnpm@10.12.1",
   "engines": {
     "node": ">=20 <21"
@@ -15,7 +15,9 @@
     "test": "turbo run test",
     "delight:scaffold": "node scripts/scaffold-delight.mjs",
     "demo": "pnpm --filter @bridger/mobile demo:web",
-    "demo:web": "pnpm --filter @bridger/mobile demo:web"
+    "demo:web": "pnpm --filter @bridger/mobile demo:web",
+    "ops": "node scripts/ops.mjs",
+    "risk": "node scripts/risk-tier.mjs"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

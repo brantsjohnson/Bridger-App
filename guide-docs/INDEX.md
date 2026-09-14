@@ -15,6 +15,7 @@ Docs fall into four buckets, and **where a doc lives tells you its status:**
 - **`guide-docs/playbooks/`** holds the agent's per-task operating manuals (see `playbooks/README.md`).
 - **`guide-docs/docs/`** holds the living legal drafts (`PRIVACY.md`, `TERMS.md`).
 - **Cursor rules live OUTSIDE this folder** in `.cursor/rules/` with `alwaysApply: true`. They're permanent and load automatically.
+- **Agent coordination lives OUTSIDE this folder** in `ops/` (queue, handoffs, bugs, risk tiers, nightly reports). `ops/` decides who does what and when; it never decides what the product is. Start at `ops/README.md`.
 
 ```
 guide-docs/

@@ -3,7 +3,7 @@
     "magic-patterns": {
       "url": "https://mcp.magicpatterns.com/mcp",
       "headers": {
-        "Authorization": "Bearer mp_live_GGfukCruGAg1vbHF2pqXPf"
+        "Authorization": "Bearer ${env:MAGIC_PATTERNS_TOKEN}"
       }
     }
   }
