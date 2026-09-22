@@ -36,7 +36,7 @@ Same underlying comparison logic (find + rank shared things); different privacy 
 | Component | What it measures |
 |---|---|
 | `quiz_alignment` | Per shared matchable quiz: per-dimension similarity, mild similarity, complementarity, or the Friend Zone style matrix (`MATCHING-PSYCHOLOGY.md` / `quiz-match.ts`), **weighted by both users' per-dimension confidence**. Low-confidence dimensions are discounted; dimensions below `CONFIDENCE_FLOOR` (start: 0.4) are ignored. Neuroticism is never a gate. |
-| `embedding_similarity` | Cosine similarity of precomputed person-embeddings (pgvector). Broad, cheap. |
+| `embedding_similarity` | Cosine similarity of precomputed person-embeddings (pgvector). Broad, cheap. The vector is built from **meaning** (the person's own words, hobby follow-ups, quiz dial numbers). Do not first convert that meaning into an explicit identity label (a personality type, a belief category, a condition name) and then embed the label. A name they chose ("aerial silks", "Lisbon") stays, because that name is the fact. |
 | `shared_attributes` | Matchable attribute overlap, **specificity-weighted by inverse frequency** — "both do aerial silks" ≫ "both like music". Everyone+matchable only for Mode 1 evidence. |
 | `moderator_notes_affinity` | Similarity of Discover-module moderator notes (Zone C; features only, never displayed). |
 | `mutual_warmth` | Path strength: shared **Close** friend > Friend > Acquaintance; 2+ independent mutual paths > 1. |

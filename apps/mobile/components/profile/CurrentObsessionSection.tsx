@@ -22,7 +22,6 @@ import {
 import { trackProduct } from '@bridger/shared';
 import {
   PROFILE_GRID_GAP,
-  PROFILE_META_GAP,
   PROFILE_SECTION_TITLE_SIZE,
   PROFILE_SEE_ALL_SIZE,
   PROFILE_TITLE_TO_BODY
@@ -115,10 +114,10 @@ export function CurrentObsessionSection({
                 }
                 accessibilityRole="button"
                 accessibilityLabel={`${item.prompt} ${item.text ?? ''}`}
-                className="overflow-hidden rounded-card border border-ink-line bg-canvas"
+                className="overflow-hidden rounded-3xl bg-canvas"
                 style={{ width: '47.5%', aspectRatio: 1 }}
               >
-                <View className="flex-1 items-center justify-center bg-purple/10 px-2">
+                <View className="flex-1 items-center justify-center bg-purple/20 px-2">
                   {music?.artworkUrl ? (
                     <Image
                       source={{ uri: music.artworkUrl }}
@@ -128,6 +127,14 @@ export function CurrentObsessionSection({
                   ) : (
                     <Text className="text-[36px]">{item.emoji ?? '✨'}</Text>
                   )}
+                  <View className="absolute bottom-0 left-0 right-0 bg-black/55 px-2.5 py-2">
+                    <Text numberOfLines={1} className="font-sans-b text-[13px] text-white">
+                      {item.prompt}
+                    </Text>
+                    <Text numberOfLines={2} className="font-sans text-[16px] text-white">
+                      {item.text || music?.title || '…'}
+                    </Text>
+                  </View>
                   {/* THIS SECTION DOES: play overlay for Listening previews. */}
                   {listening && (previewUrl || music?.spotifyId) ? (
                     <Pressable
@@ -147,7 +154,7 @@ export function CurrentObsessionSection({
                           : `Play preview of ${music?.title ?? item.text}`
                       }
                       hitSlop={8}
-                      className="absolute bottom-2 right-2 z-10 h-11 w-11 items-center justify-center rounded-full bg-ink/80"
+                      className="absolute right-2 top-2 z-10 h-11 w-11 items-center justify-center rounded-full bg-ink/80"
                     >
                       {/* Theme canvas so ▶ stays visible when ink is cream in dark mode. */}
                       <Text className="text-[16px]" style={{ color: theme.canvas }}>
@@ -155,14 +162,6 @@ export function CurrentObsessionSection({
                       </Text>
                     </Pressable>
                   ) : null}
-                </View>
-                <View className="px-2.5 py-2" style={{ gap: PROFILE_META_GAP }}>
-                  <Text numberOfLines={1} className="font-sans-b text-[12px] text-ink-mute">
-                    {item.prompt}
-                  </Text>
-                  <Text numberOfLines={2} className="font-sans-b text-[14px] text-ink">
-                    {item.text || music?.title || '…'}
-                  </Text>
                 </View>
               </Pressable>
             );

@@ -3,6 +3,13 @@
 // The static defaults for every AI job: which lane, how hot the model runs,
 // how many tokens, and whether it starts enabled. The live kill switch and
 // model IDs live in the ai_config database table and override these.
+//
+// COMPLIANCE GOAL (self-operated models):
+// modelTier "fast" and "standard" leave through Anthropic.
+// modelTier "embed" and "stt" leave through OpenAI.
+// modelTier "none" (recap podcast stitch) already stays on our servers.
+// Terms goal: TERMS.md section 7.8a. September 2031, about 1 million
+// accounts, or a co-op volunteer, whichever is first.
 // ============================================
 import type { JobName, JobRegistryEntry } from './types';
 

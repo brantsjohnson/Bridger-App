@@ -5,6 +5,12 @@
 //
 // --- SECURITY ---
 // Never import this from client code.
+//
+// COMPLIANCE GOAL (self-operated models):
+// Today this sends scrubbed matchable text to OpenAI so they can build the
+// matching fingerprint. Terms goal (TERMS.md section 7.8a): run embeddings
+// ourselves by September 2031, or at about 1 million accounts, or when a
+// co-op volunteer takes it on. Do not train a general model on this text.
 // ============================================
 import OpenAI from 'openai';
 

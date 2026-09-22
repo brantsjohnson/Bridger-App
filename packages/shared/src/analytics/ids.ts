@@ -46,14 +46,38 @@ export const AUTH = {
     switch_to_sign_up: aid('auth', 'sign_in', 'switch_to_sign_up'),
     /** Phone number field (E.164). Never logs the digits. */
     phone: aid('auth', 'sign_in', 'phone'),
+    /** Opens the country dial-code sheet. Property: country_iso. */
+    country_code: aid('auth', 'sign_in', 'country_code'),
+    /** Search box inside the country sheet. Never logs the query. */
+    country_search: aid('auth', 'sign_in', 'country_search'),
+    /** One country row in the sheet. Property: country_iso. */
+    country_row: aid('auth', 'sign_in', 'country_row'),
+    /** Close / dismiss on the country sheet. */
+    country_dismiss: aid('auth', 'sign_in', 'country_dismiss'),
     /** Send the SMS one-time code. */
     send_code: aid('auth', 'sign_in', 'send_code'),
+    /** Dead — SMS consent copy under Send me a code (A2P disclosures). */
+    sms_consent: aid('auth', 'sign_in', 'sms_consent'),
+    /** Opens the public Privacy Policy from the phone Sign in consent line. */
+    privacy_policy: aid('auth', 'sign_in', 'privacy_policy'),
+    /** Opens the public Terms from the phone Sign in consent line. */
+    terms: aid('auth', 'sign_in', 'terms'),
     /** One-time code field (iOS autofill). Never logs the code. */
     otp_code: aid('auth', 'sign_in', 'otp_code'),
     /** Confirm the SMS code. */
     verify: aid('auth', 'sign_in', 'verify'),
     /** Resend the SMS code after the cooldown. */
     resend_otp: aid('auth', 'sign_in', 'resend_otp')
+  },
+  /** Cover after a saved session: Face ID / fingerprint, not a new SMS. */
+  lock: {
+    page_title: aid('auth', 'lock', 'page_title'),
+    /** Bridger mark on the lock cover (dead). */
+    mark: aid('auth', 'lock', 'mark'),
+    /** Ask the OS for Face ID / fingerprint. */
+    unlock: aid('auth', 'lock', 'unlock'),
+    /** Sign out and go back to phone OTP. */
+    use_phone: aid('auth', 'lock', 'use_phone')
   },
   sign_up: {
     page_title: aid('auth', 'sign_up', 'page_title'),
@@ -1017,6 +1041,7 @@ export const RECAP_PLAYER = {
 export const PROFILE = {
   tabs: {
     profile: aid('profile', 'tabs', 'profile'),
+    favorites: aid('profile', 'tabs', 'favorites'),
     stories: aid('profile', 'tabs', 'stories'),
     inside_jokes: aid('profile', 'tabs', 'inside_jokes'),
     bucket_list: aid('profile', 'tabs', 'bucket_list')
@@ -1172,6 +1197,8 @@ export const PROFILE = {
   settings: {
     who_sees_what: aid('profile', 'settings', 'who_sees_what'),
     customize_profile: aid('profile', 'settings', 'customize_profile'),
+    /** Opens the Personalize preview (nothing installs; no new data). */
+    personalize: aid('profile', 'settings', 'personalize'),
     discover_toggle: aid('profile', 'settings', 'discover_toggle'),
     coop: aid('profile', 'settings', 'coop'),
     notifications: aid('profile', 'settings', 'notifications'),
@@ -1208,7 +1235,9 @@ export const PROFILE = {
     /** Demo/QA: preview reusable emoji rain. */
     preview_emoji_rain: aid('profile', 'settings', 'preview_emoji_rain'),
     /** Leave runtime demo and return to real Sign in. */
-    leave_demo: aid('profile', 'settings', 'leave_demo')
+    leave_demo: aid('profile', 'settings', 'leave_demo'),
+    /** Optional Face ID / fingerprint lock. Off by default. */
+    face_id_toggle: aid('profile', 'settings', 'face_id_toggle')
   },
   /** Music pick / preview controls on profile + Catch-Up. */
   music: {
@@ -1239,6 +1268,7 @@ export const PROFILE = {
   },
   friend_tabs: {
     about_them: aid('profile', 'tabs', 'about_them'),
+    favorites: aid('profile', 'tabs', 'favorites'),
     in_common: aid('profile', 'tabs', 'in_common'),
     inside_jokes: aid('profile', 'tabs', 'inside_jokes'),
     bucket_list: aid('profile', 'tabs', 'bucket_list'),
@@ -2380,5 +2410,26 @@ export const ADMIN = {
     save_prompts: aid('admin', 'actions', 'save_prompts'),
     toggle_delight: aid('admin', 'actions', 'toggle_delight'),
     new_delight: aid('admin', 'actions', 'new_delight')
+  }
+} as const;
+
+// --- Personalize (preview; nothing installs) ---
+export const PERSONALIZE = {
+  top_nav: {
+    back: aid('personalize', 'top_nav', 'back'),
+    /** Dead: the pixel title. */
+    page_title: aid('personalize', 'top_nav', 'page_title')
+  },
+  intro: {
+    /** Dead: coming-soon copy. Collects nothing. */
+    body: aid('personalize', 'intro', 'body')
+  },
+  preview: {
+    /** Dead: Matchers card. */
+    matchers: aid('personalize', 'preview', 'matchers'),
+    /** Dead: Social features card. */
+    social: aid('personalize', 'preview', 'social'),
+    /** Dead: Data and connections card. */
+    data: aid('personalize', 'preview', 'data')
   }
 } as const;

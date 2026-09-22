@@ -1,15 +1,18 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
 // The Sign in screen. Full-bleed Bridger color-bar art and the Bridger mark.
-// Default path is phone number + SMS one-time code (iOS autofill). Google /
-// Apple / email stay compiled when EXPO_PUBLIC_AUTH_MODE=legacy. Long-pressing
-// the logo (when the build allows) opens the demo gate: "onboard" is the New
-// flow, "onboardold" is the Old 19-step flow. Every control has an analyticsId.
+// Default path is phone number + SMS one-time code, with a country dial picker
+// so people outside the US are not locked to +1. The code field is wired for
+// one-tap SMS autofill on iOS, Android, and Mac/Safari. Google / Apple / email
+// stay compiled when EXPO_PUBLIC_AUTH_MODE=legacy. Long-pressing the logo
+// (when the build allows) opens the demo gate: "onboard" is the New flow,
+// "onboardold" is the Old 19-step flow. Every control has an analyticsId.
 // ============================================
 import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -37,6 +40,7 @@ import { resetOnboarding, setOnboardingComplete } from '../../data/onboarding';
 import { mergePendingPeopleForMe } from '../../data/pending-people';
 import { authMode } from '../../lib/auth-mode';
 import { toE164 } from '../../lib/phone';
+import { guessDefaultPhoneCountry, type PhoneCountry } from '../../lib/phone-countries';
 import {
   enableDemoMode,
   isDemoUnlockAllowed,
@@ -50,6 +54,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/auth-provider';
 import { AppleSignInMark, GoogleMark } from '../../components/auth/AuthBrandMarks';
+import { PhoneCountryField } from '../../components/auth/PhoneCountryField';
 
 /**
  * After Google / Apple succeeds, decide signup vs sign-in for analytics.
@@ -73,6 +78,10 @@ async function trackAuthOutcome(method: 'google' | 'apple' | 'phone') {
 const LOGIN_BG = require('../../assets/brand/login-screen.png');
 const BRIDGER_MARK = require('../../assets/brand/bridger-mark.png');
 
+// THIS SECTION DOES: public legal pages carriers check for SMS opt-in (same as site).
+const PRIVACY_URL = 'https://bridger.social/privacy.html';
+const TERMS_URL = 'https://bridger.social/terms.html';
+
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -91,8 +100,11 @@ export default function SignInScreen() {
   const unlockAllowed = isDemoUnlockAllowed();
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Phone OTP: number first, then the code we texted.
+  // Phone OTP: country dial + local number first, then the code we texted.
   const [phonePhase, setPhonePhase] = useState<'phone' | 'otp'>('phone');
+  const [phoneCountry, setPhoneCountry] = useState<PhoneCountry>(() =>
+    guessDefaultPhoneCountry()
+  );
   const [phoneRaw, setPhoneRaw] = useState('');
   const [phoneE164, setPhoneE164] = useState<string | null>(null);
   const [otp, setOtp] = useState('');
@@ -111,9 +123,9 @@ export default function SignInScreen() {
   }, [resendIn]);
 
   async function onSendCode() {
-    const e164 = toE164(phoneRaw);
+    const e164 = toE164(phoneRaw, phoneCountry.dial);
     if (!e164) {
-      setError('Enter a real phone number, including area code.');
+      setError('Enter a real phone number for that country.');
       return;
     }
     setBusy('phone');
@@ -130,9 +142,9 @@ export default function SignInScreen() {
     setResendIn(30);
   }
 
-  async function onVerifyCode() {
+  async function onVerifyCode(rawCode?: string) {
     if (!phoneE164) return;
-    const token = otp.replace(/\D/g, '');
+    const token = (rawCode ?? otp).replace(/\D/g, '');
     if (token.length < 4) {
       setError('Enter the code we texted you.');
       return;
@@ -148,6 +160,16 @@ export default function SignInScreen() {
     await trackAuthOutcome('phone');
     // Merge any private cards other people already made for this number.
     void mergePendingPeopleForMe();
+  }
+
+  // THIS SECTION DOES: accept a one-tap SMS fill and verify as soon as 6 digits land.
+  function onOtpChange(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    setOtp(digits);
+    setError(null);
+    if (digits.length >= 6 && busy === null) {
+      void onVerifyCode(digits);
+    }
   }
 
   async function onResendCode() {
@@ -369,23 +391,23 @@ export default function SignInScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             bounces={false}
-            style={{ maxHeight: 420 }}
+            style={{ maxHeight: 480 }}
           >
             {showPhone ? (
               phonePhase === 'phone' ? (
                 <>
                   <View className="gap-3">
-                    <TextField
-                      label="Phone number"
-                      value={phoneRaw}
-                      onChange={(v) => {
+                    <PhoneCountryField
+                      country={phoneCountry}
+                      onCountryChange={(next) => {
+                        setPhoneCountry(next);
+                        setError(null);
+                      }}
+                      phoneRaw={phoneRaw}
+                      onPhoneChange={(v) => {
                         setPhoneRaw(v);
                         setError(null);
                       }}
-                      placeholder="(555) 123-4567"
-                      type="phone"
-                      autoComplete="tel"
-                      analyticsId={AUTH.sign_in.phone}
                       onSubmitEditing={() => void onSendCode()}
                     />
                   </View>
@@ -398,11 +420,50 @@ export default function SignInScreen() {
                       loading={busy === 'phone'}
                       accessibilityLabel="Send me a code"
                       analyticsId={AUTH.sign_in.send_code}
-                      analyticsProps={{ method: 'phone' }}
+                      analyticsProps={{
+                        method: 'phone',
+                        country_iso: phoneCountry.iso
+                      }}
                     >
                       Send me a code
                     </ButtonPrimary>
                   </View>
+                  {/* THIS SECTION DOES: A2P SMS disclosures carriers require before the first text. */}
+                  <AnalyticsRegion
+                    analyticsId={AUTH.sign_in.sms_consent}
+                    interactive={false}
+                    accessibilityLabel="SMS consent. One Bridger sign-in text when you ask. Message and data rates may apply. Reply HELP for help, STOP to opt out."
+                  >
+                    <Text className="mt-3 font-sans text-[13px] leading-5 text-ink-mute">
+                      By tapping Send me a code, you agree to receive one Bridger
+                      sign-in text when you ask for it. Message frequency: only when
+                      you request a code. Msg & data rates may apply. Reply HELP for
+                      help, STOP to opt out.{' '}
+                      <Text
+                        onPress={() => {
+                          trackClick(AUTH.sign_in.privacy_policy);
+                          void Linking.openURL(PRIVACY_URL);
+                        }}
+                        accessibilityRole="link"
+                        accessibilityLabel="Privacy Policy"
+                        className="font-sans-sb text-ink underline"
+                      >
+                        Privacy
+                      </Text>
+                      {' · '}
+                      <Text
+                        onPress={() => {
+                          trackClick(AUTH.sign_in.terms);
+                          void Linking.openURL(TERMS_URL);
+                        }}
+                        accessibilityRole="link"
+                        accessibilityLabel="Terms of Service"
+                        className="font-sans-sb text-ink underline"
+                      >
+                        Terms
+                      </Text>
+                    </Text>
+                  </AnalyticsRegion>
                 </>
               ) : (
                 <>
@@ -423,15 +484,14 @@ export default function SignInScreen() {
                     <TextField
                       label="Verification code"
                       value={otp}
-                      onChange={(v) => {
-                        setOtp(v);
-                        setError(null);
-                      }}
+                      onChange={onOtpChange}
                       placeholder="123456"
                       type="otp"
-                      autoComplete="sms-otp"
+                      autoComplete="one-time-code"
+                      autoFocus
                       analyticsId={AUTH.sign_in.otp_code}
                       onSubmitEditing={() => void onVerifyCode()}
+                      accessibilityHint="When the text arrives, tap the suggested code above the keyboard"
                     />
                   </View>
                   <View className="mt-5">

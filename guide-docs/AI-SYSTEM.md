@@ -56,10 +56,10 @@ All calls run **server-side** through one gateway (§5). Model IDs live in confi
 RAG = the app retrieves the right de-identified context at inference time, instead of any model being trained on user data. Ours is deliberately simple and owned end-to-end:
 
 **Corpus (what gets embedded)** — Zone B/C only, keyed by opaque IDs:
-- Each `matchable` attribute row, normalized to canonical text ("hobby: bouldering — 'started during lockdown, V4'").
-- Quiz dimension results (as structured text with confidence).
-- Discover-module moderator notes (Zone C).
-- The person summary (job 6) as one document.
+- Each `matchable` attribute row, normalized to the **meaning** ("hobby:jazz: Jazz - My dad, endless Coltrane"). Keep words they wrote. Keep a name they chose. Do not convert that meaning into an explicit identity label (personality type, belief category, condition name) and then embed the label.
+- Quiz dimension results as the **dial number plus confidence**, not the dimension's display title.
+- Discover-module moderator notes (Zone C). Notes must not invent identity labels the person did not write.
+- The person summary (job 6) as one document. The summary prompt has the same rule: do not relabel facts as an identity.
 
 **Pipeline:** write → normalize → PII-scrub (§5) → embed (job 7) → upsert to pgvector (HNSW index) with `{opaque_id, kind, visibility_flags, updated_at}`. Attribute edit → re-embed that row; person-level change → regenerate person summary + its embedding. **Deletion/opt-out → embeddings and summaries drop in the same cascade** (`DATA.md`).
 
@@ -105,6 +105,8 @@ The gateway, in order:
 - Summaries: user's own words only; never photos; pre-generated at post time; author can delete them.
 - Quiz explanations: read by the moderator server-side, shown to no one, never cross a connection, deletable.
 - Foundation models: API-only, no-training terms, no fine-tuning on user data. Deletion/opt-out cascades to embeddings, summaries, notes.
+- **Who chooses (Terms §7.8a).** The member chooses what information enters a computation and what purpose it serves. Bridger chooses the engineering that makes that authorized computation reliable and secure.
+- **Self-operated models (Terms §7.8a).** Goal: run models ourselves so member information does not go to an outside AI company. First of September 2031, about 1 million accounts, or a co-op volunteer. Search the repo for `COMPLIANCE GOAL (self-operated models)`. Still outside today: Anthropic (`providers/anthropic.ts`: summaries, quiz moderator, module notes, person summary, freshness, recap week fill, Billy when on), OpenAI embeddings (`providers/openai-embed.ts`), OpenAI speech-to-text (`providers/stt.ts`), and web live captions (`apps/mobile/lib/assistant-live-speech.ts`, browser speech, often Google or Apple). Matching scores in `apps/api/src/matching/` already stay on our servers.
 - Analytics store stays walled off from all AI/matching (per `analytics-rules.mdc`).
 
 

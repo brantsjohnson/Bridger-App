@@ -12,15 +12,33 @@ export const ANCHORED_ORDER = ['header', 'tabs'] as const;
 export type AnchoredChrome = (typeof ANCHORED_ORDER)[number];
 
 /**
- * Movable content modules in the native Spotify order (PROFILE.md §2).
- * Co-op Layout customize may reorder these; modules with data cannot be removed.
+ * Movable content modules. The profile tab shows About, Top 5, Hobbies,
+ * then Places (the redesign). Favorites and Current Obsession live on the
+ * Favorites tab. Co-op Layout customize may reorder these; modules with
+ * data cannot be removed.
  */
 /**
- * Spotify native order (PROFILE.md §2). Greatest hits are not a fixed
- * section here; each photo inserts after a module via PhotoBlock.afterModule.
- * `greatestHits` stays in the union for customize / legacy layout saves.
+ * Greatest hits are not a fixed section here; each photo inserts after a
+ * module via PhotoBlock.afterModule. `greatestHits` stays in the union for
+ * customize / legacy layout saves.
  */
 export const MOVABLE_MODULE_ORDER = [
+  'aboutMe',
+  'top5',
+  'hobbies',
+  'places',
+  'mutuals',
+  'upcoming',
+  'whereMet',
+  'obsession',
+  'favorites',
+  'recommendations',
+  'timeline',
+  'greatestHits'
+] as const;
+
+/** The old Spotify order. Profiles that never customized get the new order. */
+export const LEGACY_SPOTIFY_MODULE_ORDER = [
   'mutuals',
   'top5',
   'aboutMe',

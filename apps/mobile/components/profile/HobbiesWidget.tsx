@@ -12,7 +12,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronDownIcon } from 'lucide-react-native';
 import { trackUi } from '@bridger/shared';
-import { ACCENTS, BLOB_SHAPES, cn, withAnalyticsPress } from '@bridger/ui';
+import { ACCENTS, cn, withAnalyticsPress } from '@bridger/ui';
 import type { Interest } from '../../data/profile';
 import { HOBBY_FOLLOW_UPS } from '../../data/profile';
 
@@ -82,14 +82,13 @@ export function HobbiesWidget({
       >
         {/* Page 1: the chip wall */}
         <View style={{ width: width || undefined }}>
-          <View className="flex-row flex-wrap justify-between">
-            {hobbies.map((h, i) => {
+          <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+            {hobbies.map((h) => {
               const token = ACCENTS[h.accent];
-              const shape = BLOB_SHAPES[(h.shape ?? i) % BLOB_SHAPES.length];
               const showing = open === h.id;
               const follow = lookup[h.id];
               return (
-                <View key={h.id} className={cn('mb-2.5', showing ? 'w-full' : 'w-[48.5%]')}>
+                <View key={h.id} className={cn(showing ? 'w-full' : undefined)}>
                   <Pressable
                     onPress={withAnalyticsPress(analyticsId, () =>
                       setOpen(showing ? null : h.id)
@@ -97,30 +96,16 @@ export function HobbiesWidget({
                     accessibilityRole="button"
                     accessibilityState={{ expanded: showing }}
                     accessibilityLabel={h.label}
-                    style={shape}
                     className={cn(
-                      'min-h-[52px] w-full flex-row items-center gap-2 px-2.5 py-2',
+                      'min-h-[44px] flex-row items-center gap-1.5 self-start rounded-full px-4',
                       token.bg
                     )}
                   >
-                    <View
-                      accessible={false}
-                      className="h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface/70"
-                    >
-                      <Text className="text-[15px]">{h.emoji}</Text>
-                    </View>
-                    <Text
-                      className={cn(
-                        'min-w-0 flex-1 font-sans-b text-[12px] leading-[1.15]',
-                        token.text
-                      )}
-                    >
-                      {h.label}
-                    </Text>
+                    <Text className={cn('font-sans-b text-[16px]', token.text)}>{h.label}</Text>
                     {follow ? (
                       <ChevronDownIcon
                         size={16}
-                        color="#00000080"
+                        color="#1C1B16"
                         strokeWidth={2.8}
                         style={{ transform: [{ rotate: showing ? '180deg' : '0deg' }] }}
                       />
@@ -128,7 +113,7 @@ export function HobbiesWidget({
                   </Pressable>
 
                   {showing && follow ? (
-                    <Text className="px-3 pt-2 font-sans-sb text-[13px] text-ink-soft">
+                    <Text className="px-3 pt-2 font-sans text-[16px] text-ink-soft">
                       <Text className="text-ink-mute">{follow.question}</Text> {follow.answer}
                     </Text>
                   ) : null}

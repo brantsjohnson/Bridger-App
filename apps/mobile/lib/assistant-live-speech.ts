@@ -4,6 +4,13 @@
 // the built-in speech recognizer so the Listening pill can type what it hears.
 // On native phones this helper is a no-op for now (final words still come from
 // Whisper when the clip is sent). Transcript text is never logged to analytics.
+//
+// COMPLIANCE GOAL (self-operated models):
+// On the web, these live captions use the browser's speech tool (often Google
+// or Apple), so the words can leave the phone before they reach Bridger.
+// Terms goal (TERMS.md section 7.8a): replace this with a model we operate by
+// September 2031, or at about 1 million accounts, or when a co-op volunteer
+// takes it on. Do not log the words. Do not train a general model on them.
 // ============================================
 import { Platform } from 'react-native';
 

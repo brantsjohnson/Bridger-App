@@ -1,8 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// A friend's profile — same Spotify composition as your own page. Header
-// (square photo, tier control, overflow) above tabs; About them uses the
-// shared shell. In common / Inside jokes / Bucket / Notes stay as tabs.
+// A friend's profile — same composition as your own page. Header (square
+// photo, tier control, message) above the tabs. About them uses the shared
+// shell. Favorites, In common, Inside jokes, Bucket list, and Notes stay
+// as their own tabs.
 // Analytics: surface=profile (friend view).
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
@@ -98,12 +99,14 @@ function favoriteModulesFromFriend(
     }));
 }
 
-const TABS = ['About them', 'In common', 'Inside jokes', 'Bucket list', 'Notes'];
+const TABS = ['About them', 'Favorites', 'In common', 'Inside jokes', 'Bucket list', 'Notes'];
 
 function friendTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
     case 'About them':
       return PROFILE.friend_tabs.about_them;
+    case 'Favorites':
+      return PROFILE.friend_tabs.favorites;
     case 'In common':
       return PROFILE.friend_tabs.in_common;
     case 'Inside jokes':
@@ -358,6 +361,32 @@ export default function PersonScreen() {
           </View>
         ) : null}
 
+        {tab === 'Favorites' ? (
+          <View style={{ marginTop: PROFILE_TABS_TO_CONTENT }}>
+            <ProfileCard
+              person={person}
+              header={header}
+              showHeader={false}
+              about={about}
+              hobbies={hobbies}
+              favs={favs}
+              thisOrThat={thisOrThat}
+              places={places}
+              top5={top5}
+              obsession={obsession}
+              favorites={favorites}
+              greatestHits={greatestHits}
+              upcoming={upcoming}
+              hobbyFollowUps={hobbyFollowUps}
+              mutuals={mutuals}
+              whereMet={whereMet}
+              asTier={person.tier}
+              focus="favorites"
+              onOpenEvent={(eid) => router.push(`/event/${eid}`)}
+            />
+          </View>
+        ) : null}
+
         {tab === 'In common' ? (
           <View className="mt-5 gap-7 px-4">
             <MutualFriendsStrip
@@ -438,7 +467,14 @@ export default function PersonScreen() {
         open={searchOpen}
         hits={searchHits}
         onClose={() => setSearchOpen(false)}
-        onJump={() => setTab('About them')}
+        onJump={(hit) =>
+          setTab(
+            hit.section.toLowerCase() === 'favorites' ||
+              hit.section.toLowerCase().includes('obsession')
+              ? 'Favorites'
+              : 'About them'
+          )
+        }
       />
 
       {emojiBombId ? (

@@ -9,6 +9,15 @@ import this package.
 
 Read `guide-docs/AI-SYSTEM.md` for the full contract.
 
+## Self-operated models (not done yet)
+
+Terms section 7.8a is the goal: run models ourselves so member information
+does not go to an outside AI company. Target is the first of September 2031,
+about 1 million accounts, or a co-op volunteer. Search the repo for
+`COMPLIANCE GOAL (self-operated models)`. Today that marker sits on the
+Anthropic caller, the OpenAI embedding caller, the OpenAI speech-to-text
+caller, and web live captions.
+
 ## Two lanes
 
 | Lane | Used by | Sees names? |

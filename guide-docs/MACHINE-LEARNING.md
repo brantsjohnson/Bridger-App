@@ -60,6 +60,7 @@ The line between "this app gets me" and "this app is watching me" is **provenanc
 5. **User edits are law.** A quick-check "no" or an attribute edit immediately outranks anything learned; the system defers visibly (matches update, old inferences drop).
 6. **Thresholds never bend for liveliness.** An empty Discover is always preferable to a stretched match (`MATCHING-ALGORITHMS.md`).
 7. **The user can turn it off.** `discoverable=false` / matchable-flag removal stops learning about them and drops their embeddings — same cascade as deletion.
+8. **Embed meaning, do not relabel it.** Person vectors keep the words and dial numbers people shared. Do not collapse those into an explicit identity label (a type, a belief category, a condition) and then embed or rank on the label.
 
 ## 6 · Where learning shows up (the "aware" moments, mapped)
 

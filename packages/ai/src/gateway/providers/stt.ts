@@ -7,6 +7,12 @@
 // --- SECURITY ---
 // Never import this from client code. Transcripts are content: not logged to
 // analytics, not used for training.
+//
+// COMPLIANCE GOAL (self-operated models):
+// Today this sends the audio clip to OpenAI to turn speech into text.
+// Terms goal (TERMS.md section 7.8a): run speech-to-text ourselves by
+// September 2031, or at about 1 million accounts, or when a co-op volunteer
+// takes it on. Do not train a general model on the clip or the transcript.
 // ============================================
 import OpenAI from 'openai';
 import { toFile } from 'openai';

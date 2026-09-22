@@ -125,19 +125,19 @@ export function FavoritesSection({
                     ? `${m.label}, ${m.answeredCount} answers`
                     : `View ${m.label} answers, ${m.answeredCount} answers`
                 }
-                className="overflow-hidden rounded-card border border-ink-line bg-canvas"
+                className="overflow-hidden rounded-3xl bg-canvas"
                 style={{ width: '47.5%', aspectRatio: 1 }}
               >
-                <View className="flex-1 items-center justify-center bg-coral/15">
+                <View className="flex-1 items-center justify-center bg-coral/25">
                   <Text className="text-[36px]">{m.emoji}</Text>
-                </View>
-                <View className="px-2.5 py-2" style={{ gap: PROFILE_META_GAP }}>
-                  <Text numberOfLines={1} className="font-sans-b text-[14px] text-ink">
-                    {m.label}
-                  </Text>
-                  <Text numberOfLines={1} className="font-sans-sb text-[12px] text-ink-mute">
-                    {m.answeredCount} answers
-                  </Text>
+                  <View className="absolute bottom-0 left-0 right-0 bg-black/55 px-2.5 py-2">
+                    <Text numberOfLines={2} className="font-sans-b text-[16px] text-white">
+                      {m.label}
+                    </Text>
+                    <Text numberOfLines={1} className="font-sans text-[13px] text-white/80">
+                      {m.answeredCount} answers
+                    </Text>
+                  </View>
                 </View>
               </Pressable>
             ))}

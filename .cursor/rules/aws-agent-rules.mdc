@@ -1,30 +1,66 @@
 ---
+description: AWS standing reminders in plain English. Safe door first, no guessing, write the cloud as code, passwords stay in the vault.
 alwaysApply: true
 ---
 
-# AWS Guidance
+# STANDING REMINDERS FOR AWS (read every time we touch the cloud)
 
-- Prefer the AWS MCP Server for AWS interactions — it provides sandboxed
-  execution, observability, and audit logging. If unavailable, use the
-  AWS CLI directly.
-- Before starting a task, check whether a relevant AWS skill is available.
-  Load the skill with `retrieve_skill` and prefer its guidance over
-  general knowledge.
-- When uncertain about specific AWS details (API parameters, permissions,
-  limits, error codes), verify against documentation rather than guessing.
-  State uncertainty explicitly if you cannot confirm.
-- When creating infrastructure, prefer infrastructure-as-code (AWS CDK or
-  CloudFormation) over direct CLI commands.
-- When working with infrastructure, follow AWS Well-Architected Framework
-  principles.
-- Do not use em dashes in AWS resource names or descriptions. Use
-  hyphens instead.
+**WHAT THIS FILE DOES (plain English):**
+This is the rulebook for talking to Amazon's computers (AWS). Bridger's
+app server lives there. These rules keep us from guessing, from putting
+passwords in chat, and from building cloud stuff by hand that we cannot
+undo. Same idea as the Cursor standing reminders in `guide-rules.mdc`.
+Re-read this before any AWS task. Do not skip it.
 
-## Secret Safety
+These rules apply to every AWS task, every session. When a rule here
+conflicts with a one-off prompt, ask before proceeding. When this file
+and `INFRASTRUCTURE.md` disagree, `INFRASTRUCTURE.md` wins on stack
+choices. Secrets stay out of chat, git, and client code. Always.
 
-- MUST load the `aws-secrets-manager` skill first for any secret,
-  credential, API key, token, or password task. MUST NOT call
-  `secretsmanager get-secret-value` or `batch-get-secret-value`, and MUST
-  NOT hit the Secrets Manager Agent daemon directly. MUST use
-  `{{resolve:secretsmanager:secret-id:SecretString:json-key}}` with
-  `asm-exec` so the secret resolves at runtime without entering context.
+**COPY RULE: NO EM DASHES IN AWS NAMES.** Never use an em dash (the long
+dash character) in AWS resource names or descriptions. Use a hyphen
+instead. Same copy rule as the rest of Bridger.
+
+1 · Talk through the safe door first
+Use the AWS helper in Cursor (the AWS MCP Server) when it is available.
+That path is watched and logged, so we can see what happened later
+(sandboxed execution, observability, and audit logging). If that helper
+is down, use the AWS command line (AWS CLI) directly. Do not invent a
+third way in.
+
+2 · Read the how-to before you start
+Before you begin an AWS task, check whether a matching AWS skill exists
+(the short playbook for that job). Load it with `retrieve_skill` and
+follow it instead of guessing from memory. A skill beats general
+knowledge every time.
+
+3 · Do not guess
+If you are unsure about an AWS detail (what a setting is called, who
+is allowed to do what, size limits, or error codes), look it up in the
+docs. Say so out loud if you cannot confirm. A wrong cloud change is
+expensive. A "I do not know yet" is cheap.
+
+4 · Write the cloud as code, not as one-off clicks
+When you create infrastructure (servers, secrets, networks), write it
+down as infrastructure-as-code (AWS CDK or CloudFormation). Do not click
+around in the console or fire one-off CLI commands that nobody can
+replay. Follow the Well-Architected ideas (secure, reliable, cheap
+enough, easy to operate). The stack we already chose lives in
+`INFRASTRUCTURE.md`. Do not re-litigate it.
+
+5 · Passwords stay in the vault
+**SECURITY.** Keys, tokens, passwords, and API secrets live in the
+password vault (AWS Secrets Manager). They must never land in chat,
+in git, or in the phone/web app.
+
+- Load the `aws-secrets-manager` skill first for any secret, credential,
+  API key, token, or password task. No exceptions.
+- Do not call `secretsmanager get-secret-value` or
+  `batch-get-secret-value`. Do not talk to the Secrets Manager Agent
+  daemon yourself. Those paths pull the secret into this chat.
+- Use this placeholder instead, so the secret is filled in at run time
+  and never appears here:
+  `{{resolve:secretsmanager:secret-id:SecretString:json-key}}`
+  with `asm-exec`.
+
+If you catch yourself about to paste a key, stop. That is a bug.

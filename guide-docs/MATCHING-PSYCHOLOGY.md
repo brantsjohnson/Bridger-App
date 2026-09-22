@@ -55,7 +55,9 @@ Privacy stays one-way for what people *see*. Learning only stores six numbers pl
 
 ## 4 · Embeddings (the "feel similar" layer)
 
-When someone finishes a Personality quiz or edits a matchable profile fact, Nest queues an **embeddings** job. That job turns de-identified facts (hobby labels, quiz dial numbers, not photos or names) into a vector in `person_embeddings` (pgvector).
+When someone finishes a Personality quiz or edits a matchable profile fact, Nest queues an **embeddings** job. That job turns de-identified facts into a vector in `person_embeddings` (pgvector).
+
+**Embed meaning. Do not relabel it.** The vector keeps their words (a hobby plus the follow-up they wrote, a place note, a favorite) and the quiz **dial number** (with confidence). It does not swap those for an explicit identity label such as a personality type, a belief category, or a condition name. A name they picked ("Jazz") stays, because that name is the fact. Photos, names, and map pins stay out.
 
 Discover uses cosine closeness of those vectors as one of the six ingredients. It is the broad "you two have a similar shape" signal. Specific hobbies and quiz psychology still sit on top so we do not suggest someone only because the vector is vaguely near.
 

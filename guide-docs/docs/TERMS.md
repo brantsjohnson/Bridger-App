@@ -20,7 +20,7 @@
 
 ## 1 · Agreement
 
-- By creating an account or using Bridger, you agree to these Terms and the Privacy Policy draft (`PRIVACY.md`).
+- By creating an account or using Bridger, you agree to these Terms and the Privacy Policy. The public pages are `https://bridger.social/terms.html` and `https://bridger.social/privacy.html`.
 - **TODO (legal):** governing law, venue, and entity name.
 - If you do not agree, do not use the app.
 
@@ -46,7 +46,8 @@
 ## 4 · What Bridger is (and is not)
 
 - Bridger helps you stay close to people you choose (Friends tiers, Updates, Events, Touch Grass, quizzes, recap Friend Pod, Discover). Circles (planned) let you add an Influencer without making them a friend.
-- Account creation is through **phone number + SMS one-time code** on Sign in (first use creates the account; next time signs you in). Google / Apple / email stay available when we turn on legacy auth. Completing onboarding after first sign-in is required before using the app. On Friends you may **Connect your contacts** and make a private card about someone who is not on Bridger yet (their number plus notes only you can see). If they later join with the same phone number, their real profile replaces your card and your notes stay private to you. Do not use those cards to impersonate someone or to store information you do not have a right to keep.
+- Account creation is through **phone number + SMS one-time code** on Sign in (first use creates the account; next time signs you in). You choose a country dial code and enter your local number; Bridger stores the international form. Tapping **Send me a code** is consent to receive that verification text (not marketing). Sign in shows Msg & data rates, Reply **HELP** / **STOP**, and links to these Terms and the Privacy Policy. After that, you stay signed in on this device. You may turn on **Face ID / fingerprint** in Settings to open the app without a new text. That uses your phone's unlock tools only. Bridger does not store your face or fingerprint. Google / Apple / email stay available when we turn on legacy auth. Completing onboarding after first sign-in is required before using the app. On Friends you may **Connect your contacts** and make a private card about someone who is not on Bridger yet (their number plus notes only you can see). If they later join with the same phone number, their real profile replaces your card and your notes stay private to you. Do not use those cards to impersonate someone or to store information you do not have a right to keep.
+- **Bridger Sign-in Texts (SMS program):** one-time codes only, when you request them. Message and data rates may apply. Support: `hello@bridger.social` or https://bridger.social. Reply **HELP** for help; reply **STOP** to cancel. Privacy Policy: https://bridger.social/privacy.html. Carriers are not liable for delayed or undelivered messages.
 - The **co-op** is optional membership for richer creation, named groups, and storage. Onboarding teaches what a co-op is, then the last screen is join or invite 3 friends (Apple Pay / Google Pay / card, monthly or yearly). Joining is never required to use Bridger: invite 3 friends for Free Lite, or redeem an auth code for a free year. **Connection is never paywalled** (Discover, adding people, messaging within limits, attending events, viewing content, answering polls stay free on Free Lite). Free Lite limits expression and scale (e.g. rolling ~30-day storage, 5 Close / 30 Friends, photo/text stories), not whether you can meet someone. See `complete/COOP.md`.
 - Bridger is not a dating product, not an ad network, and not a blockchain / crypto product. Free Lite and co-op are **ad-free** (no behavioral / third-party ads).
 - During onboarding you may set a **connection style** preference (what you want Bridger to prioritize) and a **friends-of-friends matching preference** (workout, go out, creative, industry, travel, nearby, someone who gets me). These only shape *your* Home, notification lean, and which friends-of-friends you are shown. They are never used to sell ads or to match you to strangers.
@@ -57,7 +58,8 @@
 
 ## 5 · Your account and security
 
-- Keep your login secure; you are responsible for activity under your account unless you promptly report compromise.
+- Keep your login secure; you are responsible for activity under your account unless you promptly report compromise. If you turn on Face ID / fingerprint, anyone who can unlock this phone can open Bridger while you stay signed in.
+- The session stays on this device after a successful sign-in. Signing out (Settings, or Use phone number on the lock cover) requires a new text to get back in.
 - Account deletion is available in Settings and performs a **hard delete** of your data (see Privacy Policy). Deletion also removes you from analytics (PostHog person purge).
 - Product analytics is **on while you are signed in**. It records anonymous screen and button names so we can fix confusing flows. It is not ads. It does not include your name, messages, or photos. Demo mode does not send. Deleting your account also erases your analytics person.
 - Data export on request: **TODO (product + legal)**.
@@ -161,6 +163,7 @@ You may post a short quote on a sticky note and tag a friend who said it (and op
 ### 7.6c Profile and customization
 
 - You control who sees each profile fact (Close / Friends / Everyone) and, separately, whether Discover may use it for matching.
+- **Personalize** (Settings) is a coming-soon preview. It does not install matchers, social features, or data connections yet. When those exist, you may change how Bridger ranks people you are already allowed to meet. You may not use Personalize, a custom matcher, or an extension to see or process someone else's information beyond what they allowed. Bridger does not offer a switch to train general models on your content.
 - Hobby picks (including optional culture, advocacy, or wellness labels, or a hobby you add yourself) are profile facts you choose. They are not required. The same who-sees and matchable rules apply.
 - You may delete any field; deletion removes it from Bridger's store.
 - Co-op profile customization is a **skin** only: it cannot invent, hide, or delete your facts. Theme and Layout are no-code. Custom CSS/HTML (Code tier) is admin-gated and not generally available yet; when it ships it must not include scripts, tracking pixels, or off-Bridger assets. Customized profiles are UGC and may be reverted to the native layout after a report.
@@ -184,7 +187,7 @@ You may post a short quote on a sticky note and tag a friend who said it (and op
 - Day/week summaries and similar ambient text are model-assisted. Bridger does **not** label them as "AI" in the product voice; they must read as Bridger being attentive.
 - Summaries are grounded in your own words/transcripts. Thin days may show no summary. You can delete Updates (and their derived summaries) at any time.
 - Bridger does **not** guarantee that model-assisted text is complete or free of error. Harmful or objectionable model output can be reported like other content.
-- Discover suggestions use what you marked matchable; you can turn Discoverable off anytime. We do not use time-in-app or click analytics to rank people. Turning Discover off or deleting your account removes matching data about you. Placing someone in Friends or Close friends may help Bridger learn which kinds of overlap lead to real friendships (numbers only, never your messages).
+- Discover suggestions use what you marked matchable; you can turn Discoverable off anytime. We do not use time-in-app or click analytics to rank people. Turning Discover off or deleting your account removes matching data about you. Placing someone in Friends or Close friends may help Bridger learn which kinds of overlap lead to real friendships (numbers only, never your messages). When Bridger embeds matchable facts, it keeps your words and quiz dial numbers. It does not turn that meaning into an identity label in order to compare people.
 - After you connect with someone, the connection reveal may show what you share at the circle each of you granted the other (hobbies, favorites, music, quiz compatibility by the quiz's in-app title). If nothing overlaps yet, Bridger points you to Personality quizzes. Adding a friend is never required to fill a profile first. If Discover matching is on, the last reveal screen may show a few friends of friends Bridger thinks you might click with. You can send them a connect request from that screen; they still have to accept.
 - A future **Local map** (friend radar on Discover) will be opt-in only and for people you already know who choose to share nearby presence. It is not live yet (Discover shows Coming soon only). It is not a stranger or dating map.
 - **Behind the Scenes** is archived from Discover. If you already completed it, it stays optional and private: you may share private context (for example mental-health related) to help matching go at your pace. It never appears on your profile and other people never see it. You choose how strongly matching may use it, and you can edit or remove it in Settings. Bridger does not use it to exclude or hide you from others.
@@ -195,6 +198,25 @@ You may post a short quote on a sticky note and tag a friend who said it (and op
 - The optional relationship assistant (**Billy**) is off by default, admin-gated, and never acts without your confirm. It drafts Bridger messages and events; you approve send, schedule (full draft + exact send time), or create. It does not use your phone texts. Style-aware drafting (optional, on by default) learns how you write from your own Bridger messages, not what you said to whom. Voice questions are optional and transcribed only to answer you. After you speak, Billy may auto-send when it hears a few seconds of silence; you can also stop and discard from the Island stop square. On some browsers, live captions while listening may use the platform speech service. People who have not opted in should not see Widget, Screen, or Island. You are responsible for messages you send or schedule and events you publish after a Billy draft.
 - **Founder-only software agents** (e.g. Grokbot for building Bridger) are not part of the member product and are not available to users. They are not Billy.
 - The app must remain fully usable with every AI job disabled.
+
+### 7.8a Machine learning, and keeping member information off outside AI companies
+
+This is a goal, and we say where we are today so you can trust the page.
+
+- You choose what information enters a computation, and what purpose that computation serves. Bridger chooses the engineering needed to make that authorized computation reliable and secure.
+- Bridger may use machine learning to understand information you explicitly authorize for a feature (for example a matchable profile fact, a quiz you finish, or an Update you post).
+- Your private information is not used to train general-purpose AI models without separate permission. We do not fine-tune those models on your content.
+- Wherever practical, Bridger uses models it can operate itself so member information does not have to be sent to outside AI companies.
+
+**When we aim to get there.** The first of these three: **September 2031**, **about 1 million Bridger accounts**, or **a person who volunteers to build and run those models as a service to the co-op**. Whichever happens first. This is a goal, not a promise that a date alone forces a half-finished switch. **TODO (legal):** counsel should confirm this stays a goal and not an unintended warranty before the signed EULA.
+
+**Where we are now (as far as we know).** Our own matching scores already run on Bridger's servers. They do not send your words to an outside model. These parts still do, and only for the feature you used:
+
+- Written summaries, quiz help, module notes, and the optional assistant (when it is on): **Anthropic**.
+- Matching fingerprints (embeddings) and turning speech into text: **OpenAI**.
+- Live captions in a web browser while the assistant is listening: your browser's speech tool (often Google or Apple). Those words stay on screen. We do not log them.
+
+Those calls go out under no-training / zero-retention API terms. We do not send your name or photos on the matching and summary path. This list is what we are aware of. If we find another place member information leaves Bridger for an AI company, we add it here. That openness is how we build trust. When a call moves onto a model we operate, we update this page.
 
 ### 7.9 Circles and Influencers (planned)
 
@@ -266,6 +288,14 @@ You may post a short quote on a sticky note and tag a friend who said it (and op
 
 | Date | What was added / changed |
 |---|---|
+| 2026-09-21 | Bridger Sign-in Texts SMS program: rates, HELP/STOP, support contact, carrier non-liability; Sign in shows A2P disclosures |
+| 2026-09-21 | Personalize is a coming-soon preview. Customization cannot bypass another member's privacy. No training switch. |
+| 2026-09-21 | The member chooses what information enters a computation and what purpose it serves. Bridger chooses the engineering that makes that authorized computation reliable and secure. |
+| 2026-09-21 | Machine learning goal: use only what you authorize, do not train general models on private info without permission, and run models ourselves where practical. Target: September 2031, about 1 million accounts, or a co-op volunteer, whichever is first. Today Anthropic, OpenAI, and browser live captions are still listed. |
+| 2026-09-21 | Matching embeddings keep your words and quiz dial numbers. Bridger does not convert that meaning into an identity label in order to compare people. |
+| 2026-09-13 | Public Terms / Privacy live at bridger.social/terms.html and /privacy.html. |
+| 2026-09-13 | Optional Face ID / fingerprint lock over a saved session. Bridger does not store a face or print. |
+| 2026-09-13 | Sign-in phone OTP includes a country dial picker so non-US numbers can verify. |
 | 2026-09-10 | Founder-only software agents (e.g. Grokbot) are not part of the member product and are not Billy. |
 | 2026-09-09 | Inside Jokes: you are responsible for tagged quotes and any co-op photo you attach. Same report / block rules as other UGC. |
 | 2026-09-09 | Profile photo looks preview on your phone (not AI). The saved avatar still uses Bridger's own image tool. |

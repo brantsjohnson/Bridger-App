@@ -1,0 +1,57 @@
+---
+description: Data catalog gate. Any change to tables, columns, policies, API fields, analytics, or extension capabilities updates the catalog in the same change.
+alwaysApply: true
+---
+
+# Data catalog (keep it current every change)
+
+Bridger's data rails only work if the catalog matches the database, the API, and analytics. The catalog is the list of what we store, who it belongs to, how sensitive it is, and why we may read it.
+
+The spec is `guide-docs/platform/02-DATA-CATALOG-SPEC.md`. The inventory of what exists today is `guide-docs/platform/00-DATA-INVENTORY.md`. The plan is `guide-docs/platform/06-IMPLEMENTATION-PLAN.md`.
+
+`guide-docs/platform/catalog/catalog.json` is the enforcing catalog once Phase 1 adds it. It does not exist yet. Do not hand-edit `guide-docs/platform/inventory/`. Those JSON files are generated. In the same PR as a schema change, describe the catalog entries Phase 1 must add (class, subjects, consent basis). After `catalog.json` exists, edit that file instead.
+
+## When this applies
+
+The same PR must update the catalog when you:
+
+- add, rename, or remove a table, column, enum value, or storage bucket
+- add or change an RLS policy
+- add or change an API field a client sends or receives
+- add or change an analytics event
+- add a derived field (transcript, summary, embedding, thumbnail, score)
+- add or widen an extension capability
+
+## How to classify
+
+- Use the classes in the catalog spec: `public_profile`, `friends_only`, `circle_scoped`, `private`, `sensitive`, `system_internal`.
+- If you are unsure, pick the more sensitive class and set `needs_review: true`. Do not skip the row.
+- Phone numbers, email, another person's contact, location, allergies, likeness, and tokens are `sensitive`.
+- `attributes.value` is not one fact. Add a key entry `public.attributes.value#<key>` for a new key. Do not hand the whole jsonb to a caller.
+- Name every subject on multi-party rows (both people on a connection, the author and the quoted person, the author and the phone on `pending_people`).
+
+## Consent
+
+- Do not set `consent_basis` to `core_required` unless the product cannot function without the field. Write that reason on the entry and in the PR.
+- Extension-only data is `extension_opt_in`. Nothing is stored for a user until a consent receipt exists for that catalog id.
+- Empty purpose or empty consent means "not decided." It does not mean the field is allowed.
+
+## Privacy fences that are already true
+
+- Nest uses the service-role client. RLS does not protect those queries. New user-data reads go through the policy plan in `guide-docs/platform/01-ARCHITECTURE.md`. Do not add a new direct `.from()` on a user table from the Expo app.
+- Do not add a lookup that answers "is this phone number on Bridger?"
+- Do not return a 403 or a "hidden" flag for a field. Omit it, or return not-found for a whole row, matching `guide-docs/platform/03-POLICY-AND-SECURITY.md`.
+- `user_settings.onboarding_complete` stays. The old onboarding flow stays for demos.
+
+## Founder review
+
+Call out in the PR, and do not treat it as auto-mergeable, when the change:
+
+- touches a `sensitive` entry
+- changes `consent_basis`
+- adds or widens an extension capability
+- changes auth, payments, or RLS on user data
+
+## Migrations
+
+A migration that touches user data needs a catalog diff in the same PR. If the catalog file does not exist yet, the PR describes the entries that Phase 1 must add, with class, subjects, and consent basis.

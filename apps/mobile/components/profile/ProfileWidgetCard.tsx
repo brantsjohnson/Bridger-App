@@ -1,8 +1,8 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// A clear box around each profile section so every block reads as its own
-// widget. In Edit mode it shows a pencil (edit contents) and optional up/down
-// arrows so the owner can rearrange movable modules.
+// The frame around a profile section. On the normal page the section sits
+// straight on the canvas (the redesign has no boxes). In Edit / rearrange
+// mode the box comes back so the pencil and up/down arrows have a home.
 // ============================================
 import React from 'react';
 import { Pressable, View } from 'react-native';
@@ -37,7 +37,13 @@ export function ProfileWidgetCard({
 
   return (
     <View style={{ paddingHorizontal: PROFILE_GUTTER }}>
-      <View className="relative overflow-hidden rounded-card border border-ink-line bg-surface px-3.5 py-3.5">
+      <View
+        className={
+          showChrome
+            ? 'relative overflow-hidden rounded-card border border-ink-line bg-surface px-3.5 py-3.5'
+            : undefined
+        }
+      >
         {showChrome ? (
           <View className="absolute right-2 top-2 z-10 flex-row items-center gap-1">
             {rearranging ? (

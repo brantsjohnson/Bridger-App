@@ -1,10 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// Your own Profile tab — Spotify-artist layout. Square header with Edit and a
-// Settings gear on the photo; View as + search sit under it. Stories / Inside
-// jokes / Bucket list stay as sibling tabs. Settings opens from the gear (not
-// a tab). The floating pill nav STAYS here (the single-person icon on the
-// pill is how you got here), but there is no top "Profile" title bar.
+// Your own Profile tab. Square header with Edit and a Settings gear on the
+// photo; View as + search sit under it. Tabs: Profile, Favorites, Collage,
+// Inside jokes, Bucket list. Settings opens from the gear (not a tab). The
+// floating pill nav STAYS here, but there is no top "Profile" title bar.
 // Analytics: surface=profile.
 // ============================================
 import React, { useEffect, useMemo, useState } from 'react';
@@ -44,12 +43,14 @@ import {
 } from '../../components/profile/profileSpacing';
 
 // User-facing label is Collage; the analytics id stays `tabs.stories` (code name).
-const TABS = ['Profile', 'Collage', 'Inside jokes', 'Bucket list'];
+const TABS = ['Profile', 'Favorites', 'Collage', 'Inside jokes', 'Bucket list'];
 
 function profileTabAnalyticsId(tab: string): string | undefined {
   switch (tab) {
     case 'Profile':
       return PROFILE.tabs.profile;
+    case 'Favorites':
+      return PROFILE.tabs.favorites;
     case 'Collage':
       return PROFILE.tabs.stories;
     case 'Inside jokes':
@@ -297,6 +298,33 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
+        {!settingsOpen && tab === 'Favorites' ? (
+          <View style={{ marginTop: PROFILE_TABS_TO_CONTENT }}>
+            <ProfileCard
+              person={profile.me}
+              header={headerWithCity}
+              about={profile.about}
+              hobbies={profile.hobbies}
+              favs={profile.favs}
+              thisOrThat={profile.thisOrThat}
+              places={profile.places}
+              top5={profile.top5}
+              obsession={profile.obsession}
+              favorites={profile.favorites}
+              greatestHits={profile.greatestHits}
+              upcoming={profile.upcoming}
+              hobbyFollowUps={profile.hobbyFollowUps}
+              editable={editing}
+              own
+              showHeader={false}
+              asTier={asTier}
+              focus="favorites"
+              onAnswered={() => void profile.refresh()}
+              onOpenEvent={(id) => router.push(`/event/${id}` as Href)}
+            />
+          </View>
+        ) : null}
+
         {!settingsOpen && tab === 'Collage' ? (
           <View className="mt-5 px-4">
             <StoryCalendar
@@ -350,9 +378,12 @@ export default function ProfileScreen() {
         open={searchOpen}
         hits={searchHits}
         onClose={() => setSearchOpen(false)}
-        onJump={() => {
+        onJump={(hit) => {
           setSettingsOpen(false);
-          setTab('Profile');
+          const section = hit.section.toLowerCase();
+          setTab(
+            section === 'favorites' || section.includes('obsession') ? 'Favorites' : 'Profile'
+          );
         }}
       />
     </Screen>

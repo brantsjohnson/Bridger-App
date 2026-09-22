@@ -30,7 +30,10 @@ module.exports = ({ config }) => ({
     // associatedDomains: ['applinks:bridger.app'],
     // App Store Connect: we do not use non-exempt encryption (standard HTTPS only).
     infoPlist: {
-      ITSAppUsesNonExemptEncryption: false
+      ITSAppUsesNonExemptEncryption: false,
+      // SECURITY: Face ID is a local unlock only. We never store a face.
+      NSFaceIDUsageDescription:
+        'Bridger uses Face ID so you can open the app without a new text code.'
     },
     // Apple Privacy Manifest stubs; keep in sync as SDKs land.
     privacyManifests: {
@@ -211,7 +214,14 @@ module.exports = ({ config }) => ({
     // The system share sheet, used to send your result image or link to apps
     // like Instagram, Snapchat, or Messages.
     'expo-sharing',
-    'expo-localization'
+    'expo-localization',
+    [
+      'expo-local-authentication',
+      {
+        faceIDPermission:
+          'Bridger uses Face ID so you can open the app without a new text code.'
+      }
+    ]
   ],
   experiments: {
     typedRoutes: true

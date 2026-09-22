@@ -77,6 +77,8 @@ import { loadPeople } from '../lib/people-cache';
 import { trackProduct } from '@bridger/shared';
 import { recordRoutePath } from '../lib/route-trail';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
+import { BiometricLockProvider } from '../providers/biometric-lock-provider';
+import { BiometricLockScreen } from '../components/auth/BiometricLockScreen';
 import { BridgeLiveProvider, useBridgeLive } from '../providers/bridge-live-provider';
 import { BillyVoiceProvider, useBillyVoice } from '../providers/billy-voice-provider';
 import { PurchasesProvider } from '../providers/purchases-provider';
@@ -571,6 +573,8 @@ function RootLayoutNav() {
       <PartyCapturePromptSync />
       {/* Delight gifts mount above navigation so they can play on any screen. */}
       <DelightHost />
+      {/* Face ID cover sits above the app so a saved session is not left open. */}
+      <BiometricLockProvider>
       <View
         className={colorScheme === 'dark' ? 'dark flex-1' : 'flex-1'}
         style={{ width: '100%', height: '100%' }}
@@ -626,6 +630,7 @@ function RootLayoutNav() {
           <Stack.Screen name="activity/index" options={{ headerShown: false }} />
           <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
           <Stack.Screen name="settings/notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="settings/personalize" options={{ headerShown: false }} />
           <Stack.Screen name="profile/customize" options={{ headerShown: false }} />
           <Stack.Screen
             name="assistant/index"
@@ -644,7 +649,9 @@ function RootLayoutNav() {
         </Stack>
         {/* Billy Island: only when opted in, live, and not already on Home/Screen. */}
         <BridgeIslandHost />
+        <BiometricLockScreen />
       </View>
+      </BiometricLockProvider>
     </ThemeProvider>
   );
 }

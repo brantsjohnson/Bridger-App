@@ -42,9 +42,9 @@ import { requestNotificationPermission } from '../../lib/notifications';
 import { markWelcomeCelebration } from '../../lib/welcome-celebration';
 import { loadPeople } from '../../lib/people-cache';
 
-// Where the legal links point until an in-app legal screen ships.
-const TERMS_URL = 'https://d2bvufsvqvy4vz.cloudfront.net/terms.html';
-const PRIVACY_URL = 'https://d2bvufsvqvy4vz.cloudfront.net/privacy.html';
+// THIS SECTION DOES: opens the live public legal pages (same URLs Twilio uses).
+const TERMS_URL = 'https://bridger.social/terms.html';
+const PRIVACY_URL = 'https://bridger.social/privacy.html';
 
 export default function OnboardingScreen() {
   const router = useRouter();

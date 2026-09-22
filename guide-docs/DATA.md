@@ -58,7 +58,7 @@ The attribute pool (hobbies, traits, values, quiz results) keyed by **opaque use
 
 ## 4 · RAG matching design
 
-1. Each person's **matchable facts** (Zone B) are embedded → `person_embeddings` (pgvector).
+1. Each person's **matchable facts** (Zone B) are embedded → `person_embeddings` (pgvector). Embed the meaning (their words and quiz dial numbers). Do not convert that meaning into an explicit identity label first.
 2. An AI pass writes a **de-identified summary** → `person_summaries`.
 3. To find who someone should meet, Nest matching pre-filters FoF candidates (optional pgvector ANN), scores the six named features with transparent weights, and builds the **"why"** from top specificity-weighted **Everyone+matchable** overlap titles (and the quiz evidence gate). **No LLM on the matching hot path** (`MATCHING-ALGORITHMS.md`).
 4. Results are **opaque IDs + reasons**; the app joins Zone A locally to show faces and names.
@@ -96,6 +96,9 @@ music_oauth_states state · user_id⟶users · provider · expires_at   [short-l
 ```
 attributes       id · owner_id⟶users · key · value(jsonb) · layer(essential|profile|connection)
                  · visible_to_tier(close|friend|acquaintance|none) · matchable(bool) · updated_at
+                 [this row is the Vault fact: owner, value, who sees it, whether matching may use it.
+                  More processing flags, per-audience display lines, and My Data live in PERSONAL-DATA.md.
+                  Do not add a training flag.]
 ```
 *(hobbies, favs, places, this-or-that, deeper answers, quiz results all live here as rows — **one row per item, unlimited per category**, each independently visible; a person can have hundreds of entries. A **place** row's `value` can carry tags + note + **photo media refs (co-op)** + optional **`favorite: true`** (FAV star on the map; at most one starred place per person); matching two people's place rows surfaces **shared-place photos** in In-common. Onboarding seeds About Me via `about:about-from` / `about:about-town` / `about:about-job` / `about:about-dream-job` / `about:about-birthday`, and seeds Listening via `currently_song`. A **this-or-that** row's value is `this | that | both`. Synced Spotify top artists also write `music.artist.<id>` rows for reveal overlap.)*
 

@@ -1,9 +1,10 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The Spotify-order profile body shared by own and friend profiles:
-// Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → Hobbies →
-// Places → Where you met. Co-op Greatest hits photos insert after a section
-// via afterModule. Own Edit mode can rearrange movable modules.
+// The profile body shared by own and friend profiles. The Profile tab is
+// About, Top 5, My Hobbies, then Places traveled (plus mutuals, upcoming,
+// and where you met when those exist). Favorites and Current Obsession
+// render on the Favorites tab. Co-op Greatest hits photos insert after a
+// section via afterModule. Own Edit mode can rearrange movable modules.
 // Empty sections: only your full own profile shows "Add …" cards. Friend
 // pages and View as Friends/Everyone hide empty sections entirely so the
 // page does not hint that something is missing.
@@ -24,6 +25,7 @@ import type {
 import {
   CUSTOMIZE,
   DEFAULT_PROFILE_LAYOUT,
+  LEGACY_SPOTIFY_MODULE_ORDER,
   MOVABLE_MODULE_ORDER,
   PROFILE,
   trackClick,
@@ -72,6 +74,11 @@ function normalizeOrder(order?: MovableModule[] | null): MovableModule[] {
   for (const id of base) {
     if (!seen.has(id)) next.push(id);
   }
+  // THIS SECTION DOES: profiles that still have the old Spotify order pick up
+  // the redesign order. A custom order the owner saved stays as they left it.
+  if (next.join('|') === LEGACY_SPOTIFY_MODULE_ORDER.join('|')) {
+    return [...MOVABLE_MODULE_ORDER];
+  }
   return next;
 }
 
@@ -109,7 +116,9 @@ export function ProfilePageShell({
   onOpenHobbies,
   onOpenPlaces,
   onOpenEvent,
-  onOpenTot
+  onOpenTot,
+  /** page = the profile scroll. favorites = Favorites + Current Obsession only. */
+  focus = 'page'
 }: {
   own: boolean;
   editable?: boolean;
@@ -152,6 +161,7 @@ export function ProfilePageShell({
   onOpenPlaces?: () => void;
   onOpenEvent?: (id: string) => void;
   onOpenTot?: () => void;
+  focus?: 'page' | 'favorites';
 }) {
   const router = useRouter();
   const hobbiesId = own ? PROFILE.card.hobbies_widget : PROFILE.about_them.hobbies_widget;
@@ -244,7 +254,9 @@ export function ProfilePageShell({
   // visible answers so the page does not hint that something is missing.
   const visibleModules = useMemo(() => {
     const filledFavorites = favorites.some((f) => !f.empty) || thisOrThat.length > 0;
-    return layoutOrder.filter((m) => {
+    const visible = layoutOrder.filter((m) => {
+      if (focus === 'favorites' && m !== 'favorites' && m !== 'obsession') return false;
+      if (focus === 'page' && (m === 'favorites' || m === 'obsession')) return false;
       if (m === 'mutuals') return !own && mutuals.length > 0;
       if (m === 'whereMet') return !own && !!whereMet;
       // Photos insert via afterModule; do not render a lone end-of-page block.
@@ -262,6 +274,11 @@ export function ProfilePageShell({
       }
       return true;
     });
+    if (focus !== 'favorites') return visible;
+    return [...visible].sort((a, b) => {
+      const rank = (id: MovableModule) => (id === 'favorites' ? 0 : 1);
+      return rank(a) - rank(b);
+    });
   }, [
     layoutOrder,
     own,
@@ -274,7 +291,8 @@ export function ProfilePageShell({
     favorites,
     thisOrThat.length,
     hobbies.length,
-    places.length
+    places.length,
+    focus
   ]);
 
   /** Photos that sit after a given section (placement_index order). */
@@ -411,7 +429,7 @@ export function ProfilePageShell({
               className="font-pixel text-ink"
               style={{ fontSize: PROFILE_SECTION_TITLE_SIZE, marginBottom: PROFILE_TITLE_TO_BODY }}
             >
-              Hobbies
+              My Hobbies
             </Text>
             {hobbies.length > 0 ? (
               <HobbiesWidget
@@ -458,10 +476,15 @@ export function ProfilePageShell({
                 <TravelModule places={places} analyticsId={placesId} />
               )}
             </AnalyticsRegion>
-            {places.length > 0 ? (
-              <Text className="mt-2 font-sans-sb text-[11px] text-ink-mute">
-                Photos for each place are coming soon.
-              </Text>
+            {showEmptyCtas && places.length > 0 ? (
+              <Pressable
+                onPress={withAnalyticsPress(PROFILE.card.widget_edit, () => onOpenPlaces?.())}
+                accessibilityRole="button"
+                accessibilityLabel="Edit places"
+                className="mt-3 min-h-[44px] flex-row items-center justify-center self-start rounded-full border border-ink-line bg-surface px-4"
+              >
+                <Text className="font-sans-b text-[16px] text-ink">Edit places</Text>
+              </Pressable>
             ) : null}
           </View>
         );

@@ -110,7 +110,9 @@ export function ProfileCard({
   onAnswered,
   onOpenStory,
   onAddStory,
-  onOpenEvent
+  onOpenEvent,
+  /** page = profile scroll. favorites = Favorites and Current Obsession only. */
+  focus = 'page'
 }: {
   person: Person;
   header: MyProfileHeader | null;
@@ -145,6 +147,7 @@ export function ProfileCard({
   /** Own profile: empty dashed story tile → capture. */
   onAddStory?: () => void;
   onOpenEvent?: (id: string) => void;
+  focus?: 'page' | 'favorites';
 }) {
   // THIS SECTION DOES: only your full own profile shows "Add …" empty cards.
   // View as Friends / Everyone (and friend pages) hide empty sections entirely.
@@ -382,6 +385,7 @@ export function ProfileCard({
         thisOrThat={visibleThisOrThat}
         whereMet={whereMet}
         greatestHits={visibleGreatestHits}
+        focus={focus}
         onOpenMutuals={onOpenMutuals}
         onOpenTop5={() => openModule('top5')}
         onOpenAbout={() => openModule('about_basics')}

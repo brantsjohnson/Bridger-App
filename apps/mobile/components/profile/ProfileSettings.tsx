@@ -2,7 +2,9 @@
 // WHAT THIS FILE DOES (plain English):
 // The Settings panel on your profile (opened from the gear next to Edit):
 // appearance, who sees what, storage, Discover, page customization,
-// notifications (opens per-group prefs), blocked people, account, and Log out.
+// Personalize (a coming-soon preview), notifications (opens per-group prefs),
+// optional Face ID lock, blocked people,
+// account, and Log out.
 // Rows that lead to surfaces we haven't built yet show a small note instead of
 // going nowhere silently. Log out is coral red, asks once, then clears the
 // session (or leaves demo) and opens Sign in.
@@ -10,7 +12,7 @@
 // ============================================
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import type { BillyStatusDto, Person } from '@bridger/shared';
 import { PROFILE, trackProduct } from '@bridger/shared';
 import {
@@ -47,6 +49,7 @@ import {
 } from '../../data/music';
 import { disableDemoMode, isDemoMode } from '../../lib/demo';
 import { useAuth } from '../../providers/auth-provider';
+import { useBiometricLock } from '../../providers/biometric-lock-provider';
 import { connectAppleMusicAccount } from '../../lib/apple-music-connect';
 import { connectSpotifyAccount } from '../../lib/spotify-connect';
 import { DelightErrorBoundary } from '../../delight/_host/DelightErrorBoundary';
@@ -64,6 +67,7 @@ export function ProfileSettings({
 }) {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const biometric = useBiometricLock();
   const scheme = useColorScheme();
   /** a standing preference for other people's pages — never your own */
   const [preferOriginal, setPreferOriginal] = useState(false);
@@ -338,6 +342,13 @@ export function ProfileSettings({
         analyticsId={PROFILE.settings.customize_profile}
       />
       <ListRow
+        label="Personalize"
+        sublabel="Coming soon · make Bridger yours"
+        trailing="chevron"
+        onPress={() => router.push('/settings/personalize' as Href)}
+        analyticsId={PROFILE.settings.personalize}
+      />
+      <ListRow
         label="Always show plain pages"
         sublabel="Skip other people's customization when you visit"
         action={
@@ -366,6 +377,25 @@ export function ProfileSettings({
         onPress={() => router.push('/settings/notifications')}
         analyticsId={PROFILE.settings.notifications}
       />
+      {biometric.ready && biometric.capability.available && !isDemoMode() ? (
+        <ListRow
+          label={`Unlock with ${biometric.capability.label}`}
+          sublabel="Open Bridger without a new text. Off by default."
+          action={
+            <Toggle
+              checked={biometric.enabled}
+              onChange={(v) => {
+                void biometric.setEnabled(v).then((res) => {
+                  if (res.error) Alert.alert('Could not update', res.error);
+                });
+              }}
+              label={`Unlock with ${biometric.capability.label}`}
+              analyticsId={PROFILE.settings.face_id_toggle}
+              analyticsProps={{ method: biometric.capability.method }}
+            />
+          }
+        />
+      ) : null}
       {assistantVisible ? (
         <>
           <ListRow

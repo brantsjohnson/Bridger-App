@@ -60,7 +60,14 @@ export type AnalyticsMethod =
   | 'email'
   | 'phone'
   /** A later run of a quiz that already has a first (canonical) result. */
-  | 'retake';
+  | 'retake'
+  /** Device Face ID / face unlock (never a biometric sample). */
+  | 'face'
+  /** iOS Touch ID. */
+  | 'touch'
+  /** Android fingerprint (or generic device unlock). */
+  | 'fingerprint'
+  | 'iris';
 
 /** Named product outcomes from ANALYTICS-TAXONOMY.md §3b. */
 export type AnalyticsProductEvent =
@@ -218,6 +225,14 @@ export type AnalyticsProductEvent =
   | 'pending_person_saved'
   /** Confirmed Log out from Profile Settings (not a mere tap on the button). */
   | 'auth_signed_out'
+  /** Person turned on Face ID / fingerprint lock after a successful prompt. */
+  | 'biometric_unlock_enabled'
+  /** Person turned the lock off in Settings. */
+  | 'biometric_unlock_disabled'
+  /** Face ID / fingerprint (or passcode fallback) opened the app. */
+  | 'biometric_unlock_succeeded'
+  /** Unlock prompt failed or was cancelled. Property: outcome. */
+  | 'biometric_unlock_failed'
   /** Runtime demo unlocked (logo long-press confirmed). */
   | 'demo_mode_entered'
   /** Person left runtime demo from Settings. */

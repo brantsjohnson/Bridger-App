@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  ============================================
+  WHAT THIS FILE DOES (plain English):
+  Public Call-to-Action page for Bridger Sign-in Texts (US A2P 10DLC).
+  Carriers review this URL to see how people consent to receive one-time
+  sign-in SMS codes. The same disclosures appear under Send me a code in
+  the Bridger app Sign in screen. Keep this page, privacy.html, terms.html,
+  and the app consent line in sync.
+  ============================================
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bridger Sign-in Texts · SMS opt-in</title>
+    <meta
+      name="description"
+      content="How Bridger collects consent for one-time sign-in text messages."
+    />
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f4f1ea;
+        color: #111111;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.55;
+      }
+      main {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+      }
+      a { color: #111111; text-underline-offset: 3px; }
+      a:focus-visible { outline: 2px solid #111111; outline-offset: 3px; }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
+      }
+      .lead { color: #444; font-size: 16px; margin: 0 0 24px; }
+      .card {
+        background: #fff;
+        border: 2px solid #111;
+        border-radius: 20px;
+        padding: 20px;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .dial, .phone {
+        border: 2px solid #111;
+        border-radius: 12px;
+        padding: 14px 12px;
+        font-size: 16px;
+        background: #f4f1ea;
+      }
+      .dial { flex: 0 0 72px; text-align: center; }
+      .phone { flex: 1; }
+      .cta {
+        display: block;
+        width: 100%;
+        border: none;
+        border-radius: 999px;
+        padding: 16px;
+        font-size: 17px;
+        font-weight: 700;
+        color: #111;
+        background: linear-gradient(180deg, #e8e8e8 0%, #b8b8b8 100%);
+        box-shadow: inset 0 1px 0 #fff, 0 0 0 2px #111;
+        cursor: default;
+      }
+      .consent {
+        margin-top: 14px;
+        font-size: 13px;
+        color: #444;
+        line-height: 1.5;
+      }
+      .note {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #444;
+      }
+      .back { display: inline-block; margin-bottom: 20px; font-size: 15px; }
+      .updated { color: #666; font-size: 13px; margin: 0 0 16px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <!-- THIS SECTION DOES: names the SMS program for carrier reviewers. -->
+      <a class="back" href="/">&larr; Back to Bridger</a>
+      <h1>Bridger Sign-in Texts</h1>
+      <p class="updated">Last updated: September 21, 2026</p>
+      <p class="lead">
+        Bridger is a social app for real-world friendship. This page shows how
+        people opt in to receive one-time sign-in text messages. We do not send
+        marketing texts on this program.
+      </p>
+
+      <!-- THIS SECTION DOES: mirrors the in-app Sign in phone step (CTA). -->
+      <div class="card" aria-label="Sign in phone consent preview">
+        <p style="margin: 0 0 12px; font-size: 20px; font-weight: 700;">
+          Create your Bridger account.
+        </p>
+        <p style="margin: 0 0 16px; color: #555; font-size: 14px;">
+          Use your phone number to get started.
+        </p>
+        <label for="preview-phone">Phone number</label>
+        <div class="row">
+          <div class="dial" aria-hidden="true">+1</div>
+          <div class="phone" id="preview-phone" aria-hidden="true">
+            Your mobile number
+          </div>
+        </div>
+        <button type="button" class="cta" disabled aria-disabled="true">
+          Send me a code
+        </button>
+        <p class="consent">
+          By tapping Send me a code in the Bridger app (iOS, Android, or web),
+          you agree to receive one Bridger sign-in text when you ask for it.
+          Message frequency: only when you request a code.
+          <strong>Msg &amp; data rates may apply.</strong>
+          Reply <strong>HELP</strong> for help,
+          <strong>STOP</strong> to opt out.
+          <a href="/privacy.html">Privacy</a>
+          ·
+          <a href="/terms.html">Terms</a>
+        </p>
+      </div>
+
+      <p class="note">
+        Opt-in happens when you type your own phone number on Bridger Sign in
+        and tap Send me a code. We do not buy lists, scrape numbers, or text
+        anyone who did not enter their own number. After you opt in you receive
+        one SMS with a short verification code. Support:
+        <a href="mailto:hello@bridger.social">hello@bridger.social</a>.
+      </p>
+    </main>
+  </body>
+</html>

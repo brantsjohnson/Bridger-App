@@ -7,6 +7,15 @@
 // --- SECURITY / PRIVACY ---
 // Keys stay server-side. Deidentified lane never sees PII or media.
 // personal_agent lane requires a principal. Lanes cannot switch at runtime.
+//
+// COMPLIANCE GOAL (self-operated models):
+// The member chooses what information enters a computation and what purpose
+// it serves. Bridger chooses the engineering that makes that authorized
+// computation reliable and secure (TERMS.md section 7.8a).
+// runLlm, runEmbed, and runStt below are the three doors that still send
+// member material to an outside AI company.
+// Replace each door by September 2031, or at about 1 million accounts, or
+// when a co-op volunteer runs the model, whichever is first.
 // ============================================
 import { getRegistryEntry } from '../jobs/registry';
 import type { JobName, Lane } from '../jobs/types';
@@ -151,6 +160,7 @@ async function loadConfig(
   return row ?? configFromRegistry(job);
 }
 
+// COMPLIANCE GOAL (self-operated models): Anthropic. See file header.
 async function runLlm(
   input: RunJobInput,
   config: AiJobConfig,
@@ -244,6 +254,7 @@ async function runLlm(
   return { status: 'fail_silent', reason: 'invalid_json_twice' };
 }
 
+// COMPLIANCE GOAL (self-operated models): OpenAI embeddings. See file header.
 async function runEmbed(
   input: RunJobInput,
   config: AiJobConfig,
@@ -305,6 +316,7 @@ async function runEmbed(
   }
 }
 
+// COMPLIANCE GOAL (self-operated models): OpenAI speech-to-text. See file header.
 async function runStt(
   input: RunJobInput,
   config: AiJobConfig,

@@ -24,7 +24,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 | **Following** button | **Friend-level (tier) control** | On a friend's page: shows your current tier with them (Close / Friend / Acquaintance) and taps to change it right there; **`+ group`** makes a new custom group (co-op). On your own page this slot is **Edit / View as**. |
 | Shuffle / **▶ Play** (green) | **▶ Play their recap** | Appears only if they have a recap/podcast entry to listen to (`RECAP-PODCAST.md`). |
 | Little square by "Following" | **Their current story** | Home-style story cover tile (not a face Avatar). Tap to watch; ring if unseen. |
-| Music / Video / Events / Merch tabs | **Profile · Stories · Inside jokes · Bucket list** | The page's tab bar. Settings is a gear next to Edit on your own profile only. |
+| Music / Video / Events / Merch tabs | **Profile · Favorites · Collage · Inside jokes · Bucket list** | The page's tab bar. Favorites holds Favorites + Current Obsession. A friend's bar also has In common and Notes. Settings is a gear next to Edit on your own profile only. |
 | Top-right (none) | **🔍 Search** | In the action row (fills width after the compact tier / View as pill). Searches this profile's visible fields. |
 | "You liked · 31 songs" | **Mutuals** | The mutual friends row. Tap → who you both know. |
 | **Popular** (top tracks) | **Top 5** | "5 things anyone who knows you well needs to know about you." |
@@ -81,7 +81,7 @@ Before the profile can be filled, a **required, non-skippable intro** plays once
 └───────────────────────────────────────────┘
 ```
 
-The order is the Spotify order (Mutuals → Top 5 → About me → Upcoming → Obsession → Favorites → …). Each content section sits in a **widget box**. Own **Edit** enters rearrange mode (up/down on boxes + pencil to edit that box's contents); **Customize look** opens co-op theme. Co-op **Greatest hits** photos (§9) can sit between sections. Customization rules live in `PROFILE-CUSTOMIZATION.md`; **"View original"** always returns this native layout. The last saved module order stays on the phone so opening Profile does not rebuild from the default and then jump.
+The Profile tab order follows the redesign: About card, My Top 5, My Hobbies, Places traveled, then mutuals, upcoming events, and where you met when those exist. Favorites and Current Obsession live on the Favorites tab. Sections sit on the canvas. Edit mode still boxes them so they can be rearranged. Own **Edit** enters rearrange mode (up/down on boxes + pencil to edit that box's contents); **Customize look** opens co-op theme. Co-op **Greatest hits** photos (§9) can sit between sections. Customization rules live in `PROFILE-CUSTOMIZATION.md`; **"View original"** always returns this native layout. The last saved module order stays on the phone so opening Profile does not rebuild from the default and then jump.
 
 **Your quizzes (own profile only).** After you finish Which "J" name are you, Profile keeps that **first** result even after Home rotates the featured quiz. The card shows the J-name + percent, **See your result**, **Share**, the **visible invite URL** (Copy / Preview), and **Retake for fun**. Fun retakes stay on this phone and do not change the stored first result or friend matching. Untaken older quizzes still list under "Quizzes to catch up on."
 
@@ -282,7 +282,7 @@ Same page; the differences:
 
 ## 14 · Settings (own profile, gear)
 
-Who-sees-what overview · Storage & plan (usage + co-op status + overage — `PROFILE-CUSTOMIZATION.md`) · Discover (Discoverable toggle + match sources) · Co-op portal · **Customize your profile page** (co-op — `PROFILE-CUSTOMIZATION.md`) · Notifications · Account · Log out.
+Who-sees-what overview · Storage & plan (usage + co-op status + overage — `PROFILE-CUSTOMIZATION.md`) · Discover (Discoverable toggle + match sources) · Co-op portal · **Customize your profile page** (co-op — `PROFILE-CUSTOMIZATION.md`) · Notifications · **Unlock with Face ID** (or Touch ID / fingerprint; off by default; phone only) · Account · Log out.
 
 ---
 
@@ -356,9 +356,9 @@ Every field is an `Attribute` with its own `visibleToTier` **and** `matchable` f
 - [ ] Own and friend profiles render the **same Spotify-style composition**; differences are edit access, tier filtering, and tabs.
 - [ ] **Empty sections stay invisible** on friend pages and on View as Friends / Everyone: no section header, no "Add …" card, no "nothing shared" copy. Only your full own view (Close) shows fill empty states.
 - [ ] Header: square photo, name, city line, ▶ recap (only if present), current-story square (own empty → tap opens capture), **tier control** (friend) / **Edit + ⚙ Settings + View as** (own), and a **search** control that searches this profile's content.
-- [ ] The page order matches §2: Mutuals → Top 5 → About me → Upcoming → Current Obsession → Favorites (+hobbies) → Places → Where you met.
-- [ ] **Top 5** captures up to 5 ordered "things to know," each optionally imaged, each tier-visible.
-- [ ] **About me** sits under Top 5, shows city when collapsed, and expands to bio-first + a grid of fields; no follower/follow UI.
+- [ ] The Profile tab order is About card, My Top 5, My Hobbies, Places traveled, then mutuals, upcoming, and where you met when present. Favorites and Current Obsession are the Favorites tab.
+- [ ] **Top 5** captures up to 5 ordered "things to know," each optionally imaged, each tier-visible. On the page they read as a big colored number plus the line.
+- [ ] **About me** is a photo card: name, city, and bio on the picture. Swipe (or "Swipe for more") flips to the detail fields. "Swipe back" returns to the photo. No follower/follow UI.
 - [ ] **Upcoming events** shows events the *viewer* is invited to with this person.
 - [ ] **Current Obsession** is a grid of picture/emoji squares from the prompt palette, top 4 + See all, editable/reorderable; absorbs the old Listening/Reading chips.
 - [ ] **Favorites** shows (own) a "to start" row + a filled **2-up grid** (top 4 + See all), styled like albums, and includes **This-or-that**; **Hobbies** sit under it as the swipe (chips ⇄ answers) widget whose last view is remembered.

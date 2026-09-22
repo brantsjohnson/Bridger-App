@@ -1,9 +1,9 @@
 // ============================================
 // WHAT THIS FILE DOES (plain English):
-// The "Popular tracks" slot: up to 5 numbered things anyone who knows you
-// well should know. Optional emoji/image per row. Own full profile can
-// empty-state into the Top 5 module. Friend / View-as previews hide this
-// section entirely when nothing is visible (no header, no "nothing shared").
+// "My Top 5": up to 5 things anyone who knows you well should know. Each row
+// is a big colored number and the line of text (the profile redesign). Own
+// full profile can empty-state into the Top 5 module. Friend / View-as
+// previews hide this section entirely when nothing is visible.
 // ============================================
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -16,6 +16,9 @@ import {
   PROFILE_TITLE_TO_BODY
 } from './profileSpacing';
 import { ProfileAddCard } from './ProfileAddCard';
+
+/** One vivid color per row, same order as the profile redesign. */
+const TOP5_COLORS = ['#752bf3', '#2ac20b', '#ffb100', '#0072f0', '#ff4800'];
 
 export function Top5Section({
   items,
@@ -51,10 +54,7 @@ export function Top5Section({
           className="font-pixel text-ink"
           style={{ fontSize: PROFILE_SECTION_TITLE_SIZE }}
         >
-          Top 5
-        </Text>
-        <Text className="mt-1 font-sans-sb text-[13px] text-ink-mute">
-          5 things anyone who knows me should know
+          My Top 5
         </Text>
       </AnalyticsRegion>
 
@@ -81,13 +81,15 @@ export function Top5Section({
               }
               accessibilityRole={editable ? 'button' : 'text'}
               accessibilityLabel={`${i + 1}. ${item.text}`}
-              className="min-h-[56px] flex-row items-center gap-3"
+              className="min-h-[44px] flex-row items-center gap-3"
             >
-              <Text className="w-5 font-sans-b text-[14px] text-ink-mute">{i + 1}</Text>
-              <View className="h-12 w-12 items-center justify-center rounded-lg border border-ink-line bg-surface">
-                <Text className="text-[22px]">{item.emoji ?? '✨'}</Text>
-              </View>
-              <Text numberOfLines={2} className="min-w-0 flex-1 font-sans-b text-[15px] text-ink">
+              <Text
+                className="w-8 font-sans-b text-[32px] leading-none"
+                style={{ color: TOP5_COLORS[i % TOP5_COLORS.length] }}
+              >
+                {i + 1}
+              </Text>
+              <Text numberOfLines={2} className="min-w-0 flex-1 font-sans-b text-[18px] text-ink">
                 {item.text}
               </Text>
             </Pressable>

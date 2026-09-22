@@ -8,7 +8,8 @@ import { withPreamble } from '../_preamble';
 export const VERSION = 'person-summary/v1';
 
 export const SYSTEM = withPreamble(`Write one short paragraph (max ~40 words) summarizing this person's matchable facts for retrieval.
-Tone: warm, specific, short. No emojis. No names. If material is too thin, return exactly null.`);
+Tone: warm, specific, short. No emojis. No names. If material is too thin, return exactly null.
+Keep their words and any dial numbers. Do not convert facts into an identity label (a personality type, a belief category, or a condition name) unless they wrote that phrase themselves.`);
 
 export function buildUser(input: { facts: string[] }): string {
   return `Matchable facts:\n${input.facts.join('\n')}`;

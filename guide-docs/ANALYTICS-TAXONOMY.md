@@ -38,6 +38,8 @@ A **sheet / bottom-sheet / modal / overlay is its own `surface`**, not part of t
 
 | Surface (sheet) | Opens from | Why measure separately |
 |---|---|---|
+| `auth_country_sheet` | `auth` (Sign in phone path) | pick dial code before SMS OTP — open then bail? which `country_iso`? |
+| `auth_lock` | `auth` (saved session) | Face ID / fingerprint cover — unlock vs Use phone number (new SMS)? |
 | `touch_grass_sheet` | `home` or `events` | "when/who do you want to touch grass?" — do they open it then bail? which parent screen drives more? |
 | `grass_signal_sheet` | `home` or `events` | a friend's signal detail — do they say "I'm in" or quietly decline after opening? |
 | `ask_sheet` | `home` | create poll / ask question — do they open then bail? |
@@ -232,7 +234,11 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `contact_shared` | contact card shared into a thread | `counts_against_cap` (always false) — NEVER include field values |
 | `auth_signed_in` | sign-in succeeds | `method` (phone/google/apple/email) |
 | `auth_signed_up` | account create succeeds | `method` (phone/google/apple/email) |
-| `auth_signed_out` | Log out confirmed in Profile Settings | `method` (`settings`) |
+| `auth_signed_out` | Log out confirmed in Profile Settings | `method` (`settings`\|`lock_use_phone`) |
+| `biometric_unlock_enabled` | Face ID / fingerprint lock turned on after a successful prompt | `method` (`face`\|`touch`\|`fingerprint`\|`iris`) |
+| `biometric_unlock_disabled` | Face ID / fingerprint lock turned off | `method` (`settings`) |
+| `biometric_unlock_succeeded` | lock cover opened the app | `method` (`face`\|`touch`\|`fingerprint`\|`iris`) |
+| `biometric_unlock_failed` | lock prompt cancelled or failed | `method`, `outcome` (`cancel`\|`fail`\|`unavailable`\|`lockout`) |
 | `demo_mode_entered` | person confirms logo long-press unlock into fake-data demo | `method` (`logo_long_press`) — no PII |
 | `membership_interests_selected` | New onboarding Co-op 6 saved | `count` (opaque ids only) |
 | `help_interests_selected` | New onboarding Product 2 saved | `count` (opaque ids only) |
@@ -267,7 +273,7 @@ A **flow** is a multi-step task. Each emits `flow_started`, `flow_step` (with th
 | `notification_see_all` | user opens the full Notifications page from Home | `—` |
 | `notifications_marked_read` | Mark all as read on the Notifications page (scoped to active `filter`) | `filter` (`all`\|`home`\|`friends`\|`events`\|`discover`) |
 | `notification_pref_changed` | user flips a Settings kind or circle toggle | `pref` (kind or circle id), `pref_scope` (`kind` \| `circle`), `enabled` (bool) |
-| `permission_result` | an OS permission prompt is answered | `permission` (`camera`\|`mic`\|`contacts`\|`notifications`\|`photos`\|`location`\|`calendar`), `outcome` (`granted`\|`denied`\|`dismissed`), `context` (e.g. `assistant`, `assistant_calendar`) — never content |
+| `permission_result` | an OS permission prompt is answered | `permission` (`camera`\|`mic`\|`contacts`\|`notifications`\|`photos`\|`location`\|`calendar`\|`biometric`), `outcome` (`granted`\|`denied`\|`dismissed`), `context` (e.g. `assistant`, `assistant_calendar`, `settings_enable`) — never a face/print |
 | `analytics_opted_in` | (legacy / unused in UI) was Settings toggle on | `method` (`settings`) |
 | `analytics_opted_out` | (legacy / unused in UI) was Settings toggle off | `method` (`settings`) |
 
@@ -301,7 +307,8 @@ Applies to: `hobbies_widget` (dropdown vs swipe to interests), `places_map` (map
 | section | elements |
 |---|---|
 | `welcome` | `next` (appears after typing; `method=tap`), **`brand` (dead)**, **`beat_body` (dead)**, **`progress_bar` (dead, fill is painted on `next`)**. Typing is not skippable. Wait-out uses `welcome` flow_step `method=auto` (no click). Reduce Motion: `next` only, no auto-advance. Surface `auth`, parent `welcome`. |
-| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `phone`, `send_code`, `otp_code`, `verify`, `resend_otp`, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` (**retired**: Create account merged into Sign in OAuth) |
+| `sign_in` | **`page_title` (dead)**, `brand_logo` (long-press unlock when build allows), `country_code` (opens `auth_country_sheet`; property `country_iso`), `phone`, `send_code` (property `country_iso`), **`sms_consent` (dead — A2P disclosure copy)**, `privacy_policy`, `terms`, `otp_code`, `verify`, `resend_otp`, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `submit`, `switch_to_sign_up` (**retired**: Create account merged into Sign in OAuth) |
+| `lock` | **`page_title` (dead)**, **`mark` (dead)**, `unlock` (property `method` face\|touch\|fingerprint\|iris), `use_phone` |
 | `sign_up` | **retired surface** (route redirects to `sign_in`); IDs kept for historical events only |
 | `sign_up` | **`page_title` (dead)**, `google` (method=google), `apple` (method=apple), `manual_link` (reveals email form), `email`, `password`, `confirm_password`, `submit`, `switch_to_sign_in` |
 
@@ -376,6 +383,18 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 |---|---|
 | `chrome` | `dismiss` |
 | `body` | **`body` (dead)** |
+
+### `auth_lock` *(surface, parent `auth`)*
+Full-screen cover over a saved session. Never logs a face, print, or phone number.
+| section | elements |
+|---|---|
+| `lock` | **`page_title` (dead)**, **`mark` (dead)**, `unlock`, `use_phone` |
+
+### `auth_country_sheet` *(surface, parent `auth`)*
+Searchable dial-code picker on Sign in. Never logs phone digits or search text. Property `country_iso` only (US, GB…).
+| section | elements |
+|---|---|
+| `sign_in` | `country_search` (focus only), `country_row` (`country_iso`), `country_dismiss` |
 
 ### `touch_grass_sheet` *(surface)*
 | section | elements |
@@ -530,7 +549,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 ### `profile` (own)
 | section | elements |
 |---|---|
-| `tabs` | `profile`, `stories`, `inside_jokes`, `bucket_list` (record `first_interaction` → what they open first) |
+| `tabs` | `profile`, `favorites` (Favorites + Current Obsession), `stories`, `inside_jokes`, `bucket_list` (record `first_interaction` → what they open first) |
 | `header` | `avatar` (friend view: tap opens their story when `method=story` / ring present), `name`, **`city` (dead)**, `mutuals` (friend view — opens In common), `play_recap`, `story_tile`, `post_prompt` (own only: empty dashed story tile → opens `post_composer`), `tier_control`, `edit` (rearrange mode + opens Photo look sheet), `settings_gear` (own only: gear next to Edit → Settings), `view_as`, `search` (action-row search; never logs query text), `customize_look` (opens `customize`), `filter_pop_art` / `filter_comic` / `filter_sepia` / `filter_x_ray` (Photo look pills), `photo_look_save`, `photo_look_dismiss`, **`header_bg` (dead)**. `overflow` and `song` retired (see Renames) |
 | `card` | `mutuals`, `top5`, `top5_row`, `about_me` (**dead**), `about_me_toggle`, `about_me_edit`, `about_me_bio_more`, `about_me_field_edit`, `about_me_reorder` (method=`up`\|`down`), `about_me_photo` (own Edit: Take/Upload; updates avatar), `upcoming`, `upcoming_row`, `obsession`, `obsession_square`, `favorites`, `favorites_tile`, `favorites_to_start`, `see_all` (pill under top-4 grids), `greatest_hits`, `greatest_hits_photo` (**dead**), `where_met`, `hobbies_widget` (method swipe/dropdown; `page_viewed`), `this_or_that_row` (tap + **dead** on the row body), `places_map` (swipe/list, `page_viewed`), `places_pin`, `favs`, `add_details`, `add_hobbies`, `add_favs`, `add_places`, `take_this_or_that`, `add_module`, `widget_edit` (pencil on a widget box), `widget_reorder` (method=`up`\|`down`). `currently` retired (see Renames) |
 | `module` | `audience_set_all`, `audience_row`, `matchable_toggle`, `matchable_row`, `continue`, `cancel`, `hobby_select`, `hobby_search` (focus search; never logs query text), **`hobby_category` (dead)**, `hobby_add_own`, `hobby_custom_name`, `hobby_custom_emoji`, `hobby_custom_save`, `hobby_custom_remove`, `place_search` (focus search; never logs query text), `place_result` (picked a geocoded hit; no place names) |
@@ -539,9 +558,16 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 | `inside_jokes` | `note` (tap → next face; `page_index` 0 quote / 1 photo / 2 credits; auto flip is not an event), `add`, `filter`, **`note_body` (dead)** |
 | `bucket_list` | `item`, `add`, `check_off`, `edit` (Edit/Done toggle), `edit_item` (open edit sheet), `delete` (method=`swipe`\|`edit_mode`\|`sheet`), `save` |
 | `quizzes` | `untaken_row`, **`section_header` (dead)**, **`taken_row` (dead — finished quiz card body)**, `see_result`, `share`, `retake`, **`share_url` (dead)**, `copy_link`, `preview_link` |
-| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `discover_toggle`, `coop`, `circles` (opens `circles_settings`; planned), `notifications` (opens `notification_prefs`), `account`, `delete_account`, `analytics_toggle` (**removed from Settings UI**; product analytics is on by default while signed in), `log_out`, `appearance`, `blocked_people`, `storage_plan`, `always_original`, `connect_spotify`, `disconnect_spotify`, `connect_apple_music`, `disconnect_apple_music`, `assistant_toggle`, `assistant_open`, **`billy_status` (dead)**, `billy_plus_cta`, `billy_plus_cancel`, **`surprises_header` (dead)**, `play_emoji_bomb`, `preview_emoji_rain`, `leave_demo` |
+| `settings` | `who_sees_what`, `customize_profile` (opens `customize`), `personalize` (opens `personalize`; preview only, collects nothing), `discover_toggle`, `coop`, `circles` (opens `circles_settings`; planned), `notifications` (opens `notification_prefs`), `face_id_toggle` (optional Face ID / fingerprint lock; `method` face\|touch\|fingerprint\|iris), `account`, `delete_account`, `analytics_toggle` (**removed from Settings UI**; product analytics is on by default while signed in), `log_out`, `appearance`, `blocked_people`, `storage_plan`, `always_original`, `connect_spotify`, `disconnect_spotify`, `connect_apple_music`, `disconnect_apple_music`, `assistant_toggle`, `assistant_open`, **`billy_status` (dead)**, `billy_plus_cta`, `billy_plus_cancel`, **`surprises_header` (dead)**, `play_emoji_bomb`, `preview_emoji_rain`, `leave_demo` |
 | `music` | `preview_play`, `preview_pause`, `open_spotify`, `open_apple_music`, `add_playlist`, `track_search` (never logs query text), `track_result`, `pick_save` |
 | `top_nav` | **`page_title` (dead)**, `edit`, `back`, `search` (searches this profile's visible fields; never logs query text) |
+
+### `personalize` *(surface, parent `profile`)*
+| section | elements |
+|---|---|
+| `top_nav` | `back`, **`page_title` (dead)** |
+| `intro` | **`body` (dead)** — coming soon copy |
+| `preview` | **`matchers` (dead)**, **`social` (dead)**, **`data` (dead)** |
 
 ### `music_track_sheet` *(surface)*
 | section | elements |
@@ -560,7 +586,7 @@ Black see-through overlay with fireworks + "You did it! Welcome to Bridger!!!" a
 ### `profile` (friend view)
 | section | elements |
 |---|---|
-| `tabs` | `about_them`, `in_common`, `inside_jokes`, `bucket_list` (their list, read-only — rows reuse `profile.bucket_list.item` as a **dead** target), `notes` (opens your private Notes & reminders) |
+| `tabs` | `about_them`, `favorites` (same id as own profile), `in_common`, `inside_jokes`, `bucket_list` (their list, read-only — rows reuse `profile.bucket_list.item` as a **dead** target), `notes` (opens your private Notes & reminders) |
 | `about_them` | `about_me` (**dead** — do they tap it expecting more?), `this_or_that_row` (**dead**), `hobbies_widget`, `places_map` (swipe/list on a friend's map) |
 | `in_common` | **`section_header` (dead)**, `info` (opens `section_info_tooltip`, method=hover\|tap), `mutual_row` (opens that mutual's profile), **`empty_body` (dead)**, `personality_quizzes` (opens `connect_over`; click only) |
 | `actions` | `message` (the "Message <name>" pill in the header — there is no separate button any more), `emoji_bomb` (opens `send_delight`), `how_you_met`, `private_note`, `overflow` (opens `friend_options_sheet`) |
@@ -933,6 +959,9 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 
 | Date | Old ID | New ID | Reason |
 |---|---|---|---|
+| 2026-09-21 | — | `auth.sign_in.sms_consent` (dead), `privacy_policy`, `terms` | A2P 10DLC: SMS disclosures + Privacy / Terms links under Send me a code |
+| 2026-09-13 | — | `auth.lock.*`; surface `auth_lock`; `profile.settings.face_id_toggle`; product `biometric_unlock_*`; `permission_result.permission=biometric`; `auth_signed_out.method=lock_use_phone` | Optional Face ID / fingerprint cover over a saved session. Never logs a face or print. |
+| 2026-09-13 | — | `auth.sign_in.country_code` / `country_search` / `country_row` / `country_dismiss`; surface `auth_country_sheet`; `send_code.country_iso` | Phone OTP country dial picker so non-US numbers are not forced to +1. Never logs digits. |
 | 2026-09-09 | — | `*.inside_jokes.note` tap may send `page_index` (0 quote / 1 photo / 2 credits) | Square notes; photo notes auto-flip quote ↔ photo (not an event) |
 | 2026-09-09 | `friends.top_nav.edit` | `friends.roster.edit` (beside Your circle). `top_nav.edit` kept for history | Edit sits with the roster it changes, not the page header |
 | 2026-09-09 | — | `add_inside_joke_sheet.form.sticky_note` / `color_header` / `color_swatch` / `photo_add` / `photo_remove` / `photo_locked` / `who_header` / `who_search` / `event_header` / `event_search`; `inside_joke_posted.has_photo` | Full-screen Inside Joke composer (note, color, friend/event search, co-op photo). Never joke text. |
@@ -1056,4 +1085,5 @@ Keep to **semantic regions**, not every pixel — enough to learn intent without
 | 2026-09-09 | Capture went straight to compose | Camera-first: `just_shot` + `actions.done` / `make_collage` / `retake` / `save_roll`; surfaces `collage_editor`, `collage_hub`, `collage_paper`, `collage_text`, `collage_voice`, `collage_people`, `collage_cutout`, `collage_layer`, `collage_exit`, `collage_finish`, `collage_packs`, `collage_layouts`; product `collage_audio_transcribed`, `collage_friend_tagged`; notify kind `collage_tag` | Camera is the front door. Collage tools are optional. Camera roll stays allowed. Never log captions, transcripts, or tagged names |
 | 2026-09-09 | CRT welcome auto-advanced after typing (no button) | `auth.welcome.next` + flow `welcome` (`method` tap\|auto, `page_index`) | People could not finish reading each typed screen |
 | 2026-09-09 | Collage editing was thin (basic colors, one font, no move/resize for text) | `collage_editor.rail.rotate`; `collage_text.tools.spectrum`; `collage_paper.swatch.spectrum` (full spectrum color picker, real fonts, drag/pinch to move/resize/rotate any piece incl. text) | Never log the mixed hex as content; color is a style choice, no PII |
+| 2026-09-21 | — | `profile.settings.personalize` opens surface `personalize` (`top_nav.back`, dead `page_title`, dead `intro.body`, dead `preview.matchers` / `social` / `data`) | Personalize preview. No install, no new data, no product event |
 

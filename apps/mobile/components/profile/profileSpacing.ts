@@ -9,8 +9,8 @@
 /** Horizontal inset for all section content (Spotify ~16–20). */
 export const PROFILE_GUTTER = 16;
 
-/** Vertical gap between major sections (Popular → Artist pick feel). */
-export const PROFILE_SECTION_GAP = 16;
+/** Vertical gap between major sections. */
+export const PROFILE_SECTION_GAP = 28;
 
 /** Larger gap before lower blocks (Featuring → Music videos feel). */
 export const PROFILE_SECTION_GAP_LG = 24;
@@ -45,8 +45,8 @@ export const PROFILE_NAME_SIZE = 28;
 /** Quiet city line under the name. */
 export const PROFILE_CITY_SIZE = 14;
 
-/** Bridger pixel section titles. */
-export const PROFILE_SECTION_TITLE_SIZE = 18;
+/** Bridger pixel section titles (My Top 5, My Hobbies, Places traveled). */
+export const PROFILE_SECTION_TITLE_SIZE = 24;
 
 /** "See all" pill label. */
 export const PROFILE_SEE_ALL_SIZE = 13;

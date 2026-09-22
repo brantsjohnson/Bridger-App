@@ -13,7 +13,9 @@ import { ACCENTS, useThemeColors, withAnalyticsPress } from '@bridger/ui';
 import type { TravelPlace } from '../../data/profile';
 import { MAP_VB, getCountryPaths, projectLngLat } from '../../lib/geo/project';
 
-const DEFAULT_HEIGHT = 168;
+const DEFAULT_HEIGHT = 260;
+/** Warm country fill from the profile redesign, readable on eggshell and black. */
+const VISITED = '#FFB199';
 const CORAL = ACCENTS.coral.hex;
 
 export function WorldMapSvg({
@@ -62,8 +64,8 @@ export function WorldMapSvg({
             <Path
               key={country.code}
               d={country.d}
-              fill={isTagged ? CORAL : c.ink}
-              fillOpacity={isTagged ? 0.35 : 0.06}
+              fill={isTagged ? VISITED : c.ink}
+              fillOpacity={isTagged ? 0.95 : 0.1}
               stroke={c.ink}
               strokeOpacity={0.28}
               strokeWidth={0.35}

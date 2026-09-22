@@ -1,0 +1,259 @@
+{
+  "migrations": 59,
+  "tables": 100,
+  "columns": 760,
+  "policies": 144,
+  "functions": 11,
+  "triggers": 30,
+  "enums": 18,
+  "rls_disabled": [],
+  "rls_enabled_without_policies": [
+    "public.ai_config",
+    "public.ai_job_cost_log",
+    "public.ai_jobs",
+    "public.ai_ops_alerts",
+    "public.assistant_activity_log",
+    "public.assistant_memory_chunks",
+    "public.assistant_proposals",
+    "public.assistant_sessions",
+    "public.assistant_turns",
+    "public.billy_config",
+    "public.client_not_found_hits",
+    "public.coop_beta_unlocks",
+    "public.coop_promo_codes",
+    "public.coop_waitlist",
+    "public.freshness_prompts",
+    "public.matching_config",
+    "public.matching_feedback",
+    "public.module_moderator_notes",
+    "public.music_oauth_states",
+    "public.person_embeddings",
+    "public.person_summaries",
+    "public.week_summaries"
+  ],
+  "permissive_count": 21,
+  "permissive": [
+    "public.activity_hearts.activity_hearts_select [select] anon=false",
+    "public.activity_posts.activity_posts_select [select] anon=false",
+    "public.admin_config.admin_config_select [select] anon=false",
+    "public.coop_announcements.coop_announcements_select [select] anon=false",
+    "public.coop_beta_versions.coop_beta_versions_select [select] anon=false",
+    "public.coop_beta_votes.coop_beta_votes_select [select] anon=false",
+    "public.coop_dues_votes.coop_dues_votes_select [select] anon=false",
+    "public.coop_economics_assumptions.coop_economics_select [select] anon=true",
+    "public.coop_idea_comments.coop_idea_comments_select [select] anon=false",
+    "public.coop_idea_supports.coop_idea_supports_select [select] anon=false",
+    "public.coop_mission_principles.coop_mission_principles_select [select] anon=true",
+    "public.coop_mission_supports.coop_mission_supports_select [select] anon=false",
+    "public.coop_roles.coop_roles_select [select] anon=true",
+    "public.delights.delights_select [select] anon=false",
+    "public.quiz_questions.quiz_questions_select [select] anon=false",
+    "public.quiz_registry.quiz_registry_select [select] anon=false",
+    "public.quizzes.quizzes_select [select] anon=false",
+    "public.recap_questions.recap_questions_select [select] anon=false",
+    "public.recap_submitted_questions.recap_submitted_questions_select [select] anon=false",
+    "public.recap_weeks.recap_weeks_select [select] anon=false",
+    "public.weekly_activities.weekly_activities_select [select] anon=false"
+  ],
+  "security_definer": [
+    "can_view",
+    "handle_new_user",
+    "purge_expired_recaps",
+    "drop_zone_c_on_undiscoverable",
+    "purge_assistant_on_disable",
+    "purge_matching_for_user",
+    "trg_discoverable_purge_matching",
+    "merge_pending_people_for_user",
+    "user_contacts_phone_merge"
+  ],
+  "missing_from_types": [
+    "disclosure_items",
+    "disclosure_profiles"
+  ],
+  "extra_in_types": [],
+  "missing_enums": [],
+  "unparsed_count": 0,
+  "unparsed": [],
+  "routes": 243,
+  "routes_without_guards": [
+    "POST /admin/login",
+    "GET /coop/portal/economics",
+    "GET /coop/portal/roles",
+    "POST /coop/webhooks/revenuecat",
+    "POST /coop/webhooks/stripe",
+    "GET /health",
+    "GET /music/apple/authorize",
+    "POST /music/apple/complete",
+    "GET /music/spotify/callback",
+    "POST /telemetry/not-found"
+  ],
+  "mobile_direct": [
+    {
+      "file": "apps/mobile/app/(auth)/sign-in.tsx",
+      "line": 64,
+      "call": "auth.getUser"
+    },
+    {
+      "file": "apps/mobile/app/invite/[token].tsx",
+      "line": 58,
+      "call": "auth.getSession"
+    },
+    {
+      "file": "apps/mobile/data/onboarding.ts",
+      "line": 130,
+      "call": "auth.getSession"
+    },
+    {
+      "file": "apps/mobile/hooks/useOnboarding.ts",
+      "line": 331,
+      "call": "auth.getSession"
+    },
+    {
+      "file": "apps/mobile/hooks/useOnboarding.ts",
+      "line": 351,
+      "call": "auth.onAuthStateChange"
+    },
+    {
+      "file": "apps/mobile/lib/api.ts",
+      "line": 80,
+      "call": "auth.getSession"
+    },
+    {
+      "file": "apps/mobile/lib/media-upload.ts",
+      "line": 37,
+      "call": "auth.getSession"
+    },
+    {
+      "file": "apps/mobile/lib/media-upload.ts",
+      "line": 57,
+      "call": "storage.from('media')"
+    },
+    {
+      "file": "apps/mobile/lib/media-upload.ts",
+      "line": 62,
+      "call": "from('media')"
+    },
+    {
+      "file": "apps/mobile/lib/oauth.ts",
+      "line": 44,
+      "call": "auth.setSession"
+    },
+    {
+      "file": "apps/mobile/lib/oauth.ts",
+      "line": 53,
+      "call": "auth.signInWithOAuth"
+    },
+    {
+      "file": "apps/mobile/lib/oauth.ts",
+      "line": 94,
+      "call": "auth.getUser"
+    },
+    {
+      "file": "apps/mobile/lib/oauth.ts",
+      "line": 189,
+      "call": "auth.signInWithIdToken"
+    },
+    {
+      "file": "apps/mobile/lib/oauth.ts",
+      "line": 202,
+      "call": "auth.updateUser"
+    },
+    {
+      "file": "apps/mobile/lib/supabase.ts",
+      "line": 59,
+      "call": "auth.startAutoRefresh"
+    },
+    {
+      "file": "apps/mobile/lib/supabase.ts",
+      "line": 61,
+      "call": "auth.stopAutoRefresh"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 52,
+      "call": "auth.getSession"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 58,
+      "call": "auth.onAuthStateChange"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 82,
+      "call": "auth.signInWithPassword"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 93,
+      "call": "auth.signUp"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 107,
+      "call": "auth.signInWithOtp"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 118,
+      "call": "auth.verifyOtp"
+    },
+    {
+      "file": "apps/mobile/providers/auth-provider.tsx",
+      "line": 127,
+      "call": "auth.signOut"
+    }
+  ],
+  "duplicate_prefixes": {
+    "0024": [
+      "0024_coop_portal.sql",
+      "0024_story_live_until_archive.sql"
+    ],
+    "0049": [
+      "0049_discoverable_default_off.sql",
+      "0049_payment_providers.sql"
+    ]
+  },
+  "derived": [
+    {
+      "field": "public.person_embeddings.embedding",
+      "lineage": "attributes rows with matchable=true (Zone B). See guide-docs/DATA.md zone C."
+    },
+    {
+      "field": "public.person_summaries.summary",
+      "lineage": "de-identified text built from matchable attributes. Not found as a column name in this note if the column is named differently: check the table columns."
+    },
+    {
+      "field": "public.day_summaries",
+      "lineage": "AI text from the author update_text plus transcript. Words only."
+    },
+    {
+      "field": "public.week_summaries",
+      "lineage": "AI week text. Words only."
+    },
+    {
+      "field": "public.stories.transcript",
+      "lineage": "speech-to-text of the author media. Derived from the story the author posted."
+    },
+    {
+      "field": "public.quiz_results",
+      "lineage": "scored from quiz_responses by the quiz engine."
+    },
+    {
+      "field": "public.matching_suggestions",
+      "lineage": "computed from matchable attributes, quiz results, and the friend graph."
+    },
+    {
+      "field": "public.module_moderator_notes",
+      "lineage": "moderator notes from quiz answers."
+    },
+    {
+      "field": "public.freshness_prompts",
+      "lineage": "prompts derived from profile facts."
+    },
+    {
+      "field": "public.user_identity.avatar_media_id",
+      "lineage": "filtered copy of avatar_original_media_id when avatar_filter is set."
+    }
+  ]
+}

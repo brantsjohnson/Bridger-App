@@ -1,10 +1,12 @@
 # Matching module — plain English
 
+You choose what information enters a computation and what purpose it serves (Discover on, facts you marked matchable, a quiz you finished). Bridger chooses the engineering that makes that authorized computation reliable and secure. See Terms section 7.8a.
+
 ## How a suggestion is born (Mode 1)
 
 1. You turned Discover on and filled enough Everyone+matchable facts (or finished a Discover quiz).
 2. Nest looks at **friends of your friends** only. Blocks, skips, people you already know, and people who turned Discover off are out.
-3. For each remaining person, Nest scores **six named features** (quiz overlap using each quiz's own rule, embedding closeness, shared Everyone facts, moderator-note affinity, mutual-friend warmth, context). If a pair lacks data for a feature, that feature is **0**, not turned off. Humor and values want the same scores. Assertiveness wants opposites. The Friend Zone uses a style chart.
+3. For each remaining person, Nest scores **six named features** (quiz overlap using each quiz's own rule, embedding closeness, shared Everyone facts, moderator-note affinity, mutual-friend warmth, context). If a pair lacks data for a feature, that feature is **0**, not turned off. Humor and values want the same scores. Assertiveness wants opposites. The Friend Zone uses a style chart. The embedding keeps their words and quiz dial numbers. It does not turn those into an identity label first.
 4. Evidence gate: they need **one shared completed Discover quiz** OR **three** meaningful Everyone+matchable overlaps. Below the score threshold → **no suggestion** (empty Discover is correct).
 5. Up to five suggestions are stored. A small exploration slice reshuffles among people who already passed the gate.
 6. The feature snapshot is frozen into `matching_feedback` so later friendship outcomes can teach the weights — never from PostHog clicks.

@@ -11,6 +11,7 @@ import {
   Injectable,
   NotFoundException
 } from '@nestjs/common';
+import { normalizeAttribute } from '@bridger/ai';
 import { DISCOVER_QUIZ_IDS, type DiscoverQuizId } from '@bridger/shared';
 import { AiJobsService } from '../ai/ai-jobs.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -192,8 +193,9 @@ export class DiscoverQuizService {
         key: r.key as string,
         value: r.value
       }));
+      // Same lines the embedding uses: words and dial numbers, not display titles.
       const facts = attrs
-        .map((a) => labelOf(a.key, a.value))
+        .map((a) => normalizeAttribute(a))
         .filter((s) => s.length > 0)
         .slice(0, 40);
       await this.aiJobs.enqueueEmbeddings({ userId, attributes: attrs });
@@ -215,12 +217,3 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
-function labelOf(key: string, value: unknown): string {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    const v = value as Record<string, unknown>;
-    if (typeof v.label === 'string') return v.label;
-    if (typeof v.title === 'string') return v.title;
-  }
-  if (typeof value === 'string') return value;
-  return key;
-}

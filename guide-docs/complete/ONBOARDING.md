@@ -12,7 +12,7 @@ Live and TestFlight accounts still walk the **Old 19-step onboarding** below. Th
 
 ## NEW ONBOARDING (preview only, demo password `onboard`) — not shipped yet
 
-Sign-in is **phone + SMS OTP** (iOS one-time-code autofill). Google / Apple / email stay compiled behind `EXPO_PUBLIC_AUTH_MODE=legacy`. Phone is stored in E.164 on `user_contacts`. If someone already made a private card for that number (`pending_people`), signup merges notes and a friend connection into the new account.
+Sign-in is **phone + SMS OTP** (iOS / Android / Mac one-tap autofill from the SMS keyboard suggestion). The Sign in screen shows a **country dial code** picker (defaults from the device region; searchable sheet) beside the local number field so people outside the US are not forced into +1. After a successful code, the session stays on the device (no new text on every open). Settings can add an optional **Face ID / fingerprint** cover. Google / Apple / email stay compiled behind `EXPO_PUBLIC_AUTH_MODE=legacy`. Phone is stored in E.164 on `user_contacts`. If someone already made a private card for that number (`pending_people`), signup merges notes and a friend connection into the new account.
 
 The onboarding container starts at **name** (first + last on one screen). Copy lives in `apps/mobile/components/onboarding/onboarding-new-copy.ts`. Layouts follow the Magic Patterns handoff (`docs/HANDOFF.md` in the design zip). Photo filters, the live Touch Grass button, and the pixel Friend Podcast play control stay the app's.
 
